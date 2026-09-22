@@ -1,0 +1,16 @@
+.git
+.agents
+.codex
+.venv
+.env
+__pycache__
+*.pyc
+.chrome-profile
+.chrome-stable-profile
+.playwright-profile
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+frontend/src-tauri/target
+docs/ui-concepts

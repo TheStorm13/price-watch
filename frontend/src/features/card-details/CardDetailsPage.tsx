@@ -1,0 +1,89 @@
+import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { ApiError } from '../../api/client'
+import { useCard, useCardHistory, useDeleteCard, useUpdateCard } from '../../api/queries'
+import { AvailabilityStatus } from '../../components/ui/AvailabilityStatus'
+import { Button } from '../../components/ui/Button'
+import { CardActionsMenu } from '../../components/ui/CardActionsMenu'
+import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
+import { formatDateTime, formatPrice } from '../../utils/format'
+import { useCollection } from '../collection/CollectionProvider'
+import { PriceChart } from './PriceChart'
+
+const periods = [7, 30, 90] as const
+
+export function CardDetailsPage() {
+  const navigate = useNavigate()
+  const cardId = Number(useParams().cardId)
+  const [params, setParams] = useSearchParams()
+  const days = periods.includes(Number(params.get('days')) as 7 | 30 | 90) ? Number(params.get('days')) : 30
+  const cardQuery = useCard(cardId)
+  const historyQuery = useCardHistory(cardId, days)
+  const updateCard = useUpdateCard()
+  const deleteCard = useDeleteCard()
+  const collection = useCollection()
+  const card = cardQuery.data ?? historyQuery.data?.card
+  const statistics = historyQuery.data?.statistics
+  const history = historyQuery.data?.history ?? []
+
+  if (cardQuery.isLoading || historyQuery.isLoading) return <section className="page detail-page"><div className="detail-loading" aria-label="Загрузка карточки" /></section>
+  if (cardQuery.error instanceof ApiError && cardQuery.error.code === 'card_not_found') {
+    return <section className="page"><div className="state-message"><h1>Карточка не найдена</h1><Link className="text-link" to="/cards">Вернуться к карточкам</Link></div></section>
+  }
+  if (!card || cardQuery.isError || historyQuery.isError) {
+    return (
+      <section className="page">
+        <div className="state-message">
+          <h1>Не удалось загрузить данные карточки</h1>
+          <p>Сервис временно не смог получить карточку или историю её цены.</p>
+          <Button onClick={() => void Promise.all([cardQuery.refetch(), historyQuery.refetch()])}>Повторить</Button>
+          <Link className="text-link" to="/cards">Вернуться к карточкам</Link>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="page detail-page">
+      <Link className="back-link" to="/cards"><ArrowLeft />К карточкам</Link>
+      <header className="detail-header">
+        <div><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.isActive ? <><span>·</span><span className="tracking-status">Отслеживание приостановлено</span></> : null}</div></div>
+        <div className="page-actions">
+          <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)}>Обновить</Button>
+          <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} isActive={card.isActive} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
+        </div>
+      </header>
+
+      <div className="price-summary">
+        <div className="price-summary__primary">
+          <strong>{formatPrice(card.currentPrice)}</strong>
+          <AvailabilityStatus value={card.currentAvailability} />
+          <span>Последнее наблюдение: {formatDateTime(card.lastObservedAt)}</span>
+        </div>
+        <div className="price-stat"><span>Средняя</span><strong>{formatPrice(statistics?.averagePrice)}</strong></div>
+        <div className="price-stat"><span>Минимум</span><strong>{formatPrice(statistics?.minimumPrice)}</strong></div>
+        <div className="price-stat"><span>Максимум</span><strong>{formatPrice(statistics?.maximumPrice)}</strong></div>
+      </div>
+
+      <div className="chart-heading">
+        <h2>История цены</h2>
+        <div className="period-control" aria-label="Период истории">
+          {periods.map((period) => <button key={period} className={days === period ? 'is-active' : ''} onClick={() => setParams({ days: String(period) })}>{period} дней</button>)}
+        </div>
+      </div>
+      <PriceChart history={history} averagePrice={statistics?.averagePrice ?? null} />
+
+      <section className="measurements">
+        <h2>Измерения</h2>
+        <div className="table-surface">
+          <table className="history-table">
+            <caption className="sr-only">История измерений цены</caption>
+            <thead><tr><th>Дата и время</th><th>Цена</th><th>Наличие</th><th>Запуск</th></tr></thead>
+            <tbody>{history.map((point) => <tr key={point.id}><td>{formatDateTime(point.observedAt)}</td><td className="price-cell">{formatPrice(point.price)}</td><td><AvailabilityStatus value={point.availability} /></td><td>{point.collectionRunId ? <Link className="text-link" to="/runs">#{point.collectionRunId}</Link> : '—'}</td></tr>)}</tbody>
+          </table>
+          {history.length === 0 ? <div className="state-message state-message--compact">Измерений за выбранный период нет</div> : null}
+        </div>
+      </section>
+    </section>
+  )
+}

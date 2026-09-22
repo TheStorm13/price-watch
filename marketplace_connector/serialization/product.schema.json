@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:marketplace-connector:product-snapshot:1.0",
+  "title": "ProductSnapshot 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "ref", "title", "url", "availability", "price",
+    "seller", "rating", "attributes", "description", "variants",
+    "collected_at", "extensions"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "ref": {"$ref": "#/$defs/productRef"},
+    "title": {"type": "string", "minLength": 1},
+    "url": {"type": "string"},
+    "availability": {"enum": ["in_stock", "out_of_stock", "unknown"]},
+    "price": {"type": ["number", "null"], "minimum": 0},
+    "seller": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/seller"}]
+    },
+    "rating": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/rating"}]
+    },
+    "attributes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/attribute"}
+    },
+    "description": {"type": "string"},
+    "variants": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/variant"}
+    },
+    "collected_at": {"type": "string", "format": "date-time"},
+    "extensions": {"type": "object"}
+  },
+  "$defs": {
+    "productRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["marketplace", "external_id"],
+      "properties": {
+        "marketplace": {"type": "string", "minLength": 1},
+        "external_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "rating": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "scale", "reviews_count"],
+      "properties": {
+        "value": {"type": "string"},
+        "scale": {"type": "string"},
+        "reviews_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "seller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_id", "name", "rating"],
+      "properties": {
+        "external_id": {"type": ["string", "null"]},
+        "name": {"type": "string"},
+        "rating": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/rating"}]}
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "values", "group"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "values": {
+          "type": "array", "minItems": 1, "items": {"type": "string"}
+        },
+        "group": {"type": ["string", "null"]}
+      }
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref", "title", "url", "availability", "selected", "options"
+      ],
+      "properties": {
+        "ref": {"$ref": "#/$defs/productRef"},
+        "title": {"type": "string"},
+        "url": {"type": "string"},
+        "availability": {"enum": ["in_stock", "out_of_stock", "unknown"]},
+        "selected": {"type": "boolean"},
+        "options": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    }
+  }
+}
