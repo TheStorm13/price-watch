@@ -10,13 +10,24 @@ from ..schemas import (
     CardUpdate,
     HistoryPointResponse,
     HistoryResponse,
+    ChartResponse,
     StatisticsResponse,
 )
 from ...domain.models import CardOverview
-from ...infrastructure.postgres.repository import CardAlreadyExists
+from ...infrastructure.postgres.repository import CardAlreadyExists, CardInActiveRun
 
 
 router = APIRouter(prefix="/cards", tags=["cards"])
+
+
+@router.get("/{card_id}/chart", response_model=ChartResponse)
+async def get_chart(card_id: int, repository: RepositoryDep, days: int = 30):
+    if days not in {7, 30, 90}:
+        raise ApiProblem(422, "invalid_chart_query", "Некорректный период графика")
+    if repository.get_card(card_id) is None:
+        raise ApiProblem(404, "card_not_found", "Карточка не найдена")
+    return ChartResponse(points=[HistoryPointResponse.from_domain(point)
+                                 for point in repository.get_chart_points(card_id, days)])
 
 
 @router.get("", response_model=list[CardResponse])
@@ -69,7 +80,11 @@ async def update_card(card_id: int, payload: CardUpdate, repository: RepositoryD
     response_class=Response,
 )
 async def delete_card(card_id: int, repository: RepositoryDep) -> Response:
-    if not repository.delete_card(card_id):
+    try:
+        deleted = repository.delete_card(card_id)
+    except CardInActiveRun as exc:
+        raise ApiProblem(409, "card_in_active_run", str(exc)) from exc
+    if not deleted:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

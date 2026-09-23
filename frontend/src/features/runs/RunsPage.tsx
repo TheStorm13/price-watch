@@ -1,5 +1,6 @@
 import { RefreshCw } from 'lucide-react'
-import { useRuns } from '../../api/queries'
+import { useSearchParams } from 'react-router-dom'
+import { useRun, useRuns } from '../../api/queries'
 import { Button } from '../../components/ui/Button'
 import { LoadingRows } from '../../components/ui/LoadingRows'
 import { formatDateTime, formatDuration, runStatusLabel } from '../../utils/format'
@@ -15,6 +16,9 @@ const statusTone: Record<RunStatus, string> = {
 }
 
 export function RunsPage() {
+  const [params, setParams] = useSearchParams()
+  const selectedId = Number(params.get('run')) || null
+  const detail = useRun(selectedId, true)
   const query = useRuns()
   const runs = query.data ?? []
   return (
@@ -34,7 +38,7 @@ export function RunsPage() {
             <thead><tr><th>Запуск</th><th>Статус</th><th>Начало</th><th>Длительность</th><th>Успешно</th><th>Ошибки</th><th>Всего</th></tr></thead>
             <tbody>{runs.map((run) => (
               <tr key={run.id}>
-                <td className="run-id">#{run.id}</td>
+                <td className="run-id"><button className="text-link" onClick={() => setParams({ run: String(run.id) })}>#{run.id}</button></td>
                 <td><span className={`run-status run-status--${statusTone[run.status]}`}><span />{runStatusLabel[run.status]}</span></td>
                 <td>{formatDateTime(run.startedAt)}</td>
                 <td>{formatDuration(run.startedAt, run.finishedAt)}</td>
@@ -44,6 +48,20 @@ export function RunsPage() {
           </table>
         )}
       </div>
+      {selectedId !== null ? (
+        <section className="run-details" aria-label={`Подробности запуска ${selectedId}`}>
+          <div className="run-details__header"><h2>Запуск #{selectedId}</h2><Button onClick={() => setParams({})}>Закрыть</Button></div>
+          {detail.isLoading ? <p>Загрузка подробностей…</p> : detail.isError ? <p role="alert">Не удалось получить подробности запуска.</p> : detail.data?.errors?.length ? (
+            <ul className="run-errors">{detail.data.errors.map((error, index) => (
+              <li key={`${error.cardId}-${index}`}>
+                <strong>{error.externalId ? `${error.marketplace?.toUpperCase()} · ID ${error.externalId}` : 'Ошибка worker'}</strong>
+                <p>{error.message}</p>
+                {error.traceback ? <details><summary>Технические подробности</summary><pre>{error.traceback}</pre><Button onClick={() => void navigator.clipboard.writeText(error.traceback)}>Скопировать traceback</Button></details> : null}
+              </li>
+            ))}</ul>
+          ) : <p>Ошибок в этом запуске нет.</p>}
+        </section>
+      ) : null}
     </section>
   )
 }

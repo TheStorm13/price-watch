@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 
 @dataclass(frozen=True)
@@ -71,3 +71,5 @@ class CollectionRun:
     challenge_message: Optional[str]
     started_at: datetime
     finished_at: Optional[datetime]
+    target_card_ids: Optional[tuple[int, ...]] = None
+    errors: tuple[dict[str, Any], ...] = ()

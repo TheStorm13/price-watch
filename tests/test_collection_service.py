@@ -8,7 +8,7 @@ from marketplace_connector import (
     ProductSnapshot,
 )
 from price_analyzer.application.collection_service import CollectionService
-from price_analyzer.domain.models import MarketplaceCard
+from price_analyzer.domain.models import CollectionRun, MarketplaceCard
 
 
 NOW = datetime(2026, 9, 21, tzinfo=timezone.utc)
@@ -52,6 +52,8 @@ class FakeRepository:
         self.finished = []
         self.current = []
         self.progress = []
+        self.errors = []
+        self.fail_on_current = False
 
     def list_active_cards(self, card_id=None):
         return [item for item in self.cards if card_id is None or item.id == card_id]
@@ -67,10 +69,18 @@ class FakeRepository:
         self.finished.append((run_id, status, success_count, failure_count))
 
     def set_run_current(self, run_id, item):
+        if self.fail_on_current:
+            raise RuntimeError("progress failed")
         self.current.append((run_id, item.id))
 
     def update_run_progress(self, run_id, success_count, failure_count):
         self.progress.append((run_id, success_count, failure_count))
+
+    def record_run_error(self, run_id, error, success_count, failure_count):
+        self.errors.append((run_id, error, success_count, failure_count))
+
+    def cards_for_run(self, run):
+        return [item for item in self.cards if item.id in (run.target_card_ids or ())]
 
 
 class CollectionServiceTests(unittest.TestCase):
@@ -92,6 +102,8 @@ class CollectionServiceTests(unittest.TestCase):
         self.assertEqual(result.success_count, 1)
         self.assertEqual(result.failure_count, 1)
         self.assertEqual(len(repository.saved), 1)
+        self.assertEqual(repository.errors[0][1]["message"], "connector failed")
+        self.assertIn("RuntimeError: connector failed", repository.errors[0][1]["traceback"])
         self.assertEqual(
             repository.finished,
             [(42, "completed_with_errors", 1, 1)],
@@ -128,12 +140,25 @@ class CollectionServiceTests(unittest.TestCase):
             repository, ConnectorRegistry([FakeConnector("ozon")])
         )
 
-        result = service.execute_run(run_id=77)
+        run = CollectionRun(77, "running", 1, 0, 0, None, None, None, None, None, None, NOW, None, (1,))
+        result = service.execute_run(run)
 
         self.assertEqual(result.run_id, 77)
         self.assertEqual(repository.current, [(77, 1)])
         self.assertEqual(repository.progress, [(77, 1, 0)])
         self.assertEqual(repository.finished, [(77, "completed", 1, 0)])
+
+    def test_unexpected_run_failure_keeps_traceback(self):
+        repository = FakeRepository([card(1, "ozon", "100")])
+        repository.fail_on_current = True
+        service = CollectionService(repository, ConnectorRegistry([FakeConnector("ozon")]))
+        run = CollectionRun(77, "running", 1, 0, 0, None, None, None, None, None, None, NOW, None, (1,))
+
+        with self.assertRaisesRegex(RuntimeError, "progress failed"):
+            service.execute_run(run)
+
+        self.assertEqual(repository.finished, [(77, "failed", 0, 0)])
+        self.assertIn("RuntimeError: progress failed", repository.errors[0][1]["traceback"])
 
 
 if __name__ == "__main__":

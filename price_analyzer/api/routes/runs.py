@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query
 from ..dependencies import RepositoryDep
 from ..errors import ApiProblem
 from ..schemas import RunCreate, RunResponse
+from ...infrastructure.postgres.repository import NoActiveCards
 
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -18,15 +19,15 @@ async def list_runs(
 ):
     if page < 1 or not 1 <= page_size <= 200:
         raise ApiProblem(422, "invalid_pagination", "Некорректная пагинация")
-    return [RunResponse.from_domain(item) for item in repository.list_runs(page, page_size)]
+    return [RunResponse.from_domain(item, include_errors=False) for item in repository.list_runs(page, page_size)]
 
 
 @router.get("/{run_id}", response_model=RunResponse)
-async def get_run(run_id: int, repository: RepositoryDep):
+async def get_run(run_id: int, repository: RepositoryDep, include_errors: Annotated[bool, Query(alias="includeErrors")] = True):
     run = repository.get_run(run_id)
     if run is None:
         raise ApiProblem(404, "run_not_found", "Запуск не найден")
-    return RunResponse.from_domain(run)
+    return RunResponse.from_domain(run, include_errors=include_errors)
 
 
 @router.post("", response_model=RunResponse, status_code=202)
@@ -35,6 +36,8 @@ async def create_run(payload: RunCreate, repository: RepositoryDep):
         run = repository.create_queued_run(payload.card_id)
     except LookupError as exc:
         raise ApiProblem(404, "card_not_found", str(exc)) from exc
+    except NoActiveCards as exc:
+        raise ApiProblem(409, "no_active_cards", str(exc)) from exc
     return RunResponse.from_domain(run)
 
 

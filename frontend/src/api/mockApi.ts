@@ -110,6 +110,12 @@ let runs: CollectionRun[] = [
     challenge: null,
     startedAt: new Date(now - 86_400_000).toISOString(),
     finishedAt: new Date(now - 86_400_000 + 76_000).toISOString(),
+    errors: [{
+      cardId: 2, marketplace: 'ozon', externalId: '1478523690',
+      at: new Date(now - 86_400_000 + 70_000).toISOString(),
+      type: 'MarketplaceUnavailable', message: 'Не удалось получить страницу товара',
+      traceback: 'MarketplaceUnavailable: Не удалось получить страницу товара',
+    }],
   },
 ]
 
@@ -209,12 +215,33 @@ export const mockApi = {
     })
   },
 
+  async getChart(cardId: number, days: number) {
+    const response = await this.getHistory(cardId, days, 1, Number.MAX_SAFE_INTEGER)
+    const ordered = response.history.toReversed().map((point) => point.availability === 'out_of_stock' ? { ...point, price: null } : point)
+    const points: PriceHistoryPoint[] = []
+    let first: PriceHistoryPoint | undefined
+    let last: PriceHistoryPoint | undefined
+    const flush = () => {
+      if (!first || !last) return
+      points.push(first)
+      if (first.id !== last.id) points.push(last)
+    }
+    for (const point of ordered) {
+      if (!first) first = last = point
+      else if (point.price === last?.price && point.availability === last.availability) last = point
+      else { flush(); first = last = point }
+    }
+    flush()
+    return { points }
+  },
+
   async listRuns() {
-    return delay([...runs])
+    return delay(runs.map((run) => ({ ...run, errors: null })))
   },
 
   async startRun(cardId?: number) {
     const selected = cardId ? cards.filter((card) => card.id === cardId && card.isActive) : cards.filter((card) => card.isActive)
+    if (!selected.length) throw new Error(cardId ? 'Активная карточка не найдена' : 'Нет активных карточек для сбора')
     const run: CollectionRun = {
       id: nextRunId++,
       status: 'queued',
@@ -233,11 +260,11 @@ export const mockApi = {
     return delay(run)
   },
 
-  async getRun(runId: number) {
+  async getRun(runId: number, includeErrors = false) {
     const index = runs.findIndex((item) => item.id === runId)
     if (index < 0) throw new Error('Запуск не найден')
     const run = runs[index]
-    if (run.finishedAt) return delay(run, 80)
+    if (run.finishedAt) return delay({ ...run, errors: includeErrors ? run.errors ?? [] : null }, 80)
     const elapsed = Date.now() - (runCreatedAt.get(runId) ?? Date.now())
     let next = run
     if (elapsed > 5_000 && !continuedRuns.has(runId)) {
@@ -276,7 +303,7 @@ export const mockApi = {
       next = { ...run, status: 'running' }
     }
     runs[index] = next
-    return delay(next, 80)
+    return delay({ ...next, errors: includeErrors ? next.errors ?? [] : null }, 80)
   },
 
   async continueRun(runId: number) {

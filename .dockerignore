@@ -1,13 +1,16 @@
 .git
 .agents
 .codex
+.codegraph
 .venv
 .env
 __pycache__
 *.pyc
 .chrome-profile
 .chrome-stable-profile
+.ozon-browser-profile
 .playwright-profile
+output
 frontend/node_modules
 frontend/dist
 frontend/test-results

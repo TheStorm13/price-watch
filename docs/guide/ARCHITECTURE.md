@@ -1,0 +1,65 @@
+# Архитектура и путь данных
+
+[К содержанию](README.md)
+
+## Компоненты
+
+| Часть | Код | Задача |
+| --- | --- | --- |
+| Запуск desktop | `price-watch`, `frontend/src-tauri/src/lib.rs` | Открыть Tauri, поднять сервисы и локальный worker |
+| Интерфейс | `frontend/src` | Карточки, история, запуски и действия пользователя |
+| HTTP API | `price_analyzer/api` | Проверить запросы и передать их репозиторию |
+| Сбор и очередь | `price_analyzer/application`, `price_analyzer/worker` | Выполнить сбор, обновить прогресс и статусы |
+| Хранение | `price_analyzer/infrastructure/postgres` | PostgreSQL, SQLAlchemy и Alembic |
+| Контракт коннектора | `marketplace_connector/domain`, `marketplace_connector/ports` | Общая модель снимка товара |
+| Ozon | `marketplace_connector/connectors/ozon` | Chrome, ответ Ozon и нормализация |
+| Старый одиночный CLI | `ozon_article_json`, `main.py` | Получить JSON товара без БД |
+
+```mermaid
+flowchart LR
+    UI[React в Tauri] --> API[FastAPI]
+    API --> DB[(PostgreSQL)]
+    Worker[Локальный Python worker] --> DB
+    Worker --> Connector[Коннектор Ozon]
+    Connector --> Chrome[Системный Google Chrome]
+    Chrome --> Ozon[Ozon]
+```
+
+## Сбор через интерфейс
+
+1. React отправляет `POST /api/runs` для одной карточки или всех активных.
+2. API создаёт строку запуска со статусом `queued` и фиксирует ID выбранных карточек в PostgreSQL.
+3. Worker раз в секунду ищет очередь и атомарно забирает один запуск через
+   `FOR UPDATE SKIP LOCKED`. Статус становится `running`.
+4. Для каждой карточки коннектор открывает видимый системный Chrome с профилем
+   `.playwright-profile`. Playwright подключается к нему через локальный CDP.
+5. Коннектор открывает страницу товара и получает JSON Ozon из той же вкладки.
+   Mapper создаёт общий `ProductSnapshot`; цена берётся только из `cardPrice`.
+6. Репозиторий сохраняет новый снимок в `price_history` и обновляет название и
+   ссылку карточки одной транзакцией. Ошибки по товарам сохраняются с traceback
+   в запуске. Интерфейс опрашивает запуск примерно раз в секунду и обновляет
+   карточки после завершения.
+
+Сетевые вызовы Ozon выполняются вне транзакции БД. Карточки одного запуска
+обрабатываются последовательно, поскольку используют один профиль Chrome.
+Ошибка одной карточки увеличивает `failure_count`, но остальные карточки
+продолжают обрабатываться.
+
+## Проверка Ozon
+
+Если Ozon показывает антибот-проверку, worker устанавливает статус
+`waiting_for_user`. Пользователь проходит её в открытом Chrome и нажимает
+«Проверка пройдена» в приложении. API `POST /api/runs/{id}/continue` переводит
+запуск обратно в `running`; worker продолжает работу. При прямом CLI сборе
+подтверждение принимается в терминале.
+
+## Три способа использовать один коннектор
+
+- UI и API создают запуск в очереди; его выполняет фоновый worker.
+- `main.py collect` вызывает сервис сбора напрямую и блокирует терминал до
+  окончания.
+- `main.py <артикул>` получает один нормализованный JSON без PostgreSQL.
+
+Общий формат снимка описан в
+`marketplace_connector/serialization/product.schema.json`. Сейчас реальный
+коннектор реализован только для Ozon.

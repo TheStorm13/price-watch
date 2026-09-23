@@ -193,11 +193,11 @@ class OzonClient:
             return self.chrome_binary
         if self.browser_channel == "chromium":
             return Path(playwright.chromium.executable_path)
-        for name in ("google-chrome-stable", "google-chrome", "chromium"):
+        for name in ("google-chrome-stable", "google-chrome"):
             path = shutil.which(name)
             if path:
                 return Path(path)
-        raise MarketplaceUnavailable("Не найден установленный Chrome/Chromium")
+        raise MarketplaceUnavailable("Не найден установленный Google Chrome")
 
     @staticmethod
     def _reserve_debug_port() -> int:

@@ -4,6 +4,7 @@
 .playwright-profile/
 chrome-launch.log
 .venv/
+.codegraph/
 .env
 output/
 frontend/node_modules/

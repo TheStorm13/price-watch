@@ -7,6 +7,7 @@ import type { CollectionRun } from '../../types/domain'
 interface CollectionContextValue {
   run: CollectionRun | null
   isStarting: boolean
+  startError: string | null
   start: (cardId?: number) => void
   openBrowser: () => void
   continueRun: () => void
@@ -72,11 +73,12 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CollectionContextValue>(() => ({
     run,
     isStarting: startMutation.isPending,
+    startError: startMutation.isError ? startMutation.error.message : null,
     start,
     openBrowser,
     continueRun: () => runId !== null && continueMutation.mutate(runId),
     dismiss,
-  }), [continueMutation, dismiss, openBrowser, run, runId, start, startMutation.isPending])
+  }), [continueMutation, dismiss, openBrowser, run, runId, start, startMutation.isPending, startMutation.isError, startMutation.error])
 
   return <CollectionContext.Provider value={value}>{children}</CollectionContext.Provider>
 }

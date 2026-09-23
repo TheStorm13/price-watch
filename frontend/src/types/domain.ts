@@ -50,6 +50,20 @@ export interface CardHistoryResponse {
   totalCount: number
 }
 
+export interface ChartResponse {
+  points: PriceHistoryPoint[]
+}
+
+export interface RunError {
+  cardId: number | null
+  marketplace: Marketplace | null
+  externalId: string | null
+  at: string
+  type: string
+  message: string
+  traceback: string
+}
+
 export interface CollectionRun {
   id: number
   status: RunStatus
@@ -67,6 +81,7 @@ export interface CollectionRun {
   } | null
   startedAt: string
   finishedAt: string | null
+  errors?: RunError[] | null
 }
 
 export interface CreateCardInput {

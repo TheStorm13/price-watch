@@ -47,7 +47,7 @@ def create_app(
             "tauri://localhost",
         ],
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PATCH"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "X-Request-ID"],
     )
     app.add_exception_handler(ApiProblem, api_problem_handler)

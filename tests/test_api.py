@@ -5,7 +5,7 @@ from httpx import ASGITransport, AsyncClient
 
 from price_analyzer.api import create_app
 from price_analyzer.domain.models import CardOverview, CollectionRun, MarketplaceCard
-from price_analyzer.infrastructure.postgres.repository import CardAlreadyExists
+from price_analyzer.infrastructure.postgres.repository import CardAlreadyExists, NoActiveCards
 
 
 NOW = datetime(2026, 9, 21, 12, 0, tzinfo=timezone.utc)
@@ -28,6 +28,7 @@ class FakeRepository:
     def __init__(self):
         self.card = make_card()
         self.duplicate = False
+        self.no_active_cards = False
 
     def list_cards(self, include_inactive=False):
         return [CardOverview(self.card, 999, "in_stock", NOW)]
@@ -44,6 +45,8 @@ class FakeRepository:
         return True
 
     def create_queued_run(self, card_id=None):
+        if self.no_active_cards:
+            raise NoActiveCards("Нет активных карточек для сбора")
         return CollectionRun(
             id=7,
             status="queued",
@@ -59,6 +62,16 @@ class FakeRepository:
             started_at=NOW,
             finished_at=None,
         )
+
+    def get_run(self, run_id):
+        if run_id != 7:
+            return None
+        run = self.create_queued_run(1)
+        return CollectionRun(**{**run.__dict__, "errors": ({
+            "cardId": 1, "marketplace": "ozon", "externalId": "1604900984",
+            "at": NOW.isoformat(), "type": "RuntimeError",
+            "message": "failed", "traceback": "full traceback",
+        },)})
 
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
@@ -89,6 +102,12 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.json()["status"], "queued")
         self.assertEqual(response.json()["totalCount"], 1)
 
+    async def test_empty_collection_returns_conflict(self):
+        self.repository.no_active_cards = True
+        response = await self.client.post("/api/runs", json={})
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["error"]["code"], "no_active_cards")
+
     async def test_duplicate_card_has_structured_field_error(self):
         self.repository.duplicate = True
         response = await self.client.post(
@@ -112,6 +131,23 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["error"]["code"], "card_not_found")
+
+    async def test_tauri_delete_preflight_is_allowed(self):
+        response = await self.client.options(
+            "/api/cards/1",
+            headers={
+                "Origin": "http://tauri.localhost",
+                "Access-Control-Request-Method": "DELETE",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("DELETE", response.headers["access-control-allow-methods"])
+
+    async def test_run_detail_can_omit_tracebacks_during_polling(self):
+        full = await self.client.get("/api/runs/7")
+        summary = await self.client.get("/api/runs/7?includeErrors=false")
+        self.assertEqual(full.json()["errors"][0]["traceback"], "full traceback")
+        self.assertIsNone(summary.json()["errors"])
 
 
 if __name__ == "__main__":

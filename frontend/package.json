@@ -10,7 +10,7 @@
     "build": "tsc -b && vite build",
     "build:desktop": "tsc -b && VITE_DESKTOP_MODE=true vite build",
     "desktop": "tauri dev",
-    "desktop:build": "tauri build",
+    "desktop:build": "tauri build --no-bundle",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:watch": "vitest",

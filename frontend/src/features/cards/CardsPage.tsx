@@ -72,6 +72,7 @@ export function CardsPage() {
           <Button variant="primary" icon={<Plus />} onClick={() => setDrawerOpen(true)}>Добавить карточку</Button>
         </div>
       </header>
+      {collection.startError ? <p className="action-error" role="alert">{collection.startError}</p> : null}
 
       <div className="filters">
         <label className="search-field">

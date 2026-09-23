@@ -82,3 +82,30 @@ test('запуск доходит до проверки и продолжает�
   await page.getByRole('button', { name: 'Проверка пройдена' }).click()
   await expect(page.getByText('Цены обновлены')).toBeVisible({ timeout: 8_000 })
 })
+
+test('детали карточки показывают середину диапазона и страницы истории', async ({ page }) => {
+  await page.goto('/cards/1')
+  await expect(page.getByText('Середина диапазона')).toBeVisible()
+  await expect(page.getByText('77 240 ₽', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('График истории цены')).toBeVisible()
+  await page.screenshot({ path: '/tmp/price-watch-chart.png' })
+})
+
+test('из списка запусков открываются подробности', async ({ page }) => {
+  await page.goto('/runs')
+  await page.getByRole('button', { name: '#21' }).click()
+  await expect(page.getByRole('region', { name: 'Подробности запуска 21' })).toBeVisible()
+  await expect(page.getByText('Ошибок в этом запуске нет.')).toBeVisible()
+  await page.getByRole('button', { name: '#20' }).click()
+  await expect(page.getByText('Не удалось получить страницу товара', { exact: true })).toBeVisible()
+  await page.getByText('Технические подробности').click()
+  await expect(page.getByText('MarketplaceUnavailable: Не удалось получить страницу товара')).toBeVisible()
+})
+
+test('одиночное измерение остаётся точкой на графике с нулевой осью', async ({ page }) => {
+  await page.goto('/cards/2')
+  const chart = page.getByLabel('График истории цены')
+  await expect(chart).toBeVisible()
+  await expect(chart.locator('.recharts-line-dot')).toHaveCount(1)
+  await expect(chart.getByText('0', { exact: true })).toBeVisible()
+})

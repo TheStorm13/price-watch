@@ -5,9 +5,10 @@ import type { CreateCardInput, UpdateCardInput } from '../types/domain'
 export const queryKeys = {
   cards: ['cards'] as const,
   card: (id: number) => ['cards', id] as const,
-  history: (id: number, days: number) => ['cards', id, 'history', days] as const,
+  history: (id: number, days: number, page: number) => ['cards', id, 'history', days, page] as const,
+  chart: (id: number, days: number) => ['cards', id, 'chart', days] as const,
   runs: ['runs'] as const,
-  run: (id: number) => ['runs', id] as const,
+  run: (id: number, includeErrors = false) => ['runs', id, includeErrors] as const,
 }
 
 export function useCards() {
@@ -18,12 +19,16 @@ export function useCard(cardId: number) {
   return useQuery({ queryKey: queryKeys.card(cardId), queryFn: () => api.getCard(cardId), enabled: Number.isFinite(cardId) })
 }
 
-export function useCardHistory(cardId: number, days: number) {
+export function useCardHistory(cardId: number, days: number, page = 1) {
   return useQuery({
-    queryKey: queryKeys.history(cardId, days),
-    queryFn: () => api.getHistory(cardId, days),
+    queryKey: queryKeys.history(cardId, days, page),
+    queryFn: () => api.getHistory(cardId, days, page),
     enabled: Number.isFinite(cardId),
   })
+}
+
+export function useCardChart(cardId: number, days: number) {
+  return useQuery({ queryKey: queryKeys.chart(cardId, days), queryFn: () => api.getChart(cardId, days), enabled: Number.isFinite(cardId) })
 }
 
 export function useCreateCard() {
@@ -60,10 +65,10 @@ export function useRuns() {
   return useQuery({ queryKey: queryKeys.runs, queryFn: api.listRuns })
 }
 
-export function useRun(runId: number | null) {
+export function useRun(runId: number | null, includeErrors = false) {
   return useQuery({
-    queryKey: queryKeys.run(runId ?? -1),
-    queryFn: () => api.getRun(runId as number),
+    queryKey: queryKeys.run(runId ?? -1, includeErrors),
+    queryFn: () => api.getRun(runId as number, includeErrors),
     enabled: runId !== null,
     refetchInterval: (query) => {
       const status = query.state.data?.status

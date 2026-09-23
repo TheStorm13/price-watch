@@ -1,11 +1,13 @@
 """Orchestrate connector calls without holding database transactions open."""
 
 import logging
+import traceback
+from datetime import datetime, timezone
 from typing import Optional
 
 from marketplace_connector.application.product_service import ConnectorRegistry
 
-from ..domain.models import CollectionSummary
+from ..domain.models import CollectionRun, CollectionSummary
 from ..ports.repository import PriceAnalyzerRepository
 
 
@@ -28,10 +30,10 @@ class CollectionService:
         run_id = self._repository.start_run(len(cards))
         return self._collect_cards(run_id, cards, report_progress=False)
 
-    def execute_run(self, run_id: int, card_id: Optional[int] = None) -> CollectionSummary:
+    def execute_run(self, run: CollectionRun) -> CollectionSummary:
         """Execute a run already claimed by the durable worker queue."""
-        cards = list(self._repository.list_active_cards(card_id))
-        return self._collect_cards(run_id, cards, report_progress=True)
+        cards = self._repository.cards_for_run(run)
+        return self._collect_cards(run.id, cards, report_progress=True)
 
     def _collect_cards(self, run_id, cards, report_progress: bool) -> CollectionSummary:
         success_count = 0
@@ -49,20 +51,25 @@ class CollectionService:
                     if snapshot.ref.external_id != card.external_id:
                         raise ValueError("Коннектор вернул другую карточку")
                     self._repository.save_observation(card, run_id, snapshot)
-                    success_count += 1
-                except Exception:
+                except Exception as exc:
                     failure_count += 1
+                    self._repository.record_run_error(run_id, {
+                        "cardId": card.id, "marketplace": card.marketplace,
+                        "externalId": card.external_id,
+                        "at": datetime.now(timezone.utc).isoformat(),
+                        "type": type(exc).__name__, "message": str(exc),
+                        "traceback": traceback.format_exc(),
+                    }, success_count, failure_count)
                     logger.exception(
                         "Не удалось обновить карточку: card_id=%s marketplace=%s external_id=%s",
                         card.id,
                         card.marketplace,
                         card.external_id,
                     )
-                finally:
+                else:
+                    success_count += 1
                     if report_progress:
-                        self._repository.update_run_progress(
-                            run_id, success_count, failure_count
-                        )
+                        self._repository.update_run_progress(run_id, success_count, failure_count)
 
             status = "completed" if failure_count == 0 else "completed_with_errors"
             self._repository.finish_run(
@@ -75,7 +82,13 @@ class CollectionService:
                 success_count=success_count,
                 failure_count=failure_count,
             )
-        except BaseException:
+        except BaseException as exc:
+            self._repository.record_run_error(run_id, {
+                "cardId": None, "marketplace": None, "externalId": None,
+                "at": datetime.now(timezone.utc).isoformat(),
+                "type": type(exc).__name__, "message": str(exc),
+                "traceback": traceback.format_exc(),
+            }, success_count, failure_count)
             self._repository.finish_run(
                 run_id, "failed", success_count, failure_count
             )

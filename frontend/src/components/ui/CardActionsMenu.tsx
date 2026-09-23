@@ -70,9 +70,9 @@ export function CardActionsMenu({ cardTitle, isActive, onToggle, onDelete, borde
       await onDelete()
       setConfirming(false)
       setOpen(false)
-    } catch {
+    } catch (reason) {
       setConfirming(false)
-      setError('Не удалось удалить карточку')
+      setError(reason instanceof Error ? reason.message : 'Не удалось удалить карточку')
     } finally {
       setPending(false)
     }

@@ -110,6 +110,10 @@ class HistoryResponse(ApiModel):
     total_count: int
 
 
+class ChartResponse(ApiModel):
+    points: list[HistoryPointResponse]
+
+
 class RunCurrentResponse(ApiModel):
     card_id: int
     marketplace: str
@@ -131,9 +135,10 @@ class RunResponse(ApiModel):
     challenge: ChallengeResponse | None
     started_at: datetime
     finished_at: datetime | None
+    errors: list[dict] | None = None
 
     @classmethod
-    def from_domain(cls, run: CollectionRun) -> "RunResponse":
+    def from_domain(cls, run: CollectionRun, include_errors: bool = True) -> "RunResponse":
         current = None
         if run.current_card_id and run.current_marketplace and run.current_external_id:
             current = RunCurrentResponse(
@@ -154,6 +159,7 @@ class RunResponse(ApiModel):
             challenge=challenge,
             started_at=run.started_at,
             finished_at=run.finished_at,
+            errors=list(run.errors) if include_errors else None,
         )
 
 

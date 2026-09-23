@@ -2,6 +2,7 @@ import { mockApi } from './mockApi'
 import type {
   ApiErrorPayload,
   CardHistoryResponse,
+  ChartResponse,
   CollectionRun,
   CreateCardInput,
   MarketplaceCard,
@@ -69,6 +70,9 @@ export const api = {
       ? mockApi.getHistory(cardId, days, page, pageSize)
       : request(`/api/cards/${cardId}/history?days=${days}&page=${page}&pageSize=${pageSize}`),
 
+  getChart: (cardId: number, days: number): Promise<ChartResponse> =>
+    isDemoMode ? mockApi.getChart(cardId, days) : request(`/api/cards/${cardId}/chart?days=${days}`),
+
   listRuns: (): Promise<CollectionRun[]> =>
     isDemoMode ? mockApi.listRuns() : request('/api/runs?page=1&pageSize=50'),
 
@@ -80,8 +84,8 @@ export const api = {
           body: JSON.stringify(cardId === undefined ? {} : { cardId }),
         }),
 
-  getRun: (runId: number): Promise<CollectionRun> =>
-    isDemoMode ? mockApi.getRun(runId) : request(`/api/runs/${runId}`),
+  getRun: (runId: number, includeErrors = false): Promise<CollectionRun> =>
+    isDemoMode ? mockApi.getRun(runId, includeErrors) : request(`/api/runs/${runId}?includeErrors=${includeErrors}`),
 
   continueRun: (runId: number): Promise<CollectionRun> =>
     isDemoMode

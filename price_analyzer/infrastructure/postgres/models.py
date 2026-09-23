@@ -21,7 +21,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -99,6 +99,8 @@ class CollectionRunRecord(Base):
     challenge_message: Mapped[str | None] = mapped_column(Text)
     worker_id: Mapped[str | None] = mapped_column(String(128))
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    target_card_ids: Mapped[list[int] | None] = mapped_column(ARRAY(BigInteger))
+    errors: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 
 
 class PriceHistoryRecord(Base):

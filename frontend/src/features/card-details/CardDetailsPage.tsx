@@ -1,7 +1,7 @@
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
-import { useCard, useCardHistory, useDeleteCard, useUpdateCard } from '../../api/queries'
+import { useCard, useCardChart, useCardHistory, useDeleteCard, useUpdateCard } from '../../api/queries'
 import { AvailabilityStatus } from '../../components/ui/AvailabilityStatus'
 import { Button } from '../../components/ui/Button'
 import { CardActionsMenu } from '../../components/ui/CardActionsMenu'
@@ -17,26 +17,32 @@ export function CardDetailsPage() {
   const cardId = Number(useParams().cardId)
   const [params, setParams] = useSearchParams()
   const days = periods.includes(Number(params.get('days')) as 7 | 30 | 90) ? Number(params.get('days')) : 30
+  const requestedPage = Number(params.get('page'))
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
   const cardQuery = useCard(cardId)
-  const historyQuery = useCardHistory(cardId, days)
+  const historyQuery = useCardHistory(cardId, days, page)
+  const chartQuery = useCardChart(cardId, days)
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
   const collection = useCollection()
   const card = cardQuery.data ?? historyQuery.data?.card
   const statistics = historyQuery.data?.statistics
   const history = historyQuery.data?.history ?? []
+  const chart = chartQuery.data?.points ?? []
+  const midpoint = statistics?.minimumPrice != null && statistics.maximumPrice != null
+    ? (statistics.minimumPrice + statistics.maximumPrice) / 2 : null
 
-  if (cardQuery.isLoading || historyQuery.isLoading) return <section className="page detail-page"><div className="detail-loading" aria-label="Загрузка карточки" /></section>
+  if (cardQuery.isLoading || historyQuery.isLoading || chartQuery.isLoading) return <section className="page detail-page"><div className="detail-loading" aria-label="Загрузка карточки" /></section>
   if (cardQuery.error instanceof ApiError && cardQuery.error.code === 'card_not_found') {
     return <section className="page"><div className="state-message"><h1>Карточка не найдена</h1><Link className="text-link" to="/cards">Вернуться к карточкам</Link></div></section>
   }
-  if (!card || cardQuery.isError || historyQuery.isError) {
+  if (!card || cardQuery.isError || historyQuery.isError || chartQuery.isError) {
     return (
       <section className="page">
         <div className="state-message">
           <h1>Не удалось загрузить данные карточки</h1>
           <p>Сервис временно не смог получить карточку или историю её цены.</p>
-          <Button onClick={() => void Promise.all([cardQuery.refetch(), historyQuery.refetch()])}>Повторить</Button>
+          <Button onClick={() => void Promise.all([cardQuery.refetch(), historyQuery.refetch(), chartQuery.refetch()])}>Повторить</Button>
           <Link className="text-link" to="/cards">Вернуться к карточкам</Link>
         </div>
       </section>
@@ -53,6 +59,7 @@ export function CardDetailsPage() {
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} isActive={card.isActive} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
         </div>
       </header>
+      {collection.startError ? <p className="action-error" role="alert">{collection.startError}</p> : null}
 
       <div className="price-summary">
         <div className="price-summary__primary">
@@ -60,8 +67,8 @@ export function CardDetailsPage() {
           <AvailabilityStatus value={card.currentAvailability} />
           <span>Последнее наблюдение: {formatDateTime(card.lastObservedAt)}</span>
         </div>
-        <div className="price-stat"><span>Средняя</span><strong>{formatPrice(statistics?.averagePrice)}</strong></div>
         <div className="price-stat"><span>Минимум</span><strong>{formatPrice(statistics?.minimumPrice)}</strong></div>
+        <div className="price-stat"><span>Середина диапазона</span><strong>{formatPrice(midpoint)}</strong></div>
         <div className="price-stat"><span>Максимум</span><strong>{formatPrice(statistics?.maximumPrice)}</strong></div>
       </div>
 
@@ -71,7 +78,7 @@ export function CardDetailsPage() {
           {periods.map((period) => <button key={period} className={days === period ? 'is-active' : ''} onClick={() => setParams({ days: String(period) })}>{period} дней</button>)}
         </div>
       </div>
-      <PriceChart history={history} averagePrice={statistics?.averagePrice ?? null} />
+      <PriceChart history={chart} midpoint={midpoint} />
 
       <section className="measurements">
         <h2>Измерения</h2>
@@ -79,10 +86,17 @@ export function CardDetailsPage() {
           <table className="history-table">
             <caption className="sr-only">История измерений цены</caption>
             <thead><tr><th>Дата и время</th><th>Цена</th><th>Наличие</th><th>Запуск</th></tr></thead>
-            <tbody>{history.map((point) => <tr key={point.id}><td>{formatDateTime(point.observedAt)}</td><td className="price-cell">{formatPrice(point.price)}</td><td><AvailabilityStatus value={point.availability} /></td><td>{point.collectionRunId ? <Link className="text-link" to="/runs">#{point.collectionRunId}</Link> : '—'}</td></tr>)}</tbody>
+            <tbody>{history.map((point) => <tr key={point.id}><td>{formatDateTime(point.observedAt)}</td><td className="price-cell">{formatPrice(point.price)}</td><td><AvailabilityStatus value={point.availability} /></td><td>{point.collectionRunId ? <Link className="text-link" to={`/runs?run=${point.collectionRunId}`}>#{point.collectionRunId}</Link> : '—'}</td></tr>)}</tbody>
           </table>
           {history.length === 0 ? <div className="state-message state-message--compact">Измерений за выбранный период нет</div> : null}
         </div>
+        {historyQuery.data && historyQuery.data.totalCount > historyQuery.data.pageSize ? (
+          <div className="history-pagination">
+            <Button disabled={page <= 1} onClick={() => setParams({ days: String(days), page: String(page - 1) })}>Назад</Button>
+            <span>Страница {page} из {Math.ceil(historyQuery.data.totalCount / historyQuery.data.pageSize)} · {historyQuery.data.totalCount} измерений</span>
+            <Button disabled={page * historyQuery.data.pageSize >= historyQuery.data.totalCount} onClick={() => setParams({ days: String(days), page: String(page + 1) })}>Далее</Button>
+          </div>
+        ) : null}
       </section>
     </section>
   )

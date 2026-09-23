@@ -58,6 +58,16 @@ h2 { font-size: 20px; line-height: 28px; letter-spacing: -0.015em; font-weight: 
 .card-actions-menu__popover .card-actions-menu__danger { color: var(--red); }
 .card-actions-menu__popover .card-actions-menu__danger svg { color: var(--red); }
 .card-actions-menu__error { padding: 7px 11px 4px; color: var(--red); font-size: 12px; }
+.action-error { margin: 0 0 16px; color: var(--red); }
+.history-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 16px 0; color: var(--text-muted); }
+.run-details { margin-top: 18px; padding: 22px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.run-id button.text-link { border: 0; padding: 0; background: transparent; cursor: pointer; }
+.run-details__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.run-errors { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.run-errors li { padding: 14px; border: 1px solid var(--border); border-radius: 8px; }
+.run-errors p { margin: 4px 0 8px; color: var(--text-muted); }
+.run-errors summary { cursor: pointer; color: var(--blue); }
+.run-errors pre { max-height: 320px; overflow: auto; padding: 12px; background: var(--surface-subtle); white-space: pre-wrap; overflow-wrap: anywhere; }
 .confirm-dialog-layer { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; }
 .confirm-dialog-backdrop { position: absolute; inset: 0; border: 0; background: rgba(23, 25, 28, .28); cursor: default; }
 .confirm-dialog { position: relative; width: min(440px, calc(100vw - 48px)); padding: 28px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-overlay); text-align: left; }

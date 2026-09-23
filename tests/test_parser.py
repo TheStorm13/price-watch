@@ -8,6 +8,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 from ozon_article_json.parser import OzonRawCardParser
 from marketplace_connector.connectors.ozon.client import OzonClient
+from marketplace_connector.domain.errors import MarketplaceUnavailable
 
 
 class FakeLocator:
@@ -105,6 +106,21 @@ class ParserTests(unittest.TestCase):
                 client._find_chrome_executable(playwright),
                 Path(playwright.chromium.executable_path),
             )
+
+    def test_chrome_channel_never_falls_back_to_chromium(self):
+        client = OzonClient.__new__(OzonClient)
+        client.chrome_binary = None
+        client.browser_channel = "chrome"
+        with patch("marketplace_connector.connectors.ozon.client.shutil.which") as which:
+            which.side_effect = (
+                lambda name: "/usr/bin/chromium" if name == "chromium" else None
+            )
+            with self.assertRaisesRegex(MarketplaceUnavailable, "Google Chrome"):
+                client._find_chrome_executable(MagicMock())
+        self.assertEqual(
+            [call.args[0] for call in which.call_args_list],
+            ["google-chrome-stable", "google-chrome"],
+        )
 
     def test_removes_only_stale_profile_locks(self):
         with TemporaryDirectory() as directory:

@@ -1,6 +1,7 @@
 import { AlertCircle, Check, LoaderCircle, X } from 'lucide-react'
 import { isDesktopMode } from '../../api/client'
 import { Button } from '../../components/ui/Button'
+import { Link } from 'react-router-dom'
 import { useCollection } from './CollectionProvider'
 
 export function ActiveCollectionPanel() {
@@ -35,7 +36,7 @@ export function ActiveCollectionPanel() {
           </div>
         </div>
       ) : complete ? (
-        <p className="collection-panel__result">Успешно: {run.successCount} · Ошибок: {run.failureCount}</p>
+        <p className="collection-panel__result">Успешно: {run.successCount} · Ошибок: {run.failureCount} {run.status !== 'completed' ? <Link className="text-link" to={`/runs?run=${run.id}`}>Показать ошибки</Link> : null}</p>
       ) : (
         <p className="collection-panel__current">
           {run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
