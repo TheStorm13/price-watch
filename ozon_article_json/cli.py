@@ -1,13 +1,14 @@
 """CLI for the Ozon implementation of the common product connector."""
 
 import argparse
+import asyncio
 import logging
 from pathlib import Path
 import sys
 from typing import Optional, Sequence
 
 from marketplace_connector.application.product_service import ConnectorRegistry, ProductService
-from marketplace_connector.connectors.ozon import OzonClient, OzonConnector
+from marketplace_connector.connectors.ozon import AsyncOzonClient, OzonConnector
 from marketplace_connector.serialization.product_json import snapshot_to_json
 
 
@@ -19,6 +20,10 @@ class TerminalChallengeHandler:
     def handle(self, marketplace: str, message: str) -> None:
         print(message, file=sys.stderr, end="", flush=True)
         input()
+
+    async def handle_async(self, marketplace: str, message: str) -> None:
+        print(message, file=sys.stderr, end="", flush=True)
+        await asyncio.to_thread(input)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,7 +73,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     logger.info("Старт: marketplace=ozon, external_id=%s", args.article)
 
     try:
-        client = OzonClient(
+        client = AsyncOzonClient(
             args.profile_dir,
             challenge_handler=TerminalChallengeHandler(),
             chrome_binary=args.chrome_binary,

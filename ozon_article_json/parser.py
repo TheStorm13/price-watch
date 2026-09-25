@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Callable, Optional, Union
 
-from marketplace_connector.connectors.ozon.client import OzonClient
+from marketplace_connector.connectors.ozon.async_client import AsyncOzonClient
 from marketplace_connector.ports.challenge import CallableChallengeHandler
 
 
@@ -17,8 +17,8 @@ def wait_for_user(message: str) -> str:
     return input()
 
 
-class OzonRawCardParser(OzonClient):
-    """Compatibility wrapper; new code should use ``OzonClient``."""
+class OzonRawCardParser(AsyncOzonClient):
+    """Compatibility wrapper around the async Ozon transport."""
 
     def __init__(
         self,
@@ -39,4 +39,4 @@ class OzonRawCardParser(OzonClient):
     def fetch(self, article: Union[str, int]) -> str:
         return self.fetch_raw_text(article)
 
-    normalize_article = staticmethod(OzonClient.normalize_product_id)
+    normalize_article = staticmethod(AsyncOzonClient.normalize_product_id)

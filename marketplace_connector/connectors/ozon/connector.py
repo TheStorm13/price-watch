@@ -14,8 +14,19 @@ class OzonConnector:
         self._client = client
         self._mapper = mapper or OzonMapper()
 
+    def collection_session(self):
+        return self._client.collection_session()
+
     def get_product(self, external_id: str) -> ProductSnapshot:
         response = self._client.fetch_product(external_id)
+        return self._mapper.to_snapshot(
+            response.payload,
+            expected_external_id=response.external_id,
+            collected_at=response.received_at,
+        )
+
+    async def get_product_async(self, external_id: str) -> ProductSnapshot:
+        response = await self._client.fetch_product_async(external_id)
         return self._mapper.to_snapshot(
             response.payload,
             expected_external_id=response.external_id,

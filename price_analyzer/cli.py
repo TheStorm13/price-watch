@@ -1,6 +1,7 @@
 """Command-line interface for cards, collection runs and price history."""
 
 import argparse
+import asyncio
 from dataclasses import asdict
 from datetime import date, datetime
 from decimal import Decimal
@@ -12,7 +13,7 @@ import sys
 from typing import Any, Iterable, Optional, Sequence
 
 from marketplace_connector import ConnectorRegistry
-from marketplace_connector.connectors.ozon import OzonClient, OzonConnector
+from marketplace_connector.connectors.ozon import AsyncOzonClient, OzonConnector
 
 from .application.collection_service import CollectionService
 from .infrastructure.postgres import (
@@ -31,6 +32,10 @@ class TerminalChallengeHandler:
     def handle(self, marketplace: str, message: str) -> None:
         print(message, file=sys.stderr, end="", flush=True)
         input()
+
+    async def handle_async(self, marketplace: str, message: str) -> None:
+        print(message, file=sys.stderr, end="", flush=True)
+        await asyncio.to_thread(input)
 
 
 def _json_default(value: Any):
@@ -83,6 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=PROJECT_DIR / ".playwright-profile",
     )
     collect.add_argument("--chrome-binary", type=Path)
+    collect.add_argument("--headless", action="store_true", help="собирать без окна Chrome")
     collect.add_argument(
         "--chrome-platform",
         choices=("x11", "wayland", "auto"),
@@ -108,6 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=PROJECT_DIR / ".playwright-profile",
     )
     worker.add_argument("--chrome-binary", type=Path)
+    worker.add_argument("--headless", action="store_true", help="собирать без окна Chrome")
+    worker.add_argument("--virtual-display", action="store_true", help="собирать в скрытом Xvfb")
     worker.add_argument(
         "--chrome-platform",
         choices=("x11", "wayland", "auto"),
@@ -146,12 +154,13 @@ def _build_connectors(
 ) -> ConnectorRegistry:
     connectors = []
     if "ozon" in set(marketplaces):
-        client = OzonClient(
+        client = AsyncOzonClient(
             profile_dir=args.profile_dir,
             challenge_handler=TerminalChallengeHandler(),
             chrome_binary=args.chrome_binary,
             chrome_platform=args.chrome_platform,
             browser_channel=args.browser_channel,
+            headless=args.headless,
         )
         connectors.append(OzonConnector(client))
     return ConnectorRegistry(connectors)
@@ -204,7 +213,7 @@ def _execute(args: argparse.Namespace, database: Database) -> int:
             if "ozon" in marketplaces:
                 connectors.append(
                     OzonConnector(
-                        OzonClient(
+                        AsyncOzonClient(
                             profile_dir=args.profile_dir,
                             challenge_handler=DatabaseChallengeHandler(
                                 repository, run.id
@@ -212,6 +221,8 @@ def _execute(args: argparse.Namespace, database: Database) -> int:
                             chrome_binary=args.chrome_binary,
                             chrome_platform=args.chrome_platform,
                             browser_channel=args.browser_channel,
+                            headless=args.headless,
+                            virtual_display=args.virtual_display,
                         )
                     )
                 )

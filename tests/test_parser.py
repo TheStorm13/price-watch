@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import ANY, MagicMock, patch
+from playwright.sync_api import Error as PlaywrightError
 
 from ozon_article_json.parser import OzonRawCardParser
 from marketplace_connector.connectors.ozon.client import OzonClient
@@ -50,6 +51,64 @@ class ParserTests(unittest.TestCase):
         page = FakePage("Antibot Challenge Page")
 
         self.assertFalse(OzonRawCardParser._extract_card_json(page))
+
+    def test_reuses_browser_for_collection_session_and_closes_it(self):
+        with TemporaryDirectory() as directory:
+            client = OzonClient(profile_dir=directory)
+            context = MagicMock()
+            page = MagicMock()
+            context.pages = [page]
+            with (
+                patch("marketplace_connector.connectors.ozon.client.sync_playwright"),
+                patch.object(client, "_launch_context", return_value=context) as launch,
+                patch.object(client, "_is_antibot_page", return_value=False),
+                patch.object(client, "_fetch_json_in_page", return_value='{"widgetStates":{}}'),
+            ):
+                with client.collection_session():
+                    client.fetch_raw_text("100")
+                    client.fetch_raw_text("200")
+                    launch.assert_called_once()
+                    self.assertEqual(page.goto.call_count, 2)
+                    context.close.assert_not_called()
+                context.close.assert_called_once()
+
+    def test_standalone_fetch_opens_and_closes_its_own_session(self):
+        with TemporaryDirectory() as directory:
+            client = OzonClient(profile_dir=directory)
+            context = MagicMock()
+            context.pages = [MagicMock()]
+            with (
+                patch("marketplace_connector.connectors.ozon.client.sync_playwright"),
+                patch.object(client, "_launch_context", return_value=context) as launch,
+                patch.object(client, "_is_antibot_page", return_value=False),
+                patch.object(client, "_fetch_json_in_page", return_value='{"widgetStates":{}}'),
+            ):
+                self.assertEqual(client.fetch_raw_text("100"), '{"widgetStates":{}}')
+                launch.assert_called_once()
+                context.close.assert_called_once()
+
+    def test_reopens_browser_after_playwright_failure_in_session(self):
+        with TemporaryDirectory() as directory:
+            client = OzonClient(profile_dir=directory)
+            broken_context = MagicMock()
+            broken_page = MagicMock()
+            broken_page.goto.side_effect = PlaywrightError("connection closed")
+            broken_context.pages = [broken_page]
+            recovered_context = MagicMock()
+            recovered_context.pages = [MagicMock()]
+            with (
+                patch("marketplace_connector.connectors.ozon.client.sync_playwright"),
+                patch.object(client, "_launch_context", side_effect=[broken_context, recovered_context]) as launch,
+                patch.object(client, "_is_antibot_page", return_value=False),
+                patch.object(client, "_fetch_json_in_page", return_value='{"widgetStates":{}}'),
+            ):
+                with client.collection_session():
+                    with self.assertRaises(MarketplaceUnavailable):
+                        client.fetch_raw_text("100")
+                    self.assertEqual(client.fetch_raw_text("200"), '{"widgetStates":{}}')
+                self.assertEqual(launch.call_count, 2)
+                broken_context.close.assert_called_once()
+                recovered_context.close.assert_called_once()
 
     def test_launches_persistent_playwright_context(self):
         with TemporaryDirectory() as directory:

@@ -10,6 +10,7 @@ import re
 import shutil
 import socket
 import subprocess
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 import time
@@ -91,6 +92,43 @@ class OzonClient:
         self.chrome_platform = chrome_platform
         self.browser_channel = browser_channel
         self.headless = headless
+        self._playwright = None
+        self._context = None
+        self._page = None
+
+    @contextmanager
+    def collection_session(self):
+        """Keep one browser available for sequential product fetches."""
+        if self._playwright is not None:
+            raise RuntimeError("Сеанс Ozon уже открыт")
+        try:
+            with sync_playwright() as playwright:
+                self._playwright = playwright
+                try:
+                    yield
+                finally:
+                    self._discard_context()
+        finally:
+            self._playwright = None
+
+    def _discard_context(self) -> None:
+        context = self._context
+        self._context = None
+        self._page = None
+        if context is not None:
+            try:
+                context.close()
+            except PlaywrightError:
+                logger.exception("Не удалось закрыть браузерный сеанс Ozon")
+
+    def _session_page(self):
+        if self._context is None:
+            self.profile_dir.mkdir(parents=True, exist_ok=True)
+            self._cleanup_stale_profile_locks()
+            logger.info("Запуск Playwright Chrome для сеанса Ozon")
+            self._context = self._launch_context(self._playwright)
+            self._page = self._context.pages[0] if self._context.pages else self._context.new_page()
+        return self._page
 
     def fetch_product(self, external_id: Union[str, int]) -> RawMarketplaceResponse:
         article = self.normalize_product_id(external_id)
@@ -111,38 +149,33 @@ class OzonClient:
 
     def fetch_raw_text(self, external_id: Union[str, int]) -> str:
         article = self.normalize_product_id(external_id)
+        if self._playwright is None:
+            with self.collection_session():
+                return self.fetch_raw_text(article)
         product_url = self.PRODUCT_URL.format(article=article)
         api_url = self.API_URL.format(article=article)
-        self.profile_dir.mkdir(parents=True, exist_ok=True)
-        self._cleanup_stale_profile_locks()
-
-        logger.info("Запуск Playwright Chrome для артикула %s", article)
         try:
-            with sync_playwright() as playwright:
-                context = self._launch_context(playwright)
-                try:
-                    page = context.pages[0] if context.pages else context.new_page()
-                    page.goto(product_url, wait_until="domcontentloaded", timeout=90_000)
-                    if self._is_antibot_page(page):
-                        logger.info("Ожидаю завершения автоматической проверки Ozon")
-                        if not self._wait_for_antibot(page):
-                            self._handle_antibot(page)
-                            page.reload(wait_until="domcontentloaded", timeout=90_000)
-                            if not self._wait_for_antibot(page):
-                                raise MarketplaceUnavailable(
-                                    "Ozon не пропустил проверку после подтверждения пользователя"
-                                )
+            page = self._session_page()
+            page.goto(product_url, wait_until="domcontentloaded", timeout=90_000)
+            if self._is_antibot_page(page):
+                logger.info("Ожидаю завершения автоматической проверки Ozon")
+                if not self._wait_for_antibot(page):
+                    self._handle_antibot(page)
+                    page.reload(wait_until="domcontentloaded", timeout=90_000)
+                    if not self._wait_for_antibot(page):
+                        raise MarketplaceUnavailable(
+                            "Ozon не пропустил проверку после подтверждения пользователя"
+                        )
 
-                    raw_text = self._fetch_json_in_page(page, api_url)
-                    if self._is_antibot_text(raw_text):
-                        self._handle_antibot(page)
-                        raw_text = self._fetch_json_in_page(page, api_url)
-                    return self._validate_json_text(raw_text)
-                finally:
-                    context.close()
+            raw_text = self._fetch_json_in_page(page, api_url)
+            if self._is_antibot_text(raw_text):
+                self._handle_antibot(page)
+                raw_text = self._fetch_json_in_page(page, api_url)
+            return self._validate_json_text(raw_text)
         except MarketplaceUnavailable:
             raise
         except PlaywrightError as exc:
+            self._discard_context()
             raise MarketplaceUnavailable(f"Playwright не смог получить данные Ozon: {exc}") from exc
 
     def _launch_context(self, playwright: Playwright):

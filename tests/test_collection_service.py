@@ -1,4 +1,6 @@
+import asyncio
 import unittest
+from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone
 
 from marketplace_connector import (
@@ -84,6 +86,103 @@ class FakeRepository:
 
 
 class CollectionServiceTests(unittest.TestCase):
+    def test_async_collection_limits_to_five_tabs_and_keeps_card_errors(self):
+        class AsyncConnector(FakeConnector):
+            def __init__(self):
+                super().__init__("ozon")
+                self.active = 0
+                self.peak = 0
+                self.opens = 0
+                self.closes = 0
+
+            @asynccontextmanager
+            async def collection_session(self):
+                self.opens += 1
+                try:
+                    yield
+                finally:
+                    self.closes += 1
+
+            async def get_product_async(self, external_id):
+                self.active += 1
+                self.peak = max(self.peak, self.active)
+                try:
+                    await asyncio.sleep(0.01)
+                    if external_id == "3":
+                        raise RuntimeError("async card failed")
+                    return super().get_product(external_id)
+                finally:
+                    self.active -= 1
+
+        repository = FakeRepository([card(i, "ozon", str(i)) for i in range(1, 10)])
+        connector = AsyncConnector()
+        with self.assertLogs("price_analyzer.application.collection_service", level="ERROR"):
+            result = CollectionService(repository, ConnectorRegistry([connector])).collect()
+
+        self.assertEqual(connector.peak, 5)
+        self.assertEqual((connector.opens, connector.closes), (1, 1))
+        self.assertEqual((result.success_count, result.failure_count), (8, 1))
+        self.assertEqual(len(repository.saved), 8)
+        self.assertEqual(repository.errors[0][1]["externalId"], "3")
+
+    def test_uses_one_connector_session_across_cards_and_closes_after_error(self):
+        class SessionConnector(FakeConnector):
+            def __init__(self):
+                super().__init__("ozon")
+                self.opens = 0
+                self.closes = 0
+
+            @contextmanager
+            def collection_session(self):
+                self.opens += 1
+                try:
+                    yield
+                finally:
+                    self.closes += 1
+
+            def get_product(self, external_id):
+                if external_id == "100":
+                    raise RuntimeError("first card failed")
+                return super().get_product(external_id)
+
+        repository = FakeRepository([card(1, "ozon", "100"), card(2, "ozon", "200")])
+        connector = SessionConnector()
+        with self.assertLogs("price_analyzer.application.collection_service", level="ERROR"):
+            result = CollectionService(repository, ConnectorRegistry([connector])).collect()
+
+        self.assertEqual((connector.opens, connector.closes), (1, 1))
+        self.assertEqual((result.success_count, result.failure_count), (1, 1))
+        self.assertEqual(repository.saved[0][0].external_id, "200")
+
+    def test_closes_connector_session_after_unexpected_run_failure(self):
+        class SessionConnector(FakeConnector):
+            def __init__(self):
+                super().__init__("ozon")
+                self.closed = False
+
+            @contextmanager
+            def collection_session(self):
+                try:
+                    yield
+                finally:
+                    self.closed = True
+
+        class FailingRepository(FakeRepository):
+            def set_run_current(self, run_id, item):
+                if item.id == 2:
+                    raise RuntimeError("progress failed")
+                super().set_run_current(run_id, item)
+
+        repository = FailingRepository([card(1, "ozon", "100"), card(2, "ozon", "200")])
+        connector = SessionConnector()
+        run = CollectionRun(77, "running", 2, 0, 0, None, None, None, None, None, None, NOW, None, (1, 2))
+
+        with self.assertRaisesRegex(RuntimeError, "progress failed"):
+            CollectionService(repository, ConnectorRegistry([connector])).execute_run(run)
+
+        self.assertTrue(connector.closed)
+        self.assertEqual(repository.finished, [(77, "failed", 1, 0)])
+
     def test_collects_cards_and_continues_after_connector_error(self):
         repository = FakeRepository(
             [card(1, "ozon", "100"), card(2, "wildberries", "200")]

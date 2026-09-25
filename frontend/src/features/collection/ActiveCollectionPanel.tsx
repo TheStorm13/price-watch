@@ -39,7 +39,9 @@ export function ActiveCollectionPanel() {
         <p className="collection-panel__result">Успешно: {run.successCount} · Ошибок: {run.failureCount} {run.status !== 'completed' ? <Link className="text-link" to={`/runs?run=${run.id}`}>Показать ошибки</Link> : null}</p>
       ) : (
         <p className="collection-panel__current">
-          {run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
+          {run.totalCount > 1
+            ? 'Обрабатываем до пяти карточек одновременно'
+            : run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
         </p>
       )}
       <div className="collection-panel__progress-row">
