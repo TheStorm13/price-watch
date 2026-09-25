@@ -1,7 +1,10 @@
-import { BarChart3, Play, Tags } from 'lucide-react'
+import { useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { BarChart3, Globe2, Play, Tags } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { apiModeLabel } from '../../api/client'
+import { apiModeLabel, isDesktopMode } from '../../api/client'
 import { ActiveCollectionPanel } from '../../features/collection/ActiveCollectionPanel'
+import { useCollection } from '../../features/collection/CollectionProvider'
 
 const links = [
   { to: '/cards', label: 'Карточки', icon: Tags },
@@ -9,6 +12,23 @@ const links = [
 ]
 
 export function AppShell() {
+  const { run, isStarting } = useCollection()
+  const [browserError, setBrowserError] = useState<string | null>(null)
+  const [openingBrowser, setOpeningBrowser] = useState(false)
+  const collecting = isStarting || !!run && ['queued', 'running', 'waiting_for_user'].includes(run.status)
+
+  async function openBrowser() {
+    setBrowserError(null)
+    setOpeningBrowser(true)
+    try {
+      await invoke('open_store_browser')
+    } catch (error) {
+      setBrowserError(String(error))
+    } finally {
+      setOpeningBrowser(false)
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -20,6 +40,19 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
+        {isDesktopMode ? (
+          <div className="sidebar__browser">
+            <button
+              className="sidebar__browser-button"
+              type="button"
+              disabled={collecting || openingBrowser}
+              onClick={() => void openBrowser()}
+            >
+              <Globe2 aria-hidden="true" /><span>Открыть Chrome</span>
+            </button>
+            {browserError ? <p className="sidebar__browser-error" role="alert">{browserError}</p> : null}
+          </div>
+        ) : null}
         <div className="sidebar__mode">{apiModeLabel}</div>
       </aside>
       <main className="main-content"><Outlet /></main>

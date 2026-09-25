@@ -4,8 +4,8 @@
 
 Команды ниже выполняются из корня репозитория, если не указано иное. Основной
 режим — Tauri на Linux. Нужны запущенный Docker с Compose, Python, Node.js/npm,
-Rust и установленный системный Google Chrome. Chrome открывается только во время
-сбора товара, а не сразу при открытии приложения.
+Rust и установленный системный Google Chrome. Ручной Chrome открывается кнопкой
+в приложении; при сборе рабочий Chrome запускается на скрытом дисплее Docker.
 
 ## Первый desktop запуск
 
@@ -26,7 +26,7 @@ npm --prefix frontend run desktop:build
 
 Во время запуска Tauri читает корневой `.env`, останавливает контейнерные
 `worker` и `frontend`, поднимает через Compose `db`, `migrate`, `api`, `logs` и
-`desktop-worker-logs`, дожидается API на `127.0.0.1:8000`, затем запускает
+`desktop-worker-logs` и `desktop-display`, дожидается API на `127.0.0.1:8000`, затем запускает
 `.venv/bin/python main.py worker` на хосте. Окно приложения показывает ошибку и
 кнопку повторения, если этот старт не удался.
 
@@ -53,7 +53,7 @@ npm --prefix frontend run desktop
 изменения Python API или миграций сначала обновите контейнеры:
 
 ```bash
-docker compose up --build -d db migrate api logs desktop-worker-logs
+docker compose up --build -d db migrate api logs desktop-worker-logs desktop-display
 ```
 
 После этого запустите `./price-watch` повторно. Изменения Python worker

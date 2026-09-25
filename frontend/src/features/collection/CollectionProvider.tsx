@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, isDemoMode, isDesktopMode } from '../../api/client'
+import { invoke } from '@tauri-apps/api/core'
+import { api, isDesktopMode } from '../../api/client'
 import { queryKeys, useRun } from '../../api/queries'
 import type { CollectionRun } from '../../types/domain'
 
@@ -34,7 +35,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const runQuery = useRun(runId)
 
   const startMutation = useMutation({
-    mutationFn: api.startRun,
+    mutationFn: async (cardId?: number) => {
+      if (isDesktopMode) await invoke('prepare_collection')
+      return api.startRun(cardId)
+    },
     onSuccess: (run) => {
       setRunId(run.id)
       window.localStorage.setItem(ACTIVE_RUN_KEY, String(run.id))
@@ -63,8 +67,6 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const start = useCallback((cardId?: number) => {
-    // Popup blockers allow window.open only while handling the user's click.
-    if (!isDemoMode && !isDesktopMode) openCollectorBrowser()
     startMutation.mutate(cardId)
   }, [startMutation])
 

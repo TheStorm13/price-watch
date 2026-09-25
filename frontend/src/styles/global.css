@@ -26,6 +26,12 @@ h2 { font-size: 20px; line-height: 28px; letter-spacing: -0.015em; font-weight: 
 .nav-link svg { width: 21px; }
 .nav-link:hover { color: #fff; background: #20242a; }
 .nav-link.is-active { color: #fff; background: #253146; }
+.sidebar__browser { margin-top: 22px; }
+.sidebar__browser-button { width: 100%; min-height: 48px; padding: 0 13px; display: flex; align-items: center; gap: 13px; border: 0; border-radius: 8px; color: #d0d5dd; background: transparent; text-align: left; font-weight: 550; cursor: pointer; }
+.sidebar__browser-button:hover:not(:disabled) { color: #fff; background: #20242a; }
+.sidebar__browser-button:disabled { opacity: .52; cursor: not-allowed; }
+.sidebar__browser-button svg { width: 21px; height: 21px; flex: 0 0 auto; }
+.sidebar__browser-error { padding: 8px 12px 0; color: #fda29b; font-size: 12px; overflow-wrap: anywhere; }
 .sidebar__mode { margin-top: auto; padding: 0 12px; color: var(--sidebar-muted); font-size: 12px; }
 .main-content { min-height: 100vh; margin-left: var(--sidebar-width); }
 .page { width: min(100%, 1440px); min-height: 100vh; padding: 54px 32px 72px; margin-inline: auto; }
@@ -202,8 +208,10 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
   :root { --sidebar-width: 72px; }
   .sidebar { padding-inline: 10px; }
   .brand { justify-content: center; padding-inline: 0; }
-  .brand span, .nav-link span, .sidebar__mode { display: none; }
+  .brand span, .nav-link span, .sidebar__browser-button span, .sidebar__mode { display: none; }
   .nav-link { justify-content: center; padding: 0; }
+  .sidebar__browser-button { justify-content: center; padding: 0; }
+  .sidebar__browser-error { display: none; }
   .filters { flex-wrap: wrap; }
   .filters__selects { justify-content: flex-start; }
   .price-summary { grid-template-columns: 1.5fr repeat(3, 1fr); }

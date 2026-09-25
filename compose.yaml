@@ -81,6 +81,15 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
+  desktop-display:
+    image: mcr.microsoft.com/playwright/python:v1.63.0-noble
+    entrypoint: ["Xvfb"]
+    command: [":98", "-screen", "0", "1920x1080x24", "-ac", "-nolisten", "tcp"]
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    restart: unless-stopped
+    logging: *default-logging
+
   frontend:
     build:
       context: ./frontend
