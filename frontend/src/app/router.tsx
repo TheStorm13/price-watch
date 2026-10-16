@@ -1,7 +1,6 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppShell } from '../components/layout/AppShell'
 import { CardsPage } from '../features/cards/CardsPage'
-import { RunsPage } from '../features/runs/RunsPage'
 
 export const router = createBrowserRouter([
   {
@@ -17,7 +16,7 @@ export const router = createBrowserRouter([
           return { Component: module.CardDetailsPage }
         },
       },
-      { path: 'runs', Component: RunsPage },
+      { path: 'runs', element: <Navigate to="/cards" replace /> },
       { path: '*', element: <Navigate to="/cards" replace /> },
     ],
   },

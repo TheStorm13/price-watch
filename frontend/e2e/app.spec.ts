@@ -33,6 +33,7 @@ test('группа объединяет товары и сохраняет ин�
   await edit.getByRole('button', { name: 'Сохранить' }).click()
   await expect(page.locator('.cards-grid__group')).toContainText('Техника')
   const downloadPromise = page.waitForEvent('download')
+  await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('button', { name: 'Экспорт', exact: true }).click()
   const exported = JSON.parse(await readFile(await (await downloadPromise).path(), 'utf8'))
   expect(exported.groups).toEqual([{ name: 'Техника', cards: [
@@ -44,6 +45,7 @@ test('группа объединяет товары и сохраняет ин�
   await edit.getByRole('button', { name: 'Подтвердить удаление' }).click()
   await expect(page.locator('.cards-grid__group')).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
+  await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('button', { name: 'Импорт', exact: true }).click()
   const importDialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await importDialog.locator('input[type="file"]').setInputFiles({
@@ -101,8 +103,8 @@ test('из каталога запускается сбор только выб�
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Обновить только эту карточку' }).click()
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('0 из 1')
-  await page.getByRole('link', { name: 'Запуски' }).click()
-  await expect(page.getByRole('row', { name: /#22/ }).locator('td').nth(6)).toHaveText('1')
+  await expect(page.getByRole('link', { name: 'Запуски' })).toHaveCount(0)
+  await expect(page.getByLabel('Состояние обновления цен')).toContainText('1 из 1', { timeout: 8_000 })
 })
 
 test('компактный desktop 1024 px не имеет горизонтального overflow', async ({ page }) => {
@@ -157,6 +159,7 @@ test('карточки переключаются между списком и �
 test('вертикальное фото видно целиком, а время обновления стоит перед наличием', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 900 })
   await page.goto('/cards')
+  await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('button', { name: 'Импорт', exact: true }).click()
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="400"><rect width="200" height="400" fill="blue"/></svg>'
   const imported = {
@@ -198,6 +201,7 @@ test('экспорт и импорт объединяют карточки и и
   await page.setViewportSize({ width: 1024, height: 768 })
   await page.goto('/cards')
   const downloadPromise = page.waitForEvent('download')
+  await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('button', { name: 'Экспорт', exact: true }).click()
   const download = await downloadPromise
   const exportData = JSON.parse(await readFile(await download.path(), 'utf8'))
@@ -211,6 +215,7 @@ test('экспорт и импорт объединяют карточки и и
     url: null, isActive: true, isArchived: true, createdAt: new Date().toISOString(),
     history: [{ price: '123.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
   })
+  await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('button', { name: 'Импорт', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await dialog.locator('input[type="file"]').setInputFiles({
@@ -327,15 +332,16 @@ test('детали карточки показывают середину диа
   await page.screenshot({ path: '/tmp/price-watch-chart.png' })
 })
 
-test('из списка запусков открываются подробности', async ({ page }) => {
-  await page.goto('/runs')
-  await page.getByRole('button', { name: '#21' }).click()
-  await expect(page.getByRole('region', { name: 'Подробности запуска 21' })).toBeVisible()
-  await expect(page.getByText('Ошибок в этом запуске нет.')).toBeVisible()
-  await page.getByRole('button', { name: '#20' }).click()
-  await expect(page.getByText('Не удалось получить страницу товара', { exact: true })).toBeVisible()
-  await page.getByText('Технические подробности').click()
-  await expect(page.getByText('MarketplaceUnavailable: Не удалось получить страницу товара')).toBeVisible()
+test('ошибки сбора доступны без страницы запусков', async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem('price-watch-active-run', '20'))
+  await page.goto('/cards')
+  const panel = page.getByLabel('Состояние обновления цен')
+  await expect(panel.getByText('Показать ошибки')).toBeVisible()
+  await panel.getByText('Показать ошибки').click()
+  await expect(panel.getByText('Не удалось получить страницу товара', { exact: true })).toBeVisible()
+  await panel.getByText('Технические подробности').click()
+  await expect(panel.getByText('MarketplaceUnavailable: Не удалось получить страницу товара')).toBeVisible()
+  await page.screenshot({ path: '/tmp/price-watch-collection-error.png' })
 })
 
 test('одиночное измерение остаётся точкой на графике с масштабом вокруг цены', async ({ page }) => {
@@ -380,10 +386,10 @@ test('фильтр предложений показывает цену, мин�
 })
 
 test('ошибки запуска можно повторить отдельно', async ({ page }) => {
-  await page.goto('/runs?run=20')
-  const details = page.getByRole('region', { name: 'Подробности запуска 20' })
-  await expect(details.getByText(/Повторить только карточки с ошибками/)).toBeVisible()
-  await details.getByRole('button', { name: 'Повторить ошибки' }).click()
-  await expect(page).toHaveURL(/\/runs\?run=22/)
-  await expect(page.getByText('Повтор запуска')).toBeVisible()
+  await page.addInitScript(() => window.localStorage.setItem('price-watch-active-run', '20'))
+  await page.goto('/cards')
+  const panel = page.getByLabel('Состояние обновления цен')
+  await panel.getByRole('button', { name: 'Повторить ошибки' }).click()
+  await expect(panel).toContainText('0 из 1')
+  await expect(page).toHaveURL(/\/cards$/)
 })

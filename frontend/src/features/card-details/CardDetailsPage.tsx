@@ -108,8 +108,8 @@ export function CardDetailsPage() {
         <div className="table-surface">
           <table className="history-table">
             <caption className="sr-only">История измерений цены</caption>
-            <thead><tr><th>Дата и время</th><th>Цена</th><th>Наличие</th><th>Запуск</th></tr></thead>
-            <tbody>{history.map((point) => <tr key={point.id}><td>{formatDateTime(point.observedAt)}</td><td className="price-cell">{formatPrice(point.price)}</td><td><AvailabilityStatus value={point.availability} /></td><td>{point.collectionRunId ? <Link className="text-link" to={`/runs?run=${point.collectionRunId}`}>#{point.collectionRunId}</Link> : '—'}</td></tr>)}</tbody>
+            <thead><tr><th>Дата и время</th><th>Цена</th><th>Наличие</th></tr></thead>
+            <tbody>{history.map((point) => <tr key={point.id}><td>{formatDateTime(point.observedAt)}</td><td className="price-cell">{formatPrice(point.price)}</td><td><AvailabilityStatus value={point.availability} /></td></tr>)}</tbody>
           </table>
           {history.length === 0 ? <div className="state-message state-message--compact">Измерений за выбранный период нет</div> : null}
         </div>

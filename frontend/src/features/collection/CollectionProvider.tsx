@@ -11,6 +11,9 @@ interface CollectionContextValue {
   startError: string | null
   start: (cardId?: number) => void
   continueRun: () => void
+  retryErrors: () => void
+  isRetrying: boolean
+  retryError: string | null
   dismiss: () => void
   dealNotice: number | null
   dismissDealNotice: () => void
@@ -62,13 +65,26 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       setRunId(run.id)
       window.localStorage.setItem(ACTIVE_RUN_KEY, String(run.id))
       client.setQueryData(queryKeys.run(run.id), run)
-      client.invalidateQueries({ queryKey: queryKeys.runs })
+      client.invalidateQueries({ queryKey: ['recent-runs'] })
     },
   })
 
   const continueMutation = useMutation({
     mutationFn: (id: number) => api.continueRun(id),
     onSuccess: (run) => client.setQueryData(queryKeys.run(run.id), run),
+  })
+
+  const retryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      if (isDesktopMode) await invoke('prepare_collection')
+      return api.retryRun(id)
+    },
+    onSuccess: (nextRun) => {
+      setRunId(nextRun.id)
+      window.localStorage.setItem(ACTIVE_RUN_KEY, String(nextRun.id))
+      client.setQueryData(queryKeys.run(nextRun.id), nextRun)
+      client.invalidateQueries({ queryKey: ['recent-runs'] })
+    },
   })
 
   const run = runQuery.data ?? null
@@ -78,7 +94,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     if (!isTerminal) return
     client.invalidateQueries({ queryKey: queryKeys.cards })
     client.invalidateQueries({ queryKey: queryKeys.groups })
-    client.invalidateQueries({ queryKey: queryKeys.runs })
+    client.invalidateQueries({ queryKey: ['recent-runs'] })
     client.invalidateQueries({ queryKey: queryKeys.deals })
   }, [client, isTerminal, run?.id])
 
@@ -117,10 +133,13 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     startError: startMutation.isError ? startMutation.error.message : null,
     start,
     continueRun: () => runId !== null && continueMutation.mutate(runId),
+    retryErrors: () => runId !== null && retryMutation.mutate(runId),
+    isRetrying: retryMutation.isPending,
+    retryError: retryMutation.isError && retryMutation.variables === runId ? retryMutation.error.message : null,
     dismiss,
     dealNotice,
     dismissDealNotice: () => setDealNotice(null),
-  }), [continueMutation, dealNotice, dismiss, run, runId, start, startMutation.isPending, startMutation.isError, startMutation.error])
+  }), [continueMutation, dealNotice, dismiss, retryMutation, run, runId, start, startMutation.isPending, startMutation.isError, startMutation.error])
 
   return <CollectionContext.Provider value={value}>{children}</CollectionContext.Provider>
 }

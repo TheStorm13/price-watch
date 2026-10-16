@@ -15,11 +15,8 @@
   --amber: #b54708;
   --amber-soft: #fffaeb;
   --red: #b42318;
-  --sidebar: #15171a;
-  --sidebar-muted: #a9afb8;
   --radius-control: 8px;
   --radius-panel: 12px;
   --shadow-overlay: 0 24px 64px rgba(16, 24, 40, 0.18);
-  --sidebar-width: 224px;
   --font-ui: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }

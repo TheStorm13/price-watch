@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Download, Upload, X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Download, MoreHorizontal, Upload, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { api, isDesktopMode } from '../../api/client'
@@ -17,6 +17,7 @@ interface Props {
 
 export function ImportExportControls({ onStatus }: Props) {
   const queryClient = useQueryClient()
+  const menuRef = useRef<HTMLDetailsElement>(null)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [exportBusy, setExportBusy] = useState(false)
@@ -107,10 +108,13 @@ export function ImportExportControls({ onStatus }: Props) {
 
   return (
     <>
-      <Button icon={<Download />} onClick={() => void exportCards()} disabled={exportBusy}>
-        {exportBusy ? 'Экспорт…' : 'Экспорт'}
-      </Button>
-      <Button icon={<Upload />} onClick={() => { setError(null); setOpen(true) }}>Импорт</Button>
+      <details className="transfer-menu" ref={menuRef}>
+        <summary aria-label="Дополнительные действия" title="Дополнительные действия"><MoreHorizontal aria-hidden="true" /></summary>
+        <div className="transfer-menu__popover">
+          <button type="button" onClick={() => { menuRef.current?.removeAttribute('open'); void exportCards() }} disabled={exportBusy}><Download aria-hidden="true" />{exportBusy ? 'Экспорт…' : 'Экспорт'}</button>
+          <button type="button" onClick={() => { menuRef.current?.removeAttribute('open'); setError(null); setOpen(true) }}><Upload aria-hidden="true" />Импорт</button>
+        </div>
+      </details>
       {open ? (
         <div className="confirm-dialog-layer" role="presentation">
           <button className="confirm-dialog-backdrop" type="button" onClick={close} aria-label="Закрыть импорт" />

@@ -1,15 +1,10 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { BarChart3, Globe2, Play, Tags } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { BarChart3, Globe2 } from 'lucide-react'
+import { Link, Outlet } from 'react-router-dom'
 import { apiModeLabel, isDesktopMode } from '../../api/client'
 import { ActiveCollectionPanel } from '../../features/collection/ActiveCollectionPanel'
 import { useCollection } from '../../features/collection/CollectionProvider'
-
-const links = [
-  { to: '/cards', label: 'Карточки', icon: Tags },
-  { to: '/runs', label: 'Запуски', icon: Play },
-]
 
 export function AppShell() {
   const { run, isStarting, dealNotice, dismissDealNotice } = useCollection()
@@ -31,32 +26,25 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><BarChart3 aria-hidden="true" /><span>Price Watch</span></div>
-        <nav className="sidebar__nav" aria-label="Основная навигация">
-          {links.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => `nav-link ${isActive ? 'is-active' : ''}`}>
-              <Icon aria-hidden="true" /><span>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        {isDesktopMode ? (
-          <div className="sidebar__browser">
+      <header className="app-header">
+        <Link className="brand" to="/cards"><BarChart3 aria-hidden="true" /><span>Price Watch</span></Link>
+        <div className="app-header__actions">
+          <span className="app-header__mode">{apiModeLabel}</span>
+          {isDesktopMode ? (
             <button
-              className="sidebar__browser-button"
+              className="app-header__browser-button"
               type="button"
               disabled={collecting || openingBrowser}
               onClick={() => void openBrowser()}
             >
               <Globe2 aria-hidden="true" /><span>Открыть Chrome</span>
             </button>
-            {browserError ? <p className="sidebar__browser-error" role="alert">{browserError}</p> : null}
-          </div>
-        ) : null}
-        <div className="sidebar__mode">{apiModeLabel}</div>
-      </aside>
+          ) : null}
+        </div>
+      </header>
       <main className="main-content">
-        {dealNotice ? <div className="deal-notice" role="status"><span>Найдено выгодных предложений: {dealNotice}</span><NavLink to="/cards?deals=1" onClick={dismissDealNotice}>Посмотреть</NavLink><button type="button" onClick={dismissDealNotice} aria-label="Закрыть уведомление">×</button></div> : null}
+        {browserError ? <p className="app-header__browser-error" role="alert">Не удалось открыть Chrome: {browserError}</p> : null}
+        {dealNotice ? <div className="deal-notice" role="status"><span>Найдено выгодных предложений: {dealNotice}</span><Link to="/cards?deals=1" onClick={dismissDealNotice}>Посмотреть</Link><button type="button" onClick={dismissDealNotice} aria-label="Закрыть уведомление">×</button></div> : null}
         <Outlet />
       </main>
       <ActiveCollectionPanel />
