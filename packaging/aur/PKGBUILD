@@ -1,6 +1,6 @@
 # Maintainer: TheStorm13
 pkgname=price-watch-bin
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='Desktop application for tracking marketplace prices'
 arch=('x86_64')
@@ -27,7 +27,7 @@ conflicts=('price-watch')
 
 _archive="price-watch-${pkgver}-linux-x86_64.tar.gz"
 source=("${_archive}::${url}/releases/download/v${pkgver}/${_archive}")
-sha256sums=('793b16ba3c95b7f4f2ad5798c43dca5ff5cf6698363dd9806731157a8f48a4a1')
+sha256sums=('4b257e5b651459d290f679d93dec120d659a8b03c7c8d028e8f385a43b15fa6b')
 
 package() {
   local appdir="${srcdir}/price-watch-${pkgver}-linux-x86_64"

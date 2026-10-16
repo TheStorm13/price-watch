@@ -1,6 +1,6 @@
 pkgbase = price-watch-bin
 	pkgdesc = Desktop application for tracking marketplace prices
-	pkgver = 0.1.0
+	pkgver = 0.1.1
 	pkgrel = 1
 	url = https://github.com/TheStorm13/price-watch
 	arch = x86_64
@@ -21,7 +21,7 @@ pkgbase = price-watch-bin
 	depends = xorg-xauth
 	provides = price-watch
 	conflicts = price-watch
-	source = price-watch-0.1.0-linux-x86_64.tar.gz::https://github.com/TheStorm13/price-watch/releases/download/v0.1.0/price-watch-0.1.0-linux-x86_64.tar.gz
-	sha256sums = 793b16ba3c95b7f4f2ad5798c43dca5ff5cf6698363dd9806731157a8f48a4a1
+	source = price-watch-0.1.1-linux-x86_64.tar.gz::https://github.com/TheStorm13/price-watch/releases/download/v0.1.1/price-watch-0.1.1-linux-x86_64.tar.gz
+	sha256sums = 4b257e5b651459d290f679d93dec120d659a8b03c7c8d028e8f385a43b15fa6b
 
 pkgname = price-watch-bin
