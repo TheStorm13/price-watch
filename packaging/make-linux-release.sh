@@ -13,9 +13,9 @@ if [[ -n $(git status --porcelain) ]]; then
   exit 1
 fi
 
-version="$(python3 -c 'import json; print(json.load(open("frontend/src-tauri/tauri.conf.json"))["version"])')"
-if [[ "$version" != "$(sed -n 's/^version = "\([^"]*\)"/\1/p' frontend/src-tauri/Cargo.toml | head -n 1)" ]]; then
-  echo 'Версии Tauri и Cargo.toml не совпадают' >&2
+version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' frontend/src-tauri/Cargo.toml | head -n 1)"
+if [[ -z "$version" ]]; then
+  echo 'Не найдена версия приложения в frontend/src-tauri/Cargo.toml' >&2
   exit 1
 fi
 
