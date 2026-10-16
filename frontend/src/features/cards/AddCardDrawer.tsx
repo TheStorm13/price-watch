@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button'
 import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
 import { useCreateCard } from '../../api/queries'
 import type { Marketplace } from '../../types/domain'
+import { parseTags } from './tags'
 
 interface Props {
   open: boolean
@@ -13,6 +14,7 @@ interface Props {
 interface Errors {
   externalId?: string
   url?: string
+  tags?: string
 }
 
 export function AddCardDrawer({ open, onClose }: Props) {
@@ -20,6 +22,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
   const [externalId, setExternalId] = useState('')
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
+  const [tags, setTags] = useState('')
   const [errors, setErrors] = useState<Errors>({})
   const idInputRef = useRef<HTMLInputElement>(null)
   const mutation = useCreateCard()
@@ -60,13 +63,19 @@ export function AddCardDrawer({ open, onClose }: Props) {
   function submit(event: FormEvent) {
     event.preventDefault()
     if (!validate()) return
+    let parsedTags: string[]
+    try { parsedTags = parseTags(tags, 2) } catch (error) {
+      setErrors((current) => ({ ...current, tags: (error as Error).message }))
+      return
+    }
     mutation.mutate(
-      { marketplace, externalId: externalId.trim(), title: title.trim() || undefined, url: url.trim() || undefined },
+      { marketplace, externalId: externalId.trim(), title: title.trim() || undefined, url: url.trim() || undefined, tags: parsedTags },
       {
         onSuccess: () => {
           setExternalId('')
           setTitle('')
           setUrl('')
+          setTags('')
           setErrors({})
           onClose()
         },
@@ -140,6 +149,10 @@ export function AddCardDrawer({ open, onClose }: Props) {
               <small id={errors.url ? 'url-error' : 'url-hint'} className={errors.url ? 'field__error' : ''}>
                 {errors.url ?? 'Ссылка на карточку товара (необязательно)'}
               </small>
+            </label>
+            <label className="field" htmlFor="card-tags"><span>Теги</span>
+              <input id="card-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" aria-invalid={Boolean(errors.tags)} />
+              <small className={errors.tags ? 'field__error' : ''}>{errors.tags ?? 'До двух тегов через запятую'}</small>
             </label>
           </div>
           <div className="drawer__footer">

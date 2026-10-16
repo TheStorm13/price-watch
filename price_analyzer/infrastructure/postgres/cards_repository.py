@@ -22,6 +22,7 @@ class CardRepository:
         external_id: str,
         title: Optional[str] = None,
         url: Optional[str] = None,
+        tags: list[str] | None = None,
     ) -> MarketplaceCard:
         marketplace = marketplace.strip().lower()
         external_id = external_id.strip()
@@ -32,6 +33,7 @@ class CardRepository:
             external_id=external_id,
             title=title,
             url=url,
+            tags=tags or [],
         )
         try:
             async with self._database.session() as session, session.begin():
@@ -52,6 +54,7 @@ class CardRepository:
         update_url: bool = False,
         group_id: Optional[int] = None,
         update_group: bool = False,
+        tags: list[str] | None = None,
     ) -> Optional[MarketplaceCard]:
         async with self._database.session() as session, session.begin():
             record = (await session.get(MarketplaceCardRecord, card_id))
@@ -67,6 +70,8 @@ class CardRepository:
                 if group_id is not None and await session.get(ProductGroupRecord, group_id) is None:
                     raise ValueError("Группа не найдена")
                 record.group_id = group_id
+            if tags is not None:
+                record.tags = tags
             record.updated_at = datetime.now(timezone.utc)
         return _card(record)
 

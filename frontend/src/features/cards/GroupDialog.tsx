@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useDeleteGroup, useSaveGroup } from '../../api/queries'
 import { Button } from '../../components/ui/Button'
 import type { MarketplaceCard, ProductGroup } from '../../types/domain'
+import { parseTags } from './tags'
 
 interface Props {
   group: ProductGroup | null
@@ -11,6 +12,7 @@ interface Props {
 
 export function GroupDialog({ group, cards, onClose }: Props) {
   const [name, setName] = useState(group?.name ?? '')
+  const [tags, setTags] = useState((group?.tags ?? []).join(', '))
   const [selected, setSelected] = useState<number[]>(group?.cardIds ?? [])
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -33,9 +35,11 @@ export function GroupDialog({ group, cards, onClose }: Props) {
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!name.trim()) { setError('Укажите название группы'); return }
+    let parsedTags: string[]
+    try { parsedTags = parseTags(tags) } catch (caught) { setError((caught as Error).message); return }
     setError(null)
     try {
-      await save.mutateAsync({ id: group?.id, input: { name: name.trim(), cardIds: selected } })
+      await save.mutateAsync({ id: group?.id, input: { name: name.trim(), cardIds: selected, tags: parsedTags } })
       onClose()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Не удалось сохранить группу')
@@ -58,6 +62,7 @@ export function GroupDialog({ group, cards, onClose }: Props) {
       <form onSubmit={(event) => void submit(event)}>
         <h2>{group ? 'Изменить группу' : 'Новая группа'}</h2>
         <label className="field"><span>Название</span><input autoFocus value={name} maxLength={120} onChange={(event) => setName(event.target.value)} placeholder="Например, бутылка" /></label>
+        <label className="field"><span>Теги группы</span><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, посуда" /><small>Разделяйте теги запятыми</small></label>
         <p className="group-dialog__hint">Выберите товары для группы. Сбор цен каждого товара продолжится отдельно.</p>
         <div className="group-dialog__cards" role="group" aria-label="Товары группы">
           {cards.map((card) => <label key={card.id} className="group-dialog__card">

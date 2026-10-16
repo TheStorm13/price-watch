@@ -139,10 +139,10 @@ let runs: CollectionRun[] = [
 ]
 
 let nextCardId = 6
-let groups: { id: number; name: string }[] = []
+let groups: { id: number; name: string; tags: string[] }[] = []
 let nextGroupId = 1
 
-function groupView(group: { id: number; name: string }): ProductGroup {
+function groupView(group: { id: number; name: string; tags: string[] }): ProductGroup {
   const members = cards.filter((card) => card.groupId === group.id)
   const current = members.filter((card) => card.currentAvailability === 'in_stock' && card.currentPrice !== null)
     .map((card) => card.currentPrice as number)
@@ -223,6 +223,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     const card: MarketplaceCard = current ?? {
       id: nextCardId++, marketplace: importedCard.marketplace as Marketplace,
       externalId: importedCard.externalId, title: importedCard.title, url: importedCard.url,
+      tags: importedCard.tags ?? [],
       imageUrl: importedCard.imageUrl ?? null,
       isActive: importedCard.isActive && !(importedCard as typeof importedCard & { isArchived?: boolean }).isArchived,
       currentPrice: null, currentAvailability: null,
@@ -232,6 +233,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     else {
       if (Date.parse(importedCard.createdAt) < Date.parse(card.createdAt)) card.createdAt = importedCard.createdAt
       card.imageUrl ||= importedCard.imageUrl ?? null
+      card.tags = [...new Set([...(card.tags ?? []), ...(importedCard.tags ?? [])])].slice(0, 2)
     }
     for (const point of importedCard.history) {
       if (Date.parse(point.observedAt) > Date.parse(card.updatedAt)) card.updatedAt = point.observedAt
@@ -251,8 +253,10 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     for (const imported of importedGroups) {
       let group = groups.find((item) => item.name === imported.name)
       if (!group) {
-        group = { id: nextGroupId++, name: imported.name }
+        group = { id: nextGroupId++, name: imported.name, tags: imported.tags ?? [] }
         groups = [...groups, group]
+      } else {
+        group.tags = [...new Set([...group.tags, ...(imported.tags ?? [])])]
       }
       for (const member of imported.cards) {
         const card = cards.find((item) => item.marketplace === member.marketplace && item.externalId === member.externalId)
@@ -266,7 +270,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
 export const mockApi = {
   async listGroups() { return delay(groups.map(groupView)) },
   async createGroup(input: GroupInput) {
-    const group = { id: nextGroupId++, name: input.name.trim() }
+    const group = { id: nextGroupId++, name: input.name.trim(), tags: input.tags ?? [] }
     if (!group.name) throw new Error('Укажите название группы')
     assignGroup(group.id, input.cardIds)
     groups = [...groups, group]
@@ -279,6 +283,7 @@ export const mockApi = {
     if (!name) throw new Error('Укажите название группы')
     assignGroup(id, input.cardIds)
     group.name = name
+    group.tags = input.tags ?? []
     return delay(groupView(group))
   },
   async deleteGroup(id: number) {
@@ -292,6 +297,7 @@ export const mockApi = {
       version: 1,
       groups: groups.map((group) => ({
         name: group.name,
+        tags: group.tags,
         cards: cards.filter((card) => card.groupId === group.id)
           .map((card) => ({ marketplace: card.marketplace, externalId: card.externalId })),
       })),
@@ -301,6 +307,7 @@ export const mockApi = {
         title: card.title,
         url: card.url,
         imageUrl: card.imageUrl,
+        tags: card.tags ?? [],
         isActive: card.isActive,
         createdAt: card.createdAt,
         history: history.filter((point) => point.cardId === card.id)
@@ -351,6 +358,7 @@ export const mockApi = {
       title: input.title?.trim() || null,
       url: input.url?.trim() || null,
       imageUrl: null,
+      tags: input.tags ?? [],
       isActive: true,
       currentPrice: null,
       currentAvailability: null,

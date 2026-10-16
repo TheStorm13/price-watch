@@ -48,7 +48,7 @@ test('группа объединяет товары и сохраняет ин�
   await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('button', { name: 'Экспорт', exact: true }).click()
   const exported = JSON.parse(await readFile(await (await downloadPromise).path(), 'utf8'))
-  expect(exported.groups).toEqual([{ name: 'Техника', cards: [
+  expect(exported.groups).toEqual([{ name: 'Техника', tags: [], cards: [
     { marketplace: 'ozon', externalId: '1604900984' },
     { marketplace: 'ozon', externalId: '1587342210' },
   ] }])
@@ -66,6 +66,27 @@ test('группа объединяет товары и сохраняет ин�
   await expect(importDialog).toContainText('объединено: 5')
   await importDialog.getByRole('button', { name: 'Импортировать' }).click()
   await expect(page.locator('.cards-grid__group')).toContainText('Техника')
+})
+
+test('теги карточек и групп можно менять и фильтровать', async ({ page }) => {
+  await page.goto('/cards/1')
+  await page.getByRole('textbox', { name: 'Теги товара' }).fill('электроника, подарок')
+  await page.getByRole('button', { name: 'Сохранить теги' }).click()
+  await expect(page.locator('.detail-page > .tag-list')).toContainText('подарок')
+  await page.getByRole('link', { name: 'К карточкам' }).click()
+  await page.getByRole('button', { name: 'Создать группу' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Создать группу' })
+  await dialog.getByPlaceholder('Например, бутылка').fill('Техника')
+  await dialog.getByRole('textbox', { name: 'Теги группы' }).fill('дом')
+  await dialog.getByRole('checkbox').nth(1).check()
+  await dialog.getByRole('button', { name: 'Сохранить' }).click()
+  await page.getByRole('combobox', { name: 'Тег' }).selectOption('дом')
+  await expect(page.getByRole('row', { name: /Техника/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Наушники Apple/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Смартфон Samsung/ })).toHaveCount(0)
+  await page.getByRole('combobox', { name: 'Тег' }).selectOption('подарок')
+  await expect(page.getByRole('row', { name: /Смартфон Samsung/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Техника/ })).toHaveCount(0)
 })
 
 test('основной desktop-сценарий', async ({ page }) => {

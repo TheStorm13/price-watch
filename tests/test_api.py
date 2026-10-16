@@ -33,18 +33,19 @@ class FakeRepository:
 
     async def list_groups(self):
         return [{"id": group_id, "name": group["name"], "card_ids": group["card_ids"],
+                 "tags": group["tags"],
                  "current_price": 999 if group["card_ids"] else None,
                  "minimum_price": 800 if group["card_ids"] else None}
                 for group_id, group in self.groups.items()]
 
-    async def create_group(self, name, card_ids):
-        self.groups[1] = {"name": name, "card_ids": card_ids}
+    async def create_group(self, name, card_ids, tags=None):
+        self.groups[1] = {"name": name, "card_ids": card_ids, "tags": tags or []}
         return 1
 
-    async def update_group(self, group_id, name, card_ids):
+    async def update_group(self, group_id, name, card_ids, tags=None):
         if group_id not in self.groups:
             return False
-        self.groups[group_id] = {"name": name, "card_ids": card_ids}
+        self.groups[group_id] = {"name": name, "card_ids": card_ids, "tags": tags or []}
         return True
 
     async def delete_group(self, group_id):
@@ -71,10 +72,11 @@ class FakeRepository:
                 "observations_added": 0 if preview else 1,
                 "observations_removed": 0, "observations_skipped": 1}
 
-    async def add_card(self, marketplace, external_id, title=None, url=None):
+    async def add_card(self, marketplace, external_id, title=None, url=None, tags=None):
         if self.duplicate:
             raise CardAlreadyExists("Такая карточка уже добавлена")
-        return make_card(2, external_id)
+        card = make_card(2, external_id)
+        return MarketplaceCard(**{**card.__dict__, "tags": tuple(tags or [])})
 
     async def delete_card(self, card_id):
         if self.card is None or self.card.id != card_id:
@@ -136,13 +138,15 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("external_id", response.json()[0])
 
     async def test_group_contract_and_lifecycle(self):
-        created = await self.client.post("/api/groups", json={"name": "Бутылка", "cardIds": [1]})
+        created = await self.client.post("/api/groups", json={"name": "Бутылка", "cardIds": [1], "tags": ["кухня"]})
         self.assertEqual(created.status_code, 201)
         self.assertEqual(created.json()["minimumPrice"], 800)
         self.assertEqual(created.json()["cardIds"], [1])
+        self.assertEqual(created.json()["tags"], ["кухня"])
         self.assertEqual(len((await self.client.get("/api/groups")).json()), 1)
-        updated = await self.client.put("/api/groups/1", json={"name": "Термос", "cardIds": []})
+        updated = await self.client.put("/api/groups/1", json={"name": "Термос", "cardIds": [], "tags": ["подарок"]})
         self.assertEqual(updated.json()["name"], "Термос")
+        self.assertEqual(updated.json()["tags"], ["подарок"])
         self.assertIsNone(updated.json()["currentPrice"])
         self.assertEqual((await self.client.delete("/api/groups/1")).status_code, 204)
         self.assertEqual((await self.client.get("/api/groups")).json(), [])
@@ -170,7 +174,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(exported.status_code, 200)
         document = exported.json()
         card = document["cards"][0]
-        self.assertEqual(set(card), {"marketplace", "externalId", "title", "url", "imageUrl",
+        self.assertEqual(set(card), {"marketplace", "externalId", "title", "url", "imageUrl", "tags",
                                      "isActive", "createdAt", "history"})
         card["isArchived"] = True  # Старый архив превращается в приостановку.
         del card["imageUrl"]
@@ -181,6 +185,21 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         imported = await self.client.post("/api/cards/import", json=document)
         self.assertEqual(imported.status_code, 200)
         self.assertEqual(imported.json()["observationsAdded"], 1)
+
+    async def test_card_tags_are_limited_to_two(self):
+        valid = await self.client.post("/api/cards", json={
+            "marketplace": "ozon", "externalId": "123", "tags": [" кухня ", "Подарок"],
+        })
+        self.assertEqual(valid.status_code, 201)
+        self.assertEqual(valid.json()["tags"], ["кухня", "Подарок"])
+        invalid = await self.client.post("/api/cards", json={
+            "marketplace": "ozon", "externalId": "124", "tags": ["a", "b", "c"],
+        })
+        self.assertEqual(invalid.status_code, 422)
+        duplicate = await self.client.post("/api/cards", json={
+            "marketplace": "ozon", "externalId": "125", "tags": ["Кухня", "кухня"],
+        })
+        self.assertEqual(duplicate.status_code, 422)
 
     async def test_import_rejects_invalid_history_before_writing(self):
         document = (await self.client.get("/api/cards/export")).json()

@@ -8,6 +8,7 @@ import { AvailabilityStatus } from '../../components/ui/AvailabilityStatus'
 import { LoadingRows } from '../../components/ui/LoadingRows'
 import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
 import { ProductImage } from '../../components/ui/ProductImage'
+import { TagList } from '../../components/ui/TagList'
 import { useCollection } from '../collection/CollectionProvider'
 import type { MarketplaceCard, ProductGroup } from '../../types/domain'
 import { availabilityLabel, formatDateTime, formatPrice, formatRelativeTime, marketplaceLabel } from '../../utils/format'
@@ -97,10 +98,16 @@ export function CardsPage() {
   const sort = useMemo(() => parseSort(sortParam), [sortParam])
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
   const dealsOnly = params.get('deals') === '1'
-  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealsOnly)
+  const selectedTag = params.get('tag') ?? ''
+  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealsOnly || selectedTag)
   const deals = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal])), [dealsQuery.data])
   const savings = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal.savings])), [dealsQuery.data])
   const groupNames = useMemo(() => new Map((groupsQuery.data ?? []).map((group) => [group.id, group.name.toLowerCase()])), [groupsQuery.data])
+  const groupTags = useMemo(() => new Map((groupsQuery.data ?? []).map((group) => [group.id, group.tags ?? []])), [groupsQuery.data])
+  const availableTags = useMemo(() => [...new Set([
+    ...(cardsQuery.data ?? []).flatMap((card) => card.tags ?? []),
+    ...(groupsQuery.data ?? []).flatMap((group) => group.tags ?? []),
+  ])].sort(collator.compare), [cardsQuery.data, groupsQuery.data])
 
   const setParam = useCallback((name: string, value: string, defaultValue = 'all') => {
     setParams((current) => {
@@ -117,12 +124,13 @@ export function CardsPage() {
       return (!deferredQuery || text.includes(deferredQuery) || groupNames.get(card.groupId ?? -1)?.includes(deferredQuery))
         && (marketplace === 'all' || card.marketplace === marketplace)
         && matchesStatus(card, status)
+        && (!selectedTag || (card.tags ?? []).includes(selectedTag) || (groupTags.get(card.groupId ?? -1) ?? []).includes(selectedTag))
         && (!dealsOnly || deals.has(card.id))
     })
     return result.toSorted((left, right) => compareItems(
       { kind: 'card', card: left, active: left.isActive },
       { kind: 'card', card: right, active: right.isActive }, sort, savings))
-  }, [cardsQuery.data, deals, dealsOnly, deferredQuery, groupNames, marketplace, savings, sort, status])
+  }, [cardsQuery.data, deals, dealsOnly, deferredQuery, groupNames, groupTags, marketplace, savings, selectedTag, sort, status])
 
   const groupedCards = useMemo(() => {
     const byGroup = new Map<number, MarketplaceCard[]>()
@@ -135,7 +143,7 @@ export function CardsPage() {
     return byGroup
   }, [visibleCards])
   const visibleGroups = (groupsQuery.data ?? []).filter((group) =>
-    groupedCards.has(group.id) || (!dealsOnly && !deferredQuery && marketplace === 'all' && status === 'all' && group.cardIds.length === 0))
+    groupedCards.has(group.id) || (!dealsOnly && !deferredQuery && marketplace === 'all' && status === 'all' && group.cardIds.length === 0 && (!selectedTag || (group.tags ?? []).includes(selectedTag))))
   const standaloneCards = visibleCards.filter((card) => !groupedCards.has(card.groupId ?? -1))
   const orderedItems = [
     ...visibleGroups.map((group) => ({ kind: 'group' as const, group, active: (groupedCards.get(group.id) ?? []).some((card) => card.isActive) })),
@@ -192,6 +200,7 @@ export function CardsPage() {
         <span className="cards-grid__title">{card.title ?? 'Без названия'}</span>
         <span className="cards-grid__id">ID: {card.externalId}</span>
       </Link>
+      <TagList tags={card.tags} />
       <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
       <dl className="cards-grid__prices"><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div><div><dt>Выгода</dt><dd>{saving(card)}</dd></div></dl>
       <div className="cards-grid__details"><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
@@ -201,7 +210,7 @@ export function CardsPage() {
 
   function row(card: MarketplaceCard, nested = false) {
     return <tr key={card.id} className={nested ? 'cards-table__nested' : ''} onClick={() => navigate(`/cards/${card.id}`)}>
-      <td><div className="card-identity"><ProductImage card={card} /><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small>{dealStatus(card)}</span></div></td>
+      <td><div className="card-identity"><ProductImage card={card} /><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small><TagList tags={card.tags} />{dealStatus(card)}</span></div></td>
       <td><MarketplaceMark marketplace={card.marketplace} /></td>
       <td className="price-cell">{formatPrice(card.currentPrice)}</td>
       <td className="price-cell">{formatPrice(card.minimumPrice)}</td>
@@ -264,6 +273,14 @@ export function CardsPage() {
             </select>
             <ChevronDown aria-hidden="true" />
           </span>
+          <span className={`filter-select${selectedTag ? ' filter-select--active' : ''}`}>
+            <select value={selectedTag} onChange={(event) => setParam('tag', event.target.value, '')} aria-label="Тег">
+              <option value="">Все теги</option>
+              {selectedTag && !availableTags.includes(selectedTag) ? <option value={selectedTag}>{selectedTag}</option> : null}
+              {availableTags.map((tag) => <option value={tag} key={tag}>{tag}</option>)}
+            </select>
+            <ChevronDown aria-hidden="true" />
+          </span>
           <label className="filters__checkbox"><input type="checkbox" checked={dealsOnly} onChange={(event) => setParam('deals', event.target.checked ? '1' : '', '')} />Выгодные предложения</label>
         </div>
         {hasFilters ? <div className="filters__reset"><Button variant="ghost" icon={<RotateCcw />} onClick={resetFilters}>Сбросить</Button></div> : null}
@@ -288,7 +305,7 @@ export function CardsPage() {
           <ul className="cards-grid" aria-label="Отслеживаемые карточки маркетплейсов">
             {gridItems.map((item) => item.kind === 'group' ? <li key={`group-${item.group.id}`} className="cards-grid__group">
               <div className="product-group__header">
-                <button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button>
+                <button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button><TagList tags={item.group.tags} />
                 <span>Цена от {formatPrice(item.group.currentPrice)} · Минимальная {formatPrice(item.group.minimumPrice)}</span>
                 <Button variant="ghost" icon={<Pencil />} aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}>Изменить</Button>
               </div>
@@ -301,7 +318,7 @@ export function CardsPage() {
               <thead><tr>{sortableHeader('Карточка', 'title')}{sortableHeader('Маркетплейс', 'marketplace')}{sortableHeader('Цена', 'price')}{sortableHeader('Минимальная', 'minimum')}{sortableHeader('Средняя', 'average')}{sortableHeader('Выгода', 'savings')}{sortableHeader('Наличие', 'availability')}<th><span className="sr-only">Действия</span></th></tr></thead>
               <tbody>
                 {orderedItems.map((item) => item.kind === 'group' ? <Fragment key={`group-${item.group.id}`}>
-                  <tr className="cards-table__group"><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}</td><td className="price-cell">{formatPrice(item.group.minimumPrice)}</td><td>—</td><td>Сейчас не выгодно</td><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>
+                  <tr className="cards-table__group"><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button><TagList tags={item.group.tags} /></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}</td><td className="price-cell">{formatPrice(item.group.minimumPrice)}</td><td>—</td><td>Сейчас не выгодно</td><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>
                   {!collapsedGroups.includes(item.group.id) ? (groupedCards.get(item.group.id) ?? []).map((card) => row(card, true)) : null}
                 </Fragment> : row(item.card))}
               </tbody>

@@ -26,16 +26,17 @@ class GroupRepository:
             result.append({
                 "id": group.id,
                 "name": group.name,
+                "tags": group.tags,
                 "card_ids": [item.card.id for item in members],
                 "current_price": min(current) if current else None,
                 "minimum_price": minimums.get(group.id),
             })
         return result
 
-    async def create_group(self, name: str, card_ids: list[int]) -> int:
+    async def create_group(self, name: str, card_ids: list[int], tags: list[str] | None = None) -> int:
         async with self._database.session() as session, session.begin():
             await self._validate_cards(session, card_ids)
-            group = ProductGroupRecord(name=name)
+            group = ProductGroupRecord(name=name, tags=tags or [])
             session.add(group)
             await session.flush()
             if card_ids:
@@ -44,13 +45,14 @@ class GroupRepository:
                                       .values(group_id=group.id))
             return group.id
 
-    async def update_group(self, group_id: int, name: str, card_ids: list[int]) -> bool:
+    async def update_group(self, group_id: int, name: str, card_ids: list[int], tags: list[str] | None = None) -> bool:
         async with self._database.session() as session, session.begin():
             group = await session.get(ProductGroupRecord, group_id, with_for_update=True)
             if group is None:
                 return False
             await self._validate_cards(session, card_ids)
             group.name = name
+            group.tags = tags or []
             await session.execute(update(MarketplaceCardRecord)
                                   .where(MarketplaceCardRecord.group_id == group_id)
                                   .values(group_id=None))

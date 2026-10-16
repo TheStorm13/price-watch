@@ -16,11 +16,23 @@ class ApiModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
+def normalize_tags(tags: list[str]) -> list[str]:
+    normalized = [tag.strip() for tag in tags]
+    if any(not tag or len(tag) > 40 for tag in normalized):
+        raise ValueError("Тег должен содержать от 1 до 40 символов")
+    if len({tag.casefold() for tag in normalized}) != len(normalized):
+        raise ValueError("Теги не должны повторяться")
+    return normalized
+
+
 class CardCreate(ApiModel):
     marketplace: str
     external_id: str
     title: str | None = None
     url: HttpUrl | None = None
+    tags: list[str] = Field(default_factory=list, max_length=2)
+
+    _normalize_tags = field_validator("tags")(normalize_tags)
 
     @field_validator("marketplace")
     @classmethod
@@ -44,11 +56,17 @@ class CardUpdate(ApiModel):
     url: HttpUrl | None = None
     is_active: bool | None = None
     group_id: int | None = Field(default=None, ge=1)
+    tags: list[str] | None = Field(default=None, max_length=2)
+
+    _normalize_tags = field_validator("tags")(normalize_tags)
 
 
 class GroupInput(ApiModel):
     name: str = Field(min_length=1, max_length=120)
     card_ids: list[int] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+    _normalize_tags = field_validator("tags")(normalize_tags)
 
     @field_validator("name")
     @classmethod
@@ -62,6 +80,7 @@ class GroupInput(ApiModel):
 class GroupResponse(ApiModel):
     id: int
     name: str
+    tags: list[str]
     card_ids: list[int]
     current_price: float | None
     minimum_price: float | None
@@ -93,6 +112,8 @@ class TransferCard(ApiModel):
     title: str | None
     url: str | None
     image_url: str | None = None
+    tags: list[str] = Field(default_factory=list, max_length=2)
+    _normalize_tags = field_validator("tags")(normalize_tags)
     is_active: bool
     created_at: datetime
     history: list[TransferHistoryPoint]
@@ -128,6 +149,8 @@ class TransferGroupMember(ApiModel):
 class TransferGroup(ApiModel):
     name: str = Field(min_length=1, max_length=120)
     cards: list[TransferGroupMember]
+    tags: list[str] = Field(default_factory=list)
+    _normalize_tags = field_validator("tags")(normalize_tags)
 
     @field_validator("name")
     @classmethod
@@ -182,6 +205,7 @@ class CardResponse(ApiModel):
     title: str | None
     url: str | None
     image_url: str | None
+    tags: list[str]
     is_active: bool
     group_id: int | None = None
     current_price: float | None
@@ -204,6 +228,7 @@ class CardResponse(ApiModel):
             title=card.title,
             url=card.url,
             image_url=card.image_url,
+            tags=list(card.tags),
             is_active=card.is_active,
             group_id=card.group_id,
             current_price=overview.current_price,

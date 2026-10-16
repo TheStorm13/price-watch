@@ -35,6 +35,7 @@ class ProductGroupRecord(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    tags: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'::text[]"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
@@ -44,6 +45,7 @@ class MarketplaceCardRecord(Base):
         UniqueConstraint("marketplace", "external_id", name="marketplace_cards_marketplace_external_unique"),
         CheckConstraint("btrim(marketplace) <> ''", name="marketplace_cards_marketplace_not_blank"),
         CheckConstraint("btrim(external_id) <> ''", name="marketplace_cards_external_id_not_blank"),
+        CheckConstraint("cardinality(tags) <= 2", name="marketplace_cards_tags_limit"),
         Index(
             "marketplace_cards_active_idx",
             "marketplace",
@@ -58,6 +60,7 @@ class MarketplaceCardRecord(Base):
     title: Mapped[str | None] = mapped_column(Text)
     url: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
+    tags: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'::text[]"))
     group_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("product_groups.id", ondelete="SET NULL"), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -15,7 +15,7 @@ async def list_groups(repository: RepositoryDep):
 @router.post("", response_model=GroupResponse, status_code=201)
 async def create_group(payload: GroupInput, repository: RepositoryDep):
     try:
-        group_id = await repository.create_group(payload.name, payload.card_ids)
+        group_id = await repository.create_group(payload.name, payload.card_ids, payload.tags)
     except ValueError as exc:
         raise ApiProblem(422, "invalid_group", str(exc)) from exc
     return next(group for group in await repository.list_groups() if group["id"] == group_id)
@@ -24,7 +24,7 @@ async def create_group(payload: GroupInput, repository: RepositoryDep):
 @router.put("/{group_id}", response_model=GroupResponse)
 async def update_group(group_id: int, payload: GroupInput, repository: RepositoryDep):
     try:
-        updated = await repository.update_group(group_id, payload.name, payload.card_ids)
+        updated = await repository.update_group(group_id, payload.name, payload.card_ids, payload.tags)
     except ValueError as exc:
         raise ApiProblem(422, "invalid_group", str(exc)) from exc
     if not updated:

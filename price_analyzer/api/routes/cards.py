@@ -87,6 +87,7 @@ async def create_card(payload: CardCreate, repository: RepositoryDep):
             payload.external_id,
             payload.title,
             str(payload.url) if payload.url else None,
+            payload.tags,
         )
     except CardAlreadyExists as exc:
         raise ApiProblem(409, "card_already_exists", str(exc), "externalId") from exc
@@ -114,6 +115,7 @@ async def update_card(card_id: int, payload: CardUpdate, repository: RepositoryD
             update_url="url" in fields,
             group_id=payload.group_id,
             update_group="group_id" in fields,
+            tags=payload.tags,
         )
     except ValueError as exc:
         raise ApiProblem(422, "invalid_group", str(exc), "groupId") from exc

@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from 'react'
+import { useState, type FormEvent, type MouseEvent } from 'react'
 import { ArrowLeft, ExternalLink, RefreshCw } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -9,11 +9,37 @@ import { Button } from '../../components/ui/Button'
 import { CardActionsMenu } from '../../components/ui/CardActionsMenu'
 import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
 import { ProductImage } from '../../components/ui/ProductImage'
+import { TagList } from '../../components/ui/TagList'
 import { formatDateTime, formatPrice, marketplaceLabel } from '../../utils/format'
 import { useCollection } from '../collection/CollectionProvider'
 import { PriceChart } from './PriceChart'
+import { parseTags } from '../cards/tags'
 
 const periods = [7, 30, 90] as const
+
+function CardTagsEditor({ card }: { card: NonNullable<ReturnType<typeof useCard>['data']> }) {
+  const [tags, setTags] = useState((card.tags ?? []).join(', '))
+  const [error, setError] = useState<string | null>(null)
+  const updateCard = useUpdateCard()
+
+  async function save(event: FormEvent) {
+    event.preventDefault()
+    try {
+      const parsed = parseTags(tags, 2)
+      await updateCard.mutateAsync({ cardId: card.id, input: { tags: parsed } })
+      setTags(parsed.join(', '))
+      setError(null)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Не удалось сохранить теги')
+    }
+  }
+
+  return <form className="detail-tags" onSubmit={(event) => void save(event)}>
+    <label className="field"><span>Теги товара</span><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" /><small>Не больше двух тегов, через запятую</small></label>
+    <Button type="submit" disabled={updateCard.isPending}>Сохранить теги</Button>
+    {error ? <span className="field__error" role="alert">{error}</span> : null}
+  </form>
+}
 
 export function CardDetailsPage() {
   const navigate = useNavigate()
@@ -82,6 +108,8 @@ export function CardDetailsPage() {
       </header>
       {openError ? <p className="action-error" role="alert">{openError}</p> : null}
       {collection.startError ? <p className="action-error" role="alert">{collection.startError}</p> : null}
+      <TagList tags={card.tags} />
+      <CardTagsEditor key={card.id} card={card} />
 
       <div className="price-summary">
         <div className="price-summary__primary">

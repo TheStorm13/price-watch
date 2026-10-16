@@ -27,6 +27,7 @@ class TransferRepository:
                 "title": card.title,
                 "url": card.url,
                 "image_url": card.image_url,
+                "tags": card.tags,
                 "is_active": card.is_active,
                 "created_at": card.created_at,
                 "history": [],
@@ -40,6 +41,7 @@ class TransferRepository:
                 })
             group_data = [{
                 "name": group.name,
+                "tags": group.tags,
                 "cards": [{"marketplace": card.marketplace, "external_id": card.external_id}
                           for card in cards if card.group_id == group.id],
             } for group in groups]
@@ -102,6 +104,7 @@ class TransferRepository:
                         marketplace=key[0], external_id=key[1], title=item["title"],
                         url=item["url"], is_active=item["is_active"] and not item.get("is_archived", False),
                         image_url=item.get("image_url"),
+                        tags=item.get("tags", []),
                         created_at=item["created_at"],
                         updated_at=max(item["created_at"], latest_imported_at),
                     )
@@ -112,6 +115,7 @@ class TransferRepository:
                     card.created_at = min(card.created_at, item["created_at"])
                     if not card.image_url:
                         card.image_url = item.get("image_url")
+                    card.tags = list(dict.fromkeys([*card.tags, *item.get("tags", [])]))[:2]
                     if imported:
                         card.updated_at = max(card.updated_at,
                                               max(point["observed_at"] for point in imported))
@@ -127,10 +131,12 @@ class TransferRepository:
                 for imported_group in groups or []:
                     group = groups_by_name.get(imported_group["name"])
                     if group is None:
-                        group = ProductGroupRecord(name=imported_group["name"])
+                        group = ProductGroupRecord(name=imported_group["name"], tags=imported_group.get("tags", []))
                         session.add(group)
                         await session.flush()
                         groups_by_name[group.name] = group
+                    else:
+                        group.tags = list(dict.fromkeys([*group.tags, *imported_group.get("tags", [])]))
                     for member in imported_group["cards"]:
                         card = by_key[(member["marketplace"].lower(), member["external_id"])]
                         if card.group_id is None:

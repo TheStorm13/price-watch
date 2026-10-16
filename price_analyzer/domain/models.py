@@ -18,6 +18,7 @@ class MarketplaceCard:
     updated_at: datetime
     image_url: Optional[str] = None
     group_id: Optional[int] = None
+    tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
