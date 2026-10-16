@@ -25,4 +25,10 @@ describe('ProductImage', () => {
     expect(container.querySelector('.product-placeholder > span')?.textContent).toBe('Т')
     expect(container.querySelector('img')).toBeNull()
   })
+
+  it('gives the detail photo a label and loads it eagerly', () => {
+    const { getByRole } = render(<ProductImage card={card} alt="Фото товара: Товар" eager />)
+
+    expect(getByRole('img', { name: 'Фото товара: Товар' })).toHaveAttribute('loading', 'eager')
+  })
 })
