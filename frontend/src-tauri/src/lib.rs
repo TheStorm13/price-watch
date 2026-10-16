@@ -244,6 +244,12 @@ impl RuntimeState {
             None => false,
         };
         let existing_port = active_debug_port(&profile);
+        if !running && existing_port.is_some() {
+            return Err(
+                "Chrome занят сбором. Дождитесь завершения запуска и повторите попытку."
+                    .to_string(),
+            );
+        }
         if running && existing_port.is_none() {
             return Err("Chrome приложения не открыл порт управления".to_string());
         }

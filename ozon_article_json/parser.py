@@ -36,7 +36,7 @@ class OzonRawCardParser(AsyncOzonClient):
             chrome_platform=chrome_platform,
         )
 
-    def fetch(self, article: Union[str, int]) -> str:
-        return self.fetch_raw_text(article)
+    async def fetch(self, article: Union[str, int]) -> str:
+        return await self.fetch_raw_text_async(article)
 
     normalize_article = staticmethod(AsyncOzonClient.normalize_product_id)

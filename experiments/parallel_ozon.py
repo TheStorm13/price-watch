@@ -19,7 +19,7 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-from marketplace_connector.connectors.ozon.client import OzonClient
+from marketplace_connector.connectors.ozon.async_client import AsyncOzonClient
 from marketplace_connector.connectors.ozon.mapper import OzonMapper
 
 
@@ -28,12 +28,12 @@ async def fetch_one(context, article: str) -> dict:
     page = await context.new_page()
     try:
         await page.goto(
-            OzonClient.PRODUCT_URL.format(article=article),
+            AsyncOzonClient.PRODUCT_URL.format(article=article),
             wait_until="domcontentloaded",
             timeout=60_000,
         )
         page_text = "\n".join((await page.title(), await page.locator("body").inner_text(timeout=5_000)))
-        if OzonClient._is_antibot_text(page_text):
+        if AsyncOzonClient._is_antibot_text(page_text):
             raise RuntimeError("Ozon запросил проверку на странице товара")
 
         response = await asyncio.wait_for(
@@ -45,14 +45,14 @@ async def fetch_one(context, article: str) -> dict:
                     });
                     return {status: response.status, text: await response.text()};
                 }""",
-                OzonClient.API_URL.format(article=article),
+                AsyncOzonClient.API_URL.format(article=article),
             ),
             timeout=30,
         )
         raw_text = response.get("text", "")
-        if OzonClient._is_antibot_text(raw_text):
+        if AsyncOzonClient._is_antibot_text(raw_text):
             raise RuntimeError("Ozon запросил проверку в JSON-ответе")
-        OzonClient._validate_json_text(raw_text)
+        AsyncOzonClient._validate_json_text(raw_text)
         snapshot = OzonMapper.to_snapshot(json.loads(raw_text), expected_external_id=article)
         return {
             "article": article,
@@ -92,7 +92,7 @@ async def run_batch(context, articles: list[str], parallel: bool, concurrency: i
 
 
 async def run(args) -> list[dict]:
-    client = OzonClient(args.profile_dir, headless=args.headless)
+    client = AsyncOzonClient(args.profile_dir, headless=args.headless)
     client.profile_dir.mkdir(parents=True, exist_ok=True)
     client._cleanup_stale_profile_locks()
     process = None
@@ -165,7 +165,7 @@ def main() -> int:
         parser.error("Передайте минимум два артикула")
     if args.concurrency < 1:
         parser.error("--concurrency должен быть положительным")
-    args.articles = [OzonClient.normalize_product_id(article) for article in args.articles]
+    args.articles = [AsyncOzonClient.normalize_product_id(article) for article in args.articles]
     batches = asyncio.run(run(args))
     return 0 if len(batches) == 2 and all(result["ok"] for batch in batches for result in batch["results"]) else 1
 

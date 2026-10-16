@@ -17,10 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class TerminalChallengeHandler:
-    def handle(self, marketplace: str, message: str) -> None:
-        print(message, file=sys.stderr, end="", flush=True)
-        input()
-
     async def handle_async(self, marketplace: str, message: str) -> None:
         print(message, file=sys.stderr, end="", flush=True)
         await asyncio.to_thread(input)

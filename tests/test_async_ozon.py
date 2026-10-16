@@ -1,5 +1,7 @@
 import asyncio
+import json
 import unittest
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,6 +10,65 @@ from marketplace_connector.domain.errors import MarketplaceUnavailable
 
 
 class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_background_collection_closes_open_profile_browser(self):
+        with TemporaryDirectory() as directory:
+            Path(directory, "DevToolsActivePort").write_text(
+                "19222\n/devtools/browser/app-profile\n"
+            )
+            client = AsyncOzonClient(directory, virtual_display=True)
+            alive = True
+
+            class Connection:
+                def request(self, *_args):
+                    if not alive:
+                        raise OSError("Chrome closed")
+
+                def getresponse(self):
+                    response = MagicMock(status=200)
+                    response.read.return_value = json.dumps({
+                        "webSocketDebuggerUrl":
+                            "ws://127.0.0.1:19222/devtools/browser/app-profile"
+                    }).encode()
+                    return response
+
+                def close(self):
+                    pass
+
+            async def close_browser(_command):
+                nonlocal alive
+                alive = False
+
+            session = MagicMock()
+            session.send = AsyncMock(side_effect=close_browser)
+            browser = MagicMock()
+            browser.new_browser_cdp_session = AsyncMock(return_value=session)
+            browser.close = AsyncMock()
+            playwright = MagicMock()
+            playwright.chromium.connect_over_cdp = AsyncMock(return_value=browser)
+            with patch("marketplace_connector.connectors.ozon.async_client.http.client.HTTPConnection",
+                       return_value=Connection()):
+                await client._close_open_profile_browser(playwright)
+
+            session.send.assert_awaited_once_with("Browser.close")
+            browser.close.assert_awaited_once()
+
+    async def test_stale_debug_port_does_not_close_another_browser(self):
+        with TemporaryDirectory() as directory:
+            Path(directory, "DevToolsActivePort").write_text(
+                "19222\n/devtools/browser/app-profile\n"
+            )
+            response = MagicMock(status=200)
+            response.read.return_value = json.dumps({
+                "webSocketDebuggerUrl": "ws://127.0.0.1:19222/devtools/browser/other"
+            }).encode()
+            connection = MagicMock()
+            connection.getresponse.return_value = response
+            playwright = MagicMock()
+            with patch("marketplace_connector.connectors.ozon.async_client.http.client.HTTPConnection",
+                       return_value=connection):
+                await AsyncOzonClient(directory, virtual_display=True)._close_open_profile_browser(playwright)
+            playwright.chromium.connect_over_cdp.assert_not_called()
+
     async def test_concurrent_products_use_separate_pages_in_one_context(self):
         with TemporaryDirectory() as directory:
             client = AsyncOzonClient(directory)

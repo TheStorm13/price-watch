@@ -1,19 +1,17 @@
-"""User-interaction port used by connectors requiring manual verification."""
+"""User-interaction port used by asynchronous connectors."""
 
+import asyncio
 from typing import Callable, Protocol
 
 from ..domain.errors import ChallengeRequired
 
 
 class ChallengeHandler(Protocol):
-    def handle(self, marketplace: str, message: str) -> None:
+    async def handle_async(self, marketplace: str, message: str) -> None:
         ...
 
 
 class RejectChallengeHandler:
-    def handle(self, marketplace: str, message: str) -> None:
-        raise ChallengeRequired(f"{marketplace}: {message}")
-
     async def handle_async(self, marketplace: str, message: str) -> None:
         raise ChallengeRequired(f"{marketplace}: {message}")
 
@@ -22,5 +20,5 @@ class CallableChallengeHandler:
     def __init__(self, callback: Callable[[str], object]):
         self._callback = callback
 
-    def handle(self, marketplace: str, message: str) -> None:
-        self._callback(message)
+    async def handle_async(self, marketplace: str, message: str) -> None:
+        await asyncio.to_thread(self._callback, message)
