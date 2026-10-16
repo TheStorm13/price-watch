@@ -146,6 +146,7 @@ export function CardsPage() {
           <ul className="cards-grid" aria-label="Отслеживаемые карточки маркетплейсов">
             {visibleCards.map((card) => (
               <li key={card.id} className={`cards-grid__item${!card.isActive ? ' is-inactive' : ''}`}>
+                <div className="cards-grid__actions">{actions(card)}</div>
                 <Link className="cards-grid__link" to={`/cards/${card.id}`}>
                   <ProductImage card={card} large />
                   <span className="cards-grid__title">{card.title ?? 'Без названия'}</span>
@@ -159,7 +160,7 @@ export function CardsPage() {
                   <AvailabilityStatus value={card.currentAvailability} />
                   <time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time>
                 </div>
-                <div className="cards-grid__footer">{trackingStatus(card)}{actions(card)}</div>
+                {card.isArchived || !card.isActive ? <div className="cards-grid__tracking">{trackingStatus(card)}</div> : null}
               </li>
             ))}
           </ul>
