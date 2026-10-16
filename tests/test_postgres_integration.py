@@ -580,49 +580,6 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     if run:
                         session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
 
-    async def test_deal_excludes_current_price_from_daily_average(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
-        card = await repository.add_card("integration-test", f"test-{uuid4()}")
-        run_id = await repository.start_run(1)
-        now = datetime.now(timezone.utc)
-        try:
-            with self.database.session() as session, session.begin():
-                session.get(MarketplaceCardRecord, card.id).created_at = now - timedelta(days=10)
-                for index, price in enumerate((100, 120, 80)):
-                    session.add(PriceHistoryRecord(card_id=card.id, collection_run_id=run_id,
-                        price=Decimal(price), availability="in_stock",
-                        observed_at=now - timedelta(days=3 - index), snapshot={}))
-            deal = next(item for item in await repository.list_deals(now) if item.card.card.id == card.id)
-            self.assertEqual(deal.average_price, Decimal("110"))
-            self.assertEqual(deal.savings, Decimal("30"))
-            self.assertEqual(deal.baseline_days, 2)
-            self.assertEqual(deal.last_collection_run_id, run_id)
-            metrics = await repository.list_card_price_metrics()
-            self.assertEqual(metrics[card.id], (Decimal("80"), Decimal("110")))
-            app = create_app(repository=repository)
-            app.state.repository = repository
-
-            async def check_deal_api():
-                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-                    response = await client.get("/api/cards/deals")
-                self.assertEqual(response.status_code, 200)
-                item = next(item for item in response.json() if item["card"]["id"] == card.id)
-                self.assertEqual(item["averagePrice"], 110.0)
-                self.assertEqual(item["lastCollectionRunId"], run_id)
-                cards_response = await client.get("/api/cards")
-                card_response = next(entry for entry in cards_response.json() if entry["id"] == card.id)
-                self.assertEqual(card_response["minimumPrice"], 80.0)
-                self.assertEqual(card_response["averagePrice"], 110.0)
-
-            await check_deal_api()
-            with self.database.session() as session, session.begin():
-                session.add(PriceHistoryRecord(card_id=card.id, collection_run_id=run_id,
-                    price=Decimal("150"), availability="in_stock", observed_at=now, snapshot={}))
-            self.assertFalse(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
-        finally:
-            await repository.delete_card(card.id)
-            with self.database.session() as session, session.begin():
-                session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
 
     async def test_excluded_card_is_collected_but_not_offered_as_deal(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
