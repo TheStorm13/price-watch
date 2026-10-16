@@ -140,6 +140,31 @@ test('из каталога запускается сбор только выб�
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('1 из 1', { timeout: 8_000 })
 })
 
+test('карточки AliExpress и Wildberries добавляются без запуска сбора', async ({ page }) => {
+  await page.goto('/cards')
+  for (const [marketplace, title, id] of [
+    ['Wildberries', 'Бутылка WB', '123456789'],
+    ['AliExpress', 'Бутылка Ali', '987654321'],
+  ]) {
+    await page.getByRole('button', { name: 'Добавить карточку' }).click()
+    const drawer = page.getByRole('dialog', { name: 'Добавить карточку' })
+    await drawer.getByRole('radio', { name: new RegExp(marketplace) }).check()
+    await drawer.getByRole('textbox', { name: 'ID карточки' }).fill(id)
+    await drawer.getByRole('textbox', { name: 'Название' }).fill(title)
+    await drawer.getByRole('button', { name: 'Добавить', exact: true }).click()
+    const row = page.getByRole('row', { name: new RegExp(title) })
+    await expect(row).toBeVisible()
+    await row.getByRole('button', { name: /Действия с карточкой/ }).click()
+    await expect(page.getByRole('menuitem', { name: 'Обновить только эту карточку' })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await row.click()
+    await expect(page.getByText('Сбор цен пока недоступен: коннектор не подключён')).toBeVisible()
+    await page.getByRole('link', { name: 'К карточкам' }).click()
+  }
+  await page.getByRole('button', { name: 'Обновить цены' }).click()
+  await expect(page.getByLabel('Состояние обновления цен')).toContainText('из 5')
+})
+
 test('компактный desktop 1024 px не имеет горизонтального overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 })
   await page.goto('/cards')

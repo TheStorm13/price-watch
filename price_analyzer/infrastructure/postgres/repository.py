@@ -2,7 +2,7 @@
 
 from .database import AsyncDatabase
 from .repository_common import (
-    CardAlreadyExists, CardInActiveRun, NoCards, ImportDuringRun,
+    CardAlreadyExists, CardInActiveRun, NoCards, ConnectorNotAvailable, ImportDuringRun,
 )
 from .cards_repository import CardRepository
 from .runs_repository import RunRepository

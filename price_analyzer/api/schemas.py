@@ -38,8 +38,8 @@ class CardCreate(ApiModel):
     @classmethod
     def validate_marketplace(cls, value: str) -> str:
         normalized = value.strip().lower()
-        if normalized != "ozon":
-            raise ValueError("В этой версии доступен только Ozon")
+        if normalized not in {"ozon", "wildberries", "aliexpress"}:
+            raise ValueError("Неизвестный маркетплейс")
         return normalized
 
     @field_validator("external_id")
@@ -47,7 +47,7 @@ class CardCreate(ApiModel):
     def validate_external_id(cls, value: str) -> str:
         normalized = value.strip()
         if not normalized.isascii() or not normalized.isdigit():
-            raise ValueError("Ozon ID должен состоять из цифр")
+            raise ValueError("ID карточки должен состоять из цифр")
         return normalized
 
 

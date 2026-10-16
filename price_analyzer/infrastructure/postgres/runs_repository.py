@@ -8,8 +8,9 @@ from typing import List, Optional
 from sqlalchemy import select, update
 
 from ...domain.models import CollectionRun, MarketplaceCard
+from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
 from .models import CollectionRunRecord, MarketplaceCardRecord
-from .repository_common import NoCards, _RUN_CREATION_LOCK, _card, _run
+from .repository_common import ConnectorNotAvailable, NoCards, _RUN_CREATION_LOCK, _card, _run
 
 
 class RunRepository:
@@ -27,11 +28,15 @@ class RunRepository:
             statement = select(MarketplaceCardRecord)
             if card_id is not None:
                 statement = statement.where(MarketplaceCardRecord.id == card_id)
+            else:
+                statement = statement.where(MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
             cards = (await session.scalars(statement.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id).with_for_update(read=True))).all()
             if not cards:
                 if card_id is not None:
                     raise LookupError(f"Карточка не найдена: {card_id}")
                 raise NoCards("Нет карточек для сбора")
+            if card_id is not None and cards[0].marketplace in PENDING_CONNECTOR_MARKETPLACES:
+                raise ConnectorNotAvailable("Для этого маркетплейса коннектор ещё не подключён")
             record = CollectionRunRecord(
                 status="queued", total_count=len(cards), requested_card_id=card_id,
                 is_full_collection=card_id is None,
@@ -58,7 +63,9 @@ class RunRepository:
             ).limit(1)))
             if last_started is not None and now - last_started < timedelta(hours=12):
                 return None
-            cards = (await session.scalars(select(MarketplaceCardRecord).order_by(
+            cards = (await session.scalars(select(MarketplaceCardRecord).where(
+                MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES)
+            ).order_by(
                 MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id
             ))).all()
             if not cards:
@@ -87,7 +94,8 @@ class RunRepository:
             if not failed_ids:
                 raise ValueError("В запуске нет карточек с ошибками для повтора")
             cards = (await session.scalars(select(MarketplaceCardRecord).where(
-                MarketplaceCardRecord.id.in_(failed_ids)
+                MarketplaceCardRecord.id.in_(failed_ids),
+                MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES),
             ))).all()
             available = {card.id for card in cards}
             targets = [card_id for card_id in failed_ids if card_id in available]
@@ -104,7 +112,10 @@ class RunRepository:
         if run.target_card_ids is None:
             return await self.list_collection_cards(run.requested_card_id)
         async with self._database.session() as session:
-            records = (await session.scalars(select(MarketplaceCardRecord).where(MarketplaceCardRecord.id.in_(run.target_card_ids)))).all()
+            records = (await session.scalars(select(MarketplaceCardRecord).where(
+                MarketplaceCardRecord.id.in_(run.target_card_ids),
+                MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES),
+            ))).all()
         by_id = {record.id: _card(record) for record in records}
         return [by_id[card_id] for card_id in run.target_card_ids if card_id in by_id]
 

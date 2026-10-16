@@ -74,6 +74,33 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await repository.delete_card(first.id)
             await repository.delete_card(second.id)
 
+    async def test_marketplaces_without_connectors_are_not_queued(self):
+        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        ozon = await repository.add_card("ozon", f"test-{uuid4()}")
+        wildberries = await repository.add_card("wildberries", f"test-{uuid4()}")
+        aliexpress = await repository.add_card("aliexpress", f"test-{uuid4()}")
+        try:
+            app = create_app(repository=repository)
+            app.state.repository = repository
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+                response = await client.post("/api/runs", json={"cardId": wildberries.id})
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(response.json()["error"]["code"], "connector_not_available")
+            for card in (wildberries, aliexpress):
+                with self.assertRaisesRegex(ValueError, "коннектор ещё не подключён"):
+                    await repository.create_queued_run(card.id)
+            full_run = await repository.create_queued_run()
+            self.assertIn(ozon.id, full_run.target_card_ids)
+            self.assertNotIn(wildberries.id, full_run.target_card_ids)
+            self.assertNotIn(aliexpress.id, full_run.target_card_ids)
+            await repository.finish_run(full_run.id, "completed", full_run.total_count, 0)
+            self.assertNotIn(wildberries.id, [card.id for card in await repository.list_collection_cards()])
+            self.assertNotIn(aliexpress.id, [card.id for card in await repository.list_collection_cards()])
+        finally:
+            await repository.delete_card(ozon.id)
+            await repository.delete_card(wildberries.id)
+            await repository.delete_card(aliexpress.id)
+
     async def test_worker_collects_with_async_connector_and_database(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         external_id = f"test-{uuid4()}"

@@ -455,8 +455,9 @@ export const mockApi = {
   },
 
   async startRun(cardId?: number) {
-    const selected = cardId ? cards.filter((card) => card.id === cardId) : cards
+    const selected = cardId ? cards.filter((card) => card.id === cardId) : cards.filter((card) => card.marketplace === 'ozon')
     if (!selected.length) throw new Error(cardId ? 'Карточка не найдена' : 'Нет карточек для сбора')
+    if (selected.some((card) => card.marketplace !== 'ozon')) throw new Error('Для этого маркетплейса коннектор ещё не подключён')
     const run: CollectionRun = {
       id: nextRunId++,
       status: 'queued',

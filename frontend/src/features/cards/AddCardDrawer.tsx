@@ -18,7 +18,7 @@ interface Errors {
 }
 
 export function AddCardDrawer({ open, onClose }: Props) {
-  const [marketplace] = useState<Marketplace>('ozon')
+  const [marketplace, setMarketplace] = useState<Marketplace>('ozon')
   const [externalId, setExternalId] = useState('')
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
@@ -47,7 +47,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
 
   function validate() {
     const next: Errors = {}
-    if (!/^\d+$/.test(externalId.trim())) next.externalId = 'Введите числовой ID карточки Ozon'
+    if (!/^\d+$/.test(externalId.trim())) next.externalId = `Введите числовой ID карточки ${marketplace === 'ozon' ? 'Ozon' : marketplace === 'wildberries' ? 'Wildberries' : 'AliExpress'}`
     if (url.trim()) {
       try {
         const parsed = new URL(url)
@@ -72,6 +72,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
       { marketplace, externalId: externalId.trim(), title: title.trim() || undefined, url: url.trim() || undefined, tags: parsedTags },
       {
         onSuccess: () => {
+          setMarketplace('ozon')
           setExternalId('')
           setTitle('')
           setUrl('')
@@ -99,17 +100,17 @@ export function AddCardDrawer({ open, onClose }: Props) {
           <div className="drawer__body">
             <fieldset className="marketplace-choice">
               <legend>Маркетплейс</legend>
-              <label className="marketplace-option is-selected">
-                <input type="radio" checked readOnly />
+              <label className={`marketplace-option${marketplace === 'ozon' ? ' is-selected' : ''}`}>
+                <input type="radio" name="marketplace" value="ozon" checked={marketplace === 'ozon'} onChange={() => { setMarketplace('ozon'); setErrors({}) }} />
                 <MarketplaceMark marketplace="ozon" />
               </label>
-              <label className="marketplace-option is-disabled">
-                <input type="radio" disabled />
-                <span><MarketplaceMark marketplace="wildberries" /><small>Коннектор ещё не подключён</small></span>
+              <label className={`marketplace-option${marketplace === 'wildberries' ? ' is-selected' : ''}`}>
+                <input type="radio" name="marketplace" value="wildberries" checked={marketplace === 'wildberries'} onChange={() => { setMarketplace('wildberries'); setErrors({}) }} />
+                <span><MarketplaceMark marketplace="wildberries" /><small>Сбор цен пока недоступен</small></span>
               </label>
-              <label className="marketplace-option is-disabled">
-                <input type="radio" disabled />
-                <span><MarketplaceMark marketplace="aliexpress" /><small>Коннектор ещё не подключён</small></span>
+              <label className={`marketplace-option${marketplace === 'aliexpress' ? ' is-selected' : ''}`}>
+                <input type="radio" name="marketplace" value="aliexpress" checked={marketplace === 'aliexpress'} onChange={() => { setMarketplace('aliexpress'); setErrors({}) }} />
+                <span><MarketplaceMark marketplace="aliexpress" /><small>Сбор цен пока недоступен</small></span>
               </label>
             </fieldset>
 
@@ -121,7 +122,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
                 value={externalId}
                 onChange={(event) => setExternalId(event.target.value)}
                 inputMode="numeric"
-                placeholder="1604900984"
+                placeholder={marketplace === 'ozon' ? '1604900984' : 'Введите ID товара'}
                 aria-invalid={Boolean(errors.externalId)}
                 aria-describedby={errors.externalId ? 'external-id-error' : 'external-id-hint'}
               />
@@ -133,7 +134,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
             <label className="field" htmlFor="card-title">
               <span>Название</span>
               <input id="card-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Например, смартфон Samsung" />
-              <small>Можно оставить пустым — название обновится при сборе</small>
+              <small>{marketplace === 'ozon' ? 'Можно оставить пустым — название обновится при сборе' : 'Укажите название: автоматический сбор пока недоступен'}</small>
             </label>
 
             <label className="field" htmlFor="card-url">
@@ -142,7 +143,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
                 id="card-url"
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
-                placeholder="https://www.ozon.ru/product/..."
+                placeholder={marketplace === 'ozon' ? 'https://www.ozon.ru/product/...' : marketplace === 'wildberries' ? 'https://www.wildberries.ru/catalog/...' : 'https://aliexpress.ru/item/...'}
                 aria-invalid={Boolean(errors.url)}
                 aria-describedby={errors.url ? 'url-error' : 'url-hint'}
               />

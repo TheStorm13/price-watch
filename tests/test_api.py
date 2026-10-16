@@ -80,8 +80,9 @@ class FakeRepository:
     async def add_card(self, marketplace, external_id, title=None, url=None, tags=None):
         if self.duplicate:
             raise CardAlreadyExists("Такая карточка уже добавлена")
+        self.last_added_marketplace = marketplace
         card = make_card(2, external_id)
-        return MarketplaceCard(**{**card.__dict__, "tags": tuple(tags or [])})
+        return MarketplaceCard(**{**card.__dict__, "marketplace": marketplace, "tags": tuple(tags or [])})
 
     async def delete_card(self, card_id):
         if self.card is None or self.card.id != card_id:
@@ -216,6 +217,17 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
             "marketplace": "ozon", "externalId": "125", "tags": ["Кухня", "кухня"],
         })
         self.assertEqual(duplicate.status_code, 422)
+
+    async def test_cards_can_be_added_for_marketplaces_without_connectors(self):
+        for marketplace in ("wildberries", "aliexpress"):
+            with self.subTest(marketplace=marketplace):
+                response = await self.client.post("/api/cards", json={
+                    "marketplace": marketplace, "externalId": "123456",
+                    "title": "Товар", "url": "https://example.com/product/123456",
+                })
+                self.assertEqual(response.status_code, 201)
+                self.assertEqual(response.json()["marketplace"], marketplace)
+                self.assertEqual(self.repository.last_added_marketplace, marketplace)
 
     async def test_import_rejects_invalid_history_before_writing(self):
         document = (await self.client.get("/api/cards/export")).json()

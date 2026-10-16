@@ -102,7 +102,9 @@ export function CardDetailsPage() {
         </div>
         <div className="page-actions">
           {card.url ? <a className="button button--secondary" href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a> : null}
-          <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)} disabled={collection.isStarting}>Обновить эту карточку</Button>
+          {card.marketplace === 'ozon'
+            ? <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)} disabled={collection.isStarting}>Обновить эту карточку</Button>
+            : <span className="tracking-status">Сбор цен пока недоступен: коннектор не подключён</span>}
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} isActive={card.isActive} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
         </div>
       </header>

@@ -176,7 +176,7 @@ export function CardsPage() {
 
   function actions(card: MarketplaceCard) {
     return <CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive}
-      onRefresh={() => collection.start(card.id)} refreshDisabled={collection.isStarting}
+      onRefresh={card.marketplace === 'ozon' ? () => collection.start(card.id) : undefined} refreshDisabled={collection.isStarting}
       onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })}
       onDelete={() => deleteCard.mutateAsync(card.id)} />
   }

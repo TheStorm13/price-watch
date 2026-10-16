@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
 from ...domain.models import CardOverview, MarketplaceCard
+from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
 from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
 from .repository_common import CardAlreadyExists, CardInActiveRun, _card
 
@@ -169,6 +170,7 @@ class CardRepository:
         statement = select(MarketplaceCardRecord)
         if card_id is not None:
             statement = statement.where(MarketplaceCardRecord.id == card_id)
+        statement = statement.where(MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
         statement = statement.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id)
         async with self._database.session() as session:
             records = (await session.scalars(statement)).all()
