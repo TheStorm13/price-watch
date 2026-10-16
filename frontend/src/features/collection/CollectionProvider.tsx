@@ -95,9 +95,16 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   }, [isTerminal, run])
 
   const dismiss = useCallback(() => {
+    if (runId !== null) seenLatestRun.current = Math.max(seenLatestRun.current ?? 0, runId)
     setRunId(null)
     window.localStorage.removeItem(ACTIVE_RUN_KEY)
-  }, [])
+  }, [runId])
+
+  useEffect(() => {
+    if (run?.status !== 'completed') return
+    const timeout = window.setTimeout(dismiss, 2_000)
+    return () => window.clearTimeout(timeout)
+  }, [dismiss, run?.id, run?.status])
 
   const start = useCallback((cardId?: number) => {
     startMutation.mutate(cardId)

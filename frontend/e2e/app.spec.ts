@@ -258,6 +258,7 @@ test('запуск доходит до проверки и продолжает�
   await page.getByRole('button', { name: 'Проверка пройдена' }).click()
   await expect(page.getByText('Цены обновлены')).toBeVisible({ timeout: 8_000 })
   await expect(page.getByRole('status').filter({ hasText: 'Найдено выгодных предложений: 1' })).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByText('Цены обновлены')).toBeHidden({ timeout: 3_000 })
 })
 
 test('детали карточки показывают середину диапазона и страницы истории', async ({ page }) => {
