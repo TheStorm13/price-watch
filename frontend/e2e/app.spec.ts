@@ -118,6 +118,41 @@ test('компактный desktop 1024 px не имеет горизонтал�
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })
 
+test('фильтры не сдвигаются при сбросе, а сетка занимает доступную ширину', async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 900 })
+  await page.goto('/cards')
+  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
+  const marketplace = page.getByRole('combobox', { name: 'Маркетплейс' })
+  const status = page.getByRole('combobox', { name: 'Состояние' })
+  const sort = page.getByRole('combobox', { name: 'Сортировка' })
+  const before = await Promise.all([marketplace, status, sort].map((control) => control.boundingBox()))
+  await status.selectOption('excluded')
+  await expect(page.getByRole('button', { name: 'Сбросить' })).toBeVisible()
+  const after = await Promise.all([marketplace, status, sort].map((control) => control.boundingBox()))
+  for (let index = 0; index < before.length; index += 1) {
+    expect(after[index]?.x).toBeCloseTo(before[index]?.x ?? 0, 0)
+    expect(after[index]?.y).toBeCloseTo(before[index]?.y ?? 0, 0)
+  }
+  const reset = await page.getByRole('button', { name: 'Сбросить' }).boundingBox()
+  expect(reset?.y).toBeGreaterThan((after[1]?.y ?? 0) + (after[1]?.height ?? 0))
+  await expect(status).toHaveValue('excluded')
+  await page.screenshot({ path: '/tmp/price-watch-filters.png' })
+  await page.setViewportSize({ width: 1024, height: 768 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
+  await page.screenshot({ path: '/tmp/price-watch-filters-compact.png' })
+  await page.getByRole('button', { name: 'Сбросить' }).click()
+  await page.getByRole('button', { name: 'Сетка' }).click()
+  const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
+  const width = await grid.evaluate((element) => {
+    const tiles = Array.from(element.querySelectorAll(':scope > .cards-grid__item'))
+    const right = Math.max(...tiles.map((tile) => tile.getBoundingClientRect().right))
+    return { gridRight: element.getBoundingClientRect().right, tileRight: right }
+  })
+  expect(width.gridRight - width.tileRight).toBeLessThan(2)
+  await expect(grid.locator('.cards-grid__item').filter({ hasText: 'Наушники Apple AirPods Pro 2' })).toContainText('Сейчас не выгодно')
+  await page.screenshot({ path: '/tmp/price-watch-grid-filled.png' })
+})
+
 test('карточки переключаются между списком и адаптивной сеткой', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 })
   await page.goto('/cards')
