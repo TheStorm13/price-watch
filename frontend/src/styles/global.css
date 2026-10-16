@@ -121,7 +121,7 @@ th { height: 46px; padding: 0 20px; text-align: left; color: var(--text-muted); 
 td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); color: #475467; font-size: 13px; font-variant-numeric: tabular-nums; }
 .cards-table tbody tr { cursor: pointer; transition: background-color 140ms ease; }
 .cards-table tbody tr:hover { background: var(--blue-soft); }
-.cards-table { min-width: 1050px; }
+.cards-table { min-width: 880px; }
 .cards-table th, .cards-table td { padding-inline: 10px; white-space: nowrap; }
 .cards-table th:first-child { width: 27%; }
 .cards-table td:first-child { white-space: normal; }

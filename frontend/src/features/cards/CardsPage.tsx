@@ -143,7 +143,6 @@ export function CardsPage() {
       <td className="price-cell">{formatPrice(card.averagePrice)}</td>
       <td>{saving(card)}</td>
       <td><AvailabilityStatus value={card.currentAvailability} /></td>
-      <td><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time></td>
       <td>{actions(card)}</td>
     </tr>
   }
@@ -223,10 +222,10 @@ export function CardsPage() {
         ) : (
             <table className="cards-table">
               <caption className="sr-only">Отслеживаемые карточки маркетплейсов</caption>
-              <thead><tr><th>Карточка</th><th>Маркетплейс</th><th>Цена</th><th>Минимальная</th><th>Средняя</th><th>Выгода</th><th>Наличие</th><th>Обновлено</th><th><span className="sr-only">Действия</span></th></tr></thead>
+              <thead><tr><th>Карточка</th><th>Маркетплейс</th><th>Цена</th><th>Минимальная</th><th>Средняя</th><th>Выгода</th><th>Наличие</th><th><span className="sr-only">Действия</span></th></tr></thead>
               <tbody>
                 {orderedItems.map((item) => item.kind === 'group' ? <Fragment key={`group-${item.group.id}`}>
-                  <tr className="cards-table__group"><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}</td><td className="price-cell">{formatPrice(item.group.minimumPrice)}</td><td>—</td><td>—</td><td /><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>
+                  <tr className="cards-table__group"><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}</td><td className="price-cell">{formatPrice(item.group.minimumPrice)}</td><td>—</td><td>—</td><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>
                   {!collapsedGroups.includes(item.group.id) ? (groupedCards.get(item.group.id) ?? []).map((card) => row(card, true)) : null}
                 </Fragment> : row(item.card))}
               </tbody>

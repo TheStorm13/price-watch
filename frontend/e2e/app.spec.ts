@@ -348,13 +348,15 @@ test('одиночное измерение остаётся точкой на �
 
 test('дата обновления карточки новее первой сохранённой точки цены', async ({ page }) => {
   await page.goto('/cards')
-  const row = page.getByRole('row', { name: /Наушники Apple AirPods Pro 2/ })
-  const updatedAt = await row.locator('time').getAttribute('datetime')
+  await expect(page.getByRole('columnheader', { name: 'Обновлено' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Сетка' }).click()
+  const tile = page.locator('.cards-grid__item').filter({ hasText: 'Наушники Apple AirPods Pro 2' })
+  const updatedAt = await tile.locator('time').getAttribute('datetime')
   expect(Date.now() - Date.parse(updatedAt ?? '')).toBeLessThan(30 * 60_000)
   const expectedDate = await page.evaluate((value) => new Intl.DateTimeFormat('ru-RU', {
     day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
   }).format(new Date(value)), updatedAt ?? '')
-  await row.click()
+  await tile.getByRole('link').click()
   await expect(page.getByText(`Обновлено: ${expectedDate}`)).toBeVisible()
 })
 
