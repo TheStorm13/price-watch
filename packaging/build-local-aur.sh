@@ -46,7 +46,7 @@ PY
 
 cd "$local_dir"
 makepkg --printsrcinfo > .SRCINFO
-makepkg --verifysource
+makepkg --verifysource --force
 makepkg --force
 package_name="price-watch-bin-${version}-1-x86_64.pkg.tar.zst"
 ln -sfn -- "$package_name" price-watch-bin-latest.pkg.tar.zst
