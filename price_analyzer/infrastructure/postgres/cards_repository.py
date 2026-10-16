@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
 from ...domain.models import CardOverview, MarketplaceCard
-from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord
+from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
 from .repository_common import CardAlreadyExists, CardInActiveRun, _card
 
 
@@ -49,6 +49,8 @@ class CardRepository:
         is_active: Optional[bool] = None,
         update_title: bool = False,
         update_url: bool = False,
+        group_id: Optional[int] = None,
+        update_group: bool = False,
     ) -> Optional[MarketplaceCard]:
         async with self._database.session() as session, session.begin():
             record = (await session.get(MarketplaceCardRecord, card_id))
@@ -60,6 +62,10 @@ class CardRepository:
                 record.url = url
             if is_active is not None:
                 record.is_active = is_active
+            if update_group:
+                if group_id is not None and await session.get(ProductGroupRecord, group_id) is None:
+                    raise ValueError("Группа не найдена")
+                record.group_id = group_id
             record.updated_at = datetime.now(timezone.utc)
         return _card(record)
 

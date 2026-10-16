@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .errors import ApiProblem, api_problem_handler, validation_error_handler
-from .routes import cards_router, runs_router
+from .routes import cards_router, runs_router, groups_router
 from ..infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceAnalyzerRepository
 
 
@@ -67,13 +67,14 @@ def create_app(
             "tauri://localhost",
         ],
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "X-Request-ID", "X-Price-Watch-Token"],
     )
     app.add_exception_handler(ApiProblem, api_problem_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.include_router(cards_router, prefix="/api")
     app.include_router(runs_router, prefix="/api")
+    app.include_router(groups_router, prefix="/api")
 
     @app.get("/api/health")
     async def health():

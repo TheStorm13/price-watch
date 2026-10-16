@@ -49,6 +49,31 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 response = await client.get("/api/cards")
         self.assertEqual(response.status_code, 200)
 
+    async def test_group_uses_cheapest_available_now_and_any_historical_minimum(self):
+        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        first = await repository.add_card("integration-test", f"test-{uuid4()}")
+        second = await repository.add_card("integration-test", f"test-{uuid4()}")
+        group_id = await repository.create_group("Группа бутылок", [first.id, second.id])
+        observed = datetime.now(timezone.utc)
+        try:
+            async with self.async_database.session() as session, session.begin():
+                session.add_all([
+                    PriceHistoryRecord(card_id=first.id, collection_run_id=None, price=Decimal("60.00"), availability="in_stock", observed_at=observed - timedelta(days=2), snapshot={}),
+                    PriceHistoryRecord(card_id=first.id, collection_run_id=None, price=Decimal("90.00"), availability="in_stock", observed_at=observed, snapshot={}),
+                    PriceHistoryRecord(card_id=second.id, collection_run_id=None, price=Decimal("75.00"), availability="in_stock", observed_at=observed - timedelta(days=1), snapshot={}),
+                    PriceHistoryRecord(card_id=second.id, collection_run_id=None, price=None, availability="out_of_stock", observed_at=observed, snapshot={}),
+                ])
+            group = next(group for group in await repository.list_groups() if group["id"] == group_id)
+            self.assertEqual(group["current_price"], Decimal("90.00"))
+            self.assertEqual(group["minimum_price"], Decimal("60.00"))
+            self.assertEqual(set(group["card_ids"]), {first.id, second.id})
+            self.assertEqual({card.id for card in await repository.list_collection_cards()} & {first.id, second.id}, {first.id, second.id})
+            await repository.delete_group(group_id)
+            self.assertIsNone((await repository.get_card(first.id)).card.group_id)
+        finally:
+            await repository.delete_card(first.id)
+            await repository.delete_card(second.id)
+
     async def test_worker_collects_with_async_connector_and_database(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         external_id = f"test-{uuid4()}"

@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { CreateCardInput, UpdateCardInput } from '../types/domain'
+import type { CreateCardInput, UpdateCardInput, GroupInput } from '../types/domain'
 
 export const queryKeys = {
   cards: ['cards'] as const,
+  groups: ['groups'] as const,
   card: (id: number) => ['cards', id] as const,
   history: (id: number, days: number, page: number) => ['cards', id, 'history', days, page] as const,
   chart: (id: number, days: number) => ['cards', id, 'chart', days] as const,
@@ -14,6 +15,33 @@ export const queryKeys = {
 
 export function useCards() {
   return useQuery({ queryKey: queryKeys.cards, queryFn: api.listCards })
+}
+
+export function useGroups() {
+  return useQuery({ queryKey: queryKeys.groups, queryFn: api.listGroups })
+}
+
+export function useSaveGroup() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, input }: { id?: number; input: GroupInput }) =>
+      id === undefined ? api.createGroup(input) : api.updateGroup(id, input),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: queryKeys.groups })
+      client.invalidateQueries({ queryKey: queryKeys.cards })
+    },
+  })
+}
+
+export function useDeleteGroup() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: api.deleteGroup,
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: queryKeys.groups })
+      client.invalidateQueries({ queryKey: queryKeys.cards })
+    },
+  })
 }
 
 export function useCard(cardId: number) {
@@ -46,6 +74,7 @@ export function useUpdateCard() {
     mutationFn: ({ cardId, input }: { cardId: number; input: UpdateCardInput }) => api.updateCard(cardId, input),
     onSuccess: (card) => {
       client.invalidateQueries({ queryKey: queryKeys.cards })
+      client.invalidateQueries({ queryKey: queryKeys.groups })
       client.invalidateQueries({ queryKey: queryKeys.deals })
       client.setQueryData(queryKeys.card(card.id), card)
     },
@@ -59,6 +88,7 @@ export function useDeleteCard() {
     onSuccess: (_result, cardId) => {
       client.removeQueries({ queryKey: queryKeys.card(cardId) })
       client.invalidateQueries({ queryKey: queryKeys.cards })
+      client.invalidateQueries({ queryKey: queryKeys.groups })
     },
   })
 }

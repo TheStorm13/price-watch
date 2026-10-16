@@ -29,6 +29,15 @@ class Base(DeclarativeBase):
     pass
 
 
+class ProductGroupRecord(Base):
+    __tablename__ = "product_groups"
+    __table_args__ = (CheckConstraint("btrim(name) <> ''", name="product_groups_name_not_blank"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class MarketplaceCardRecord(Base):
     __tablename__ = "marketplace_cards"
     __table_args__ = (
@@ -49,6 +58,7 @@ class MarketplaceCardRecord(Base):
     title: Mapped[str | None] = mapped_column(Text)
     url: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
+    group_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("product_groups.id", ondelete="SET NULL"), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -150,6 +150,34 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .cards-grid__actions { position: absolute; z-index: 1; top: 8px; right: 8px; border-radius: 8px; background: rgba(255, 255, 255, .94); box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }
 .cards-grid__actions .icon-button { width: 32px; height: 32px; }
 .cards-grid__actions .icon-button svg { width: 18px; height: 18px; }
+.cards-grid__group { grid-column: 1 / -1; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface-subtle); }
+.cards-grid--nested { margin-top: 12px; }
+.product-group__header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.product-group__header > span { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+.product-group__toggle { display: inline-flex; align-items: center; gap: 8px; padding: 4px 0; border: 0; color: var(--text); background: transparent; cursor: pointer; text-align: left; }
+.product-group__toggle svg { width: 18px; height: 18px; color: var(--blue); }
+.product-group__toggle strong { font-size: 14px; }
+.product-group__toggle small { color: var(--text-muted); font-size: 11px; }
+.product-group__minimum { display: block; margin-top: 4px; color: var(--text-muted); font-size: 11px; font-weight: 400; }
+.cards-table__group { background: var(--surface-subtle); }
+.cards-table__group td { padding-block: 9px; }
+.cards-table__nested td:first-child { padding-left: 42px; }
+.product-group__edit { width: 32px; height: 32px; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; }
+.product-group__edit:hover { color: var(--blue); background: var(--blue-soft); }
+.product-group__edit svg { width: 16px; height: 16px; }
+.group-dialog-layer { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 20px; background: rgba(23, 25, 28, .35); }
+.group-dialog { width: min(540px, 100%); max-height: min(720px, 90vh); overflow: auto; padding: 24px; border-radius: 12px; background: #fff; box-shadow: var(--shadow-overlay); }
+.group-dialog h2 { margin: 0 0 20px; }
+.group-dialog__hint { margin: 18px 0 10px; color: var(--text-muted); font-size: 12px; }
+.group-dialog__cards { max-height: 310px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+.group-dialog__card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.group-dialog__card:last-child { border-bottom: 0; }
+.group-dialog__card input { accent-color: var(--blue); }
+.group-dialog__card strong, .group-dialog__card small { display: block; }
+.group-dialog__card strong { font-size: 13px; }
+.group-dialog__card small { margin-top: 3px; color: var(--text-muted); font-size: 11px; }
+.group-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.group-dialog__actions .button--danger { margin-right: auto; }
 .price-cell { color: var(--text); font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .marketplace-mark { display: inline-flex; align-items: center; gap: 8px; color: #475467; }
 .marketplace-mark__logo { width: 28px; height: 28px; border-radius: 7px; display: inline-grid; place-items: center; color: #fff; font-size: 9px; font-weight: 750; line-height: 1; }

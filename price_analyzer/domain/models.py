@@ -17,6 +17,7 @@ class MarketplaceCard:
     created_at: datetime
     updated_at: datetime
     image_url: Optional[str] = None
+    group_id: Optional[int] = None
 
 
 @dataclass(frozen=True)

@@ -29,6 +29,26 @@ class FakeRepository:
         self.card = make_card()
         self.duplicate = False
         self.no_cards = False
+        self.groups = {}
+
+    async def list_groups(self):
+        return [{"id": group_id, "name": group["name"], "card_ids": group["card_ids"],
+                 "current_price": 999 if group["card_ids"] else None,
+                 "minimum_price": 800 if group["card_ids"] else None}
+                for group_id, group in self.groups.items()]
+
+    async def create_group(self, name, card_ids):
+        self.groups[1] = {"name": name, "card_ids": card_ids}
+        return 1
+
+    async def update_group(self, group_id, name, card_ids):
+        if group_id not in self.groups:
+            return False
+        self.groups[group_id] = {"name": name, "card_ids": card_ids}
+        return True
+
+    async def delete_group(self, group_id):
+        return self.groups.pop(group_id, None) is not None
 
     async def list_cards(self, include_inactive=False):
         return [CardOverview(self.card, 999, "in_stock", NOW)]
@@ -109,6 +129,18 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.json()[0]["externalId"], "1604900984")
         self.assertEqual(response.json()[0]["currentPrice"], 999.0)
         self.assertNotIn("external_id", response.json()[0])
+
+    async def test_group_contract_and_lifecycle(self):
+        created = await self.client.post("/api/groups", json={"name": "Бутылка", "cardIds": [1]})
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.json()["minimumPrice"], 800)
+        self.assertEqual(created.json()["cardIds"], [1])
+        self.assertEqual(len((await self.client.get("/api/groups")).json()), 1)
+        updated = await self.client.put("/api/groups/1", json={"name": "Термос", "cardIds": []})
+        self.assertEqual(updated.json()["name"], "Термос")
+        self.assertIsNone(updated.json()["currentPrice"])
+        self.assertEqual((await self.client.delete("/api/groups/1")).status_code, 204)
+        self.assertEqual((await self.client.get("/api/groups")).json(), [])
 
     async def test_desktop_api_requires_its_session_token(self):
         app = create_app(repository=self.repository, api_token="session-secret")

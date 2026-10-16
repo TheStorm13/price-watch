@@ -1,6 +1,52 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
+test('группа объединяет товары и сохраняет индивидуальные карточки', async ({ page }) => {
+  await page.goto('/cards')
+  await page.getByRole('button', { name: 'Создать группу' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Создать группу' })
+  await dialog.getByPlaceholder('Например, бутылка').fill('Бутылка')
+  await dialog.getByRole('checkbox').nth(0).check()
+  await dialog.getByRole('checkbox').nth(1).check()
+  await dialog.getByRole('button', { name: 'Сохранить' }).click()
+  const group = page.getByRole('row', { name: /Бутылка/ })
+  await expect(group).toContainText('24 990 ₽')
+  await expect(group).toContainText('Мин. за всё время: 24 990 ₽')
+  await page.screenshot({ path: '/tmp/price-watch-groups-list.png' })
+  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
+  await group.locator('.product-group__toggle').click()
+  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toHaveCount(0)
+  await group.locator('.product-group__toggle').click()
+  await page.getByRole('button', { name: 'Сетка' }).click()
+  await expect(page.locator('.cards-grid__group .cards-grid__item')).toHaveCount(2)
+  await page.screenshot({ path: '/tmp/price-watch-groups-grid.png' })
+  await page.getByRole('button', { name: 'Изменить группу Бутылка' }).click()
+  const edit = page.getByRole('dialog', { name: 'Изменить группу' })
+  await edit.getByPlaceholder('Например, бутылка').fill('Техника')
+  await edit.getByRole('button', { name: 'Сохранить' }).click()
+  await expect(page.locator('.cards-grid__group')).toContainText('Техника')
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Экспорт', exact: true }).click()
+  const exported = JSON.parse(await readFile(await (await downloadPromise).path(), 'utf8'))
+  expect(exported.groups).toEqual([{ name: 'Техника', cards: [
+    { marketplace: 'ozon', externalId: '1604900984' },
+    { marketplace: 'ozon', externalId: '1587342210' },
+  ] }])
+  await page.getByRole('button', { name: 'Изменить группу Техника' }).click()
+  await edit.getByRole('button', { name: 'Удалить группу' }).click()
+  await edit.getByRole('button', { name: 'Подтвердить удаление' }).click()
+  await expect(page.locator('.cards-grid__group')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Импорт', exact: true }).click()
+  const importDialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
+  await importDialog.locator('input[type="file"]').setInputFiles({
+    name: 'price-watch-export.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(exported)),
+  })
+  await expect(importDialog).toContainText('объединено: 5')
+  await importDialog.getByRole('button', { name: 'Импортировать' }).click()
+  await expect(page.locator('.cards-grid__group')).toContainText('Техника')
+})
+
 test('основной desktop-сценарий', async ({ page }) => {
   const errors: string[] = []
   page.on('console', (message) => {

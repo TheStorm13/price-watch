@@ -19,6 +19,7 @@ def _card(record: MarketplaceCardRecord) -> MarketplaceCard:
         title=record.title,
         url=record.url,
         image_url=record.image_url,
+        group_id=record.group_id,
         is_active=record.is_active,
         created_at=record.created_at,
         updated_at=record.updated_at,

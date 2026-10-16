@@ -43,6 +43,28 @@ class CardUpdate(ApiModel):
     title: str | None = None
     url: HttpUrl | None = None
     is_active: bool | None = None
+    group_id: int | None = Field(default=None, ge=1)
+
+
+class GroupInput(ApiModel):
+    name: str = Field(min_length=1, max_length=120)
+    card_ids: list[int] = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Укажите название группы")
+        return value
+
+
+class GroupResponse(ApiModel):
+    id: int
+    name: str
+    card_ids: list[int]
+    current_price: float | None
+    minimum_price: float | None
 
 
 class TransferHistoryPoint(ApiModel):
@@ -98,9 +120,28 @@ class TransferCard(ApiModel):
         return value
 
 
+class TransferGroupMember(ApiModel):
+    marketplace: str
+    external_id: str
+
+
+class TransferGroup(ApiModel):
+    name: str = Field(min_length=1, max_length=120)
+    cards: list[TransferGroupMember]
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Название группы не может быть пустым")
+        return value
+
+
 class TransferDocument(ApiModel):
     version: Literal[1]
     cards: list[TransferCard]
+    groups: list[TransferGroup] = Field(default_factory=list)
 
     @field_validator("cards")
     @classmethod
@@ -110,6 +151,20 @@ class TransferDocument(ApiModel):
             raise ValueError("В файле есть повторяющиеся карточки")
         return cards
 
+    @model_validator(mode="after")
+    def validate_groups(self):
+        available = {(card.marketplace.lower(), card.external_id) for card in self.cards}
+        assigned = set()
+        for group in self.groups:
+            for member in group.cards:
+                key = (member.marketplace.lower(), member.external_id)
+                if key not in available:
+                    raise ValueError("Группа содержит карточку вне файла")
+                if key in assigned:
+                    raise ValueError("Карточка указана в нескольких группах")
+                assigned.add(key)
+        return self
+
 
 class ImportSummary(ApiModel):
     cards_added: int = 0
@@ -117,6 +172,7 @@ class ImportSummary(ApiModel):
     observations_added: int = 0
     observations_removed: int = 0
     observations_skipped: int = 0
+    groups_added: int = 0
 
 
 class CardResponse(ApiModel):
@@ -127,6 +183,7 @@ class CardResponse(ApiModel):
     url: str | None
     image_url: str | None
     is_active: bool
+    group_id: int | None = None
     current_price: float | None
     current_availability: str | None
     last_observed_at: datetime | None
@@ -144,6 +201,7 @@ class CardResponse(ApiModel):
             url=card.url,
             image_url=card.image_url,
             is_active=card.is_active,
+            group_id=card.group_id,
             current_price=overview.current_price,
             current_availability=overview.current_availability,
             last_observed_at=overview.last_observed_at,

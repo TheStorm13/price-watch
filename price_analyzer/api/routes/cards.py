@@ -51,7 +51,10 @@ async def export_cards(repository: RepositoryDep):
 
 async def _import_cards(payload: TransferDocument, repository: RepositoryDep, preview: bool):
     try:
-        return await repository.import_cards(payload.model_dump()["cards"], preview=preview)
+        data = payload.model_dump()
+        if payload.groups:
+            return await repository.import_cards(data["cards"], groups=data["groups"], preview=preview)
+        return await repository.import_cards(data["cards"], preview=preview)
     except ConflictingObservation as exc:
         raise ApiProblem(409, "conflicting_observation", str(exc)) from exc
     except ImportDuringRun as exc:
@@ -93,14 +96,19 @@ async def get_card(card_id: int, repository: RepositoryDep):
 @router.patch("/{card_id}", response_model=CardResponse)
 async def update_card(card_id: int, payload: CardUpdate, repository: RepositoryDep):
     fields = payload.model_fields_set
-    card = await repository.update_card(
-        card_id,
-        title=payload.title,
-        url=str(payload.url) if payload.url else None,
-        is_active=payload.is_active if "is_active" in fields else None,
-        update_title="title" in fields,
-        update_url="url" in fields,
-    )
+    try:
+        card = await repository.update_card(
+            card_id,
+            title=payload.title,
+            url=str(payload.url) if payload.url else None,
+            is_active=payload.is_active if "is_active" in fields else None,
+            update_title="title" in fields,
+            update_url="url" in fields,
+            group_id=payload.group_id,
+            update_group="group_id" in fields,
+        )
+    except ValueError as exc:
+        raise ApiProblem(422, "invalid_group", str(exc), "groupId") from exc
     if card is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
     overview = await repository.get_card(card_id)

@@ -77,6 +77,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isTerminal) return
     client.invalidateQueries({ queryKey: queryKeys.cards })
+    client.invalidateQueries({ queryKey: queryKeys.groups })
     client.invalidateQueries({ queryKey: queryKeys.runs })
     client.invalidateQueries({ queryKey: queryKeys.deals })
   }, [client, isTerminal, run?.id])

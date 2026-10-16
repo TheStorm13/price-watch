@@ -9,6 +9,8 @@ import type {
   ImportSummary,
   Marketplace,
   UpdateCardInput,
+  ProductGroup,
+  GroupInput,
 } from '../types/domain'
 
 const now = Date.now()
@@ -137,6 +139,28 @@ let runs: CollectionRun[] = [
 ]
 
 let nextCardId = 6
+let groups: { id: number; name: string }[] = []
+let nextGroupId = 1
+
+function groupView(group: { id: number; name: string }): ProductGroup {
+  const members = cards.filter((card) => card.groupId === group.id)
+  const current = members.filter((card) => card.currentAvailability === 'in_stock' && card.currentPrice !== null)
+    .map((card) => card.currentPrice as number)
+  const prices = history.filter((point) => members.some((card) => card.id === point.cardId)
+    && point.availability === 'in_stock' && point.price !== null).map((point) => point.price as number)
+  return {
+    ...group, cardIds: members.map((card) => card.id),
+    currentPrice: current.length ? Math.min(...current) : null,
+    minimumPrice: prices.length ? Math.min(...prices) : null,
+  }
+}
+
+function assignGroup(groupId: number, cardIds: number[]) {
+  if (new Set(cardIds).size !== cardIds.length || cardIds.some((id) => !cards.some((card) => card.id === id))) {
+    throw new Error('Одна или несколько карточек не найдены')
+  }
+  cards = cards.map((card) => ({ ...card, groupId: cardIds.includes(card.id) ? groupId : card.groupId === groupId ? null : card.groupId }))
+}
 let nextRunId = 22
 let nextHistoryId = Math.max(0, ...history.map((point) => point.id)) + 1
 const runCreatedAt = new Map<number, number>()
@@ -150,8 +174,20 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
   if (document.version !== 1 || !Array.isArray(document.cards)) throw new Error('Неверный формат файла экспорта')
   const summary: ImportSummary = {
     cardsAdded: 0, cardsMerged: 0, observationsAdded: 0,
-    observationsRemoved: 0, observationsSkipped: 0,
+    observationsRemoved: 0, observationsSkipped: 0, groupsAdded: 0,
   }
+  const importedGroups = document.groups ?? []
+  const available = new Set(document.cards.map((card) => `${card.marketplace}:${card.externalId}`))
+  const assigned = new Set<string>()
+  for (const group of importedGroups) {
+    for (const member of group.cards) {
+      const key = `${member.marketplace}:${member.externalId}`
+      if (!available.has(key) || assigned.has(key)) throw new Error('Некорректный состав групп в файле')
+      assigned.add(key)
+    }
+  }
+  summary.groupsAdded = new Set(importedGroups.map((group) => group.name)
+    .filter((name) => !groups.some((group) => group.name === name))).size
   for (const importedCard of document.cards) {
     const current = cards.find((card) => card.marketplace === importedCard.marketplace && card.externalId === importedCard.externalId)
     const local = current ? history.filter((point) => point.cardId === current.id) : []
@@ -211,13 +247,54 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     card.currentAvailability = latest?.availability ?? null
     card.lastObservedAt = latest?.observedAt ?? null
   }
+  if (apply) {
+    for (const imported of importedGroups) {
+      let group = groups.find((item) => item.name === imported.name)
+      if (!group) {
+        group = { id: nextGroupId++, name: imported.name }
+        groups = [...groups, group]
+      }
+      for (const member of imported.cards) {
+        const card = cards.find((item) => item.marketplace === member.marketplace && item.externalId === member.externalId)
+        if (card && card.groupId == null) card.groupId = group.id
+      }
+    }
+  }
   return summary
 }
 
 export const mockApi = {
+  async listGroups() { return delay(groups.map(groupView)) },
+  async createGroup(input: GroupInput) {
+    const group = { id: nextGroupId++, name: input.name.trim() }
+    if (!group.name) throw new Error('Укажите название группы')
+    assignGroup(group.id, input.cardIds)
+    groups = [...groups, group]
+    return delay(groupView(group))
+  },
+  async updateGroup(id: number, input: GroupInput) {
+    const group = groups.find((item) => item.id === id)
+    if (!group) throw new Error('Группа не найдена')
+    const name = input.name.trim()
+    if (!name) throw new Error('Укажите название группы')
+    assignGroup(id, input.cardIds)
+    group.name = name
+    return delay(groupView(group))
+  },
+  async deleteGroup(id: number) {
+    if (!groups.some((item) => item.id === id)) throw new Error('Группа не найдена')
+    groups = groups.filter((item) => item.id !== id)
+    cards = cards.map((card) => card.groupId === id ? { ...card, groupId: null } : card)
+    return delay(undefined)
+  },
   async exportCards(): Promise<TransferDocument> {
     return delay({
       version: 1,
+      groups: groups.map((group) => ({
+        name: group.name,
+        cards: cards.filter((card) => card.groupId === group.id)
+          .map((card) => ({ marketplace: card.marketplace, externalId: card.externalId })),
+      })),
       cards: cards.map((card) => ({
         marketplace: card.marketplace,
         externalId: card.externalId,

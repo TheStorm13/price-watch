@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select, text, tuple_
 
 from ...domain.history_merge import HistoryEvent, merge_history
-from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord
+from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
 from .repository_common import ImportDuringRun, _RUN_CREATION_LOCK
 
 
@@ -20,6 +20,7 @@ class TransferRepository:
             histories = (await session.scalars(select(PriceHistoryRecord).order_by(
                 PriceHistoryRecord.card_id, PriceHistoryRecord.observed_at, PriceHistoryRecord.id,
             ))).all()
+            groups = (await session.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
             result = [{
                 "marketplace": card.marketplace,
                 "external_id": card.external_id,
@@ -37,13 +38,18 @@ class TransferRepository:
                     "availability": point.availability,
                     "observed_at": point.observed_at,
                 })
-        return {"version": 1, "cards": result}
+            group_data = [{
+                "name": group.name,
+                "cards": [{"marketplace": card.marketplace, "external_id": card.external_id}
+                          for card in cards if card.group_id == group.id],
+            } for group in groups]
+        return {"version": 1, "cards": result, "groups": group_data}
 
-    async def import_cards(self, cards: list[dict], *, preview: bool = False) -> dict:
+    async def import_cards(self, cards: list[dict], *, groups: list[dict] | None = None, preview: bool = False) -> dict:
         """Merge cards and histories atomically; preview computes the same result."""
         summary = {
             "cards_added": 0, "cards_merged": 0, "observations_added": 0,
-            "observations_removed": 0, "observations_skipped": 0,
+            "observations_removed": 0, "observations_skipped": 0, "groups_added": 0,
         }
         keys = [(card["marketplace"].lower(), card["external_id"]) for card in cards]
         async with self._database.session() as session, session.begin():
@@ -57,6 +63,9 @@ class TransferRepository:
                 tuple_(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.external_id).in_(keys)
             ).with_for_update())).all() if keys else []
             by_key = {(card.marketplace, card.external_id): card for card in existing}
+            existing_groups = (await session.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
+            groups_by_name = {group.name: group for group in existing_groups}
+            summary["groups_added"] = len({group["name"] for group in (groups or [])} - set(groups_by_name))
             histories: dict[int, list[PriceHistoryRecord]] = {card.id: [] for card in existing}
             if histories:
                 rows = (await session.scalars(select(PriceHistoryRecord).where(
@@ -98,6 +107,7 @@ class TransferRepository:
                     )
                     session.add(card)
                     await session.flush()
+                    by_key[key] = card
                 else:
                     card.created_at = min(card.created_at, item["created_at"])
                     if not card.image_url:
@@ -113,4 +123,16 @@ class TransferRepository:
                         availability=event.availability, observed_at=event.observed_at,
                         snapshot={},
                     ))
+            if not preview:
+                for imported_group in groups or []:
+                    group = groups_by_name.get(imported_group["name"])
+                    if group is None:
+                        group = ProductGroupRecord(name=imported_group["name"])
+                        session.add(group)
+                        await session.flush()
+                        groups_by_name[group.name] = group
+                    for member in imported_group["cards"]:
+                        card = by_key[(member["marketplace"].lower(), member["external_id"])]
+                        if card.group_id is None:
+                            card.group_id = group.id
         return summary

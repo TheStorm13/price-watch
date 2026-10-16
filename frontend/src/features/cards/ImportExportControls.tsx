@@ -8,7 +8,7 @@ import type { ImportSummary, TransferDocument } from '../../types/domain'
 
 function summaryText(summary: ImportSummary) {
   return `Добавлено карточек: ${summary.cardsAdded}, объединено: ${summary.cardsMerged}, ` +
-    `добавлено записей истории: ${summary.observationsAdded}.`
+    `добавлено записей истории: ${summary.observationsAdded}, новых групп: ${summary.groupsAdded ?? 0}.`
 }
 
 interface Props {
@@ -46,7 +46,7 @@ export function ImportExportControls({ onStatus }: Props) {
         link.remove()
         window.setTimeout(() => URL.revokeObjectURL(url), 1000)
       }
-      onStatus(`Экспортировано карточек: ${data.cards.length}.`, 'success')
+      onStatus(`Экспортировано карточек: ${data.cards.length}, групп: ${data.groups?.length ?? 0}.`, 'success')
     } catch (caught) {
       onStatus(caught instanceof Error ? caught.message : 'Не удалось экспортировать данные', 'error')
     } finally {
@@ -82,6 +82,7 @@ export function ImportExportControls({ onStatus }: Props) {
       const result = await api.importCards(document)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['cards'] }),
+        queryClient.invalidateQueries({ queryKey: ['groups'] }),
         queryClient.invalidateQueries({ queryKey: ['deals'] }),
       ])
       setOpen(false)

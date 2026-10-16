@@ -10,6 +10,8 @@ import type {
   TransferDocument,
   ImportSummary,
   UpdateCardInput,
+  ProductGroup,
+  GroupInput,
 } from '../types/domain'
 
 export class ApiError extends Error {
@@ -62,6 +64,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  listGroups: (): Promise<ProductGroup[]> =>
+    isDemoMode ? mockApi.listGroups() : request('/api/groups'),
+  createGroup: (input: GroupInput): Promise<ProductGroup> =>
+    isDemoMode ? mockApi.createGroup(input) : request('/api/groups', { method: 'POST', body: JSON.stringify(input) }),
+  updateGroup: (id: number, input: GroupInput): Promise<ProductGroup> =>
+    isDemoMode ? mockApi.updateGroup(id, input) : request(`/api/groups/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
+  deleteGroup: (id: number): Promise<void> =>
+    isDemoMode ? mockApi.deleteGroup(id) : request(`/api/groups/${id}`, { method: 'DELETE' }),
   exportCards: (): Promise<TransferDocument> =>
     isDemoMode ? mockApi.exportCards() : request('/api/cards/export'),
 
