@@ -128,7 +128,7 @@ services:
     image: busybox:1.37
     command: ["tail", "-n", "100", "-f", "/logs/desktop-worker.log"]
     volumes:
-      - ./output:/logs:ro
+      - ${PRICE_WATCH_STATE_DIR:-./output}:/logs:ro
     logging: *default-logging
     restart: unless-stopped
 

@@ -8,14 +8,15 @@
 docker compose ps -a
 curl -fsS http://127.0.0.1:8000/api/health
 docker compose logs --tail=100 api migrate
-tail -100 output/desktop-worker.log
+tail -100 "${XDG_STATE_HOME:-$HOME/.local/state}/price-watch/desktop-worker.log"
 ```
 
 Ответ API `{"status":"ok"}` подтверждает, что HTTP сервис доступен. При
 desktop запуске контейнерные `frontend` и `worker` должны быть остановлены:
 вместо них работают Tauri и локальный Python worker. Лог последнего передаётся
 в Dozzle через сервис `desktop-worker-logs` и доступен в файле
-`output/desktop-worker.log`.
+`$XDG_STATE_HOME/price-watch/desktop-worker.log` (по умолчанию
+`~/.local/state/price-watch/desktop-worker.log`).
 
 ## Автоматические проверки
 
@@ -62,7 +63,7 @@ Playwright E2E тесты сами запускают Vite на `127.0.0.1:5175`
 | Нет Chrome | Проверить `google-chrome-stable --version`; desktop требует системный Google Chrome |
 | Скрытый дисплей Chrome недоступен | Проверить `docker compose ps desktop-display` и `docker compose logs desktop-display`. Если Xvfb сообщает `Server is already active for display 98`, пересоздать только этот контейнер: `docker compose up -d --force-recreate desktop-display`, затем нажать «Повторить» в приложении. В Compose для Xvfb используется временный `/tmp`, чтобы lock-файл не сохранялся после сбоя. |
 | Ozon запросил проверку при фоновом desktop сборе | После завершения запуска открыть Chrome кнопкой, пройти проверку Ozon и повторить сбор |
-| Карточка Ozon не обновилась | Проверить `output/desktop-worker.log`; исчезнувший товар может вести на страницу предложений |
+| Карточка Ozon не обновилась | Проверить лог worker в `$XDG_STATE_HOME/price-watch/desktop-worker.log`; исчезнувший товар может вести на страницу предложений |
 | Код API изменился, а ответ старый | Пересобрать и перезапустить контейнеры API и миграций по инструкции запуска |
 | Удаление карточки в Tauri не проходит | Проверить, что API пересобран с миграцией и разрешённым методом `DELETE` в CORS |
 

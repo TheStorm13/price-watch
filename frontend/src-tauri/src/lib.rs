@@ -16,6 +16,8 @@ use tauri_plugin_dialog::DialogExt;
 
 struct RuntimeState {
     project_root: PathBuf,
+    profile_dir: PathBuf,
+    state_dir: PathBuf,
     worker: Mutex<Option<WorkerProcess>>,
     manual_browser: Mutex<Option<Child>>,
     startup: Mutex<()>,
@@ -38,6 +40,7 @@ impl RuntimeState {
             return Ok(());
         }
 
+        self.prepare_user_paths()?;
         dotenvy::from_path(self.project_root.join(".env")).ok();
         self.prepare_worker_log()?;
         self.stop_container_browser_services()?;
@@ -78,6 +81,7 @@ impl RuntimeState {
         let status = Command::new("docker")
             .args(arguments)
             .current_dir(&self.project_root)
+            .env("PRICE_WATCH_STATE_DIR", &self.state_dir)
             .status()
             .map_err(|error| format!("Не удалось поднять backend: {error}"))?;
         if status.success() {
@@ -98,7 +102,7 @@ impl RuntimeState {
             ));
         }
 
-        let log_path = self.project_root.join("output/desktop-worker.log");
+        let log_path = self.state_dir.join("desktop-worker.log");
         let stdout = OpenOptions::new()
             .create(true)
             .append(true)
@@ -112,6 +116,7 @@ impl RuntimeState {
         });
 
         let project_root = self.project_root.clone();
+        let profile_dir = self.profile_dir.clone();
         let running = Arc::new(AtomicBool::new(false));
         let supervisor_running = Arc::clone(&running);
         let (startup_tx, startup_rx) = mpsc::sync_channel(1);
@@ -120,11 +125,9 @@ impl RuntimeState {
         let supervisor = thread::spawn(move || {
             let mut command = Command::new(python);
             command
+                .args(["main.py", "worker", "--profile-dir"])
+                .arg(profile_dir)
                 .args([
-                    "main.py",
-                    "worker",
-                    "--profile-dir",
-                    ".playwright-profile",
                     "--browser-channel",
                     "chrome",
                     "--chrome-platform",
@@ -189,9 +192,9 @@ impl RuntimeState {
     }
 
     fn prepare_worker_log(&self) -> Result<(), String> {
-        fs::create_dir_all(self.project_root.join("output"))
+        fs::create_dir_all(&self.state_dir)
             .map_err(|error| format!("Не удалось создать каталог логов: {error}"))?;
-        let path = self.project_root.join("output/desktop-worker.log");
+        let path = self.state_dir.join("desktop-worker.log");
         OpenOptions::new()
             .create(true)
             .append(true)
@@ -224,12 +227,13 @@ impl RuntimeState {
     }
 
     fn open_store_browser(&self) -> Result<(), String> {
+        self.prepare_user_paths()?;
         let store_urls = [
             "https://www.ozon.ru/",
             "https://www.wildberries.ru/",
             "https://aliexpress.ru/",
         ];
-        let profile = self.project_root.join(".playwright-profile");
+        let profile = self.profile_dir.clone();
         fs::create_dir_all(&profile)
             .map_err(|error| format!("Не удалось создать профиль Chrome: {error}"))?;
         let mut browser = self
@@ -343,11 +347,83 @@ impl RuntimeState {
     }
 
     fn prepare_collection(&self) -> Result<(), String> {
+        self.prepare_user_paths()?;
         self.stop_manual_browser();
-        if active_debug_port(&self.project_root.join(".playwright-profile")).is_some() {
+        if active_debug_port(&self.profile_dir).is_some() {
             return Err("Не удалось закрыть Chrome приложения перед сбором цен".to_string());
         }
         Ok(())
+    }
+
+    fn prepare_user_paths(&self) -> Result<(), String> {
+        migrate_profile(
+            &self.project_root.join(".playwright-profile"),
+            &self.profile_dir,
+        )?;
+        fs::create_dir_all(&self.profile_dir)
+            .map_err(|error| format!("Не удалось создать профиль Chrome: {error}"))?;
+        fs::create_dir_all(&self.state_dir)
+            .map_err(|error| format!("Не удалось создать каталог состояния: {error}"))
+    }
+}
+
+fn migrate_profile(old: &Path, new: &Path) -> Result<(), String> {
+    if !old.exists() {
+        return Ok(());
+    }
+    if new.exists() {
+        return Err(format!(
+            "Найдены два профиля Chrome: {} и {}. Выберите нужный профиль и удалите или перенесите второй",
+            old.display(),
+            new.display()
+        ));
+    }
+    if active_debug_port(old).is_some() {
+        return Err(
+            "Закройте Chrome приложения для переноса профиля и повторите запуск".to_string(),
+        );
+    }
+    if let Some(parent) = new.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("Не удалось создать каталог профиля Chrome: {error}"))?;
+    }
+    fs::rename(old, new).map_err(|error| {
+        format!(
+            "Не удалось перенести профиль Chrome из {} в {}: {error}",
+            old.display(),
+            new.display()
+        )
+    })
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::migrate_profile;
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    #[test]
+    fn moves_existing_browser_profile_without_losing_data() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "price-watch-profile-test-{}-{unique}",
+            std::process::id()
+        ));
+        let old = root.join("project/.playwright-profile");
+        let new = root.join("data/price-watch/chrome-profile");
+        fs::create_dir_all(&old).unwrap();
+        fs::write(old.join("Cookies"), b"saved session").unwrap();
+
+        migrate_profile(&old, &new).unwrap();
+
+        assert!(!old.exists());
+        assert_eq!(fs::read(new.join("Cookies")).unwrap(), b"saved session");
+        fs::remove_dir_all(root).unwrap();
     }
 }
 
@@ -390,6 +466,20 @@ fn project_root() -> PathBuf {
     env::var_os("PRICE_ANALYZER_PROJECT_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+}
+
+fn user_base_dir(variable: &str, fallback: &str) -> Result<PathBuf, String> {
+    if let Some(value) = env::var_os(variable) {
+        let path = PathBuf::from(value);
+        if path.is_absolute() {
+            return Ok(path);
+        }
+    }
+    let home = env::var_os("HOME")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .ok_or("Не найден домашний каталог пользователя")?;
+    Ok(home.join(fallback))
 }
 
 #[tauri::command]
@@ -445,6 +535,12 @@ async fn save_export_file(
 pub fn run() {
     let runtime = Arc::new(RuntimeState {
         project_root: project_root(),
+        profile_dir: user_base_dir("XDG_DATA_HOME", ".local/share")
+            .expect("Не удалось определить каталог данных пользователя")
+            .join("price-watch/chrome-profile"),
+        state_dir: user_base_dir("XDG_STATE_HOME", ".local/state")
+            .expect("Не удалось определить каталог состояния пользователя")
+            .join("price-watch"),
         worker: Mutex::new(None),
         manual_browser: Mutex::new(None),
         startup: Mutex::new(()),

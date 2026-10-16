@@ -25,6 +25,11 @@ npm --prefix frontend run desktop:build
 Скрипт сборки вызывает `tauri build --no-bundle`, а в конфигурации Tauri
 `bundle.active` равно `false`. AppImage не нужен и не создаётся.
 
+Профиль Chrome и лог локального worker хранятся в пользовательских каталогах
+XDG, а не в репозитории. При первом запуске существующий `.playwright-profile`
+переносится автоматически; перед запуском закройте Chrome с этим профилем.
+Пути указаны в [нюансах desktop](CURRENT_NUANCES.md#desktop-зависит-от-каталога-проекта).
+
 Во время запуска Tauri читает корневой `.env`, останавливает контейнерные
 `worker` и `frontend`, поднимает через Compose `db`, `migrate`, `api`, `logs` и
 `desktop-worker-logs` и `desktop-display`, дожидается API на `127.0.0.1:8000`, затем запускает
@@ -54,7 +59,8 @@ npm --prefix frontend run desktop
 изменения Python API или миграций сначала обновите контейнеры:
 
 ```bash
-docker compose up --build -d db migrate api logs desktop-worker-logs desktop-display
+PRICE_WATCH_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/price-watch" \
+  docker compose up --build -d db migrate api logs desktop-worker-logs desktop-display
 ```
 
 После этого запустите `./price-watch` повторно. Изменения Python worker
