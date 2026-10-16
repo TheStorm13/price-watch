@@ -58,9 +58,10 @@ export function CardsPage() {
         && matchesStatus(card, status)
     })
     return result.toSorted((left, right) => {
-      if (sort === 'price-asc') return (left.currentPrice ?? Infinity) - (right.currentPrice ?? Infinity)
-      if (sort === 'price-desc') return (right.currentPrice ?? -Infinity) - (left.currentPrice ?? -Infinity)
-      if (sort === 'updated-desc') return (right.lastObservedAt ? Date.parse(right.updatedAt) : 0) - (left.lastObservedAt ? Date.parse(left.updatedAt) : 0)
+      if (left.isActive !== right.isActive) return left.isActive ? -1 : 1
+      if (sort === 'price-asc') return (left.currentPrice ?? Infinity) - (right.currentPrice ?? Infinity) || left.id - right.id
+      if (sort === 'price-desc') return (right.currentPrice ?? -Infinity) - (left.currentPrice ?? -Infinity) || left.id - right.id
+      if (sort === 'updated-desc') return (right.lastObservedAt ? Date.parse(right.updatedAt) : 0) - (left.lastObservedAt ? Date.parse(left.updatedAt) : 0) || left.id - right.id
       return left.id - right.id
     })
   }, [cardsQuery.data, deferredQuery, marketplace, sort, status])

@@ -141,6 +141,26 @@ test('меню карточки управляет показом в выгод�
   await expect(row.getByText('Не показывается в выгодных предложениях')).toBeHidden()
 })
 
+test('исключённые карточки остаются в конце при любой сортировке и в сетке', async ({ page }) => {
+  await page.goto('/cards')
+  const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
+  await row.getByRole('button', { name: /Действия с карточкой/ }).click()
+  await page.getByRole('menuitem', { name: 'Исключить из выгодных предложений' }).click()
+
+  const rows = page.locator('.cards-table tbody tr')
+  for (const sort of ['default', 'price-asc', 'price-desc', 'updated-desc']) {
+    await page.getByLabel('Сортировка').selectOption(sort)
+    await expect(rows.nth(2)).not.toContainText('Не показывается в выгодных предложениях')
+    await expect(rows.nth(3)).toContainText('Не показывается в выгодных предложениях')
+    await expect(rows.nth(4)).toContainText('Не показывается в выгодных предложениях')
+  }
+
+  await page.getByRole('button', { name: 'Сетка' }).click()
+  const tiles = page.locator('.cards-grid__item')
+  await expect(tiles.nth(3)).toContainText('Не показывается в выгодных предложениях')
+  await expect(tiles.nth(4)).toContainText('Не показывается в выгодных предложениях')
+})
+
 test('исключённая карточка обновляется, но не попадает в выгодные предложения', async ({ page }) => {
   await page.goto('/deals')
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
