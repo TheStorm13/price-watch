@@ -52,6 +52,8 @@ npm --prefix frontend run desktop:build
 
 Сборка создаёт исполняемый файл Tauri `frontend/src-tauri/target/release/price-watch-desktop`.
 Команда использует `--no-bundle`: AppImage и другие установочные пакеты не собираются.
+Готовый Linux-архив и рецепт пакета `price-watch-bin` описаны в
+[руководстве по упаковке](docs/guide/PACKAGING.md).
 `./price-watch` запускает именно этот файл. Для desktop worker требуется установленный
 Google Chrome; скрытый дисплей Xvfb запускается локально.
 Chromium из Docker применяется только в web-режиме.

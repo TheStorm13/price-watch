@@ -7,8 +7,8 @@
 `./price-watch` запускает уже собранный Tauri бинарник из дерева репозитория.
 Сам бинарник ищет корневой `.env`, `.venv/bin/python`, `main.py` и Docker Compose
 рядом с исходниками. Путь можно переопределить переменной
-`PRICE_ANALYZER_PROJECT_DIR`. Это запуск из проекта, а не переносимый
-установочный пакет. AppImage не собирается.
+`PRICE_ANALYZER_PROJECT_DIR`. При установке `price-watch-bin` код размещается
+в `/usr/lib/price-watch`; AppImage не собирается.
 Нативный режим без Docker описан [отдельно](NATIVE_DESKTOP.md) и используется
 по умолчанию. Режим Compose включается через `PRICE_WATCH_RUNTIME=compose`.
 
