@@ -3,11 +3,12 @@
 [К содержанию](README.md)
 
 Команды ниже выполняются из корня репозитория, если не указано иное. Основной
-режим — Tauri на Linux с Docker Compose. Нужны запущенный Docker с Compose, Python, Node.js/npm,
-Rust и установленный системный Google Chrome. Кнопка «Открыть Chrome» запускает
+режим — Tauri на Linux с локальными PostgreSQL, API, Xvfb и worker. Нужны
+системные `postgresql`, `xorg-server-xvfb`, `xorg-xauth`, Google Chrome,
+Python, Node.js/npm и Rust. Кнопка «Открыть Chrome» запускает
 видимый браузер с профилем приложения. При ручном обновлении Tauri закрывает
 его, а worker использует тот же профиль на скрытом дисплее.
-Локальный запуск без Docker и перенос базы описаны в [нативном режиме](NATIVE_DESKTOP.md).
+Перенос базы из Docker описан в [нативном режиме](NATIVE_DESKTOP.md).
 
 ## Первый desktop запуск
 
@@ -31,7 +32,7 @@ XDG, а не в репозитории. При первом запуске су�
 переносится автоматически; перед запуском закройте Chrome с этим профилем.
 Пути указаны в [нюансах desktop](CURRENT_NUANCES.md#desktop-зависит-от-каталога-проекта).
 
-Во время запуска Tauri читает корневой `.env`, останавливает контейнерные
+В режиме Compose (`PRICE_WATCH_RUNTIME=compose ./price-watch`) Tauri читает корневой `.env`, останавливает контейнерные
 `worker` и `frontend`, поднимает через Compose `db`, `migrate`, `api`, `logs` и
 `desktop-worker-logs` и `desktop-display`, дожидается API на `127.0.0.1:8000`, затем запускает
 `.venv/bin/python main.py worker` на хосте. Окно приложения показывает ошибку и

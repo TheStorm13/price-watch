@@ -9,9 +9,8 @@
 рядом с исходниками. Путь можно переопределить переменной
 `PRICE_ANALYZER_PROJECT_DIR`. Это запуск из проекта, а не переносимый
 установочный пакет. AppImage не собирается.
-Нативный режим без Docker описан [отдельно](NATIVE_DESKTOP.md). По умолчанию
-при запуске из репозитория остаётся режим Compose; его можно сменить через
-пользовательский `config.env`.
+Нативный режим без Docker описан [отдельно](NATIVE_DESKTOP.md) и используется
+по умолчанию. Режим Compose включается через `PRICE_WATCH_RUNTIME=compose`.
 
 Desktop хранит профиль Chrome в `$XDG_DATA_HOME/price-watch/chrome-profile`
 (по умолчанию `~/.local/share/price-watch/chrome-profile`), а лог локального

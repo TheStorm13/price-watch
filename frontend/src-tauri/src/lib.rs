@@ -526,9 +526,8 @@ impl RuntimeState {
 
     fn use_native_runtime(&self) -> bool {
         match env::var("PRICE_WATCH_RUNTIME").as_deref() {
-            Ok("native") => true,
             Ok("compose") => false,
-            _ => self.project_root == Path::new("/usr/lib/price-watch"),
+            _ => true,
         }
     }
 }

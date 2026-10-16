@@ -32,15 +32,16 @@ Web-интерфейс находится в каталоге `frontend` и по
 ./price-watch
 ```
 
-Это единственная команда: приложение само поднимает через Docker Compose
-PostgreSQL, миграции, API и Dozzle, после чего запускает локальный Playwright
-worker. При старте приложения Chrome не открывается. Кнопка «Открыть Chrome»
-запускает видимый браузер с профилем `.playwright-profile` и вкладками Ozon,
+По умолчанию приложение запускает локальные PostgreSQL, API, Xvfb и Playwright
+worker без Docker. Для этого нужны системные `postgresql`, `xorg-server-xvfb`,
+`xorg-xauth` и Google Chrome; подробности — в [инструкции](docs/guide/NATIVE_DESKTOP.md).
+При старте приложения Chrome не открывается. Кнопка «Открыть Chrome»
+запускает видимый браузер с профилем приложения и вкладками Ozon,
 Wildberries и AliExpress для входа на сайты. При ручном обновлении приложение
 закрывает этот браузер, а worker запускает Chrome с тем же профилем на скрытом
 дисплее. Перед автоматическим сбором worker также закрывает видимый Chrome
-приложения. При закрытии Tauri локальный worker и открытый через приложение Chrome
-завершаются; PostgreSQL и API остаются запущены для быстрого следующего старта.
+приложения. При закрытии Tauri локальные службы и открытый через приложение Chrome
+завершаются.
 
 Пересобрать desktop-бинарник после изменения исходников:
 
@@ -52,7 +53,7 @@ npm --prefix frontend run desktop:build
 Сборка создаёт исполняемый файл Tauri `frontend/src-tauri/target/release/price-watch-desktop`.
 Команда использует `--no-bundle`: AppImage и другие установочные пакеты не собираются.
 `./price-watch` запускает именно этот файл. Для desktop worker требуется установленный
-Google Chrome; скрытый дисплей Xvfb запускается в отдельном контейнере Docker.
+Google Chrome; скрытый дисплей Xvfb запускается локально.
 Chromium из Docker применяется только в web-режиме.
 
 Для разработки с hot reload используется:
@@ -61,9 +62,8 @@ Chromium из Docker применяется только в web-режиме.
 npm --prefix frontend run desktop
 ```
 
-Логи доступны в Dozzle по адресу <http://127.0.0.1:8080>. Локальный worker
-передаёт туда вывод через сервис `desktop-worker-logs`; исходный файл находится
-в `output/desktop-worker.log`.
+Логи локальных служб находятся в `$XDG_STATE_HOME/price-watch/` (по умолчанию
+`~/.local/state/price-watch/`).
 
 ### Web-запуск через Docker Compose
 
