@@ -1,0 +1,43 @@
+# Maintainer: TheStorm13
+pkgname=price-watch-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Desktop application for tracking marketplace prices'
+arch=('x86_64')
+url='https://github.com/TheStorm13/price-watch'
+license=('unknown')
+depends=(
+  'google-chrome'
+  'gtk3'
+  'postgresql'
+  'python-alembic'
+  'python-fastapi'
+  'python-httpx'
+  'python-playwright'
+  'python-psycopg'
+  'python-pydantic'
+  'python-sqlalchemy'
+  'uvicorn'
+  'webkit2gtk-4.1'
+  'xorg-server-xvfb'
+  'xorg-xauth'
+)
+provides=('price-watch')
+conflicts=('price-watch')
+
+_archive="price-watch-${pkgver}-linux-x86_64.tar.gz"
+source=("${_archive}::${url}/releases/download/v${pkgver}/${_archive}")
+sha256sums=('793b16ba3c95b7f4f2ad5798c43dca5ff5cf6698363dd9806731157a8f48a4a1')
+
+package() {
+  local appdir="${srcdir}/price-watch-${pkgver}-linux-x86_64"
+  install -Dm755 "${appdir}/price-watch-desktop" "${pkgdir}/usr/bin/price-watch"
+  install -Dm644 "${appdir}/price-watch.desktop" \
+    "${pkgdir}/usr/share/applications/price-watch.desktop"
+  install -Dm644 "${appdir}/price-watch.png" \
+    "${pkgdir}/usr/share/icons/hicolor/512x512/apps/price-watch.png"
+  install -d "${pkgdir}/usr/lib/price-watch"
+  cp -a "${appdir}/main.py" "${appdir}/alembic.ini" "${appdir}/requirements.txt" \
+    "${appdir}/marketplace_connector" "${appdir}/ozon_article_json" \
+    "${appdir}/price_analyzer" "${pkgdir}/usr/lib/price-watch/"
+}

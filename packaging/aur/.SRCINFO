@@ -1,0 +1,27 @@
+pkgbase = price-watch-bin
+	pkgdesc = Desktop application for tracking marketplace prices
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/TheStorm13/price-watch
+	arch = x86_64
+	license = unknown
+	depends = google-chrome
+	depends = gtk3
+	depends = postgresql
+	depends = python-alembic
+	depends = python-fastapi
+	depends = python-httpx
+	depends = python-playwright
+	depends = python-psycopg
+	depends = python-pydantic
+	depends = python-sqlalchemy
+	depends = uvicorn
+	depends = webkit2gtk-4.1
+	depends = xorg-server-xvfb
+	depends = xorg-xauth
+	provides = price-watch
+	conflicts = price-watch
+	source = price-watch-0.1.0-linux-x86_64.tar.gz::https://github.com/TheStorm13/price-watch/releases/download/v0.1.0/price-watch-0.1.0-linux-x86_64.tar.gz
+	sha256sums = 793b16ba3c95b7f4f2ad5798c43dca5ff5cf6698363dd9806731157a8f48a4a1
+
+pkgname = price-watch-bin
