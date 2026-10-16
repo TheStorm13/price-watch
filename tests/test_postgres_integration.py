@@ -137,7 +137,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(item["history"]), 4)
             self.assertEqual(set(item["history"][0]), {"price", "availability", "observed_at"})
             self.assertEqual(set(item), {"marketplace", "external_id", "title", "url", "image_url",
-                                         "is_active", "created_at", "history"})
+                                         "tags", "is_active", "created_at", "history"})
             item["title"] = "Название из файла"
             item["image_url"] = "https://img.test/import.jpg"
             item["created_at"] = start - timedelta(days=20)
@@ -176,6 +176,65 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             for overview in await repository.list_cards(include_inactive=True):
                 if overview.card.external_id in {external_id, new_external_id}:
                     await repository.delete_card(overview.card.id)
+
+    async def test_export_import_restores_groups_membership_and_tags(self):
+        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        first_external_id = f"test-{uuid4()}"
+        second_external_id = f"test-{uuid4()}"
+        group_name = f"Бутылки {uuid4()}"
+        first = await repository.add_card("integration-test", first_external_id, tags=["кухня", "подарок"])
+        second = await repository.add_card("integration-test", second_external_id, tags=["спорт"])
+        group_id = None
+        restored_group_id = None
+        restored_card_ids = []
+        try:
+            group_id = await repository.create_group(group_name, [first.id, second.id], tags=["бутылки"])
+            exported = await repository.export_cards()
+            members = {first_external_id, second_external_id}
+            cards = [item for item in exported["cards"] if item["external_id"] in members]
+            groups = [item for item in exported["groups"] if item["name"] == group_name]
+            self.assertEqual({item["external_id"]: item["tags"] for item in cards}, {
+                first_external_id: ["кухня", "подарок"], second_external_id: ["спорт"],
+            })
+            self.assertEqual(groups[0]["tags"], ["бутылки"])
+            self.assertEqual({item["external_id"] for item in groups[0]["cards"]}, members)
+
+            await repository.delete_card(first.id)
+            await repository.delete_card(second.id)
+            await repository.delete_group(group_id)
+            group_id = None
+
+            preview = await repository.import_cards(cards, groups=groups, preview=True)
+            self.assertEqual(preview["cards_added"], 2)
+            self.assertEqual(preview["groups_added"], 1)
+            self.assertEqual(await repository.import_cards(cards, groups=groups), preview)
+
+            restored = [overview.card for overview in await repository.list_cards(include_inactive=True)
+                        if overview.card.external_id in members]
+            restored_card_ids = [card.id for card in restored]
+            restored_group = next(group for group in await repository.list_groups() if group["name"] == group_name)
+            restored_group_id = restored_group["id"]
+            self.assertEqual(restored_group["tags"], ["бутылки"])
+            self.assertEqual(set(restored_group["card_ids"]), set(restored_card_ids))
+            self.assertEqual({card.external_id: list(card.tags) for card in restored}, {
+                first_external_id: ["кухня", "подарок"], second_external_id: ["спорт"],
+            })
+            second_export = next(item for item in cards if item["external_id"] == second_external_id)
+            second_export["tags"] = ["спорт", "набор"]
+            groups[0]["tags"] = ["бутылки", "подарок"]
+            self.assertEqual((await repository.import_cards(cards, groups=groups))["groups_added"], 0)
+            restored_second = (await repository.get_card(next(card.id for card in restored
+                                                                if card.external_id == second_external_id))).card
+            self.assertEqual(list(restored_second.tags), ["спорт", "набор"])
+            restored_group = next(group for group in await repository.list_groups() if group["name"] == group_name)
+            self.assertEqual(restored_group["tags"], ["бутылки", "подарок"])
+            self.assertEqual(len([group for group in await repository.list_groups()
+                                  if group["name"] == group_name]), 1)
+        finally:
+            for card_id in {first.id, second.id, *restored_card_ids}:
+                await repository.delete_card(card_id)
+            for current_group_id in {group_id, restored_group_id} - {None}:
+                await repository.delete_group(current_group_id)
 
     async def test_card_collection_and_history_roundtrip(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)

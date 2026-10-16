@@ -60,17 +60,22 @@ class FakeRepository:
     async def export_cards(self):
         return {"version": 1, "cards": [{
             "marketplace": "ozon", "external_id": "1604900984",
-            "title": "Тестовый товар", "url": None, "is_active": True,
+            "title": "Тестовый товар", "url": None, "tags": ["кухня"], "is_active": True,
             "created_at": NOW, "history": [{
                 "price": "999.00", "availability": "in_stock", "observed_at": NOW,
             }],
+        }], "groups": [{
+            "name": "Бутылки", "tags": ["подарок"],
+            "cards": [{"marketplace": "ozon", "external_id": "1604900984"}],
         }]}
 
-    async def import_cards(self, cards, *, preview=False):
+    async def import_cards(self, cards, *, groups=None, preview=False):
         self.last_imported_cards = cards
+        self.last_imported_groups = groups
         return {"cards_added": 0, "cards_merged": len(cards),
                 "observations_added": 0 if preview else 1,
-                "observations_removed": 0, "observations_skipped": 1}
+                "observations_removed": 0, "observations_skipped": 1,
+                "groups_added": len(groups or [])}
 
     async def add_card(self, marketplace, external_id, title=None, url=None, tags=None):
         if self.duplicate:
@@ -176,15 +181,26 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         card = document["cards"][0]
         self.assertEqual(set(card), {"marketplace", "externalId", "title", "url", "imageUrl", "tags",
                                      "isActive", "createdAt", "history"})
+        self.assertEqual(card["tags"], ["кухня"])
+        self.assertEqual(document["groups"], [{
+            "name": "Бутылки", "tags": ["подарок"],
+            "cards": [{"marketplace": "ozon", "externalId": "1604900984"}],
+        }])
         card["isArchived"] = True  # Старый архив превращается в приостановку.
         del card["imageUrl"]
         preview = await self.client.post("/api/cards/import/preview", json=document)
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview.json()["cardsMerged"], 1)
         self.assertFalse(self.repository.last_imported_cards[0]["is_active"])
+        self.assertEqual(self.repository.last_imported_cards[0]["tags"], ["кухня"])
+        self.assertEqual(self.repository.last_imported_groups, [{
+            "name": "Бутылки", "tags": ["подарок"],
+            "cards": [{"marketplace": "ozon", "external_id": "1604900984"}],
+        }])
         imported = await self.client.post("/api/cards/import", json=document)
         self.assertEqual(imported.status_code, 200)
         self.assertEqual(imported.json()["observationsAdded"], 1)
+        self.assertEqual(imported.json()["groupsAdded"], 1)
 
     async def test_card_tags_are_limited_to_two(self):
         valid = await self.client.post("/api/cards", json={
