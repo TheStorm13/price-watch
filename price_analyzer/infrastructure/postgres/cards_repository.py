@@ -47,7 +47,6 @@ class CardRepository:
         title: Optional[str] = None,
         url: Optional[str] = None,
         is_active: Optional[bool] = None,
-        is_archived: Optional[bool] = None,
         update_title: bool = False,
         update_url: bool = False,
     ) -> Optional[MarketplaceCard]:
@@ -61,8 +60,6 @@ class CardRepository:
                 record.url = url
             if is_active is not None:
                 record.is_active = is_active
-            if is_archived is not None:
-                record.is_archived = is_archived
             record.updated_at = datetime.now(timezone.utc)
         return _card(record)
 

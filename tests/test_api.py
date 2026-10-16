@@ -43,6 +43,7 @@ class FakeRepository:
         }]}
 
     async def import_cards(self, cards, *, preview=False):
+        self.last_imported_cards = cards
         return {"cards_added": 0, "cards_merged": len(cards),
                 "observations_added": 0 if preview else 1,
                 "observations_removed": 0, "observations_skipped": 1}
@@ -130,16 +131,17 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
     async def test_export_and_import_use_card_history_contract(self):
         exported = await self.client.get("/api/cards/export")
         self.assertEqual(exported.status_code, 200)
-        card = exported.json()["cards"][0]
+        document = exported.json()
+        card = document["cards"][0]
         self.assertEqual(set(card), {"marketplace", "externalId", "title", "url", "imageUrl",
-                                     "isActive", "isArchived", "createdAt", "history"})
-        self.assertFalse(card["isArchived"])
-        del card["isArchived"]  # Старые файлы экспорта остаются импортируемыми.
+                                     "isActive", "createdAt", "history"})
+        card["isArchived"] = True  # Старый архив превращается в приостановку.
         del card["imageUrl"]
-        preview = await self.client.post("/api/cards/import/preview", json=exported.json())
+        preview = await self.client.post("/api/cards/import/preview", json=document)
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview.json()["cardsMerged"], 1)
-        imported = await self.client.post("/api/cards/import", json=exported.json())
+        self.assertFalse(self.repository.last_imported_cards[0]["is_active"])
+        imported = await self.client.post("/api/cards/import", json=document)
         self.assertEqual(imported.status_code, 200)
         self.assertEqual(imported.json()["observationsAdded"], 1)
 

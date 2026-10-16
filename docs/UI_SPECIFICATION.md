@@ -138,7 +138,7 @@ SPA на React, TypeScript и Vite и работает поверх HTTP API Pyt
 - вся строка кликабельна и открывает детали;
 - действие «Обновить» доступно из меню строки;
 - действие «Приостановить» меняет `is_active`, но не удаляет историю.
-- действие «В архив» меняет `is_archived`: цена продолжает отслеживаться, а карточка исчезает из выгодных предложений.
+- приостановленная карточка не участвует в сборе и не показывается в выгодных предложениях;
 
 Сортировка MVP:
 
@@ -426,7 +426,6 @@ interface MarketplaceCard {
   title: string | null
   url: string | null
   isActive: boolean
-  isArchived: boolean
   currentPrice: number | null
   currentAvailability: Availability | null
   lastObservedAt: string | null

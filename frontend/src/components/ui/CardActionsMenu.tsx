@@ -1,19 +1,17 @@
-import { Archive, ArchiveRestore, LoaderCircle, MoreVertical, Pause, Play, RefreshCw, Trash2 } from 'lucide-react'
+import { LoaderCircle, MoreVertical, Pause, Play, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 
 interface CardActionsMenuProps {
   cardTitle: string
   isActive: boolean
-  isArchived: boolean
   onToggle: () => Promise<unknown>
-  onToggleArchive: () => Promise<unknown>
   onDelete: () => Promise<unknown>
   onRefresh?: () => void
   refreshDisabled?: boolean
   bordered?: boolean
 }
 
-export function CardActionsMenu({ cardTitle, isActive, isArchived, onToggle, onToggleArchive, onDelete, onRefresh, refreshDisabled = false, bordered = false }: CardActionsMenuProps) {
+export function CardActionsMenu({ cardTitle, isActive, onToggle, onDelete, onRefresh, refreshDisabled = false, bordered = false }: CardActionsMenuProps) {
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [pending, setPending] = useState(false)
@@ -67,20 +65,6 @@ export function CardActionsMenu({ cardTitle, isActive, isArchived, onToggle, onT
     }
   }
 
-  async function toggleArchive() {
-    setPending(true)
-    setError(null)
-    try {
-      await onToggleArchive()
-      setOpen(false)
-      triggerRef.current?.focus()
-    } catch {
-      setError('Не удалось изменить архив карточки')
-    } finally {
-      setPending(false)
-    }
-  }
-
   async function deleteCard() {
     setPending(true)
     setError(null)
@@ -127,10 +111,6 @@ export function CardActionsMenu({ cardTitle, isActive, isArchived, onToggle, onT
           <button ref={actionRef} type="button" role="menuitem" disabled={pending} onClick={() => void toggleTracking()}>
             {pending ? <LoaderCircle className="spin" /> : isActive ? <Pause /> : <Play />}
             <span>{pending ? 'Сохраняем…' : actionLabel}</span>
-          </button>
-          <button type="button" role="menuitem" disabled={pending} onClick={() => void toggleArchive()}>
-            {isArchived ? <ArchiveRestore /> : <Archive />}
-            <span>{isArchived ? 'Вернуть из архива' : 'В архив'}</span>
           </button>
           <div className="card-actions-menu__separator" />
           <button className="card-actions-menu__danger" type="button" role="menuitem" disabled={pending} onClick={() => setConfirming(true)}>

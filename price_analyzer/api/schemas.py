@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from ..domain.models import CardOverview, CollectionRun, Deal, PriceHistoryPoint, PriceStatistics
 
@@ -43,7 +43,6 @@ class CardUpdate(ApiModel):
     title: str | None = None
     url: HttpUrl | None = None
     is_active: bool | None = None
-    is_archived: bool | None = None
 
 
 class TransferHistoryPoint(ApiModel):
@@ -73,9 +72,15 @@ class TransferCard(ApiModel):
     url: str | None
     image_url: str | None = None
     is_active: bool
-    is_archived: bool = False
     created_at: datetime
     history: list[TransferHistoryPoint]
+
+    @model_validator(mode="before")
+    @classmethod
+    def import_old_archive_as_paused(cls, value: object) -> object:
+        if isinstance(value, dict) and (value.get("isArchived") is True or value.get("is_archived") is True):
+            return {**value, "isActive": False, "is_active": False}
+        return value
 
     @field_validator("marketplace", "external_id")
     @classmethod
@@ -122,7 +127,6 @@ class CardResponse(ApiModel):
     url: str | None
     image_url: str | None
     is_active: bool
-    is_archived: bool
     current_price: float | None
     current_availability: str | None
     last_observed_at: datetime | None
@@ -140,7 +144,6 @@ class CardResponse(ApiModel):
             url=card.url,
             image_url=card.image_url,
             is_active=card.is_active,
-            is_archived=card.is_archived,
             current_price=overview.current_price,
             current_availability=overview.current_availability,
             last_observed_at=overview.last_observed_at,

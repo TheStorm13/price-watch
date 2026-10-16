@@ -18,7 +18,7 @@ type Sort = 'default' | 'price-asc' | 'price-desc' | 'updated-desc'
 
 function matchesStatus(card: MarketplaceCard, status: string) {
   if (status === 'all') return true
-  if (status === 'archived') return card.isArchived
+  if (status === 'paused') return !card.isActive
   if (status === 'no_data') return card.lastObservedAt === null
   return card.currentAvailability === status
 }
@@ -35,7 +35,7 @@ export function CardsPage() {
   const query = params.get('q') ?? ''
   const deferredQuery = useDeferredValue(query.trim().toLowerCase())
   const marketplace = params.get('marketplace') ?? 'all'
-  const status = params.get('status') ?? 'all'
+  const status = params.get('status') === 'archived' ? 'paused' : params.get('status') ?? 'all'
   const sort = (params.get('sort') ?? 'default') as Sort
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
   const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort !== 'default')
@@ -60,8 +60,7 @@ export function CardsPage() {
       if (sort === 'price-asc') return (left.currentPrice ?? Infinity) - (right.currentPrice ?? Infinity)
       if (sort === 'price-desc') return (right.currentPrice ?? -Infinity) - (left.currentPrice ?? -Infinity)
       if (sort === 'updated-desc') return (right.lastObservedAt ? Date.parse(right.updatedAt) : 0) - (left.lastObservedAt ? Date.parse(left.updatedAt) : 0)
-      return Number(left.isArchived) - Number(right.isArchived) ||
-        Number(right.isActive) - Number(left.isActive) || left.id - right.id
+      return Number(right.isActive) - Number(left.isActive) || left.id - right.id
     })
   }, [cardsQuery.data, deferredQuery, marketplace, sort, status])
 
@@ -70,16 +69,14 @@ export function CardsPage() {
   }
 
   function actions(card: MarketplaceCard) {
-    return <CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive} isArchived={card.isArchived}
+    return <CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive}
       onRefresh={() => collection.start(card.id)} refreshDisabled={collection.isStarting}
       onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })}
-      onToggleArchive={() => updateCard.mutateAsync({ cardId: card.id, input: { isArchived: !card.isArchived } })}
       onDelete={() => deleteCard.mutateAsync(card.id)} />
   }
 
   function trackingStatus(card: MarketplaceCard) {
     return <>
-      {card.isArchived ? <span className="tracking-status">В архиве{card.isActive ? ' · цена отслеживается' : ''}</span> : null}
       {!card.isActive ? <span className="tracking-status">Отслеживание приостановлено</span> : null}
     </>
   }
@@ -115,7 +112,7 @@ export function CardsPage() {
             <option value="in_stock">В наличии</option>
             <option value="out_of_stock">Нет в наличии</option>
             <option value="no_data">Нет данных</option>
-            <option value="archived">Архивные</option>
+            <option value="paused">Приостановленные</option>
           </select>
           <select value={sort} onChange={(event) => setParam('sort', event.target.value, 'default')} aria-label="Сортировка">
             <option value="default">По умолчанию</option>
@@ -160,7 +157,7 @@ export function CardsPage() {
                   <AvailabilityStatus value={card.currentAvailability} />
                   <time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time>
                 </div>
-                {card.isArchived || !card.isActive ? <div className="cards-grid__tracking">{trackingStatus(card)}</div> : null}
+                {!card.isActive ? <div className="cards-grid__tracking">{trackingStatus(card)}</div> : null}
               </li>
             ))}
           </ul>

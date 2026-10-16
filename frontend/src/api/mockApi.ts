@@ -22,7 +22,6 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1604900984',
     imageUrl: null,
     isActive: true,
-    isArchived: false,
     currentPrice: 72990,
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 5 * 60_000).toISOString(),
@@ -37,7 +36,6 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1587342210',
     imageUrl: null,
     isActive: true,
-    isArchived: false,
     currentPrice: 24990,
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 2 * 86_400_000).toISOString(),
@@ -52,7 +50,6 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1620013375',
     imageUrl: null,
     isActive: true,
-    isArchived: false,
     currentPrice: 12490,
     currentAvailability: 'out_of_stock',
     lastObservedAt: new Date(now - 60 * 60_000).toISOString(),
@@ -67,7 +64,6 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1598827711',
     imageUrl: null,
     isActive: true,
-    isArchived: false,
     currentPrice: null,
     currentAvailability: null,
     lastObservedAt: null,
@@ -82,7 +78,6 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1579984456',
     imageUrl: null,
     isActive: false,
-    isArchived: false,
     currentPrice: 34990,
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 26 * 60 * 60_000).toISOString(),
@@ -192,7 +187,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
       id: nextCardId++, marketplace: importedCard.marketplace as Marketplace,
       externalId: importedCard.externalId, title: importedCard.title, url: importedCard.url,
       imageUrl: importedCard.imageUrl ?? null,
-      isActive: importedCard.isActive, isArchived: importedCard.isArchived ?? false,
+      isActive: importedCard.isActive && !(importedCard as typeof importedCard & { isArchived?: boolean }).isArchived,
       currentPrice: null, currentAvailability: null,
       lastObservedAt: null, createdAt: importedCard.createdAt, updatedAt: importedCard.createdAt,
     }
@@ -229,7 +224,6 @@ export const mockApi = {
         url: card.url,
         imageUrl: card.imageUrl,
         isActive: card.isActive,
-        isArchived: card.isArchived,
         createdAt: card.createdAt,
         history: history.filter((point) => point.cardId === card.id)
           .sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt))
@@ -275,7 +269,6 @@ export const mockApi = {
       url: input.url?.trim() || null,
       imageUrl: null,
       isActive: true,
-      isArchived: false,
       currentPrice: null,
       currentAvailability: null,
       lastObservedAt: null,
@@ -352,7 +345,7 @@ export const mockApi = {
   },
 
   async listDeals(): Promise<Deal[]> {
-    return delay(cards.filter((card) => card.isActive && !card.isArchived && card.currentAvailability === 'in_stock' &&
+    return delay(cards.filter((card) => card.isActive && card.currentAvailability === 'in_stock' &&
       card.currentPrice !== null && Date.now() - Date.parse(card.createdAt) >= 7 * 86_400_000 &&
       card.id === 1).map((card) => ({ card, averagePrice: 78000,
       savings: 78000 - (card.currentPrice ?? 0), baselineDays: 8,

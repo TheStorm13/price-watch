@@ -16,7 +16,6 @@ export interface MarketplaceCard {
   url: string | null
   imageUrl: string | null
   isActive: boolean
-  isArchived: boolean
   currentPrice: number | null
   currentAvailability: Availability | null
   lastObservedAt: string | null
@@ -106,7 +105,6 @@ export interface UpdateCardInput {
   title?: string | null
   url?: string | null
   isActive?: boolean
-  isArchived?: boolean
 }
 
 export interface TransferHistoryPoint {
@@ -122,7 +120,6 @@ export interface TransferCard {
   url: string | null
   imageUrl?: string | null
   isActive: boolean
-  isArchived?: boolean
   createdAt: string
   history: TransferHistoryPoint[]
 }
