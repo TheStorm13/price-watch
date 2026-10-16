@@ -156,8 +156,8 @@ export function CardsPage() {
                   <strong className="price-cell">{formatPrice(card.currentPrice)}</strong>
                 </div>
                 <div className="cards-grid__details">
-                  <AvailabilityStatus value={card.currentAvailability} />
                   <time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time>
+                  <AvailabilityStatus value={card.currentAvailability} />
                 </div>
                 {!card.isActive ? <div className="cards-grid__tracking">{dealStatus(card)}</div> : null}
               </li>

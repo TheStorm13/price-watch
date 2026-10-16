@@ -135,7 +135,9 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .cards-grid__link { min-width: 0; color: var(--text); text-decoration: none; }
 .cards-grid__link:hover .cards-grid__title { color: var(--blue); }
 .cards-grid .product-placeholder--large { display: grid; width: 100%; height: auto; aspect-ratio: 1 / 1; border-radius: 0; font-size: 44px; }
-.cards-grid .product-placeholder--large img { object-fit: cover; }
+.cards-grid .product-placeholder--large > span, .cards-grid .product-placeholder--large img { grid-area: 1 / 1; }
+.cards-grid .product-placeholder--with-image { aspect-ratio: auto; }
+.cards-grid .product-placeholder--large img { position: static; display: block; height: auto; object-fit: contain; }
 .cards-grid__title { display: -webkit-box; height: 36px; margin: 10px 10px 0; overflow: hidden; font-size: 13px; font-weight: 650; line-height: 18px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .cards-grid__id { display: block; margin: 3px 10px 7px; color: var(--text-muted); font-size: 10px; line-height: 14px; }
 .cards-grid__details { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 30px; margin: 0 10px; font-size: 11px; }
