@@ -88,6 +88,7 @@ class ProductSnapshot:
     url: str
     availability: Availability
     price: Optional[Union[int, float]] = None
+    image_url: Optional[str] = None
     seller: Optional[Seller] = None
     rating: Optional[Rating] = None
     attributes: Tuple[Attribute, ...] = ()

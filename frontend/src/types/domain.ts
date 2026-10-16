@@ -14,6 +14,7 @@ export interface MarketplaceCard {
   externalId: string
   title: string | null
   url: string | null
+  imageUrl: string | null
   isActive: boolean
   isArchived: boolean
   currentPrice: number | null
@@ -119,6 +120,7 @@ export interface TransferCard {
   externalId: string
   title: string | null
   url: string | null
+  imageUrl?: string | null
   isActive: boolean
   isArchived?: boolean
   createdAt: string

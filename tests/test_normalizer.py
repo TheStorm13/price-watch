@@ -140,6 +140,20 @@ class NormalizerTests(unittest.TestCase):
         self.assertEqual(serialized["price"], 577)
         self.assertNotIn("prices", serialized)
         self.assertEqual(serialized["attributes"][0]["values"], ["Чай листовой"])
+        self.assertEqual(snapshot.image_url, "https://img.test/1.jpg")
+        self.assertEqual(serialized["image_url"], snapshot.image_url)
+
+    def test_prefers_first_gallery_photo_to_structured_data_and_variant(self):
+        product = json.loads(self.payload["seo"]["script"][0]["innerHTML"])
+        product["image"] = ["https://img.test/structured.jpg"]
+        self.payload["seo"]["script"][0]["innerHTML"] = json.dumps(product)
+        self.payload["widgetStates"]["webGallery-1"] = widget({
+            "images": [{"src": "https://img.test/first.jpg"},
+                       {"src": "https://img.test/second.jpg"}],
+        })
+
+        self.assertEqual(OzonMapper.to_snapshot(self.payload).image_url,
+                         "https://img.test/first.jpg")
 
     def test_uses_unknown_when_availability_is_absent(self):
         price = json.loads(self.payload["widgetStates"]["webPrice-1"])

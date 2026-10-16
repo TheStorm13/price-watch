@@ -1,12 +1,13 @@
 import { useCallback, useDeferredValue, useMemo, useState } from 'react'
-import { Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { LayoutGrid, List, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCards, useDeleteCard, useUpdateCard } from '../../api/queries'
 import { Button } from '../../components/ui/Button'
 import { CardActionsMenu } from '../../components/ui/CardActionsMenu'
 import { AvailabilityStatus } from '../../components/ui/AvailabilityStatus'
 import { LoadingRows } from '../../components/ui/LoadingRows'
 import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
+import { ProductImage } from '../../components/ui/ProductImage'
 import { useCollection } from '../collection/CollectionProvider'
 import type { Availability, Marketplace, MarketplaceCard } from '../../types/domain'
 import { formatDateTime, formatPrice, formatRelativeTime } from '../../utils/format'
@@ -36,6 +37,7 @@ export function CardsPage() {
   const marketplace = params.get('marketplace') ?? 'all'
   const status = params.get('status') ?? 'all'
   const sort = (params.get('sort') ?? 'default') as Sort
+  const view = params.get('view') === 'grid' ? 'grid' : 'list'
   const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort !== 'default')
 
   const setParam = useCallback((name: string, value: string, defaultValue = 'all') => {
@@ -64,7 +66,22 @@ export function CardsPage() {
   }, [cardsQuery.data, deferredQuery, marketplace, sort, status])
 
   function resetFilters() {
-    setParams({}, { replace: true })
+    setParams(view === 'grid' ? { view: 'grid' } : {}, { replace: true })
+  }
+
+  function actions(card: MarketplaceCard) {
+    return <CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive} isArchived={card.isArchived}
+      onRefresh={() => collection.start(card.id)} refreshDisabled={collection.isStarting}
+      onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })}
+      onToggleArchive={() => updateCard.mutateAsync({ cardId: card.id, input: { isArchived: !card.isArchived } })}
+      onDelete={() => deleteCard.mutateAsync(card.id)} />
+  }
+
+  function trackingStatus(card: MarketplaceCard) {
+    return <>
+      {card.isArchived ? <span className="tracking-status">В архиве{card.isActive ? ' · цена отслеживается' : ''}</span> : null}
+      {!card.isActive ? <span className="tracking-status">Отслеживание приостановлено</span> : null}
+    </>
   }
 
   return (
@@ -110,30 +127,59 @@ export function CardsPage() {
         </div>
       </div>
 
-      <div className="table-surface">
+      <div className="cards-view-bar">
+        <span>{visibleCards.length} из {cardsQuery.data?.length ?? 0}</span>
+        <div className="cards-view-switch" role="group" aria-label="Вид карточек">
+          <button type="button" className={view === 'list' ? 'is-selected' : ''} aria-label="Список"
+            aria-pressed={view === 'list'} title="Список" onClick={() => setParam('view', 'list', 'list')}><List aria-hidden="true" /></button>
+          <button type="button" className={view === 'grid' ? 'is-selected' : ''} aria-label="Сетка"
+            aria-pressed={view === 'grid'} title="Сетка" onClick={() => setParam('view', 'grid', 'list')}><LayoutGrid aria-hidden="true" /></button>
+        </div>
+      </div>
+
+      <div className={view === 'list' || cardsQuery.isLoading || cardsQuery.isError || visibleCards.length === 0 ? 'table-surface' : ''}>
         {cardsQuery.isLoading ? <LoadingRows /> : cardsQuery.isError ? (
           <div className="state-message"><h2>Не удалось загрузить карточки</h2><p>Проверьте соединение с API и повторите.</p><Button onClick={() => cardsQuery.refetch()}>Повторить</Button></div>
         ) : visibleCards.length === 0 ? (
           <div className="state-message"><h2>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</h2><p>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</p><Button variant="primary" onClick={hasFilters ? resetFilters : () => setDrawerOpen(true)}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></div>
+        ) : view === 'grid' ? (
+          <ul className="cards-grid" aria-label="Отслеживаемые карточки маркетплейсов">
+            {visibleCards.map((card) => (
+              <li key={card.id} className={`cards-grid__item${!card.isActive ? ' is-inactive' : ''}`}>
+                <Link className="cards-grid__link" to={`/cards/${card.id}`}>
+                  <ProductImage card={card} large />
+                  <span className="cards-grid__title">{card.title ?? 'Без названия'}</span>
+                  <span className="cards-grid__id">ID: {card.externalId}</span>
+                </Link>
+                <div className="cards-grid__details">
+                  <MarketplaceMark marketplace={card.marketplace} />
+                  <strong className="price-cell">{formatPrice(card.currentPrice)}</strong>
+                </div>
+                <div className="cards-grid__details">
+                  <AvailabilityStatus value={card.currentAvailability} />
+                  <time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time>
+                </div>
+                <div className="cards-grid__footer">{trackingStatus(card)}{actions(card)}</div>
+              </li>
+            ))}
+          </ul>
         ) : (
-          <>
             <table className="cards-table">
               <caption className="sr-only">Отслеживаемые карточки маркетплейсов</caption>
               <thead><tr><th>Карточка</th><th>Маркетплейс</th><th>Цена</th><th>Наличие</th><th>Обновлено</th><th><span className="sr-only">Действия</span></th></tr></thead>
               <tbody>
                 {visibleCards.map((card) => (
                   <tr key={card.id} className={!card.isActive ? 'is-inactive' : ''} onClick={() => navigate(`/cards/${card.id}`)}>
-                    <td><div className="card-identity"><span className="product-placeholder" aria-hidden="true">{(card.title ?? 'Т').slice(0, 1)}</span><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small>{card.isArchived ? <span className="tracking-status">В архиве{card.isActive ? ' · цена отслеживается' : ''}</span> : null}{!card.isActive ? <span className="tracking-status">Отслеживание приостановлено</span> : null}</span></div></td>
+                    <td><div className="card-identity"><ProductImage card={card} /><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small>{trackingStatus(card)}</span></div></td>
                     <td><MarketplaceMark marketplace={card.marketplace} /></td>
                     <td className="price-cell">{formatPrice(card.currentPrice)}</td>
                     <td><AvailabilityStatus value={card.currentAvailability} /></td>
                     <td><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time></td>
-                    <td><CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive} isArchived={card.isArchived} onRefresh={() => collection.start(card.id)} refreshDisabled={collection.isStarting} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onToggleArchive={() => updateCard.mutateAsync({ cardId: card.id, input: { isArchived: !card.isArchived } })} onDelete={() => deleteCard.mutateAsync(card.id)} /></td>
+                    <td>{actions(card)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </>
         )}
       </div>
       <AddCardDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />

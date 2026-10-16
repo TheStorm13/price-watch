@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Iterable, Mapping, Optional, Union
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from ...domain.errors import MarketplaceSchemaChanged
 from ...domain.models import (
@@ -47,6 +47,7 @@ class OzonMapper:
         review = cls._widget(widget_states, "webReviewProductScore-")
         characteristics = cls._widget(widget_states, "webShortCharacteristics-")
         aspects = cls._widget(widget_states, "webAspects-")
+        gallery = cls._widget(widget_states, "webGallery-")
         ld_product = cls._ld_product(payload)
 
         external_id = str(
@@ -98,6 +99,7 @@ class OzonMapper:
             or str(cls._dig(ld_product, "offers", "url") or ""),
             availability=cls._availability(price, ld_product),
             price=cls._price_number(price.get("cardPrice")),
+            image_url=cls._image_url(gallery, ld_product, aspects, external_id),
             seller=(
                 Seller(
                     external_id=cls._seller_id(seller_link, seller_widget) or None,
@@ -174,6 +176,50 @@ class OzonMapper:
             if isinstance(link, dict) and link.get("rel") == "canonical":
                 return str(link.get("href") or "")
         return ""
+
+    @classmethod
+    def _image_url(cls, gallery: JsonObject, ld_product: JsonObject,
+                   aspects: JsonObject, external_id: str) -> Optional[str]:
+        """Use the first product photo, with structured data and selected variant as fallbacks."""
+        def valid_url(value: Any) -> Optional[str]:
+            if not isinstance(value, str):
+                return None
+            value = value.strip()
+            if not value:
+                return None
+            url = urljoin(cls.OZON_URL, value)
+            parsed = urlparse(url)
+            return url if parsed.scheme == "https" and parsed.hostname else None
+
+        for key in ("images", "gallery", "items"):
+            images = gallery.get(key)
+            if isinstance(images, list):
+                for image in images:
+                    value = image if isinstance(image, str) else (
+                        image.get("src") or image.get("url") or image.get("image")
+                        if isinstance(image, dict) else None
+                    )
+                    if isinstance(value, dict):
+                        value = value.get("url") or value.get("src")
+                    result = valid_url(value)
+                    if result:
+                        return result
+
+        image = ld_product.get("image")
+        candidates = image if isinstance(image, list) else [image]
+        for candidate in candidates:
+            if isinstance(candidate, dict):
+                candidate = candidate.get("url") or candidate.get("contentUrl")
+            result = valid_url(candidate)
+            if result:
+                return result
+
+        for item in cls._walk_dicts(aspects):
+            if str(item.get("sku") or "") == external_id:
+                result = valid_url(cls._dig(item, "data", "coverImage"))
+                if result:
+                    return result
+        return None
 
     @classmethod
     def _seller_id(cls, seller_link: str, seller_widget: JsonObject) -> str:

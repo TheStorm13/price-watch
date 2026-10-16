@@ -17,6 +17,7 @@ class MarketplaceCard:
     created_at: datetime
     updated_at: datetime
     is_archived: bool = False
+    image_url: Optional[str] = None
 
 
 @dataclass(frozen=True)

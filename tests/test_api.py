@@ -131,10 +131,11 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         exported = await self.client.get("/api/cards/export")
         self.assertEqual(exported.status_code, 200)
         card = exported.json()["cards"][0]
-        self.assertEqual(set(card), {"marketplace", "externalId", "title", "url",
+        self.assertEqual(set(card), {"marketplace", "externalId", "title", "url", "imageUrl",
                                      "isActive", "isArchived", "createdAt", "history"})
         self.assertFalse(card["isArchived"])
         del card["isArchived"]  # Старые файлы экспорта остаются импортируемыми.
+        del card["imageUrl"]
         preview = await self.client.post("/api/cards/import/preview", json=exported.json())
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview.json()["cardsMerged"], 1)

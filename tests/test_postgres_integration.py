@@ -111,9 +111,10 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(exported["version"], 1)
             self.assertEqual(len(item["history"]), 4)
             self.assertEqual(set(item["history"][0]), {"price", "availability", "observed_at"})
-            self.assertEqual(set(item), {"marketplace", "external_id", "title", "url",
+            self.assertEqual(set(item), {"marketplace", "external_id", "title", "url", "image_url",
                                          "is_active", "is_archived", "created_at", "history"})
             item["title"] = "Название из файла"
+            item["image_url"] = "https://img.test/import.jpg"
             item["created_at"] = start - timedelta(days=20)
             item["history"].extend({
                 "price": Decimal(price), "availability": "in_stock",
@@ -133,6 +134,8 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await repository.count_history(card.id, 1), 3)
             self.assertEqual(await repository.import_cards(payload), preview)
             self.assertEqual((await repository.get_card(card.id)).card.title, "Местное название")
+            self.assertEqual((await repository.get_card(card.id)).card.image_url,
+                             "https://img.test/import.jpg")
             self.assertEqual((await repository.get_card(card.id)).card.created_at,
                              start - timedelta(days=20))
             self.assertEqual([point.price for point in reversed(await repository.get_history(card.id, 1))],
@@ -162,10 +165,24 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 url="https://example.test/product",
                 availability=Availability.IN_STOCK,
                 price=123.45,
+                image_url="https://img.test/first.jpg",
                 collected_at=datetime.now(timezone.utc),
             )
 
             await repository.save_observation(card, run_id, snapshot)
+            self.assertEqual((await repository.get_card(card.id)).card.image_url,
+                             "https://img.test/first.jpg")
+            await repository.save_observation(card, run_id, ProductSnapshot(
+                ref=snapshot.ref, title=snapshot.title, url=snapshot.url,
+                availability=snapshot.availability, price=snapshot.price,
+                image_url="https://img.test/updated.jpg",
+            ))
+            self.assertEqual((await repository.get_card(card.id)).card.image_url,
+                             "https://img.test/updated.jpg")
+            exported = await repository.export_cards()
+            self.assertEqual(next(item for item in exported["cards"]
+                                  if item["external_id"] == external_id)["image_url"],
+                             "https://img.test/updated.jpg")
             await repository.finish_run(run_id, "completed", 1, 0)
 
             history = await repository.get_history(card.id, 1)

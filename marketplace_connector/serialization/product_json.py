@@ -60,6 +60,7 @@ def snapshot_to_dict(snapshot: ProductSnapshot) -> Dict[str, Any]:
         "url": snapshot.url,
         "availability": snapshot.availability.value,
         "price": snapshot.price,
+        "image_url": snapshot.image_url,
         "seller": _seller(snapshot.seller),
         "rating": _rating(snapshot.rating),
         "attributes": [_attribute(item) for item in snapshot.attributes],

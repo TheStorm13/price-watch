@@ -57,6 +57,28 @@ test('компактный desktop 1024 px не имеет горизонтал�
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })
 
+test('карточки переключаются между списком и сеткой из трёх колонок', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await page.goto('/cards')
+  const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
+  await expect(row).toBeVisible()
+  const rowHeight = await row.evaluate((element) => element.getBoundingClientRect().height)
+  await page.getByRole('button', { name: 'Сетка' }).click()
+  const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
+  await expect(grid.locator('li')).toHaveCount(5)
+  expect(await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(3)
+  await page.screenshot({ path: '/tmp/price-watch-grid.png' })
+  await page.reload()
+  await expect(grid.locator('li')).toHaveCount(5)
+  await grid.getByRole('link', { name: /Смартфон Samsung Galaxy S24/ }).click()
+  await expect(page).toHaveURL(/\/cards\/1/)
+  await page.goto('/cards?view=grid')
+  await page.getByRole('button', { name: 'Список' }).click()
+  await expect(row).toBeVisible()
+  expect(await row.evaluate((element) => element.getBoundingClientRect().height)).toBe(rowHeight)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
+})
+
 test('экспорт и импорт объединяют карточки и историю', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 })
   await page.goto('/cards')

@@ -71,6 +71,7 @@ class TransferCard(ApiModel):
     external_id: str
     title: str | None
     url: str | None
+    image_url: str | None = None
     is_active: bool
     is_archived: bool = False
     created_at: datetime
@@ -119,6 +120,7 @@ class CardResponse(ApiModel):
     external_id: str
     title: str | None
     url: str | None
+    image_url: str | None
     is_active: bool
     is_archived: bool
     current_price: float | None
@@ -136,6 +138,7 @@ class CardResponse(ApiModel):
             external_id=card.external_id,
             title=card.title,
             url=card.url,
+            image_url=card.image_url,
             is_active=card.is_active,
             is_archived=card.is_archived,
             current_price=overview.current_price,

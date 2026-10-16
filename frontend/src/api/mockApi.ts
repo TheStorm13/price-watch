@@ -20,6 +20,7 @@ let cards: MarketplaceCard[] = [
     externalId: '1604900984',
     title: 'Смартфон Samsung Galaxy S24',
     url: 'https://www.ozon.ru/product/1604900984',
+    imageUrl: null,
     isActive: true,
     isArchived: false,
     currentPrice: 72990,
@@ -34,6 +35,7 @@ let cards: MarketplaceCard[] = [
     externalId: '1587342210',
     title: 'Наушники Apple AirPods Pro 2',
     url: 'https://www.ozon.ru/product/1587342210',
+    imageUrl: null,
     isActive: true,
     isArchived: false,
     currentPrice: 24990,
@@ -48,6 +50,7 @@ let cards: MarketplaceCard[] = [
     externalId: '1620013375',
     title: 'Умные часы Xiaomi Watch S3',
     url: 'https://www.ozon.ru/product/1620013375',
+    imageUrl: null,
     isActive: true,
     isArchived: false,
     currentPrice: 12490,
@@ -62,6 +65,7 @@ let cards: MarketplaceCard[] = [
     externalId: '1598827711',
     title: 'Пылесос Dyson V12 Detect Slim',
     url: 'https://www.ozon.ru/product/1598827711',
+    imageUrl: null,
     isActive: true,
     isArchived: false,
     currentPrice: null,
@@ -76,6 +80,7 @@ let cards: MarketplaceCard[] = [
     externalId: '1579984456',
     title: 'Конструктор LEGO Technic McLaren P1',
     url: 'https://www.ozon.ru/product/1579984456',
+    imageUrl: null,
     isActive: false,
     isArchived: false,
     currentPrice: 34990,
@@ -186,12 +191,16 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     const card: MarketplaceCard = current ?? {
       id: nextCardId++, marketplace: importedCard.marketplace as Marketplace,
       externalId: importedCard.externalId, title: importedCard.title, url: importedCard.url,
+      imageUrl: importedCard.imageUrl ?? null,
       isActive: importedCard.isActive, isArchived: importedCard.isArchived ?? false,
       currentPrice: null, currentAvailability: null,
       lastObservedAt: null, createdAt: importedCard.createdAt, updatedAt: importedCard.createdAt,
     }
     if (!current) cards = [...cards, card]
-    else if (Date.parse(importedCard.createdAt) < Date.parse(card.createdAt)) card.createdAt = importedCard.createdAt
+    else {
+      if (Date.parse(importedCard.createdAt) < Date.parse(card.createdAt)) card.createdAt = importedCard.createdAt
+      card.imageUrl ||= importedCard.imageUrl ?? null
+    }
     for (const point of importedCard.history) {
       if (Date.parse(point.observedAt) > Date.parse(card.updatedAt)) card.updatedAt = point.observedAt
     }
@@ -218,6 +227,7 @@ export const mockApi = {
         externalId: card.externalId,
         title: card.title,
         url: card.url,
+        imageUrl: card.imageUrl,
         isActive: card.isActive,
         isArchived: card.isArchived,
         createdAt: card.createdAt,
@@ -263,6 +273,7 @@ export const mockApi = {
       externalId: input.externalId,
       title: input.title?.trim() || null,
       url: input.url?.trim() || null,
+      imageUrl: null,
       isActive: true,
       isArchived: false,
       currentPrice: null,
