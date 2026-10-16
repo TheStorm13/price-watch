@@ -12,6 +12,7 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
+use tauri_plugin_dialog::DialogExt;
 
 struct RuntimeState {
     project_root: PathBuf,
@@ -242,11 +243,9 @@ impl RuntimeState {
                 .is_none(),
             None => false,
         };
-        if !running && active_debug_port(&profile).is_some() {
-            return Err(
-                "Chrome занят сбором. Дождитесь завершения запуска и повторите попытку."
-                    .to_string(),
-            );
+        let existing_port = active_debug_port(&profile);
+        if running && existing_port.is_none() {
+            return Err("Chrome приложения не открыл порт управления".to_string());
         }
         if !running {
             *browser = None;
@@ -287,7 +286,7 @@ impl RuntimeState {
             .stderr(Stdio::from(stderr))
             .spawn()
             .map_err(|error| format!("Не удалось открыть Chrome: {error}"))?;
-        if !running {
+        if existing_port.is_none() {
             let deadline = Instant::now() + Duration::from_secs(10);
             while active_debug_port(&profile).is_none() {
                 if let Some(status) = child
@@ -340,7 +339,7 @@ impl RuntimeState {
     fn prepare_collection(&self) -> Result<(), String> {
         self.stop_manual_browser();
         if active_debug_port(&self.project_root.join(".playwright-profile")).is_some() {
-            return Err("Закройте Chrome с профилем приложения перед сбором".to_string());
+            return Err("Не удалось закрыть Chrome приложения перед сбором цен".to_string());
         }
         Ok(())
     }
@@ -411,6 +410,31 @@ async fn prepare_collection(state: tauri::State<'_, Arc<RuntimeState>>) -> Resul
         .map_err(|error| format!("Ошибка подготовки сбора: {error}"))?
 }
 
+#[tauri::command]
+async fn save_export_file(
+    app: tauri::AppHandle,
+    contents: String,
+    file_name: String,
+) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let selected = app
+            .dialog()
+            .file()
+            .set_title("Экспорт карточек и истории")
+            .set_file_name(file_name)
+            .add_filter("JSON", &["json"])
+            .blocking_save_file();
+        let Some(path) = selected else {
+            return Ok(false);
+        };
+        let path = path.into_path().map_err(|error| error.to_string())?;
+        fs::write(path, contents).map_err(|error| format!("Не удалось сохранить файл: {error}"))?;
+        Ok(true)
+    })
+    .await
+    .map_err(|error| format!("Ошибка выбора файла: {error}"))?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let runtime = Arc::new(RuntimeState {
@@ -422,11 +446,14 @@ pub fn run() {
     let cleanup = Arc::clone(&runtime);
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(runtime)
         .invoke_handler(tauri::generate_handler![
             ensure_services,
             open_store_browser,
-            prepare_collection
+            prepare_collection,
+            save_export_file
         ])
         .build(tauri::generate_context!())
         .expect("Не удалось собрать Tauri-приложение");

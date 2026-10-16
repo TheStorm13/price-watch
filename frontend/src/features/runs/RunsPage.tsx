@@ -1,6 +1,9 @@
 import { RefreshCw } from 'lucide-react'
+import { invoke } from '@tauri-apps/api/core'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { useRun, useRuns } from '../../api/queries'
+import { api, isDesktopMode } from '../../api/client'
+import { queryKeys, useRun, useRuns } from '../../api/queries'
 import { Button } from '../../components/ui/Button'
 import { LoadingRows } from '../../components/ui/LoadingRows'
 import { formatDateTime, formatDuration, runStatusLabel } from '../../utils/format'
@@ -16,11 +19,24 @@ const statusTone: Record<RunStatus, string> = {
 }
 
 export function RunsPage() {
+  const client = useQueryClient()
   const [params, setParams] = useSearchParams()
   const selectedId = Number(params.get('run')) || null
   const detail = useRun(selectedId, true)
   const query = useRuns()
   const runs = query.data ?? []
+  const retry = useMutation({
+    mutationFn: async (sourceId: number) => {
+      if (isDesktopMode) await invoke('prepare_collection')
+      return api.retryRun(sourceId)
+    },
+    onSuccess: (run) => {
+      void client.invalidateQueries({ queryKey: queryKeys.runs })
+      setParams({ run: String(run.id) })
+    },
+  })
+  const failedCards = detail.data?.errors?.filter((error) => error.cardId !== null) ?? []
+  const existingRetry = runs.find((run) => run.retryOfRunId === selectedId)
   return (
     <section className="page runs-page">
       <header className="page-header">
@@ -51,6 +67,9 @@ export function RunsPage() {
       {selectedId !== null ? (
         <section className="run-details" aria-label={`Подробности запуска ${selectedId}`}>
           <div className="run-details__header"><h2>Запуск #{selectedId}</h2><Button onClick={() => setParams({})}>Закрыть</Button></div>
+          {detail.data?.retryOfRunId ? <p className="run-retry-link">Повтор запуска <button className="text-link" onClick={() => setParams({ run: String(detail.data?.retryOfRunId) })}>#{detail.data.retryOfRunId}</button></p> : null}
+          {failedCards.length > 0 && detail.data && ['completed_with_errors', 'failed'].includes(detail.data.status) ? <div className="run-retry"><p>Повторить только карточки с ошибками: {failedCards.map((error) => error.externalId ?? `#${error.cardId}`).join(', ')}</p>{existingRetry ? <Button onClick={() => setParams({ run: String(existingRetry.id) })}>Открыть повтор #{existingRetry.id}</Button> : <Button disabled={retry.isPending} onClick={() => retry.mutate(selectedId!)}>Повторить ошибки</Button>}</div> : null}
+          {retry.isError ? <p className="action-error" role="alert">{retry.error.message}</p> : null}
           {detail.isLoading ? <p>Загрузка подробностей…</p> : detail.isError ? <p role="alert">Не удалось получить подробности запуска.</p> : detail.data?.errors?.length ? (
             <ul className="run-errors">{detail.data.errors.map((error, index) => (
               <li key={`${error.cardId}-${index}`}>

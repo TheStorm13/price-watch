@@ -5,7 +5,10 @@ import type {
   ChartResponse,
   CollectionRun,
   CreateCardInput,
+  Deal,
   MarketplaceCard,
+  TransferDocument,
+  ImportSummary,
   UpdateCardInput,
 } from '../types/domain'
 
@@ -44,6 +47,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  exportCards: (): Promise<TransferDocument> =>
+    isDemoMode ? mockApi.exportCards() : request('/api/cards/export'),
+
+  previewImportCards: (document: TransferDocument): Promise<ImportSummary> =>
+    isDemoMode ? mockApi.previewImportCards(document) : request('/api/cards/import/preview', {
+      method: 'POST', body: JSON.stringify(document),
+    }),
+
+  importCards: (document: TransferDocument): Promise<ImportSummary> =>
+    isDemoMode ? mockApi.importCards(document) : request('/api/cards/import', {
+      method: 'POST', body: JSON.stringify(document),
+    }),
+
   listCards: (): Promise<MarketplaceCard[]> =>
     isDemoMode ? mockApi.listCards() : request('/api/cards'),
 
@@ -73,6 +89,9 @@ export const api = {
   getChart: (cardId: number, days: number): Promise<ChartResponse> =>
     isDemoMode ? mockApi.getChart(cardId, days) : request(`/api/cards/${cardId}/chart?days=${days}`),
 
+  listDeals: (): Promise<Deal[]> =>
+    isDemoMode ? mockApi.listDeals() : request('/api/cards/deals'),
+
   listRuns: (): Promise<CollectionRun[]> =>
     isDemoMode ? mockApi.listRuns() : request('/api/runs?page=1&pageSize=50'),
 
@@ -91,6 +110,9 @@ export const api = {
     isDemoMode
       ? mockApi.continueRun(runId)
       : request(`/api/runs/${runId}/continue`, { method: 'POST' }),
+
+  retryRun: (runId: number): Promise<CollectionRun> =>
+    isDemoMode ? mockApi.retryRun(runId) : request(`/api/runs/${runId}/retry`, { method: 'POST' }),
 }
 
 export const apiModeLabel = isDemoMode ? 'Демо-данные' : isDesktopMode ? 'Desktop' : 'API'

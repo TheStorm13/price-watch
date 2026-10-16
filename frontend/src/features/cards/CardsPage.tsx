@@ -11,6 +11,7 @@ import { useCollection } from '../collection/CollectionProvider'
 import type { Availability, Marketplace, MarketplaceCard } from '../../types/domain'
 import { formatDateTime, formatPrice, formatRelativeTime } from '../../utils/format'
 import { AddCardDrawer } from './AddCardDrawer'
+import { ImportExportControls } from './ImportExportControls'
 
 type Sort = 'default' | 'price-asc' | 'price-desc' | 'updated-desc'
 
@@ -24,6 +25,7 @@ export function CardsPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [transferStatus, setTransferStatus] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
   const cardsQuery = useCards()
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
@@ -54,7 +56,7 @@ export function CardsPage() {
     return result.toSorted((left, right) => {
       if (sort === 'price-asc') return (left.currentPrice ?? Infinity) - (right.currentPrice ?? Infinity)
       if (sort === 'price-desc') return (right.currentPrice ?? -Infinity) - (left.currentPrice ?? -Infinity)
-      if (sort === 'updated-desc') return (Date.parse(right.lastObservedAt ?? '') || 0) - (Date.parse(left.lastObservedAt ?? '') || 0)
+      if (sort === 'updated-desc') return (right.lastObservedAt ? Date.parse(right.updatedAt) : 0) - (left.lastObservedAt ? Date.parse(left.updatedAt) : 0)
       return Number(right.isActive) - Number(left.isActive) || left.id - right.id
     })
   }, [cardsQuery.data, deferredQuery, marketplace, sort, status])
@@ -68,10 +70,13 @@ export function CardsPage() {
       <header className="page-header">
         <div><h1>Карточки</h1><p>Текущие цены и история отслеживаемых карточек</p></div>
         <div className="page-actions">
+          <ImportExportControls onStatus={(message, kind) => setTransferStatus({ message, kind })} />
           <Button icon={<RefreshCw />} onClick={() => collection.start()} disabled={collection.isStarting}>Обновить цены</Button>
           <Button variant="primary" icon={<Plus />} onClick={() => setDrawerOpen(true)}>Добавить карточку</Button>
         </div>
       </header>
+      {transferStatus ? <p className={`transfer-page-status transfer-page-status--${transferStatus.kind}`}
+        role={transferStatus.kind === 'error' ? 'alert' : 'status'}>{transferStatus.message}</p> : null}
       {collection.startError ? <p className="action-error" role="alert">{collection.startError}</p> : null}
 
       <div className="filters">
@@ -119,8 +124,8 @@ export function CardsPage() {
                     <td><MarketplaceMark marketplace={card.marketplace} /></td>
                     <td className="price-cell">{formatPrice(card.currentPrice)}</td>
                     <td><AvailabilityStatus value={card.currentAvailability} /></td>
-                    <td><time dateTime={card.lastObservedAt ?? undefined} title={formatDateTime(card.lastObservedAt)}>{formatRelativeTime(card.lastObservedAt)}</time></td>
-                    <td><CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={() => deleteCard.mutateAsync(card.id)} /></td>
+                    <td><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time></td>
+                    <td><CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive} onRefresh={() => collection.start(card.id)} refreshDisabled={collection.isStarting} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={() => deleteCard.mutateAsync(card.id)} /></td>
                   </tr>
                 ))}
               </tbody>

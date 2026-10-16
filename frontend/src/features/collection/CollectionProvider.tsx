@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { api, isDesktopMode } from '../../api/client'
 import { queryKeys, useRun } from '../../api/queries'
@@ -13,10 +13,14 @@ interface CollectionContextValue {
   openBrowser: () => void
   continueRun: () => void
   dismiss: () => void
+  dealNotice: number | null
+  dismissDealNotice: () => void
 }
 
 const CollectionContext = createContext<CollectionContextValue | null>(null)
 const ACTIVE_RUN_KEY = 'price-watch-active-run'
+const NOTIFIED_PRICES_KEY = 'price-watch-notified-prices'
+const NOTIFIED_RUN_KEY = 'price-watch-notified-run'
 const COLLECTOR_BROWSER_URL = '/browser/vnc.html?autoconnect=true&resize=scale&path=browser/websockify'
 
 function openCollectorBrowser() {
@@ -32,7 +36,29 @@ function initialRunId() {
 export function CollectionProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient()
   const [runId, setRunId] = useState<number | null>(initialRunId)
+  const [dealNotice, setDealNotice] = useState<number | null>(null)
+  const seenLatestRun = useRef<number | null>(null)
   const runQuery = useRun(runId)
+  const recentRuns = useQuery({ queryKey: ['recent-runs'], queryFn: api.listRuns, refetchInterval: 5_000 })
+
+  useEffect(() => {
+    const latest = recentRuns.data?.[0]
+    if (!latest) return
+    if (seenLatestRun.current === null) {
+      seenLatestRun.current = latest.id
+      const recent = Date.now() - Date.parse(latest.startedAt) < 2 * 60_000
+      if (latest.id > (runId ?? 0) && (recent || ['queued', 'running', 'waiting_for_user'].includes(latest.status))) {
+        setRunId(latest.id)
+        window.localStorage.setItem(ACTIVE_RUN_KEY, String(latest.id))
+      }
+      return
+    }
+    if (latest.id > seenLatestRun.current) {
+      seenLatestRun.current = latest.id
+      setRunId(latest.id)
+      window.localStorage.setItem(ACTIVE_RUN_KEY, String(latest.id))
+    }
+  }, [recentRuns.data, runId])
 
   const startMutation = useMutation({
     mutationFn: async (cardId?: number) => {
@@ -59,7 +85,21 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     if (!isTerminal) return
     client.invalidateQueries({ queryKey: queryKeys.cards })
     client.invalidateQueries({ queryKey: queryKeys.runs })
-  }, [client, isTerminal])
+    client.invalidateQueries({ queryKey: queryKeys.deals })
+  }, [client, isTerminal, run?.id])
+
+  useEffect(() => {
+    if (!isTerminal || !run || run.status === 'failed' || window.localStorage.getItem(NOTIFIED_RUN_KEY) === String(run.id)) return
+    window.localStorage.setItem(NOTIFIED_RUN_KEY, String(run.id))
+    void api.listDeals().then((deals) => {
+      const previous = JSON.parse(window.localStorage.getItem(NOTIFIED_PRICES_KEY) || '{}') as Record<string, number>
+      const fresh = deals.filter((deal) => deal.lastCollectionRunId === run.id && previous[String(deal.card.id)] !== deal.card.currentPrice)
+      window.localStorage.setItem(NOTIFIED_PRICES_KEY, JSON.stringify(Object.fromEntries(
+        deals.map((deal) => [deal.card.id, deal.card.currentPrice]),
+      )))
+      if (fresh.length) setDealNotice(fresh.length)
+    }).catch(() => { /* The deals page still exposes API errors. */ })
+  }, [isTerminal, run])
 
   const dismiss = useCallback(() => {
     setRunId(null)
@@ -80,7 +120,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     openBrowser,
     continueRun: () => runId !== null && continueMutation.mutate(runId),
     dismiss,
-  }), [continueMutation, dismiss, openBrowser, run, runId, start, startMutation.isPending, startMutation.isError, startMutation.error])
+    dealNotice,
+    dismissDealNotice: () => setDealNotice(null),
+  }), [continueMutation, dealNotice, dismiss, openBrowser, run, runId, start, startMutation.isPending, startMutation.isError, startMutation.error])
 
   return <CollectionContext.Provider value={value}>{children}</CollectionContext.Provider>
 }

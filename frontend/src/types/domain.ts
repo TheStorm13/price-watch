@@ -82,6 +82,15 @@ export interface CollectionRun {
   startedAt: string
   finishedAt: string | null
   errors?: RunError[] | null
+  retryOfRunId?: number | null
+}
+
+export interface Deal {
+  card: MarketplaceCard
+  averagePrice: number
+  savings: number
+  baselineDays: number
+  lastCollectionRunId: number | null
 }
 
 export interface CreateCardInput {
@@ -95,6 +104,35 @@ export interface UpdateCardInput {
   title?: string | null
   url?: string | null
   isActive?: boolean
+}
+
+export interface TransferHistoryPoint {
+  price: string | null
+  availability: Availability
+  observedAt: string
+}
+
+export interface TransferCard {
+  marketplace: string
+  externalId: string
+  title: string | null
+  url: string | null
+  isActive: boolean
+  createdAt: string
+  history: TransferHistoryPoint[]
+}
+
+export interface TransferDocument {
+  version: 1
+  cards: TransferCard[]
+}
+
+export interface ImportSummary {
+  cardsAdded: number
+  cardsMerged: number
+  observationsAdded: number
+  observationsRemoved: number
+  observationsSkipped: number
 }
 
 export interface ApiErrorPayload {

@@ -2,8 +2,12 @@ import type {
   CardHistoryResponse,
   CollectionRun,
   CreateCardInput,
+  Deal,
   MarketplaceCard,
   PriceHistoryPoint,
+  TransferDocument,
+  ImportSummary,
+  Marketplace,
   UpdateCardInput,
 } from '../types/domain'
 
@@ -32,7 +36,7 @@ let cards: MarketplaceCard[] = [
     isActive: true,
     currentPrice: 24990,
     currentAvailability: 'in_stock',
-    lastObservedAt: new Date(now - 12 * 60_000).toISOString(),
+    lastObservedAt: new Date(now - 2 * 86_400_000).toISOString(),
     createdAt: new Date(now - 32 * 86_400_000).toISOString(),
     updatedAt: new Date(now - 12 * 60_000).toISOString(),
   },
@@ -79,14 +83,22 @@ let cards: MarketplaceCard[] = [
 
 const priceSeries = [81490, 80990, 79990, 79490, 78490, 76990, 75490, 74490, 73490, 72990]
 
-let history: PriceHistoryPoint[] = priceSeries.map((price, index) => ({
-  id: index + 1,
-  cardId: 1,
-  collectionRunId: 21 - index,
-  price,
-  availability: 'in_stock',
-  observedAt: new Date(now - (priceSeries.length - 1 - index) * 3 * 86_400_000).toISOString(),
-}))
+let history: PriceHistoryPoint[] = [
+  ...priceSeries.map((price, index) => ({
+    id: index + 1,
+    cardId: 1,
+    collectionRunId: 21 - index,
+    price,
+    availability: 'in_stock' as const,
+    observedAt: new Date(now - (priceSeries.length - 1 - index) * 3 * 86_400_000).toISOString(),
+  })),
+  ...cards.filter((card) => card.id !== 1 && card.currentPrice !== null && card.lastObservedAt !== null)
+    .map((card, index) => ({
+      id: priceSeries.length + index + 1, cardId: card.id, collectionRunId: 21,
+      price: card.currentPrice, availability: card.currentAvailability ?? 'unknown' as const,
+      observedAt: card.lastObservedAt as string,
+    })),
+]
 
 let runs: CollectionRun[] = [
   {
@@ -121,13 +133,106 @@ let runs: CollectionRun[] = [
 
 let nextCardId = 6
 let nextRunId = 22
+let nextHistoryId = Math.max(0, ...history.map((point) => point.id)) + 1
 const runCreatedAt = new Map<number, number>()
 const continuedRuns = new Set<number>()
 
 const delay = <T>(value: T, milliseconds = 180) =>
   new Promise<T>((resolve) => window.setTimeout(() => resolve(value), milliseconds))
 
+function mergeImportedCards(document: TransferDocument, apply: boolean): ImportSummary {
+  if (document.version !== 1 || !Array.isArray(document.cards)) throw new Error('Неверный формат файла экспорта')
+  const summary: ImportSummary = {
+    cardsAdded: 0, cardsMerged: 0, observationsAdded: 0,
+    observationsRemoved: 0, observationsSkipped: 0,
+  }
+  for (const importedCard of document.cards) {
+    const current = cards.find((card) => card.marketplace === importedCard.marketplace && card.externalId === importedCard.externalId)
+    const local = current ? history.filter((point) => point.cardId === current.id) : []
+    const events = [
+      ...local.map((point) => ({ ...point, source: 'local' as const, sourceId: point.id })),
+      ...importedCard.history.map((point, sourceId) => ({
+        ...point, price: point.price === null ? null : Number(point.price),
+        source: 'import' as const, sourceId,
+      })),
+    ].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt) ||
+      Number(a.source === 'import') - Number(b.source === 'import') || a.sourceId - b.sourceId)
+    const merged: typeof events = []
+    let previousTime: number | null = null
+    let previousTimePrice: number | null = null
+    for (const event of events) {
+      const time = Date.parse(event.observedAt)
+      if (time === previousTime) {
+        if (event.price !== previousTimePrice) throw new Error(`Разные цены для одного времени: ${event.observedAt}`)
+        continue
+      }
+      previousTime = time
+      previousTimePrice = event.price
+      if (merged.length && event.price !== null && merged.at(-1)?.price === event.price) continue
+      merged.push(event)
+    }
+    const keptLocal = new Set(merged.filter((point) => point.source === 'local').map((point) => point.sourceId))
+    const added = merged.filter((point) => point.source === 'import')
+    summary[current ? 'cardsMerged' : 'cardsAdded'] += 1
+    summary.observationsAdded += added.length
+    summary.observationsRemoved += local.length - keptLocal.size
+    summary.observationsSkipped += importedCard.history.length - added.length
+    if (!apply) continue
+    const card: MarketplaceCard = current ?? {
+      id: nextCardId++, marketplace: importedCard.marketplace as Marketplace,
+      externalId: importedCard.externalId, title: importedCard.title, url: importedCard.url,
+      isActive: importedCard.isActive, currentPrice: null, currentAvailability: null,
+      lastObservedAt: null, createdAt: importedCard.createdAt, updatedAt: importedCard.createdAt,
+    }
+    if (!current) cards = [...cards, card]
+    else if (Date.parse(importedCard.createdAt) < Date.parse(card.createdAt)) card.createdAt = importedCard.createdAt
+    for (const point of importedCard.history) {
+      if (Date.parse(point.observedAt) > Date.parse(card.updatedAt)) card.updatedAt = point.observedAt
+    }
+    history = history.filter((point) => point.cardId !== card.id || keptLocal.has(point.id))
+    history.push(...added.map((point) => ({
+      id: nextHistoryId++, cardId: card.id, collectionRunId: null,
+      price: point.price, availability: point.availability,
+      observedAt: point.observedAt,
+    })))
+    const latest = merged.at(-1)
+    card.currentPrice = latest?.price ?? null
+    card.currentAvailability = latest?.availability ?? null
+    card.lastObservedAt = latest?.observedAt ?? null
+  }
+  return summary
+}
+
 export const mockApi = {
+  async exportCards(): Promise<TransferDocument> {
+    return delay({
+      version: 1,
+      cards: cards.map((card) => ({
+        marketplace: card.marketplace,
+        externalId: card.externalId,
+        title: card.title,
+        url: card.url,
+        isActive: card.isActive,
+        createdAt: card.createdAt,
+        history: history.filter((point) => point.cardId === card.id)
+          .sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt))
+          .map((point) => ({
+            price: point.price === null ? null : point.price.toFixed(2),
+            availability: point.availability,
+            observedAt: point.observedAt,
+          })),
+      })),
+    })
+  },
+
+  async previewImportCards(document: TransferDocument): Promise<ImportSummary> {
+    return delay(mergeImportedCards(document, false))
+  },
+
+  async importCards(document: TransferDocument): Promise<ImportSummary> {
+    return delay(mergeImportedCards(document, true))
+  },
+
   async listCards() {
     return delay([...cards])
   },
@@ -184,8 +289,10 @@ export const mockApi = {
     const card = cards.find((item) => item.id === cardId)
     if (!card) throw new Error('Карточка не найдена')
     const cutoff = Date.now() - days * 86_400_000
-    const points = cardId === 1
-      ? history.filter((point) => Date.parse(point.observedAt) >= cutoff)
+    const savedPoints = history.filter((point) => point.cardId === cardId && Date.parse(point.observedAt) >= cutoff)
+      .sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt) || a.id - b.id)
+    const points = savedPoints.length
+      ? savedPoints
       : card.currentPrice === null
         ? []
         : [{
@@ -217,26 +324,31 @@ export const mockApi = {
 
   async getChart(cardId: number, days: number) {
     const response = await this.getHistory(cardId, days, 1, Number.MAX_SAFE_INTEGER)
-    const ordered = response.history.toReversed().map((point) => point.availability === 'out_of_stock' ? { ...point, price: null } : point)
-    const points: PriceHistoryPoint[] = []
-    let first: PriceHistoryPoint | undefined
-    let last: PriceHistoryPoint | undefined
-    const flush = () => {
-      if (!first || !last) return
-      points.push(first)
-      if (first.id !== last.id) points.push(last)
-    }
-    for (const point of ordered) {
-      if (!first) first = last = point
-      else if (point.price === last?.price && point.availability === last.availability) last = point
-      else { flush(); first = last = point }
-    }
-    flush()
-    return { points }
+    return { points: response.history.toReversed().map((point) =>
+      point.availability === 'out_of_stock' ? { ...point, price: null } : point) }
   },
 
   async listRuns() {
     return delay(runs.map((run) => ({ ...run, errors: null })))
+  },
+
+  async listDeals(): Promise<Deal[]> {
+    return delay(cards.filter((card) => card.isActive && card.currentAvailability === 'in_stock' &&
+      card.currentPrice !== null && Date.now() - Date.parse(card.createdAt) >= 7 * 86_400_000 &&
+      card.id === 1).map((card) => ({ card, averagePrice: 78000,
+      savings: 78000 - (card.currentPrice ?? 0), baselineDays: 8,
+      lastCollectionRunId: history.at(-1)?.collectionRunId ?? null })))
+  },
+
+  async retryRun(runId: number): Promise<CollectionRun> {
+    const source = runs.find((run) => run.id === runId)
+    const targets = source?.errors?.filter((error) => error.cardId !== null) ?? []
+    if (!source || targets.length === 0) throw new Error('Нет карточек для повтора')
+    if (runs.some((run) => run.retryOfRunId === runId)) throw new Error('Повтор уже создан')
+    const retry = await this.startRun(targets[0].cardId ?? undefined)
+    const next = { ...retry, retryOfRunId: runId, totalCount: targets.length }
+    runs = runs.map((run) => run.id === next.id ? next : run)
+    return next
   },
 
   async startRun(cardId?: number) {
@@ -287,9 +399,14 @@ export const mockApi = {
         finishedAt: new Date().toISOString(),
       }
       const observedAt = new Date().toISOString()
-      cards = cards.map((card) => card.isActive ? { ...card, lastObservedAt: observedAt, updatedAt: observedAt } : card)
+      cards = cards.map((card) => card.isActive ? {
+        ...card,
+        currentPrice: card.id === run.current?.cardId && card.currentPrice !== null
+          ? card.currentPrice - 100 : card.currentPrice,
+        lastObservedAt: observedAt, updatedAt: observedAt,
+      } : card)
       const first = cards[0]
-      if (first?.currentPrice !== null) {
+      if (first?.id === run.current?.cardId && first.currentPrice !== null && history.at(-1)?.price !== first.currentPrice) {
         history = [...history, {
           id: history.length + 1,
           cardId: first.id,

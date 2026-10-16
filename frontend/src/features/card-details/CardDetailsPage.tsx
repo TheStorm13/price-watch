@@ -1,12 +1,14 @@
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { useState, type MouseEvent } from 'react'
+import { ArrowLeft, ExternalLink, RefreshCw } from 'lucide-react'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ApiError } from '../../api/client'
+import { ApiError, isDesktopMode } from '../../api/client'
 import { useCard, useCardChart, useCardHistory, useDeleteCard, useUpdateCard } from '../../api/queries'
 import { AvailabilityStatus } from '../../components/ui/AvailabilityStatus'
 import { Button } from '../../components/ui/Button'
 import { CardActionsMenu } from '../../components/ui/CardActionsMenu'
 import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
-import { formatDateTime, formatPrice } from '../../utils/format'
+import { formatDateTime, formatPrice, marketplaceLabel } from '../../utils/format'
 import { useCollection } from '../collection/CollectionProvider'
 import { PriceChart } from './PriceChart'
 
@@ -16,6 +18,7 @@ export function CardDetailsPage() {
   const navigate = useNavigate()
   const cardId = Number(useParams().cardId)
   const [params, setParams] = useSearchParams()
+  const [openError, setOpenError] = useState<string | null>(null)
   const days = periods.includes(Number(params.get('days')) as 7 | 30 | 90) ? Number(params.get('days')) : 30
   const requestedPage = Number(params.get('page'))
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
@@ -31,6 +34,19 @@ export function CardDetailsPage() {
   const chart = chartQuery.data?.points ?? []
   const midpoint = statistics?.minimumPrice != null && statistics.maximumPrice != null
     ? (statistics.minimumPrice + statistics.maximumPrice) / 2 : null
+  const priceGap = statistics?.minimumPrice != null && statistics.maximumPrice != null
+    ? statistics.maximumPrice - statistics.minimumPrice : null
+
+  async function openProduct(event: MouseEvent<HTMLAnchorElement>) {
+    if (!isDesktopMode || !card?.url) return
+    event.preventDefault()
+    setOpenError(null)
+    try {
+      await openUrl(card.url)
+    } catch {
+      setOpenError('Не удалось открыть страницу товара в браузере')
+    }
+  }
 
   if (cardQuery.isLoading || historyQuery.isLoading || chartQuery.isLoading) return <section className="page detail-page"><div className="detail-loading" aria-label="Загрузка карточки" /></section>
   if (cardQuery.error instanceof ApiError && cardQuery.error.code === 'card_not_found') {
@@ -55,21 +71,24 @@ export function CardDetailsPage() {
       <header className="detail-header">
         <div><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.isActive ? <><span>·</span><span className="tracking-status">Отслеживание приостановлено</span></> : null}</div></div>
         <div className="page-actions">
-          <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)}>Обновить</Button>
+          {card.url ? <a className="button button--secondary" href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a> : null}
+          <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)} disabled={!card.isActive || collection.isStarting}>Обновить эту карточку</Button>
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} isActive={card.isActive} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
         </div>
       </header>
+      {openError ? <p className="action-error" role="alert">{openError}</p> : null}
       {collection.startError ? <p className="action-error" role="alert">{collection.startError}</p> : null}
 
       <div className="price-summary">
         <div className="price-summary__primary">
           <strong>{formatPrice(card.currentPrice)}</strong>
           <AvailabilityStatus value={card.currentAvailability} />
-          <span>Последнее наблюдение: {formatDateTime(card.lastObservedAt)}</span>
+          <span>Обновлено: {formatDateTime(card.lastObservedAt ? card.updatedAt : null)}</span>
         </div>
         <div className="price-stat"><span>Минимум</span><strong>{formatPrice(statistics?.minimumPrice)}</strong></div>
         <div className="price-stat"><span>Середина диапазона</span><strong>{formatPrice(midpoint)}</strong></div>
         <div className="price-stat"><span>Максимум</span><strong>{formatPrice(statistics?.maximumPrice)}</strong></div>
+        <div className="price-stat"><span>Разница</span><strong>{formatPrice(priceGap)}</strong></div>
       </div>
 
       <div className="chart-heading">

@@ -1,4 +1,4 @@
-import { LoaderCircle, MoreVertical, Pause, Play, Trash2 } from 'lucide-react'
+import { LoaderCircle, MoreVertical, Pause, Play, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 
 interface CardActionsMenuProps {
@@ -6,10 +6,12 @@ interface CardActionsMenuProps {
   isActive: boolean
   onToggle: () => Promise<unknown>
   onDelete: () => Promise<unknown>
+  onRefresh?: () => void
+  refreshDisabled?: boolean
   bordered?: boolean
 }
 
-export function CardActionsMenu({ cardTitle, isActive, onToggle, onDelete, bordered = false }: CardActionsMenuProps) {
+export function CardActionsMenu({ cardTitle, isActive, onToggle, onDelete, onRefresh, refreshDisabled = false, bordered = false }: CardActionsMenuProps) {
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [pending, setPending] = useState(false)
@@ -96,6 +98,16 @@ export function CardActionsMenu({ cardTitle, isActive, onToggle, onDelete, borde
       </button>
       {open ? (
         <div className="card-actions-menu__popover" id={menuId} role="menu" aria-label={`Действия с карточкой ${cardTitle}`}>
+          {onRefresh && isActive ? (
+            <button type="button" role="menuitem" disabled={pending || refreshDisabled} onClick={() => {
+              onRefresh()
+              setOpen(false)
+              triggerRef.current?.focus()
+            }}>
+              <RefreshCw />
+              <span>Обновить только эту карточку</span>
+            </button>
+          ) : null}
           <button ref={actionRef} type="button" role="menuitem" disabled={pending} onClick={() => void toggleTracking()}>
             {pending ? <LoaderCircle className="spin" /> : isActive ? <Pause /> : <Play />}
             <span>{pending ? 'Сохраняем…' : actionLabel}</span>

@@ -38,6 +38,15 @@ h2 { font-size: 20px; line-height: 28px; letter-spacing: -0.015em; font-weight: 
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
 .page-header p { margin-top: 6px; color: var(--text-muted); font-size: 15px; }
 .page-actions { display: flex; align-items: center; gap: 10px; }
+.transfer-page-status { margin: -14px 0 18px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 13px; }
+.transfer-page-status--error { color: var(--red); }
+.transfer-dialog { width: min(520px, calc(100vw - 32px)); }
+.transfer-dialog__close { position: absolute; top: 16px; right: 16px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; }
+.transfer-dialog__close svg { width: 20px; height: 20px; }
+.transfer-dialog__file { display: grid; gap: 8px; margin-top: 22px; font-weight: 600; }
+.transfer-dialog__file input { width: 100%; font-weight: 400; }
+.transfer-dialog__preview { margin-top: 18px; padding: 14px; border-radius: 8px; background: var(--surface-subtle); }
+.transfer-dialog__preview p { margin-top: 8px; font-size: 13px; }
 .button { min-height: 42px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); padding: 0 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--surface); color: var(--text); font-weight: 590; cursor: pointer; transition: border-color 150ms ease, background-color 150ms ease, transform 120ms ease; }
 .button:hover:not(:disabled) { border-color: #98a2b3; background: var(--surface-subtle); }
 .button:active:not(:disabled) { transform: translateY(1px); }
@@ -69,6 +78,14 @@ h2 { font-size: 20px; line-height: 28px; letter-spacing: -0.015em; font-weight: 
 .run-details { margin-top: 18px; padding: 22px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
 .run-id button.text-link { border: 0; padding: 0; background: transparent; cursor: pointer; }
 .run-details__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.run-retry { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; padding: 14px; border-radius: 8px; background: var(--blue-soft); }
+.run-retry p { color: var(--text); }
+.run-retry-link { margin-bottom: 12px; color: var(--text-muted); }
+.run-retry-link button { border: 0; background: transparent; cursor: pointer; }
+.deal-notice { position: fixed; z-index: 60; top: 16px; right: 24px; display: flex; align-items: center; gap: 16px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: #fff; box-shadow: var(--shadow-overlay); }
+.deal-notice a { color: var(--blue); font-weight: 600; }
+.deal-notice button { border: 0; background: transparent; font-size: 22px; cursor: pointer; }
+.deal-savings { color: var(--green); font-weight: 650; }
 .run-errors { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
 .run-errors li { padding: 14px; border: 1px solid var(--border); border-radius: 8px; }
 .run-errors p { margin: 4px 0 8px; color: var(--text-muted); }
@@ -178,7 +195,7 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
 .detail-header__meta { margin-top: 7px; display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
 .detail-header__meta .marketplace-mark__logo { display: none; }
-.price-summary { min-height: 150px; margin-bottom: 26px; padding: 26px 28px; border: 1px solid var(--border); border-radius: 12px; display: grid; grid-template-columns: 1.8fr repeat(3, 1fr); align-items: center; background: #fff; }
+.price-summary { min-height: 150px; margin-bottom: 26px; padding: 26px 28px; border: 1px solid var(--border); border-radius: 12px; display: grid; grid-template-columns: 1.8fr repeat(4, 1fr); align-items: center; background: #fff; }
 .price-summary__primary { display: flex; flex-direction: column; align-items: flex-start; }
 .price-summary__primary > strong { margin-bottom: 4px; font-size: 36px; line-height: 42px; letter-spacing: -.03em; font-weight: 680; font-variant-numeric: tabular-nums; }
 .price-summary__primary > span:last-child { margin-top: 9px; color: var(--text-muted); font-size: 13px; }
@@ -213,8 +230,10 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
   .sidebar__browser-button { justify-content: center; padding: 0; }
   .sidebar__browser-error { display: none; }
   .filters { flex-wrap: wrap; }
+  .page-header { flex-wrap: wrap; }
+  .page-actions { flex-wrap: wrap; }
   .filters__selects { justify-content: flex-start; }
-  .price-summary { grid-template-columns: 1.5fr repeat(3, 1fr); }
+  .price-summary { grid-template-columns: 1.5fr repeat(4, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {

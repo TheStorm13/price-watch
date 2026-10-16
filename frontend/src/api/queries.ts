@@ -8,6 +8,7 @@ export const queryKeys = {
   history: (id: number, days: number, page: number) => ['cards', id, 'history', days, page] as const,
   chart: (id: number, days: number) => ['cards', id, 'chart', days] as const,
   runs: ['runs'] as const,
+  deals: ['deals'] as const,
   run: (id: number, includeErrors = false) => ['runs', id, includeErrors] as const,
 }
 
@@ -63,6 +64,10 @@ export function useDeleteCard() {
 
 export function useRuns() {
   return useQuery({ queryKey: queryKeys.runs, queryFn: api.listRuns })
+}
+
+export function useDeals() {
+  return useQuery({ queryKey: queryKeys.deals, queryFn: api.listDeals })
 }
 
 export function useRun(runId: number | null, includeErrors = false) {
