@@ -130,21 +130,22 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .tracking-status { display: inline-flex; margin-top: 4px; color: var(--amber); font-size: 12px; font-weight: 600; }
 .product-placeholder { position: relative; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 8px; display: grid; place-items: center; overflow: hidden; color: var(--blue); background: var(--blue-soft); font-size: 18px; font-weight: 650; }
 .product-placeholder img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; }
-.cards-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 0; margin: 0; list-style: none; }
-.cards-grid__item { position: relative; min-width: 0; display: flex; flex-direction: column; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), min(100%, 220px))); gap: 12px; padding: 0; margin: 0; list-style: none; }
+.cards-grid__item { position: relative; min-width: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
 .cards-grid__link { min-width: 0; color: var(--text); text-decoration: none; }
 .cards-grid__link:hover .cards-grid__title { color: var(--blue); }
-.product-placeholder--large { width: 100%; height: clamp(200px, 20vw, 250px); margin-bottom: 7px; border-radius: 7px; font-size: 44px; }
-.cards-grid__title { display: -webkit-box; height: 36px; overflow: hidden; font-size: 13px; font-weight: 650; line-height: 18px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.cards-grid__id { display: block; margin: 2px 0 5px; color: var(--text-muted); font-size: 10px; line-height: 14px; }
-.cards-grid__details { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 26px; font-size: 11px; }
+.cards-grid .product-placeholder--large { display: grid; width: 100%; height: auto; aspect-ratio: 1 / 1; border-radius: 0; font-size: 44px; }
+.cards-grid .product-placeholder--large img { object-fit: cover; }
+.cards-grid__title { display: -webkit-box; height: 36px; margin: 10px 10px 0; overflow: hidden; font-size: 13px; font-weight: 650; line-height: 18px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.cards-grid__id { display: block; margin: 3px 10px 7px; color: var(--text-muted); font-size: 10px; line-height: 14px; }
+.cards-grid__details { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 30px; margin: 0 10px; font-size: 11px; }
 .cards-grid__details .marketplace-mark { gap: 4px; font-size: 11px; }
 .cards-grid__details .marketplace-mark__logo { width: 22px; height: 22px; font-size: 8px; }
 .cards-grid__details .status { gap: 4px; font-size: 11px; }
 .cards-grid__details time { color: var(--text-muted); white-space: nowrap; font-size: 10px; }
-.cards-grid__tracking { margin-top: 3px; font-size: 10px; line-height: 14px; }
+.cards-grid__tracking { margin: 4px 10px 10px; font-size: 10px; line-height: 14px; }
 .cards-grid__tracking .tracking-status { margin: 0; font-size: inherit; line-height: inherit; }
-.cards-grid__actions { position: absolute; z-index: 1; top: 14px; right: 14px; border-radius: 8px; background: rgba(255, 255, 255, .94); box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }
+.cards-grid__actions { position: absolute; z-index: 1; top: 8px; right: 8px; border-radius: 8px; background: rgba(255, 255, 255, .94); box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }
 .cards-grid__actions .icon-button { width: 32px; height: 32px; }
 .cards-grid__actions .icon-button svg { width: 18px; height: 18px; }
 .price-cell { color: var(--text); font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
