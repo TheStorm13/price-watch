@@ -538,6 +538,8 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(deal.savings, Decimal("30"))
             self.assertEqual(deal.baseline_days, 2)
             self.assertEqual(deal.last_collection_run_id, run_id)
+            metrics = await repository.list_card_price_metrics()
+            self.assertEqual(metrics[card.id], (Decimal("80"), Decimal("110")))
             app = create_app(repository=repository)
             app.state.repository = repository
 
@@ -548,6 +550,10 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 item = next(item for item in response.json() if item["card"]["id"] == card.id)
                 self.assertEqual(item["averagePrice"], 110.0)
                 self.assertEqual(item["lastCollectionRunId"], run_id)
+                cards_response = await client.get("/api/cards")
+                card_response = next(entry for entry in cards_response.json() if entry["id"] == card.id)
+                self.assertEqual(card_response["minimumPrice"], 80.0)
+                self.assertEqual(card_response["averagePrice"], 110.0)
 
             await check_deal_api()
             with self.database.session() as session, session.begin():

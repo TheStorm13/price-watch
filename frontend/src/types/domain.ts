@@ -18,6 +18,8 @@ export interface MarketplaceCard {
   isActive: boolean
   groupId?: number | null
   currentPrice: number | null
+  minimumPrice?: number | null
+  averagePrice?: number | null
   currentAvailability: Availability | null
   lastObservedAt: string | null
   createdAt: string

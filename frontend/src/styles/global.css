@@ -100,14 +100,14 @@ h2 { font-size: 20px; line-height: 28px; letter-spacing: -0.015em; font-weight: 
 .confirm-dialog p { color: var(--text-muted); }
 .confirm-dialog__actions { margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px; }
 
-.filters { display: flex; gap: 12px; margin-bottom: 18px; }
-.search-field { position: relative; flex: 1 1 320px; max-width: 440px; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.search-field { position: relative; flex: 1 1 230px; max-width: 280px; height: 44px; align-self: flex-start; }
 .search-field svg { position: absolute; left: 14px; top: 50%; width: 19px; transform: translateY(-50%); color: var(--text-muted); }
 .search-field input, .filters select, .field input { width: 100%; height: 44px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); color: var(--text); background: var(--surface); }
 .search-field input { padding: 0 14px 0 43px; }
 input::placeholder { color: #98a2b3; }
-.filters__selects { flex: 1; display: flex; justify-content: flex-end; gap: 10px; }
-.filters select { width: 180px; padding: 0 34px 0 13px; appearance: auto; }
+.filters__selects { flex: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.filters select { width: 145px; padding: 0 28px 0 10px; appearance: auto; }
 .cards-view-bar { display: flex; align-items: center; justify-content: space-between; margin: -5px 0 12px; color: var(--text-muted); font-size: 12px; }
 .cards-view-switch { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
 .cards-view-switch button { width: 34px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; }
@@ -115,14 +115,17 @@ input::placeholder { color: #98a2b3; }
 .cards-view-switch button:hover { color: var(--blue); background: var(--blue-soft); }
 .cards-view-switch button.is-selected { color: var(--blue); background: var(--blue-soft); }
 
-.table-surface { border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.table-surface { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
 table { width: 100%; border-collapse: collapse; }
 th { height: 46px; padding: 0 20px; text-align: left; color: var(--text-muted); background: var(--surface-subtle); font-size: 12px; font-weight: 600; }
 td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); color: #475467; font-size: 13px; font-variant-numeric: tabular-nums; }
 .cards-table tbody tr { cursor: pointer; transition: background-color 140ms ease; }
 .cards-table tbody tr:hover { background: var(--blue-soft); }
-.cards-table th:first-child { width: 34%; }
-.cards-table th:last-child, .cards-table td:last-child { width: 48px; padding-inline: 4px; }
+.cards-table { min-width: 1050px; }
+.cards-table th, .cards-table td { padding-inline: 10px; white-space: nowrap; }
+.cards-table th:first-child { width: 27%; }
+.cards-table td:first-child { white-space: normal; }
+.cards-table th:last-child, .cards-table td:last-child { position: relative; width: 48px; padding-inline: 4px; }
 .card-identity { display: flex; align-items: center; gap: 13px; color: var(--text); }
 .card-identity strong, .card-identity small { display: block; }
 .card-identity strong { margin-bottom: 3px; font-size: 14px; font-weight: 620; }
@@ -145,6 +148,12 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .cards-grid__details .marketplace-mark__logo { width: 22px; height: 22px; font-size: 8px; }
 .cards-grid__details .status { gap: 4px; font-size: 11px; }
 .cards-grid__details time { color: var(--text-muted); white-space: nowrap; font-size: 10px; }
+.cards-grid__prices { display: grid; gap: 3px; margin: 4px 10px 6px; font-size: 11px; }
+.cards-grid__prices > div { display: flex; justify-content: space-between; gap: 6px; }
+.cards-grid__prices dt { color: var(--text-muted); }
+.cards-grid__prices dd { margin: 0; font-weight: 600; text-align: right; white-space: nowrap; }
+.filters__checkbox { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 12px; cursor: pointer; }
+.filters__checkbox input { accent-color: var(--blue); }
 .cards-grid__tracking { margin: 4px 10px 10px; font-size: 10px; line-height: 14px; }
 .cards-grid__tracking .tracking-status { margin: 0; font-size: inherit; line-height: inherit; }
 .cards-grid__actions { position: absolute; z-index: 1; top: 8px; right: 8px; border-radius: 8px; background: rgba(255, 255, 255, .94); box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }

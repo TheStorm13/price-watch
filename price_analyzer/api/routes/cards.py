@@ -41,7 +41,15 @@ async def get_chart(card_id: int, repository: RepositoryDep, days: int = 30):
 
 @router.get("", response_model=list[CardResponse])
 async def list_cards(repository: RepositoryDep):
-    return [CardResponse.from_overview(item) for item in await repository.list_cards(include_inactive=True)]
+    cards = await repository.list_cards(include_inactive=True)
+    metrics = await repository.list_card_price_metrics()
+    result = []
+    for item in cards:
+        minimum, average = metrics.get(item.card.id, (None, None))
+        result.append(CardResponse.from_overview(
+            item, minimum_price=minimum, average_price=average,
+        ))
+    return result
 
 
 @router.get("/export", response_model=TransferDocument)

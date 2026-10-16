@@ -53,6 +53,9 @@ class FakeRepository:
     async def list_cards(self, include_inactive=False):
         return [CardOverview(self.card, 999, "in_stock", NOW)]
 
+    async def list_card_price_metrics(self):
+        return {1: (800, 1100)}
+
     async def export_cards(self):
         return {"version": 1, "cards": [{
             "marketplace": "ozon", "external_id": "1604900984",
@@ -128,6 +131,8 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[0]["externalId"], "1604900984")
         self.assertEqual(response.json()[0]["currentPrice"], 999.0)
+        self.assertEqual(response.json()[0]["minimumPrice"], 800.0)
+        self.assertEqual(response.json()[0]["averagePrice"], 1100.0)
         self.assertNotIn("external_id", response.json()[0])
 
     async def test_group_contract_and_lifecycle(self):

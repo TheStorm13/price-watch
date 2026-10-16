@@ -18,13 +18,6 @@ export const router = createBrowserRouter([
         },
       },
       { path: 'runs', Component: RunsPage },
-      {
-        path: 'deals',
-        lazy: async () => {
-          const module = await import('../features/deals/DealsPage')
-          return { Component: module.DealsPage }
-        },
-      },
       { path: '*', element: <Navigate to="/cards" replace /> },
     ],
   },

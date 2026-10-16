@@ -185,13 +185,17 @@ class CardResponse(ApiModel):
     is_active: bool
     group_id: int | None = None
     current_price: float | None
+    minimum_price: float | None = None
+    average_price: float | None = None
     current_availability: str | None
     last_observed_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
     @classmethod
-    def from_overview(cls, overview: CardOverview) -> "CardResponse":
+    def from_overview(
+        cls, overview: CardOverview, *, minimum_price=None, average_price=None
+    ) -> "CardResponse":
         card = overview.card
         return cls(
             id=card.id,
@@ -203,6 +207,8 @@ class CardResponse(ApiModel):
             is_active=card.is_active,
             group_id=card.group_id,
             current_price=overview.current_price,
+            minimum_price=minimum_price,
+            average_price=average_price,
             current_availability=overview.current_availability,
             last_observed_at=overview.last_observed_at,
             created_at=card.created_at,

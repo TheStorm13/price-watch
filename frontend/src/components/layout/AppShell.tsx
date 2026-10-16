@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { BarChart3, Globe2, Play, Tags, BadgePercent } from 'lucide-react'
+import { BarChart3, Globe2, Play, Tags } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { apiModeLabel, isDesktopMode } from '../../api/client'
 import { ActiveCollectionPanel } from '../../features/collection/ActiveCollectionPanel'
@@ -9,7 +9,6 @@ import { useCollection } from '../../features/collection/CollectionProvider'
 const links = [
   { to: '/cards', label: 'Карточки', icon: Tags },
   { to: '/runs', label: 'Запуски', icon: Play },
-  { to: '/deals', label: 'Выгодные предложения', icon: BadgePercent },
 ]
 
 export function AppShell() {
@@ -57,7 +56,7 @@ export function AppShell() {
         <div className="sidebar__mode">{apiModeLabel}</div>
       </aside>
       <main className="main-content">
-        {dealNotice ? <div className="deal-notice" role="status"><span>Найдено выгодных предложений: {dealNotice}</span><NavLink to="/deals" onClick={dismissDealNotice}>Посмотреть</NavLink><button type="button" onClick={dismissDealNotice} aria-label="Закрыть уведомление">×</button></div> : null}
+        {dealNotice ? <div className="deal-notice" role="status"><span>Найдено выгодных предложений: {dealNotice}</span><NavLink to="/cards?deals=1" onClick={dismissDealNotice}>Посмотреть</NavLink><button type="button" onClick={dismissDealNotice} aria-label="Закрыть уведомление">×</button></div> : null}
         <Outlet />
       </main>
       <ActiveCollectionPanel />

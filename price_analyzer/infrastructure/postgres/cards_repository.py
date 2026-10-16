@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
@@ -113,6 +114,36 @@ class CardRepository:
             )
             for card, latest in rows
         ]
+
+    async def list_card_price_metrics(self) -> dict[int, tuple[Decimal | None, Decimal | None]]:
+        """All-time minimum and mean of previous daily prices for every card."""
+        statement = text("""
+            WITH latest AS (
+                SELECT DISTINCT ON (card_id) card_id, id
+                FROM price_history ORDER BY card_id, observed_at DESC, id DESC
+            ), daily AS (
+                SELECT h.card_id, date_trunc('day', h.observed_at) AS day,
+                       avg(h.price) AS daily_average
+                FROM price_history h JOIN latest l ON l.card_id = h.card_id
+                WHERE h.id <> l.id AND h.availability = 'in_stock' AND h.price IS NOT NULL
+                GROUP BY h.card_id, date_trunc('day', h.observed_at)
+            ), averages AS (
+                SELECT card_id, avg(daily_average) AS average_price
+                FROM daily GROUP BY card_id
+            ), minimums AS (
+                SELECT card_id, min(price) AS minimum_price
+                FROM price_history
+                WHERE availability = 'in_stock' AND price IS NOT NULL
+                GROUP BY card_id
+            )
+            SELECT c.id, m.minimum_price, a.average_price
+            FROM marketplace_cards c
+            LEFT JOIN minimums m ON m.card_id = c.id
+            LEFT JOIN averages a ON a.card_id = c.id
+        """)
+        async with self._database.session() as session:
+            rows = (await session.execute(statement)).all()
+        return {row.id: (row.minimum_price, row.average_price) for row in rows}
 
     async def get_card(self, card_id: int) -> Optional[CardOverview]:
         async with self._database.session() as session:

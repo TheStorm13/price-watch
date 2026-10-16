@@ -89,6 +89,7 @@ export function useDeleteCard() {
       client.removeQueries({ queryKey: queryKeys.card(cardId) })
       client.invalidateQueries({ queryKey: queryKeys.cards })
       client.invalidateQueries({ queryKey: queryKeys.groups })
+      client.invalidateQueries({ queryKey: queryKeys.deals })
     },
   })
 }

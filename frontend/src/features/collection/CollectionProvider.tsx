@@ -92,7 +92,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         deals.map((deal) => [deal.card.id, deal.card.currentPrice]),
       )))
       if (fresh.length) setDealNotice(fresh.length)
-    }).catch(() => { /* The deals page still exposes API errors. */ })
+    }).catch(() => { /* The cards page shows deal API errors when its filter is active. */ })
   }, [isTerminal, run])
 
   const dismiss = useCallback(() => {

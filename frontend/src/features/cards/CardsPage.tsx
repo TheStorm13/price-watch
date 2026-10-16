@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, FolderPlus, LayoutGrid, List, Pencil, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useCards, useDeleteCard, useGroups, useUpdateCard } from '../../api/queries'
+import { useCards, useDeals, useDeleteCard, useGroups, useUpdateCard } from '../../api/queries'
 import { Button } from '../../components/ui/Button'
 import { CardActionsMenu } from '../../components/ui/CardActionsMenu'
 import { AvailabilityStatus } from '../../components/ui/AvailabilityStatus'
@@ -33,6 +33,7 @@ export function CardsPage() {
   const [transferStatus, setTransferStatus] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
   const cardsQuery = useCards()
   const groupsQuery = useGroups()
+  const dealsQuery = useDeals()
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
   const collection = useCollection()
@@ -43,7 +44,9 @@ export function CardsPage() {
   const status = rawStatus === 'archived' || rawStatus === 'paused' ? 'excluded' : rawStatus
   const sort = (params.get('sort') ?? 'default') as Sort
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
-  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort !== 'default')
+  const dealsOnly = params.get('deals') === '1'
+  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort !== 'default' || dealsOnly)
+  const deals = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal])), [dealsQuery.data])
   const groupNames = useMemo(() => new Map((groupsQuery.data ?? []).map((group) => [group.id, group.name.toLowerCase()])), [groupsQuery.data])
 
   const setParam = useCallback((name: string, value: string, defaultValue = 'all') => {
@@ -61,6 +64,7 @@ export function CardsPage() {
       return (!deferredQuery || text.includes(deferredQuery) || groupNames.get(card.groupId ?? -1)?.includes(deferredQuery))
         && (marketplace === 'all' || card.marketplace === marketplace)
         && matchesStatus(card, status)
+        && (!dealsOnly || deals.has(card.id))
     })
     return result.toSorted((left, right) => {
       if (left.isActive !== right.isActive) return left.isActive ? -1 : 1
@@ -69,7 +73,7 @@ export function CardsPage() {
       if (sort === 'updated-desc') return (right.lastObservedAt ? Date.parse(right.updatedAt) : 0) - (left.lastObservedAt ? Date.parse(left.updatedAt) : 0) || left.id - right.id
       return left.id - right.id
     })
-  }, [cardsQuery.data, deferredQuery, groupNames, marketplace, sort, status])
+  }, [cardsQuery.data, deals, dealsOnly, deferredQuery, groupNames, marketplace, sort, status])
 
   const groupedCards = useMemo(() => {
     const byGroup = new Map<number, MarketplaceCard[]>()
@@ -82,7 +86,7 @@ export function CardsPage() {
     return byGroup
   }, [visibleCards])
   const visibleGroups = (groupsQuery.data ?? []).filter((group) =>
-    groupedCards.has(group.id) || (!deferredQuery && marketplace === 'all' && status === 'all' && group.cardIds.length === 0))
+    groupedCards.has(group.id) || (!dealsOnly && !deferredQuery && marketplace === 'all' && status === 'all' && group.cardIds.length === 0))
   const standaloneCards = visibleCards.filter((card) => !groupedCards.has(card.groupId ?? -1))
   const orderedItems = [
     ...visibleGroups.map((group) => ({ kind: 'group' as const, group, active: (groupedCards.get(group.id) ?? []).some((card) => card.isActive) })),
@@ -110,6 +114,11 @@ export function CardsPage() {
     </>
   }
 
+  function saving(card: MarketplaceCard) {
+    const deal = deals.get(card.id)
+    return deal ? <span className="deal-savings">{formatPrice(deal.savings)}</span> : '—'
+  }
+
   function tile(card: MarketplaceCard) {
     return <li key={card.id} className="cards-grid__item">
       <div className="cards-grid__actions">{actions(card)}</div>
@@ -118,7 +127,8 @@ export function CardsPage() {
         <span className="cards-grid__title">{card.title ?? 'Без названия'}</span>
         <span className="cards-grid__id">ID: {card.externalId}</span>
       </Link>
-      <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /><strong className="price-cell">{formatPrice(card.currentPrice)}</strong></div>
+      <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
+      <dl className="cards-grid__prices"><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div><div><dt>Выгода</dt><dd>{saving(card)}</dd></div></dl>
       <div className="cards-grid__details"><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
       {!card.isActive ? <div className="cards-grid__tracking">{dealStatus(card)}</div> : null}
     </li>
@@ -129,6 +139,9 @@ export function CardsPage() {
       <td><div className="card-identity"><ProductImage card={card} /><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small>{dealStatus(card)}</span></div></td>
       <td><MarketplaceMark marketplace={card.marketplace} /></td>
       <td className="price-cell">{formatPrice(card.currentPrice)}</td>
+      <td className="price-cell">{formatPrice(card.minimumPrice)}</td>
+      <td className="price-cell">{formatPrice(card.averagePrice)}</td>
+      <td>{saving(card)}</td>
       <td><AvailabilityStatus value={card.currentAvailability} /></td>
       <td><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time></td>
       <td>{actions(card)}</td>
@@ -149,6 +162,7 @@ export function CardsPage() {
       {transferStatus ? <p className={`transfer-page-status transfer-page-status--${transferStatus.kind}`}
         role={transferStatus.kind === 'error' ? 'alert' : 'status'}>{transferStatus.message}</p> : null}
       {collection.startError ? <p className="action-error" role="alert">{collection.startError}</p> : null}
+      {dealsQuery.isError && !dealsOnly ? <p className="action-error" role="alert">Не удалось загрузить данные о выгоде. <button type="button" onClick={() => void dealsQuery.refetch()}>Повторить</button></p> : null}
 
       <div className="filters">
         <label className="search-field">
@@ -175,6 +189,7 @@ export function CardsPage() {
             <option value="price-desc">Сначала дороже</option>
             <option value="updated-desc">Недавно обновлённые</option>
           </select>
+          <label className="filters__checkbox"><input type="checkbox" checked={dealsOnly} onChange={(event) => setParam('deals', event.target.checked ? '1' : '', '')} />Выгодные предложения</label>
           {hasFilters ? <Button variant="ghost" icon={<RotateCcw />} onClick={resetFilters}>Сбросить</Button> : null}
         </div>
       </div>
@@ -190,8 +205,8 @@ export function CardsPage() {
       </div>
 
       <div className={view === 'list' || cardsQuery.isLoading || groupsQuery.isLoading || cardsQuery.isError || groupsQuery.isError || (visibleCards.length === 0 && visibleGroups.length === 0) ? 'table-surface' : ''}>
-        {cardsQuery.isLoading || groupsQuery.isLoading ? <LoadingRows /> : cardsQuery.isError || groupsQuery.isError ? (
-          <div className="state-message"><h2>Не удалось загрузить карточки</h2><p>Проверьте соединение с API и повторите.</p><Button onClick={() => { void cardsQuery.refetch(); void groupsQuery.refetch() }}>Повторить</Button></div>
+        {cardsQuery.isLoading || groupsQuery.isLoading || dealsOnly && dealsQuery.isLoading ? <LoadingRows /> : cardsQuery.isError || groupsQuery.isError || dealsOnly && dealsQuery.isError ? (
+          <div className="state-message"><h2>{dealsOnly && dealsQuery.isError ? 'Не удалось загрузить выгодные предложения' : 'Не удалось загрузить карточки'}</h2><p>Проверьте соединение с API и повторите.</p><Button onClick={() => { void cardsQuery.refetch(); void groupsQuery.refetch(); void dealsQuery.refetch() }}>Повторить</Button></div>
         ) : visibleCards.length === 0 && visibleGroups.length === 0 ? (
           <div className="state-message"><h2>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</h2><p>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</p><Button variant="primary" onClick={hasFilters ? resetFilters : () => setDrawerOpen(true)}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></div>
         ) : view === 'grid' ? (
@@ -199,7 +214,7 @@ export function CardsPage() {
             {orderedItems.map((item) => item.kind === 'group' ? <li key={`group-${item.group.id}`} className="cards-grid__group">
               <div className="product-group__header">
                 <button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button>
-                <span>Сейчас от {formatPrice(item.group.currentPrice)} · Минимум {formatPrice(item.group.minimumPrice)}</span>
+                <span>Цена от {formatPrice(item.group.currentPrice)} · Минимальная {formatPrice(item.group.minimumPrice)}</span>
                 <Button variant="ghost" icon={<Pencil />} aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}>Изменить</Button>
               </div>
               {!collapsedGroups.includes(item.group.id) ? <ul className="cards-grid cards-grid--nested">{(groupedCards.get(item.group.id) ?? []).map(tile)}</ul> : null}
@@ -208,10 +223,10 @@ export function CardsPage() {
         ) : (
             <table className="cards-table">
               <caption className="sr-only">Отслеживаемые карточки маркетплейсов</caption>
-              <thead><tr><th>Карточка</th><th>Маркетплейс</th><th>Цена</th><th>Наличие</th><th>Обновлено</th><th><span className="sr-only">Действия</span></th></tr></thead>
+              <thead><tr><th>Карточка</th><th>Маркетплейс</th><th>Цена</th><th>Минимальная</th><th>Средняя</th><th>Выгода</th><th>Наличие</th><th>Обновлено</th><th><span className="sr-only">Действия</span></th></tr></thead>
               <tbody>
                 {orderedItems.map((item) => item.kind === 'group' ? <Fragment key={`group-${item.group.id}`}>
-                  <tr className="cards-table__group"><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}<small className="product-group__minimum">Мин. за всё время: {formatPrice(item.group.minimumPrice)}</small></td><td /><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>
+                  <tr className="cards-table__group"><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}</td><td className="price-cell">{formatPrice(item.group.minimumPrice)}</td><td>—</td><td>—</td><td /><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>
                   {!collapsedGroups.includes(item.group.id) ? (groupedCards.get(item.group.id) ?? []).map((card) => row(card, true)) : null}
                 </Fragment> : row(item.card))}
               </tbody>

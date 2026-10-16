@@ -323,7 +323,12 @@ export const mockApi = {
   },
 
   async listCards() {
-    return delay([...cards])
+    return delay(cards.map((card) => {
+      const prices = history.filter((point) => point.cardId === card.id && point.availability === 'in_stock' && point.price !== null)
+        .map((point) => point.price as number)
+      return { ...card, minimumPrice: prices.length ? Math.min(...prices) : null,
+        averagePrice: card.id === 1 ? 78000 : null }
+    }))
   },
 
   async getCard(cardId: number) {
