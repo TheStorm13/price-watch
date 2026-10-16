@@ -14,31 +14,22 @@ PostgreSQL, Xvfb и Google Chrome устанавливаются пакетны�
 в `tauri.conf.json`; приватному npm-пакету интерфейса отдельная версия не
 нужна. `Cargo.lock` обновляется Cargo автоматически и не редактируется вручную.
 
-Для следующей версии измените только поле `package.version` в `Cargo.toml`,
-затем выполните:
-
-```bash
-cargo check --manifest-path frontend/src-tauri/Cargo.toml
-git add frontend/src-tauri/Cargo.toml frontend/src-tauri/Cargo.lock
-git commit -m "build: prepare next version"
-```
-
-`Cargo.lock` обновляется Cargo автоматически. Скрипт сборки требует чистого
-рабочего дерева, чтобы Python-код в архиве соответствовал тому же коммиту,
-что и бинарник.
-
-На Arch Linux x86_64 соберите локальный пакет:
+Для очередной **локальной** сборки менять версию не нужно. Зафиксируйте
+изменения в Git и выполните:
 
 ```bash
 packaging/build-local-aur.sh
+sudo pacman -U release/aur-local/price-watch-bin-latest.pkg.tar.zst
 ```
 
-Скрипт создаёт архив в `release/`, копирует рецепт в
-`release/aur-local/PKGBUILD`, подставляет версию и SHA-256 и собирает пакет
-через `makepkg`. Он не отправляет ничего в GitHub или AUR. Готовый файл
-`release/aur-local/price-watch-bin-VERSION-1-x86_64.pkg.tar.zst` можно
-установить командой `sudo pacman -U путь-к-файлу`. Для `makepkg` должны быть
-установлены зависимости из рецепта, включая `google-chrome`.
+Скрипт требует чистого рабочего дерева, чтобы Python-код в архиве соответствовал
+тому же коммиту, что и бинарник. Он создаёт архив в `release/`, подставляет
+версию и SHA-256 в локальный `PKGBUILD` и собирает пакет через `makepkg`.
+Ссылка `price-watch-bin-latest.pkg.tar.zst` всегда указывает на последнюю
+локальную сборку. Внутри пакета сохраняется версия из Cargo; повторная сборка
+с той же версией устанавливается вручную командой выше. В GitHub и AUR ничего
+не отправляется. Для `makepkg` нужны зависимости из рецепта, включая
+`google-chrome`.
 
 ## Подготовка публичного релиза в будущем
 
