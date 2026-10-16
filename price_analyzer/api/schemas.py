@@ -77,7 +77,7 @@ class TransferCard(ApiModel):
 
     @model_validator(mode="before")
     @classmethod
-    def import_old_archive_as_paused(cls, value: object) -> object:
+    def import_old_archive_as_excluded(cls, value: object) -> object:
         if isinstance(value, dict) and (value.get("isArchived") is True or value.get("is_archived") is True):
             return {**value, "isActive": False, "is_active": False}
         return value

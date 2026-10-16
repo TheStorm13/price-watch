@@ -418,12 +418,14 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_only_full_runs_reset_automatic_collection_clock(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         cards = [await repository.add_card("integration-test", f"test-{uuid4()}") for _ in range(2)]
+        await repository.update_card(cards[1].id, is_active=False)
         future = datetime(2100, 1, 1, tzinfo=timezone.utc)
         scheduled = single = later = manual_full = final = None
         try:
             scheduled = await repository.create_due_run(future)
             self.assertIsNotNone(scheduled)
             self.assertIn(cards[0].id, scheduled.target_card_ids)
+            self.assertIn(cards[1].id, scheduled.target_card_ids)
             self.assertIsNone(await repository.create_due_run(future + timedelta(hours=13)))
             await repository.finish_run(scheduled.id, "completed", 0, 0)
             self.assertIsNone(await repository.create_due_run(future + timedelta(hours=11)))
@@ -467,6 +469,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         try:
             await repository.record_run_error(source.id, {"cardId": cards[0].id, "marketplace": "integration-test",
                                                     "externalId": cards[0].external_id, "message": "failed"}, 1, 1)
+            await repository.update_card(cards[0].id, is_active=False)
             await repository.finish_run(source.id, "completed_with_errors", 1, 1)
             app = create_app(repository=repository)
             app.state.repository = repository
@@ -531,7 +534,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             with self.database.session() as session, session.begin():
                 session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
 
-    async def test_paused_card_is_not_collected_or_offered_as_deal(self):
+    async def test_excluded_card_is_collected_but_not_offered_as_deal(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         now = datetime.now(timezone.utc)
@@ -552,9 +555,13 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertFalse(response.json()["isActive"])
                 self.assertNotIn("isArchived", response.json())
-            self.assertNotIn(card.id, [item.id for item in await repository.list_active_cards()])
-            with self.assertRaises(LookupError):
-                await repository.create_queued_run(card.id)
+            self.assertIn(card.id, [item.id for item in await repository.list_collection_cards()])
+            run = await repository.create_queued_run(card.id)
+            self.assertEqual(run.target_card_ids, (card.id,))
+            await repository.finish_run(run.id, "completed", 1, 0)
+            full_run = await repository.create_queued_run()
+            self.assertIn(card.id, full_run.target_card_ids)
+            await repository.finish_run(full_run.id, "completed", full_run.total_count, 0)
             self.assertFalse(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
 
             await repository.update_card(card.id, is_active=True)

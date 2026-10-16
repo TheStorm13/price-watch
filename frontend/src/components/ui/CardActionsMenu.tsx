@@ -1,4 +1,4 @@
-import { LoaderCircle, MoreVertical, Pause, Play, RefreshCw, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, LoaderCircle, MoreVertical, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 
 interface CardActionsMenuProps {
@@ -80,7 +80,7 @@ export function CardActionsMenu({ cardTitle, isActive, onToggle, onDelete, onRef
     }
   }
 
-  const actionLabel = isActive ? 'Приостановить отслеживание' : 'Возобновить отслеживание'
+  const actionLabel = isActive ? 'Исключить из выгодных предложений' : 'Показывать в выгодных предложениях'
 
   return (
     <div className="card-actions-menu" ref={rootRef} onClick={(event) => event.stopPropagation()}>
@@ -98,7 +98,7 @@ export function CardActionsMenu({ cardTitle, isActive, onToggle, onDelete, onRef
       </button>
       {open ? (
         <div className="card-actions-menu__popover" id={menuId} role="menu" aria-label={`Действия с карточкой ${cardTitle}`}>
-          {onRefresh && isActive ? (
+          {onRefresh ? (
             <button type="button" role="menuitem" disabled={pending || refreshDisabled} onClick={() => {
               onRefresh()
               setOpen(false)
@@ -109,7 +109,7 @@ export function CardActionsMenu({ cardTitle, isActive, onToggle, onDelete, onRef
             </button>
           ) : null}
           <button ref={actionRef} type="button" role="menuitem" disabled={pending} onClick={() => void toggleTracking()}>
-            {pending ? <LoaderCircle className="spin" /> : isActive ? <Pause /> : <Play />}
+            {pending ? <LoaderCircle className="spin" /> : isActive ? <EyeOff /> : <Eye />}
             <span>{pending ? 'Сохраняем…' : actionLabel}</span>
           </button>
           <div className="card-actions-menu__separator" />

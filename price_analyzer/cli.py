@@ -75,7 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_card.add_argument("--title")
     add_card.add_argument("--url")
     list_cards = card_commands.add_parser("list", help="показать карточки")
-    list_cards.add_argument("--all", action="store_true", help="включить неактивные")
+    list_cards.add_argument("--all", action="store_true", help="устаревший параметр: все карточки выводятся по умолчанию")
 
     collect = commands.add_parser("collect", help="собрать текущие цены")
     collect.add_argument("--card-id", type=int)
@@ -181,13 +181,13 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
                 "current_availability": item.current_availability,
                 "last_observed_at": item.last_observed_at,
             }
-            for item in await repository.list_cards(include_inactive=args.all)
+            for item in await repository.list_cards(include_inactive=True)
         ]
         _print_json(cards)
         return 0
 
     if args.command == "collect":
-        cards = await repository.list_active_cards(args.card_id)
+        cards = await repository.list_collection_cards(args.card_id)
         connectors = _build_connectors(
             args, (card.marketplace for card in cards)
         )

@@ -1,5 +1,6 @@
 import asyncio
 import unittest
+from dataclasses import replace
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -61,7 +62,7 @@ class FakeRepository:
         self.errors = []
         self.fail_on_current = False
 
-    async def list_active_cards(self, card_id=None):
+    async def list_collection_cards(self, card_id=None):
         return [item for item in self.cards if card_id is None or item.id == card_id]
 
     async def start_run(self, total_count):
@@ -90,6 +91,20 @@ class FakeRepository:
 
 
 class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_excluded_card_still_collects_in_full_and_single_runs(self):
+        excluded = replace(card(2, "ozon", "200"), is_active=False)
+        repository = FakeRepository([card(1, "ozon", "100"), excluded])
+        service = CollectionService(repository, ConnectorRegistry([FakeConnector("ozon")]))
+
+        summary = await service.collect()
+        self.assertEqual(summary.success_count, 2)
+        self.assertEqual({item.id for item, _, _ in repository.saved}, {1, 2})
+
+        repository.saved.clear()
+        summary = await service.collect(excluded.id)
+        self.assertEqual(summary.success_count, 1)
+        self.assertEqual([item.id for item, _, _ in repository.saved], [2])
+
     async def test_async_collection_limits_to_five_tabs_and_keeps_card_errors(self):
         class AsyncConnector(FakeConnector):
             def __init__(self):

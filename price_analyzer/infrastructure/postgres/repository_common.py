@@ -54,7 +54,7 @@ class CardInActiveRun(ValueError):
     pass
 
 
-class NoActiveCards(ValueError):
+class NoCards(ValueError):
     pass
 
 

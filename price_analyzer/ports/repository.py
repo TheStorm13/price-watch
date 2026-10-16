@@ -11,7 +11,7 @@ class PriceAnalyzerRepository(Protocol):
     async def delete_card(self, card_id: int) -> bool:
         ...
 
-    async def list_active_cards(
+    async def list_collection_cards(
         self, card_id: Optional[int] = None
     ) -> Iterable[MarketplaceCard]:
         ...

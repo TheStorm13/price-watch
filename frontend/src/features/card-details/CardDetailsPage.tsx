@@ -69,10 +69,10 @@ export function CardDetailsPage() {
     <section className="page detail-page">
       <Link className="back-link" to="/cards"><ArrowLeft />К карточкам</Link>
       <header className="detail-header">
-        <div><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.isActive ? <><span>·</span><span className="tracking-status">Отслеживание приостановлено</span></> : null}</div></div>
+        <div><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.isActive ? <><span>·</span><span className="tracking-status">Не показывается в выгодных предложениях</span></> : null}</div></div>
         <div className="page-actions">
           {card.url ? <a className="button button--secondary" href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a> : null}
-          <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)} disabled={!card.isActive || collection.isStarting}>Обновить эту карточку</Button>
+          <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)} disabled={collection.isStarting}>Обновить эту карточку</Button>
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} isActive={card.isActive} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
         </div>
       </header>

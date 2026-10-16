@@ -18,7 +18,7 @@ type Sort = 'default' | 'price-asc' | 'price-desc' | 'updated-desc'
 
 function matchesStatus(card: MarketplaceCard, status: string) {
   if (status === 'all') return true
-  if (status === 'paused') return !card.isActive
+  if (status === 'excluded') return !card.isActive
   if (status === 'no_data') return card.lastObservedAt === null
   return card.currentAvailability === status
 }
@@ -35,7 +35,8 @@ export function CardsPage() {
   const query = params.get('q') ?? ''
   const deferredQuery = useDeferredValue(query.trim().toLowerCase())
   const marketplace = params.get('marketplace') ?? 'all'
-  const status = params.get('status') === 'archived' ? 'paused' : params.get('status') ?? 'all'
+  const rawStatus = params.get('status') ?? 'all'
+  const status = rawStatus === 'archived' || rawStatus === 'paused' ? 'excluded' : rawStatus
   const sort = (params.get('sort') ?? 'default') as Sort
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
   const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort !== 'default')
@@ -60,7 +61,7 @@ export function CardsPage() {
       if (sort === 'price-asc') return (left.currentPrice ?? Infinity) - (right.currentPrice ?? Infinity)
       if (sort === 'price-desc') return (right.currentPrice ?? -Infinity) - (left.currentPrice ?? -Infinity)
       if (sort === 'updated-desc') return (right.lastObservedAt ? Date.parse(right.updatedAt) : 0) - (left.lastObservedAt ? Date.parse(left.updatedAt) : 0)
-      return Number(right.isActive) - Number(left.isActive) || left.id - right.id
+      return left.id - right.id
     })
   }, [cardsQuery.data, deferredQuery, marketplace, sort, status])
 
@@ -75,9 +76,9 @@ export function CardsPage() {
       onDelete={() => deleteCard.mutateAsync(card.id)} />
   }
 
-  function trackingStatus(card: MarketplaceCard) {
+  function dealStatus(card: MarketplaceCard) {
     return <>
-      {!card.isActive ? <span className="tracking-status">Отслеживание приостановлено</span> : null}
+      {!card.isActive ? <span className="tracking-status">Не показывается в выгодных предложениях</span> : null}
     </>
   }
 
@@ -112,7 +113,7 @@ export function CardsPage() {
             <option value="in_stock">В наличии</option>
             <option value="out_of_stock">Нет в наличии</option>
             <option value="no_data">Нет данных</option>
-            <option value="paused">Приостановленные</option>
+            <option value="excluded">Не в выгодных предложениях</option>
           </select>
           <select value={sort} onChange={(event) => setParam('sort', event.target.value, 'default')} aria-label="Сортировка">
             <option value="default">По умолчанию</option>
@@ -142,7 +143,7 @@ export function CardsPage() {
         ) : view === 'grid' ? (
           <ul className="cards-grid" aria-label="Отслеживаемые карточки маркетплейсов">
             {visibleCards.map((card) => (
-              <li key={card.id} className={`cards-grid__item${!card.isActive ? ' is-inactive' : ''}`}>
+              <li key={card.id} className="cards-grid__item">
                 <div className="cards-grid__actions">{actions(card)}</div>
                 <Link className="cards-grid__link" to={`/cards/${card.id}`}>
                   <ProductImage card={card} large />
@@ -157,7 +158,7 @@ export function CardsPage() {
                   <AvailabilityStatus value={card.currentAvailability} />
                   <time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time>
                 </div>
-                {!card.isActive ? <div className="cards-grid__tracking">{trackingStatus(card)}</div> : null}
+                {!card.isActive ? <div className="cards-grid__tracking">{dealStatus(card)}</div> : null}
               </li>
             ))}
           </ul>
@@ -167,8 +168,8 @@ export function CardsPage() {
               <thead><tr><th>Карточка</th><th>Маркетплейс</th><th>Цена</th><th>Наличие</th><th>Обновлено</th><th><span className="sr-only">Действия</span></th></tr></thead>
               <tbody>
                 {visibleCards.map((card) => (
-                  <tr key={card.id} className={!card.isActive ? 'is-inactive' : ''} onClick={() => navigate(`/cards/${card.id}`)}>
-                    <td><div className="card-identity"><ProductImage card={card} /><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small>{trackingStatus(card)}</span></div></td>
+                  <tr key={card.id} onClick={() => navigate(`/cards/${card.id}`)}>
+                    <td><div className="card-identity"><ProductImage card={card} /><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small>{dealStatus(card)}</span></div></td>
                     <td><MarketplaceMark marketplace={card.marketplace} /></td>
                     <td className="price-cell">{formatPrice(card.currentPrice)}</td>
                     <td><AvailabilityStatus value={card.currentAvailability} /></td>

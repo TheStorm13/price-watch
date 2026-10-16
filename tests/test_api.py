@@ -5,7 +5,7 @@ from httpx import ASGITransport, AsyncClient
 
 from price_analyzer.api import create_app
 from price_analyzer.domain.models import CardOverview, CollectionRun, MarketplaceCard
-from price_analyzer.infrastructure.postgres.repository import CardAlreadyExists, NoActiveCards
+from price_analyzer.infrastructure.postgres.repository import CardAlreadyExists, NoCards
 
 
 NOW = datetime(2026, 9, 21, 12, 0, tzinfo=timezone.utc)
@@ -28,7 +28,7 @@ class FakeRepository:
     def __init__(self):
         self.card = make_card()
         self.duplicate = False
-        self.no_active_cards = False
+        self.no_cards = False
 
     async def list_cards(self, include_inactive=False):
         return [CardOverview(self.card, 999, "in_stock", NOW)]
@@ -60,8 +60,8 @@ class FakeRepository:
         return True
 
     async def create_queued_run(self, card_id=None):
-        if self.no_active_cards:
-            raise NoActiveCards("Нет активных карточек для сбора")
+        if self.no_cards:
+            raise NoCards("Нет карточек для сбора")
         return CollectionRun(
             id=7,
             status="queued",
@@ -159,10 +159,10 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.json()["totalCount"], 1)
 
     async def test_empty_collection_returns_conflict(self):
-        self.repository.no_active_cards = True
+        self.repository.no_cards = True
         response = await self.client.post("/api/runs", json={})
         self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.json()["error"]["code"], "no_active_cards")
+        self.assertEqual(response.json()["error"]["code"], "no_cards")
 
     async def test_duplicate_card_has_structured_field_error(self):
         self.repository.duplicate = True

@@ -140,6 +140,7 @@ let nextCardId = 6
 let nextRunId = 22
 let nextHistoryId = Math.max(0, ...history.map((point) => point.id)) + 1
 const runCreatedAt = new Map<number, number>()
+const runTargetIds = new Map<number, number[]>()
 const continuedRuns = new Set<number>()
 
 const delay = <T>(value: T, milliseconds = 180) =>
@@ -364,8 +365,8 @@ export const mockApi = {
   },
 
   async startRun(cardId?: number) {
-    const selected = cardId ? cards.filter((card) => card.id === cardId && card.isActive) : cards.filter((card) => card.isActive)
-    if (!selected.length) throw new Error(cardId ? 'Активная карточка не найдена' : 'Нет активных карточек для сбора')
+    const selected = cardId ? cards.filter((card) => card.id === cardId) : cards
+    if (!selected.length) throw new Error(cardId ? 'Карточка не найдена' : 'Нет карточек для сбора')
     const run: CollectionRun = {
       id: nextRunId++,
       status: 'queued',
@@ -381,6 +382,7 @@ export const mockApi = {
     }
     runs = [run, ...runs]
     runCreatedAt.set(run.id, Date.now())
+    runTargetIds.set(run.id, selected.map((card) => card.id))
     return delay(run)
   },
 
@@ -411,7 +413,8 @@ export const mockApi = {
         finishedAt: new Date().toISOString(),
       }
       const observedAt = new Date().toISOString()
-      cards = cards.map((card) => card.isActive ? {
+      const targets = new Set(runTargetIds.get(runId) ?? [])
+      cards = cards.map((card) => targets.has(card.id) ? {
         ...card,
         currentPrice: card.id === run.current?.cardId && card.currentPrice !== null
           ? card.currentPrice - 100 : card.currentPrice,

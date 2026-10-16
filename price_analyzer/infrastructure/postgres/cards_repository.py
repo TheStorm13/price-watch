@@ -123,8 +123,8 @@ class CardRepository:
             last_observed_at=latest.observed_at if latest else None,
         )
 
-    async def list_active_cards(self, card_id: Optional[int] = None) -> List[MarketplaceCard]:
-        statement = select(MarketplaceCardRecord).where(MarketplaceCardRecord.is_active.is_(True))
+    async def list_collection_cards(self, card_id: Optional[int] = None) -> List[MarketplaceCard]:
+        statement = select(MarketplaceCardRecord)
         if card_id is not None:
             statement = statement.where(MarketplaceCardRecord.id == card_id)
         statement = statement.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id)

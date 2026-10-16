@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query
 from ..dependencies import RepositoryDep
 from ..errors import ApiProblem
 from ..schemas import RunCreate, RunResponse
-from ...infrastructure.postgres.repository import NoActiveCards
+from ...infrastructure.postgres.repository import NoCards
 
 
 router = APIRouter(prefix="/runs", tags=["runs"])
@@ -36,8 +36,8 @@ async def create_run(payload: RunCreate, repository: RepositoryDep):
         run = await repository.create_queued_run(payload.card_id)
     except LookupError as exc:
         raise ApiProblem(404, "card_not_found", str(exc)) from exc
-    except NoActiveCards as exc:
-        raise ApiProblem(409, "no_active_cards", str(exc)) from exc
+    except NoCards as exc:
+        raise ApiProblem(409, "no_cards", str(exc)) from exc
     return RunResponse.from_domain(run)
 
 

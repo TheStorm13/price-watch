@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 
 from ...domain.models import CollectionRun, MarketplaceCard
 from .models import CollectionRunRecord, MarketplaceCardRecord
-from .repository_common import NoActiveCards, _RUN_CREATION_LOCK, _card, _run
+from .repository_common import NoCards, _RUN_CREATION_LOCK, _card, _run
 
 
 class RunRepository:
@@ -24,14 +24,14 @@ class RunRepository:
     async def create_queued_run(self, card_id: Optional[int] = None) -> CollectionRun:
         async with self._database.session() as session, session.begin():
             await session.execute(_RUN_CREATION_LOCK)
-            statement = select(MarketplaceCardRecord).where(MarketplaceCardRecord.is_active.is_(True))
+            statement = select(MarketplaceCardRecord)
             if card_id is not None:
                 statement = statement.where(MarketplaceCardRecord.id == card_id)
             cards = (await session.scalars(statement.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id).with_for_update(read=True))).all()
             if not cards:
                 if card_id is not None:
-                    raise LookupError(f"Активная карточка не найдена: {card_id}")
-                raise NoActiveCards("Нет активных карточек для сбора")
+                    raise LookupError(f"Карточка не найдена: {card_id}")
+                raise NoCards("Нет карточек для сбора")
             record = CollectionRunRecord(
                 status="queued", total_count=len(cards), requested_card_id=card_id,
                 is_full_collection=card_id is None,
@@ -42,7 +42,7 @@ class RunRepository:
         return _run(record)
 
     async def create_due_run(self, now: datetime | None = None) -> Optional[CollectionRun]:
-        """Queue all active cards once every 12 hours while a worker is alive."""
+        """Queue all cards once every 12 hours while a worker is alive."""
         now = now or datetime.now(timezone.utc)
         async with self._database.session() as session, session.begin():
             await session.execute(_RUN_CREATION_LOCK)
@@ -58,9 +58,9 @@ class RunRepository:
             ).limit(1)))
             if last_started is not None and now - last_started < timedelta(hours=12):
                 return None
-            cards = (await session.scalars(select(MarketplaceCardRecord).where(
-                MarketplaceCardRecord.is_active.is_(True)
-            ).order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id))).all()
+            cards = (await session.scalars(select(MarketplaceCardRecord).order_by(
+                MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id
+            ))).all()
             if not cards:
                 return None
             record = CollectionRunRecord(status="queued", total_count=len(cards),
@@ -87,12 +87,12 @@ class RunRepository:
             if not failed_ids:
                 raise ValueError("В запуске нет карточек с ошибками для повтора")
             cards = (await session.scalars(select(MarketplaceCardRecord).where(
-                MarketplaceCardRecord.id.in_(failed_ids), MarketplaceCardRecord.is_active.is_(True)
+                MarketplaceCardRecord.id.in_(failed_ids)
             ))).all()
             available = {card.id for card in cards}
             targets = [card_id for card_id in failed_ids if card_id in available]
             if not targets:
-                raise ValueError("Карточки с ошибками удалены или отключены")
+                raise ValueError("Карточки с ошибками удалены")
             record = CollectionRunRecord(status="queued", total_count=len(targets),
                                          is_full_collection=False,
                                          target_card_ids=targets, retry_of_run_id=source_run_id)
@@ -102,7 +102,7 @@ class RunRepository:
 
     async def cards_for_run(self, run: CollectionRun) -> List[MarketplaceCard]:
         if run.target_card_ids is None:
-            return await self.list_active_cards(run.requested_card_id)
+            return await self.list_collection_cards(run.requested_card_id)
         async with self._database.session() as session:
             records = (await session.scalars(select(MarketplaceCardRecord).where(MarketplaceCardRecord.id.in_(run.target_card_ids)))).all()
         by_id = {record.id: _card(record) for record in records}

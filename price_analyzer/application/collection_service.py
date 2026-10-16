@@ -27,9 +27,9 @@ class CollectionService:
         self._connectors = connectors
 
     async def collect(self, card_id: Optional[int] = None) -> CollectionSummary:
-        cards = list(await self._repository.list_active_cards(card_id))
+        cards = list(await self._repository.list_collection_cards(card_id))
         if card_id is not None and not cards:
-            raise LookupError(f"Активная карточка не найдена: {card_id}")
+            raise LookupError(f"Карточка не найдена: {card_id}")
         run_id = await self._repository.start_run(len(cards))
         return await self._collect_cards(run_id, cards, report_progress=False)
 
