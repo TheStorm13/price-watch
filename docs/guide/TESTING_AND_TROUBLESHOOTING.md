@@ -60,7 +60,7 @@ Playwright E2E тесты сами запускают Vite на `127.0.0.1:5175`
 | Не найден `.venv/bin/python` | Создать `.venv` и установить `requirements.txt` |
 | Старт зависает или API не отвечает | `docker compose ps -a`, миграции, занятость портов 8000 и 5432 |
 | Нет Chrome | Проверить `google-chrome-stable --version`; desktop требует системный Google Chrome |
-| Скрытый дисплей Chrome недоступен | Проверить `docker compose ps desktop-display` и `docker compose logs desktop-display` |
+| Скрытый дисплей Chrome недоступен | Проверить `docker compose ps desktop-display` и `docker compose logs desktop-display`. Если Xvfb сообщает `Server is already active for display 98`, пересоздать только этот контейнер: `docker compose up -d --force-recreate desktop-display`, затем нажать «Повторить» в приложении. В Compose для Xvfb используется временный `/tmp`, чтобы lock-файл не сохранялся после сбоя. |
 | Ozon запросил проверку при фоновом desktop сборе | После завершения запуска открыть Chrome кнопкой, пройти проверку Ozon и повторить сбор |
 | Карточка Ozon не обновилась | Проверить `output/desktop-worker.log`; исчезнувший товар может вести на страницу предложений |
 | Код API изменился, а ответ старый | Пересобрать и перезапустить контейнеры API и миграций по инструкции запуска |
