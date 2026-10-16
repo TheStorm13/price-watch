@@ -68,9 +68,10 @@ test('экспорт и импорт объединяют карточки и и
   expect(exportData.cards[0].history[0]).toEqual(expect.objectContaining({
     price: expect.any(String), availability: expect.any(String), observedAt: expect.any(String),
   }))
+  expect(exportData.cards[0].isArchived).toBe(false)
   exportData.cards.push({
     marketplace: 'ozon', externalId: '9999911111', title: 'Тестовый импорт',
-    url: null, isActive: false, createdAt: new Date().toISOString(),
+    url: null, isActive: true, isArchived: true, createdAt: new Date().toISOString(),
     history: [{ price: '123.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
   })
   await page.getByRole('button', { name: 'Импорт', exact: true }).click()
@@ -83,6 +84,7 @@ test('экспорт и импорт объединяют карточки и и
   await page.screenshot({ path: '/tmp/price-watch-import-preview.png' })
   await dialog.getByRole('button', { name: 'Импортировать' }).click()
   await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toContainText('В архиве · цена отслеживается')
   await page.screenshot({ path: '/tmp/price-watch-imported.png' })
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })
@@ -100,6 +102,31 @@ test('меню карточки явно приостанавливает и в�
   await page.screenshot({ path: '/tmp/price-watch-card-actions.png' })
   await page.getByRole('menuitem', { name: 'Возобновить отслеживание' }).click()
   await expect(row.getByText('Отслеживание приостановлено')).toBeHidden()
+})
+
+test('архивная карточка обновляется, но не попадает в выгодные предложения', async ({ page }) => {
+  await page.goto('/deals')
+  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Карточки' }).click()
+  const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
+  await row.getByRole('button', { name: /Действия с карточкой/ }).click()
+  await page.getByRole('menuitem', { name: 'В архив' }).click()
+  await expect(row).toContainText('В архиве · цена отслеживается')
+  await page.getByLabel('Состояние').selectOption('archived')
+  await expect(row).toBeVisible()
+
+  await page.getByRole('link', { name: 'Выгодные предложения' }).click()
+  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toHaveCount(0)
+  await page.getByRole('link', { name: 'Карточки' }).click()
+  await page.getByLabel('Состояние').selectOption('archived')
+  await row.getByRole('button', { name: /Действия с карточкой/ }).click()
+  await page.getByRole('menuitem', { name: 'Обновить только эту карточку' }).click()
+  await expect(page.getByLabel('Состояние обновления цен')).toContainText('0 из 1')
+
+  await row.getByRole('button', { name: /Действия с карточкой/ }).click()
+  await page.getByRole('menuitem', { name: 'Вернуть из архива' }).click()
+  await expect(row.getByText('В архиве · цена отслеживается')).toBeHidden()
 })
 
 test('удаление карточки требует подтверждения', async ({ page }) => {

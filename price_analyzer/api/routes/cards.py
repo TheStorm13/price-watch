@@ -98,6 +98,7 @@ async def update_card(card_id: int, payload: CardUpdate, repository: RepositoryD
         title=payload.title,
         url=str(payload.url) if payload.url else None,
         is_active=payload.is_active if "is_active" in fields else None,
+        is_archived=payload.is_archived if "is_archived" in fields else None,
         update_title="title" in fields,
         update_url="url" in fields,
     )

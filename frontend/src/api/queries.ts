@@ -46,6 +46,7 @@ export function useUpdateCard() {
     mutationFn: ({ cardId, input }: { cardId: number; input: UpdateCardInput }) => api.updateCard(cardId, input),
     onSuccess: (card) => {
       client.invalidateQueries({ queryKey: queryKeys.cards })
+      client.invalidateQueries({ queryKey: queryKeys.deals })
       client.setQueryData(queryKeys.card(card.id), card)
     },
   })

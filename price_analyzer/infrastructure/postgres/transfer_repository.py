@@ -26,6 +26,7 @@ class TransferRepository:
                 "title": card.title,
                 "url": card.url,
                 "is_active": card.is_active,
+                "is_archived": card.is_archived,
                 "created_at": card.created_at,
                 "history": [],
             } for card in cards]
@@ -91,6 +92,7 @@ class TransferRepository:
                     card = MarketplaceCardRecord(
                         marketplace=key[0], external_id=key[1], title=item["title"],
                         url=item["url"], is_active=item["is_active"],
+                        is_archived=item.get("is_archived", False),
                         created_at=item["created_at"],
                         updated_at=max(item["created_at"], latest_imported_at),
                     )

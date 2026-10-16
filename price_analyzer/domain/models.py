@@ -16,6 +16,7 @@ class MarketplaceCard:
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    is_archived: bool = False
 
 
 @dataclass(frozen=True)

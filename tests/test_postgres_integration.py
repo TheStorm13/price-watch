@@ -112,7 +112,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(item["history"]), 4)
             self.assertEqual(set(item["history"][0]), {"price", "availability", "observed_at"})
             self.assertEqual(set(item), {"marketplace", "external_id", "title", "url",
-                                         "is_active", "created_at", "history"})
+                                         "is_active", "is_archived", "created_at", "history"})
             item["title"] = "Название из файла"
             item["created_at"] = start - timedelta(days=20)
             item["history"].extend({
@@ -121,7 +121,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             } for minute, price in ((1, "100.00"), (3, "90.00"),
                                     (5, "100.00"), (6, "80.00")))
             new_item = {**item, "external_id": new_external_id, "title": "Новая карточка",
-                        "is_active": False, "history": [{
+                        "is_active": False, "is_archived": True, "history": [{
                             "price": Decimal("200.00"), "availability": "in_stock",
                             "observed_at": start,
                         }]}
@@ -143,6 +143,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             imported = next(overview.card for overview in await repository.list_cards(include_inactive=True)
                             if overview.card.external_id == new_external_id)
             self.assertFalse(imported.is_active)
+            self.assertTrue(imported.is_archived)
             self.assertEqual(await repository.count_history(imported.id, 1), 1)
         finally:
             for overview in await repository.list_cards(include_inactive=True):
@@ -513,6 +514,46 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await repository.delete_card(card.id)
             with self.database.session() as session, session.begin():
                 session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
+
+    async def test_archived_card_is_collected_but_not_offered_as_deal(self):
+        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        card = await repository.add_card("integration-test", f"test-{uuid4()}")
+        now = datetime.now(timezone.utc)
+        run = None
+        try:
+            with self.database.session() as session, session.begin():
+                session.get(MarketplaceCardRecord, card.id).created_at = now - timedelta(days=10)
+                for age, price in ((3, "100"), (2, "120"), (1, "80")):
+                    session.add(PriceHistoryRecord(
+                        card_id=card.id, collection_run_id=None, price=Decimal(price),
+                        availability="in_stock", observed_at=now - timedelta(days=age), snapshot={},
+                    ))
+            self.assertTrue(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+
+            app = create_app(repository=repository)
+            app.state.repository = repository
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+                response = await client.patch(f"/api/cards/{card.id}", json={"isArchived": True})
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.json()["isArchived"])
+                self.assertTrue(response.json()["isActive"])
+            archived = await repository.get_card(card.id)
+            self.assertTrue(archived.card.is_active)
+            self.assertTrue(archived.card.is_archived)
+            self.assertIn(card.id, [item.id for item in await repository.list_active_cards()])
+            run = await repository.create_queued_run()
+            self.assertIn(card.id, run.target_card_ids)
+            self.assertFalse(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+
+            await repository.update_card(card.id, is_archived=False)
+            self.assertTrue(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+            await repository.update_card(card.id, is_active=False)
+            self.assertNotIn(card.id, [item.id for item in await repository.list_active_cards()])
+        finally:
+            if run is not None:
+                with self.database.session() as session, session.begin():
+                    session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
+            await repository.delete_card(card.id)
 
 
 if __name__ == "__main__":

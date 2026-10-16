@@ -43,6 +43,7 @@ class CardUpdate(ApiModel):
     title: str | None = None
     url: HttpUrl | None = None
     is_active: bool | None = None
+    is_archived: bool | None = None
 
 
 class TransferHistoryPoint(ApiModel):
@@ -71,6 +72,7 @@ class TransferCard(ApiModel):
     title: str | None
     url: str | None
     is_active: bool
+    is_archived: bool = False
     created_at: datetime
     history: list[TransferHistoryPoint]
 
@@ -118,6 +120,7 @@ class CardResponse(ApiModel):
     title: str | None
     url: str | None
     is_active: bool
+    is_archived: bool
     current_price: float | None
     current_availability: str | None
     last_observed_at: datetime | None
@@ -134,6 +137,7 @@ class CardResponse(ApiModel):
             title=card.title,
             url=card.url,
             is_active=card.is_active,
+            is_archived=card.is_archived,
             current_price=overview.current_price,
             current_availability=overview.current_availability,
             last_observed_at=overview.last_observed_at,

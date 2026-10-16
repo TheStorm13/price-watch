@@ -28,7 +28,7 @@ _DEALS_SQL = text("""
     FROM marketplace_cards c
     JOIN latest l ON l.card_id = c.id
     JOIN daily d ON d.card_id = c.id
-    WHERE c.is_active = true AND c.created_at <= :oldest_created
+    WHERE c.is_active = true AND c.is_archived = false AND c.created_at <= :oldest_created
       AND l.availability = 'in_stock' AND l.price IS NOT NULL
     GROUP BY c.id, l.price, l.availability, l.observed_at, l.collection_run_id
     HAVING count(d.day) >= 2 AND l.price < avg(d.daily_average)

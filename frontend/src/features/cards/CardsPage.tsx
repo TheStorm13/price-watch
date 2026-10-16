@@ -17,6 +17,7 @@ type Sort = 'default' | 'price-asc' | 'price-desc' | 'updated-desc'
 
 function matchesStatus(card: MarketplaceCard, status: string) {
   if (status === 'all') return true
+  if (status === 'archived') return card.isArchived
   if (status === 'no_data') return card.lastObservedAt === null
   return card.currentAvailability === status
 }
@@ -57,7 +58,8 @@ export function CardsPage() {
       if (sort === 'price-asc') return (left.currentPrice ?? Infinity) - (right.currentPrice ?? Infinity)
       if (sort === 'price-desc') return (right.currentPrice ?? -Infinity) - (left.currentPrice ?? -Infinity)
       if (sort === 'updated-desc') return (right.lastObservedAt ? Date.parse(right.updatedAt) : 0) - (left.lastObservedAt ? Date.parse(left.updatedAt) : 0)
-      return Number(right.isActive) - Number(left.isActive) || left.id - right.id
+      return Number(left.isArchived) - Number(right.isArchived) ||
+        Number(right.isActive) - Number(left.isActive) || left.id - right.id
     })
   }, [cardsQuery.data, deferredQuery, marketplace, sort, status])
 
@@ -96,6 +98,7 @@ export function CardsPage() {
             <option value="in_stock">В наличии</option>
             <option value="out_of_stock">Нет в наличии</option>
             <option value="no_data">Нет данных</option>
+            <option value="archived">Архивные</option>
           </select>
           <select value={sort} onChange={(event) => setParam('sort', event.target.value, 'default')} aria-label="Сортировка">
             <option value="default">По умолчанию</option>
@@ -120,12 +123,12 @@ export function CardsPage() {
               <tbody>
                 {visibleCards.map((card) => (
                   <tr key={card.id} className={!card.isActive ? 'is-inactive' : ''} onClick={() => navigate(`/cards/${card.id}`)}>
-                    <td><div className="card-identity"><span className="product-placeholder" aria-hidden="true">{(card.title ?? 'Т').slice(0, 1)}</span><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small>{!card.isActive ? <span className="tracking-status">Отслеживание приостановлено</span> : null}</span></div></td>
+                    <td><div className="card-identity"><span className="product-placeholder" aria-hidden="true">{(card.title ?? 'Т').slice(0, 1)}</span><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small>{card.isArchived ? <span className="tracking-status">В архиве{card.isActive ? ' · цена отслеживается' : ''}</span> : null}{!card.isActive ? <span className="tracking-status">Отслеживание приостановлено</span> : null}</span></div></td>
                     <td><MarketplaceMark marketplace={card.marketplace} /></td>
                     <td className="price-cell">{formatPrice(card.currentPrice)}</td>
                     <td><AvailabilityStatus value={card.currentAvailability} /></td>
                     <td><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time></td>
-                    <td><CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive} onRefresh={() => collection.start(card.id)} refreshDisabled={collection.isStarting} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={() => deleteCard.mutateAsync(card.id)} /></td>
+                    <td><CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive} isArchived={card.isArchived} onRefresh={() => collection.start(card.id)} refreshDisabled={collection.isStarting} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onToggleArchive={() => updateCard.mutateAsync({ cardId: card.id, input: { isArchived: !card.isArchived } })} onDelete={() => deleteCard.mutateAsync(card.id)} /></td>
                   </tr>
                 ))}
               </tbody>
