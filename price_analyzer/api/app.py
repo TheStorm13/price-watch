@@ -1,10 +1,12 @@
 import asyncio
 from contextlib import asynccontextmanager
 import os
+import secrets
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .errors import ApiProblem, api_problem_handler, validation_error_handler
 from .routes import cards_router, runs_router
@@ -14,7 +16,9 @@ from ..infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, 
 def create_app(
     database_url: str | None = None,
     repository: PostgresPriceAnalyzerRepository | None = None,
+    api_token: str | None = None,
 ) -> FastAPI:
+    expected_token = api_token if api_token is not None else os.environ.get("PRICE_WATCH_API_TOKEN")
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         if repository is not None:
@@ -41,6 +45,17 @@ def create_app(
         version="0.1.0",
         lifespan=lifespan,
     )
+    @app.middleware("http")
+    async def require_desktop_token(request: Request, call_next):
+        if expected_token and request.method != "OPTIONS":
+            actual_token = request.headers.get("x-price-watch-token", "")
+            if not secrets.compare_digest(actual_token, expected_token):
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": {"code": "unauthorized", "message": "Нет доступа к API"}},
+                )
+        return await call_next(request)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -53,7 +68,7 @@ def create_app(
         ],
         allow_credentials=False,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
-        allow_headers=["Content-Type", "X-Request-ID"],
+        allow_headers=["Content-Type", "X-Request-ID", "X-Price-Watch-Token"],
     )
     app.add_exception_handler(ApiProblem, api_problem_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)

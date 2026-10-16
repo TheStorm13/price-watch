@@ -24,13 +24,28 @@ export class ApiError extends Error {
 
 export const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true'
 export const isDesktopMode = import.meta.env.VITE_DESKTOP_MODE === 'true'
-const apiBaseUrl = isDesktopMode ? 'http://127.0.0.1:8000' : ''
+
+export interface DesktopApiConfig {
+  baseUrl: string
+  token: string | null
+}
+
+let desktopApiConfig: DesktopApiConfig | null = null
+
+export function configureDesktopApi(config: DesktopApiConfig) {
+  desktopApiConfig = config
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (isDesktopMode && !desktopApiConfig) {
+    throw new Error('Локальный API ещё не запущен')
+  }
+  const apiBaseUrl = isDesktopMode ? desktopApiConfig!.baseUrl : ''
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(desktopApiConfig?.token ? { 'X-Price-Watch-Token': desktopApiConfig.token } : {}),
       ...init?.headers,
     },
   })

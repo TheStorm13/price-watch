@@ -1,8 +1,12 @@
+use serde::Serialize;
 use std::{
     env,
     fs::{self, OpenOptions},
     net::{SocketAddr, TcpStream},
-    os::unix::net::UnixStream,
+    os::unix::{
+        fs::{OpenOptionsExt, PermissionsExt},
+        net::UnixStream,
+    },
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::{
@@ -10,14 +14,27 @@ use std::{
         mpsc, Arc, Mutex,
     },
     thread::{self, JoinHandle},
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tauri_plugin_dialog::DialogExt;
+
+mod native_services;
+use native_services::NativeServices;
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ApiConfig {
+    base_url: String,
+    token: Option<String>,
+}
 
 struct RuntimeState {
     project_root: PathBuf,
     profile_dir: PathBuf,
     state_dir: PathBuf,
+    data_dir: PathBuf,
+    config_dir: PathBuf,
+    native: Mutex<Option<NativeServices>>,
     worker: Mutex<Option<WorkerProcess>>,
     manual_browser: Mutex<Option<Child>>,
     startup: Mutex<()>,
@@ -30,25 +47,146 @@ struct WorkerProcess {
 }
 
 impl RuntimeState {
-    fn ensure_services(&self) -> Result<(), String> {
+    fn ensure_services(&self) -> Result<ApiConfig, String> {
         let _startup_guard = self
             .startup
             .lock()
             .map_err(|_| "Ошибка блокировки запуска")?;
 
-        if self.worker_is_running()? && api_is_ready() {
-            return Ok(());
+        self.prepare_user_paths()?;
+        self.load_desktop_env();
+        self.prepare_worker_log()?;
+        if self.use_native_runtime() {
+            return self.ensure_native_services(None);
         }
 
-        self.prepare_user_paths()?;
-        dotenvy::from_path(self.project_root.join(".env")).ok();
-        self.prepare_worker_log()?;
+        let config = ApiConfig {
+            base_url: "http://127.0.0.1:8000".to_string(),
+            token: None,
+        };
+        if self.worker_is_running()? && api_is_ready() {
+            return Ok(config);
+        }
         self.stop_container_browser_services()?;
         self.start_backend()?;
         wait_for_api(Duration::from_secs(120))?;
         wait_for_desktop_display(Duration::from_secs(30))?;
-        self.start_worker()?;
-        Ok(())
+        let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
+            "postgresql://price_analyzer:price_analyzer@127.0.0.1:5432/price_analyzer".to_string()
+        });
+        self.start_worker(database_url, 98, false, None)?;
+        Ok(config)
+    }
+
+    fn ensure_native_services(&self, archive: Option<&Path>) -> Result<ApiConfig, String> {
+        let mut native = self.native.lock().map_err(|_| "Ошибка состояния служб")?;
+        if native.as_mut().is_some_and(|services| !services.is_ready()) {
+            self.stop_worker();
+            *native = None;
+        }
+        if native.is_none() {
+            *native = Some(NativeServices::start(
+                &self.project_root,
+                &self.data_dir,
+                &self.state_dir,
+                archive,
+            )?);
+        }
+        let services = native.as_ref().ok_or("Нативные службы не запущены")?;
+        let database_url = services.database_url.clone();
+        let display_number = services.display_number;
+        let xauthority = services.xauthority.clone();
+        let config = ApiConfig {
+            base_url: format!("http://127.0.0.1:{}", services.api_port),
+            token: Some(services.api_token.clone()),
+        };
+        drop(native);
+        if !self.worker_is_running()? {
+            self.start_worker(database_url, display_number, true, Some(xauthority))?;
+        }
+        Ok(config)
+    }
+
+    fn migrate_from_docker(&self) -> Result<ApiConfig, String> {
+        let _startup_guard = self
+            .startup
+            .lock()
+            .map_err(|_| "Ошибка блокировки запуска")?;
+        self.prepare_user_paths()?;
+        self.load_desktop_env();
+        if !self.use_native_runtime() {
+            return Err("Перенос требуется только для локального режима".to_string());
+        }
+        if self.data_dir.join("postgres").exists() {
+            return Err("Локальная база уже существует; перенос поверх неё запрещён".to_string());
+        }
+        let legacy_root = env::var_os("PRICE_WATCH_LEGACY_PROJECT_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| self.project_root.clone());
+        if !legacy_root.join("compose.yaml").is_file() {
+            return Err(
+                "Укажите PRICE_WATCH_LEGACY_PROJECT_DIR с путём к старому проекту Docker Compose"
+                    .to_string(),
+            );
+        }
+        let backup_dir = self.data_dir.join("backups");
+        fs::create_dir_all(&backup_dir)
+            .map_err(|error| format!("Не удалось создать каталог резервных копий: {error}"))?;
+        fs::set_permissions(&backup_dir, fs::Permissions::from_mode(0o700))
+            .map_err(|error| format!("Не удалось ограничить доступ к резервным копиям: {error}"))?;
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_millis();
+        let archive = backup_dir.join(format!("docker-{timestamp}.dump"));
+        let stop = Command::new("docker")
+            .args(["compose", "stop", "worker", "frontend", "api"])
+            .current_dir(&legacy_root)
+            .status()
+            .map_err(|error| {
+                format!("Не удалось остановить старый API перед копированием: {error}")
+            })?;
+        if !stop.success() {
+            return Err("Не удалось остановить старый API перед копированием".to_string());
+        }
+        let database = Command::new("docker")
+            .args(["compose", "up", "-d", "--wait", "db"])
+            .current_dir(&legacy_root)
+            .status()
+            .map_err(|error| format!("Не удалось запустить старую базу: {error}"))?;
+        if !database.success() {
+            return Err("Не удалось запустить старую базу для переноса".to_string());
+        }
+        let backup = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&archive)
+            .map_err(|error| {
+                format!(
+                    "Не удалось создать резервную копию {}: {error}",
+                    archive.display()
+                )
+            })?;
+        let dump = Command::new("docker")
+            .args([
+                "compose",
+                "exec",
+                "-T",
+                "db",
+                "sh",
+                "-c",
+                "exec pg_dump -Fc -U \"$POSTGRES_USER\" \"$POSTGRES_DB\"",
+            ])
+            .current_dir(&legacy_root)
+            .stdout(Stdio::from(backup))
+            .status()
+            .map_err(|error| format!("Не удалось создать резервную копию Docker-базы: {error}"))?;
+        if !dump.success() {
+            let _ = fs::remove_file(&archive);
+            return Err("pg_dump завершился с ошибкой; старая база сохранена".to_string());
+        }
+        self.ensure_native_services(Some(&archive))
     }
 
     fn stop_container_browser_services(&self) -> Result<(), String> {
@@ -93,14 +231,25 @@ impl RuntimeState {
         }
     }
 
-    fn start_worker(&self) -> Result<(), String> {
-        let python = self.project_root.join(".venv/bin/python");
-        if !python.is_file() {
+    fn start_worker(
+        &self,
+        database_url: String,
+        display_number: u16,
+        native: bool,
+        xauthority: Option<PathBuf>,
+    ) -> Result<(), String> {
+        let venv_python = self.project_root.join(".venv/bin/python");
+        if !native && !venv_python.is_file() {
             return Err(format!(
                 "Не найден Python worker: {}. Создайте .venv и установите requirements.txt",
-                python.display()
+                venv_python.display()
             ));
         }
+        let python = if venv_python.is_file() {
+            venv_python
+        } else {
+            PathBuf::from("python3")
+        };
 
         let log_path = self.state_dir.join("desktop-worker.log");
         let stdout = OpenOptions::new()
@@ -111,12 +260,9 @@ impl RuntimeState {
         let stderr = stdout
             .try_clone()
             .map_err(|error| format!("Не удалось открыть stderr worker: {error}"))?;
-        let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
-            "postgresql://price_analyzer:price_analyzer@127.0.0.1:5432/price_analyzer".to_string()
-        });
-
         let project_root = self.project_root.clone();
         let profile_dir = self.profile_dir.clone();
+        let display = format!(":{display_number}");
         let running = Arc::new(AtomicBool::new(false));
         let supervisor_running = Arc::clone(&running);
         let (startup_tx, startup_rx) = mpsc::sync_channel(1);
@@ -136,9 +282,12 @@ impl RuntimeState {
                 ])
                 .current_dir(project_root)
                 .env("DATABASE_URL", database_url)
-                .env("DISPLAY", ":98")
+                .env("DISPLAY", display)
                 .stdout(Stdio::from(stdout))
                 .stderr(Stdio::from(stderr));
+            if let Some(auth) = xauthority {
+                command.env("XAUTHORITY", auth);
+            }
 
             #[cfg(target_os = "linux")]
             {
@@ -362,8 +511,25 @@ impl RuntimeState {
         )?;
         fs::create_dir_all(&self.profile_dir)
             .map_err(|error| format!("Не удалось создать профиль Chrome: {error}"))?;
+        fs::set_permissions(&self.profile_dir, fs::Permissions::from_mode(0o700))
+            .map_err(|error| format!("Не удалось ограничить доступ к профилю Chrome: {error}"))?;
         fs::create_dir_all(&self.state_dir)
-            .map_err(|error| format!("Не удалось создать каталог состояния: {error}"))
+            .map_err(|error| format!("Не удалось создать каталог состояния: {error}"))?;
+        fs::set_permissions(&self.state_dir, fs::Permissions::from_mode(0o700))
+            .map_err(|error| format!("Не удалось ограничить доступ к логам: {error}"))
+    }
+
+    fn load_desktop_env(&self) {
+        dotenvy::from_path(self.config_dir.join("config.env")).ok();
+        dotenvy::from_path(self.project_root.join(".env")).ok();
+    }
+
+    fn use_native_runtime(&self) -> bool {
+        match env::var("PRICE_WATCH_RUNTIME").as_deref() {
+            Ok("native") => true,
+            Ok("compose") => false,
+            _ => self.project_root == Path::new("/usr/lib/price-watch"),
+        }
     }
 }
 
@@ -398,9 +564,11 @@ fn migrate_profile(old: &Path, new: &Path) -> Result<(), String> {
 
 #[cfg(test)]
 mod path_tests {
-    use super::migrate_profile;
+    use super::{migrate_profile, RuntimeState};
     use std::{
         fs,
+        path::PathBuf,
+        sync::Mutex,
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -424,6 +592,71 @@ mod path_tests {
         assert!(!old.exists());
         assert_eq!(fs::read(new.join("Cookies")).unwrap(), b"saved session");
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires PostgreSQL, Xvfb, xauth, Python dependencies and a private test root"]
+    fn starts_native_worker_without_opening_chrome() {
+        let root = PathBuf::from(
+            std::env::var("PRICE_WATCH_NATIVE_SMOKE_ROOT")
+                .expect("set PRICE_WATCH_NATIVE_SMOKE_ROOT"),
+        );
+        let runtime = RuntimeState {
+            project_root: root.join("project"),
+            profile_dir: root.join("full-data/chrome-profile"),
+            data_dir: root.join("full-data"),
+            state_dir: root.join("full-state"),
+            config_dir: root.join("full-config"),
+            native: Mutex::new(None),
+            worker: Mutex::new(None),
+            manual_browser: Mutex::new(None),
+            startup: Mutex::new(()),
+        };
+        let config = runtime
+            .ensure_services()
+            .expect("native runtime should start");
+        assert!(config.token.is_some());
+        std::thread::sleep(std::time::Duration::from_millis(750));
+        assert!(runtime.worker_is_running().unwrap());
+        assert!(!runtime.profile_dir.join("DevToolsActivePort").exists());
+        runtime.stop_worker();
+        *runtime.native.lock().unwrap() = None;
+    }
+
+    #[test]
+    #[ignore = "requires an isolated Docker Compose test database and native dependencies"]
+    fn migrates_docker_history_into_native_database() {
+        use std::io::{Read, Write};
+        let root = PathBuf::from(
+            std::env::var("PRICE_WATCH_NATIVE_SMOKE_ROOT")
+                .expect("set PRICE_WATCH_NATIVE_SMOKE_ROOT"),
+        );
+        let runtime = RuntimeState {
+            project_root: root.join("project"),
+            profile_dir: root.join("migration-data/chrome-profile"),
+            data_dir: root.join("migration-data"),
+            state_dir: root.join("migration-state"),
+            config_dir: root.join("migration-config"),
+            native: Mutex::new(None),
+            worker: Mutex::new(None),
+            manual_browser: Mutex::new(None),
+            startup: Mutex::new(()),
+        };
+        let config = runtime
+            .migrate_from_docker()
+            .expect("database migration should finish");
+        let address = config.base_url.trim_start_matches("http://");
+        let mut stream = std::net::TcpStream::connect(address).unwrap();
+        let request = format!(
+            "GET /api/cards HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Price-Watch-Token: {}\r\nConnection: close\r\n\r\n",
+            config.token.unwrap()
+        );
+        stream.write_all(request.as_bytes()).unwrap();
+        let mut response = String::new();
+        stream.read_to_string(&mut response).unwrap();
+        assert!(response.contains("1604900984"), "{response}");
+        runtime.stop_worker();
+        *runtime.native.lock().unwrap() = None;
     }
 }
 
@@ -465,7 +698,25 @@ fn wait_for_api(timeout: Duration) -> Result<(), String> {
 fn project_root() -> PathBuf {
     env::var_os("PRICE_ANALYZER_PROJECT_DIR")
         .map(PathBuf::from)
-        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+        .unwrap_or_else(|| {
+            let installed = PathBuf::from("/usr/lib/price-watch");
+            let installed_binary = env::current_exe()
+                .ok()
+                .and_then(|path| path.parent().map(Path::to_path_buf))
+                .is_some_and(|directory| directory == Path::new("/usr/bin"));
+            if installed_binary && installed.join("main.py").is_file() {
+                return installed;
+            }
+            let development = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+            if development.join("main.py").is_file() {
+                return development;
+            }
+            if installed.join("main.py").is_file() {
+                installed
+            } else {
+                development
+            }
+        })
 }
 
 fn user_base_dir(variable: &str, fallback: &str) -> Result<PathBuf, String> {
@@ -483,11 +734,21 @@ fn user_base_dir(variable: &str, fallback: &str) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-async fn ensure_services(state: tauri::State<'_, Arc<RuntimeState>>) -> Result<(), String> {
+async fn ensure_services(state: tauri::State<'_, Arc<RuntimeState>>) -> Result<ApiConfig, String> {
     let state = Arc::clone(state.inner());
     tauri::async_runtime::spawn_blocking(move || state.ensure_services())
         .await
         .map_err(|error| format!("Ошибка задачи запуска: {error}"))?
+}
+
+#[tauri::command]
+async fn migrate_from_docker(
+    state: tauri::State<'_, Arc<RuntimeState>>,
+) -> Result<ApiConfig, String> {
+    let state = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || state.migrate_from_docker())
+        .await
+        .map_err(|error| format!("Ошибка переноса базы: {error}"))?
 }
 
 #[tauri::command]
@@ -541,6 +802,13 @@ pub fn run() {
         state_dir: user_base_dir("XDG_STATE_HOME", ".local/state")
             .expect("Не удалось определить каталог состояния пользователя")
             .join("price-watch"),
+        data_dir: user_base_dir("XDG_DATA_HOME", ".local/share")
+            .expect("Не удалось определить каталог данных пользователя")
+            .join("price-watch"),
+        config_dir: user_base_dir("XDG_CONFIG_HOME", ".config")
+            .expect("Не удалось определить каталог конфигурации пользователя")
+            .join("price-watch"),
+        native: Mutex::new(None),
         worker: Mutex::new(None),
         manual_browser: Mutex::new(None),
         startup: Mutex::new(()),
@@ -553,6 +821,7 @@ pub fn run() {
         .manage(runtime)
         .invoke_handler(tauri::generate_handler![
             ensure_services,
+            migrate_from_docker,
             open_store_browser,
             prepare_collection,
             save_export_file
@@ -564,6 +833,9 @@ pub fn run() {
         if matches!(event, tauri::RunEvent::Exit) {
             cleanup.stop_worker();
             cleanup.stop_manual_browser();
+            if let Ok(mut native) = cleanup.native.lock() {
+                *native = None;
+            }
         }
     });
 }

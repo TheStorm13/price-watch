@@ -109,6 +109,24 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.json()[0]["currentPrice"], 999.0)
         self.assertNotIn("external_id", response.json()[0])
 
+    async def test_desktop_api_requires_its_session_token(self):
+        app = create_app(repository=self.repository, api_token="session-secret")
+        app.state.repository = self.repository
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+            self.assertEqual((await client.get("/api/health")).status_code, 401)
+            self.assertEqual(
+                (await client.get("/api/cards", headers={"X-Price-Watch-Token": "wrong"})).status_code,
+                401,
+            )
+            response = await client.get("/api/cards", headers={"X-Price-Watch-Token": "session-secret"})
+            self.assertEqual(response.status_code, 200)
+            preflight = await client.options("/api/cards", headers={
+                "Origin": "http://tauri.localhost",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "x-price-watch-token",
+            })
+            self.assertEqual(preflight.status_code, 200)
+
     async def test_export_and_import_use_card_history_contract(self):
         exported = await self.client.get("/api/cards/export")
         self.assertEqual(exported.status_code, 200)
