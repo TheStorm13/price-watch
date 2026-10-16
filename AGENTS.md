@@ -7,7 +7,7 @@
 ## Запуск, сборка и проверки
 
 - `python -m venv .venv && .venv/bin/pip install -r requirements.txt` — подготовить окружение Python.
-- `docker compose up -d db` и `.venv/bin/python main.py db migrate` — запустить PostgreSQL и применить миграции. Сначала создайте `.env` по образцу `.env.example`.
+- `npm --prefix frontend run desktop:build` и `./price-watch` — собрать и запустить приложение с локальными PostgreSQL, API и worker. Для прямого CLI с отдельной базой задайте `DATABASE_URL` и выполните `.venv/bin/python main.py db migrate`.
 - `npm --prefix frontend install` и `npm --prefix frontend run dev:demo` — запустить интерфейс с тестовыми данными. Для реального API используйте `npm --prefix frontend run dev`.
 - `npm --prefix frontend run build` — проверить типы и собрать web-интерфейс. `npm --prefix frontend run desktop:build` собирает исполняемый файл Tauri без установочного пакета.
 
@@ -25,4 +25,4 @@
 
 ## Конфигурация и безопасность
 
-Храните учётные данные в локальном `.env`, не добавляйте их в коммиты. Не коммитьте профили браузера, логи и экспортированные данные товаров. Для разработки desktop-версии нужны Docker, PostgreSQL и системный Google Chrome. Перед изменением портов или запуска браузера прочитайте `docs/guide/CURRENT_NUANCES.md`.
+Храните учётные данные в локальном `.env`, не добавляйте их в коммиты. Не коммитьте профили браузера, логи и экспортированные данные товаров. Для разработки desktop-версии нужны системные PostgreSQL, Xvfb, xauth и Google Chrome. Перед изменением портов или запуска браузера прочитайте `docs/guide/CURRENT_NUANCES.md`.

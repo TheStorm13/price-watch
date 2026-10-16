@@ -2,69 +2,47 @@
 
 [К содержанию](README.md)
 
-## Быстрая проверка сервисов
+## Локальные службы
 
-```bash
-docker compose ps -a
-curl -fsS http://127.0.0.1:8000/api/health
-docker compose logs --tail=100 api migrate
-tail -100 "${XDG_STATE_HOME:-$HOME/.local/state}/price-watch/desktop-worker.log"
-```
-
-Ответ API `{"status":"ok"}` подтверждает, что HTTP сервис доступен. При
-desktop запуске контейнерные `frontend` и `worker` должны быть остановлены:
-вместо них работают Tauri и локальный Python worker. Лог последнего передаётся
-в Dozzle через сервис `desktop-worker-logs` и доступен в файле
-`$XDG_STATE_HOME/price-watch/desktop-worker.log` (по умолчанию
-`~/.local/state/price-watch/desktop-worker.log`).
+После запуска desktop логи находятся в
+`$XDG_STATE_HOME/price-watch/` (обычно `~/.local/state/price-watch/`):
+`postgres.log`, `api.log`, `xvfb.log` и `desktop-worker.log`.
+Сообщение об ошибке запуска указывает соответствующий файл.
+API слушает свободный локальный порт и требует секрет, который Tauri передаёт
+интерфейсу. Фиксированного адреса для ручного `curl` нет.
 
 ## Автоматические проверки
 
-Python unit-тесты и тесты API без внешних сервисов:
-
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
-```
-
-Интеграционный тест PostgreSQL работает только с отдельной тестовой БД.
-Создайте её один раз и запустите тест, не используя рабочую базу:
-
-```bash
-docker compose exec db createdb -U price_analyzer price_analyzer_test
-TEST_DATABASE_URL='postgresql://price_analyzer:price_analyzer@127.0.0.1:5432/price_analyzer_test' \
-  .venv/bin/python -m unittest tests.test_postgres_integration -v
-```
-
-Если тестовая БД уже существует, пропустите `createdb`. Тест применяет к ней
-миграции, создаёт временные карточки и удаляет свои данные после проверки.
-
-Frontend и Rust:
-
-```bash
 npm --prefix frontend run lint
 npm --prefix frontend test
 npm --prefix frontend run test:e2e
-cargo check --locked --manifest-path frontend/src-tauri/Cargo.toml
+cargo test --locked --manifest-path frontend/src-tauri/Cargo.toml
 ```
 
-Playwright E2E тесты сами запускают Vite на `127.0.0.1:5175` в demo режиме.
-Они проверяют интерфейс и взаимодействия с mock API, но не подтверждают
-работу живого Ozon или сохранение в PostgreSQL. Для этого нужны отдельные
-интеграционные и ручные проверки. Команда `cargo check` проверяет Rust код и
-не собирает AppImage.
+Интеграционный тест PostgreSQL запускается только с `TEST_DATABASE_URL`,
+указывающим на **отдельную тестовую базу**. Создайте её на доступном
+PostgreSQL и запустите:
+
+```bash
+TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test' \
+  .venv/bin/python -m unittest tests.test_postgres_integration -v
+```
+
+Тест применяет миграции и изменяет данные этой базы. Не указывайте здесь
+рабочую базу приложения. E2E тесты сами запускают Vite в demo режиме;
+они проверяют интерфейс, но не живое соединение с Ozon.
 
 ## Типовые проблемы
 
 | Симптом | Что проверить |
 | --- | --- |
 | `./price-watch` сообщает, что приложение не собрано | Запустить `npm --prefix frontend run desktop:build` |
-| Не найден `.venv/bin/python` | Создать `.venv` и установить `requirements.txt` |
-| Старт зависает или API не отвечает | `docker compose ps -a`, миграции, занятость портов 8000 и 5432 |
-| Нет Chrome | Проверить `google-chrome-stable --version`; desktop требует системный Google Chrome |
-| Скрытый дисплей Chrome недоступен | Проверить `docker compose ps desktop-display` и `docker compose logs desktop-display`. Если Xvfb сообщает `Server is already active for display 98`, пересоздать только этот контейнер: `docker compose up -d --force-recreate desktop-display`, затем нажать «Повторить» в приложении. В Compose для Xvfb используется временный `/tmp`, чтобы lock-файл не сохранялся после сбоя. |
-| Ozon запросил проверку при фоновом desktop сборе | После завершения запуска открыть Chrome кнопкой, пройти проверку Ozon и повторить сбор |
-| Карточка Ozon не обновилась | Проверить лог worker в `$XDG_STATE_HOME/price-watch/desktop-worker.log`; исчезнувший товар может вести на страницу предложений |
-| Код API изменился, а ответ старый | Пересобрать и перезапустить контейнеры API и миграций по инструкции запуска |
-| Удаление карточки в Tauri не проходит | Проверить, что API пересобран с миграцией и разрешённым методом `DELETE` в CORS |
-
-Логи контейнеров доступны также в Dozzle на `http://127.0.0.1:8080`.
+| Не найден Python или Python модули | Создать `.venv` и установить `requirements.txt` |
+| PostgreSQL не стартует | Открыть `postgres.log`; проверить установленную версию и права на каталог `$XDG_DATA_HOME/price-watch/postgres` |
+| API не отвечает | Открыть `api.log`; проверить ошибки миграций и запуска Python |
+| Нет Chrome | Проверить `google-chrome-stable --version` |
+| Скрытый дисплей недоступен | Открыть `xvfb.log`; проверить установку `Xvfb` и `xauth` |
+| Ozon запросил проверку при фоновом сборе | После завершения запуска открыть Chrome кнопкой, пройти проверку и повторить сбор |
+| Карточка Ozon не обновилась | Открыть `desktop-worker.log`; исчезнувший товар может вести на страницу предложений |

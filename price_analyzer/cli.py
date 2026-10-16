@@ -96,7 +96,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--browser-channel",
         choices=("chrome", "chromium"),
         default="chrome",
-        help="канал Playwright; chromium используется внутри Docker",
+        help="канал Playwright (chrome или chromium)",
     )
 
     api = commands.add_parser("api", help="запустить HTTP API")
@@ -122,7 +122,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--browser-channel",
         choices=("chrome", "chromium"),
         default="chrome",
-        help="канал Playwright; chromium используется внутри Docker",
+        help="канал Playwright (chrome или chromium)",
     )
 
     history = commands.add_parser("history", help="история и статистика цены")

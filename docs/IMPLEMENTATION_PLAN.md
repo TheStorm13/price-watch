@@ -12,7 +12,7 @@
 ## Этап 2. PostgreSQL
 
 - [x] Добавить Psycopg 3 и пул соединений.
-- [x] Добавить PostgreSQL 18 в Docker Compose с healthcheck и volume.
+- [x] Добавить локальный запуск PostgreSQL с пользовательским каталогом данных.
 - [x] Создать версионируемый механизм SQL-миграций.
 - [x] Создать таблицы `marketplace_cards`, `collection_runs`, `price_history`.
 - [x] Добавить ограничения, внешние ключи и индексы.

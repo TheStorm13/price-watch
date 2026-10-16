@@ -1,11 +1,10 @@
 import { AlertCircle, Check, LoaderCircle, X } from 'lucide-react'
-import { isDesktopMode } from '../../api/client'
 import { Button } from '../../components/ui/Button'
 import { Link } from 'react-router-dom'
 import { useCollection } from './CollectionProvider'
 
 export function ActiveCollectionPanel() {
-  const { run, continueRun, dismiss, openBrowser } = useCollection()
+  const { run, continueRun, dismiss } = useCollection()
   if (!run) return null
 
   const waiting = run.status === 'waiting_for_user'
@@ -31,7 +30,6 @@ export function ActiveCollectionPanel() {
             <p>{run.challenge?.message ?? 'Завершите проверку в открывшемся Chrome, затем продолжите'}</p>
           </div>
           <div className="collection-panel__challenge-actions">
-            {!isDesktopMode ? <Button onClick={openBrowser}>Открыть Chromium</Button> : null}
             <Button variant="primary" onClick={continueRun}>Проверка пройдена</Button>
           </div>
         </div>

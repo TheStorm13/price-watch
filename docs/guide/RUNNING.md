@@ -1,19 +1,15 @@
-# Запуск и режимы работы
+# Запуск приложения
 
 [К содержанию](README.md)
 
-Команды ниже выполняются из корня репозитория, если не указано иное. Основной
-режим — Tauri на Linux с локальными PostgreSQL, API, Xvfb и worker. Нужны
-системные `postgresql`, `xorg-server-xvfb`, `xorg-xauth`, Google Chrome,
-Python, Node.js/npm и Rust. Кнопка «Открыть Chrome» запускает
-видимый браузер с профилем приложения. При ручном обновлении Tauri закрывает
-его, а worker использует тот же профиль на скрытом дисплее.
-Перенос базы из Docker описан в [нативном режиме](NATIVE_DESKTOP.md).
+Команды выполняются из корня репозитория. Для desktop нужны системные
+`postgresql`, `xorg-server-xvfb`, `xorg-xauth`, Google Chrome, Python,
+Node.js/npm и Rust. Локальные PostgreSQL, API, Xvfb и worker запускаются
+вместе с приложением и завершаются при его закрытии.
 
-## Первый desktop запуск
+## Первый запуск
 
 ```bash
-cp -n .env.example .env
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 npm --prefix frontend install
@@ -21,33 +17,17 @@ npm --prefix frontend run desktop:build
 ./price-watch
 ```
 
-`./price-watch` запускает файл
-`frontend/src-tauri/target/release/price-watch-desktop`. Скрипт сам его не
-собирает: после изменения Rust или frontend кода повторите `desktop:build`.
-Скрипт сборки вызывает `tauri build --no-bundle`, а в конфигурации Tauri
-`bundle.active` равно `false`. AppImage не нужен и не создаётся.
+`./price-watch` запускает готовый Tauri бинарник из
+`frontend/src-tauri/target/release/price-watch-desktop`. После изменения Rust
+или интерфейса повторите `desktop:build`; после изменения Python перезапустите
+приложение. AppImage не создаётся. При установке готового пакета из релиза
+сборка из исходников не требуется.
 
-Профиль Chrome и лог локального worker хранятся в пользовательских каталогах
-XDG, а не в репозитории. При первом запуске существующий `.playwright-profile`
-переносится автоматически; перед запуском закройте Chrome с этим профилем.
-Пути указаны в [нюансах desktop](CURRENT_NUANCES.md#desktop-зависит-от-каталога-проекта).
-
-В режиме Compose (`PRICE_WATCH_RUNTIME=compose ./price-watch`) Tauri читает корневой `.env`, останавливает контейнерные
-`worker` и `frontend`, поднимает через Compose `db`, `migrate`, `api`, `logs` и
-`desktop-worker-logs` и `desktop-display`, дожидается API на `127.0.0.1:8000`, затем запускает
-`.venv/bin/python main.py worker` на хосте. Окно приложения показывает ошибку и
-кнопку повторения, если этот старт не удался.
-
-После закрытия Tauri локальный worker завершается. Контейнеры PostgreSQL, API
-и логов остаются работать. Для остановки контейнеров с сохранением данных:
-
-```bash
-docker compose down
-```
-
-`docker compose down --volumes` удаляет том PostgreSQL с историей цен, а также
-профиль контейнерного браузера и данные Dozzle. Для обычной остановки эта
-команда не нужна.
+База, профиль Chrome и логи находятся в пользовательских каталогах XDG;
+подробности приведены в [описании локальных служб](NATIVE_DESKTOP.md).
+Кнопка «Открыть Chrome» запускает видимый браузер. Перед ручным или
+автоматическим сбором приложение закрывает его, а worker запускает Chrome
+с тем же профилем на скрытом дисплее.
 
 ## Разработка desktop приложения
 
@@ -56,46 +36,17 @@ npm --prefix frontend run desktop
 ```
 
 Команда запускает Tauri и Vite на `127.0.0.1:1420` с обновлением интерфейса.
-В debug режиме Tauri выполняет `docker compose up --build`; release бинарник
-при обычном `./price-watch` Docker образы автоматически не пересобирает. После
-изменения Python API или миграций сначала обновите контейнеры:
-
-```bash
-PRICE_WATCH_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/price-watch" \
-  docker compose up --build -d db migrate api logs desktop-worker-logs desktop-display
-```
-
-После этого запустите `./price-watch` повторно. Изменения Python worker
-подхватываются при новом запуске Tauri, потому что worker работает из локальной
-`.venv`, а не из Docker образа.
-
-## Дополнительный web режим
-
-Для запуска в браузере, включая контейнерный Chromium с noVNC:
-
-```bash
-docker compose up --build -d
-```
-
-| Адрес | Назначение |
-| --- | --- |
-| `http://127.0.0.1:5173` | Web интерфейс |
-| `http://127.0.0.1:8000/docs` | Swagger API |
-| `http://127.0.0.1:6080/vnc.html` | Окно контейнерного Chromium |
-| `http://127.0.0.1:8080` | Логи Dozzle |
-
-Этот режим использует контейнерные `frontend` и `worker`. Следующий запуск
-Tauri остановит их и вернётся к локальному worker с системным Chrome.
+Для разработки интерфейса без базы используйте
+`npm --prefix frontend run dev:demo`.
 
 ## CLI без интерфейса
 
-Для команд с БД передайте `DATABASE_URL` через окружение или параметр
-`--database-url`. При настройках из `.env.example`:
+Прямым командам с БД нужен отдельный доступный PostgreSQL. Создайте базу
+самостоятельно и передайте её адрес через `DATABASE_URL` или
+`--database-url`. Эти команды не запускают локальные службы Tauri.
 
 ```bash
-set -a
-source .env
-set +a
+export DATABASE_URL='postgresql://user:password@localhost:5432/price_watch'
 .venv/bin/python main.py db migrate
 .venv/bin/python main.py card add --marketplace ozon --external-id 4465694803
 .venv/bin/python main.py card list
@@ -104,13 +55,12 @@ set +a
 .venv/bin/python main.py run last
 ```
 
-Число после `--card-id` — внутренний ID карточки из `card list`, а не артикул
-Ozon. Команда `collect` ждёт завершения сбора и подтверждения антибот-проверки в
-терминале. Совместимый одиночный вызов без PostgreSQL:
+Число после `--card-id` — внутренний ID карточки из `card list`.
+Команда `collect` ждёт завершения сбора и подтверждения проверки Ozon в
+терминале. Одиночный вызов без PostgreSQL:
 
 ```bash
 .venv/bin/python main.py 4465694803
 ```
 
-Артикулы в примерах демонстрационные: доступность товара на Ozon может
-измениться.
+Доступность демонстрационных артикулов на Ozon может измениться.

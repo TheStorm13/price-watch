@@ -196,49 +196,14 @@ fn encoded_query_value(value: &str) -> String {
     encoded
 }
 
-fn legacy_database_exists(project_root: &Path) -> bool {
-    let compose_root = env::var_os("PRICE_WATCH_LEGACY_PROJECT_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| project_root.to_path_buf());
-    if !compose_root.join("compose.yaml").is_file()
-        && project_root != Path::new("/usr/lib/price-watch")
-    {
-        return false;
-    }
-    if compose_root.join("compose.yaml").is_file() {
-        let container = Command::new("docker")
-            .args(["compose", "ps", "-a", "-q", "db"])
-            .current_dir(compose_root)
-            .output();
-        if matches!(container, Ok(ref output) if output.status.success() && !output.stdout.is_empty())
-        {
-            return true;
-        }
-    }
-    let volume = Command::new("docker")
-        .args(["volume", "inspect", "price-analyzer_postgres_data"])
-        .output();
-    matches!(volume, Ok(output) if output.status.success())
-}
-
 impl NativeServices {
-    pub fn start(
-        project_root: &Path,
-        data_dir: &Path,
-        state_dir: &Path,
-        import_archive: Option<&Path>,
-    ) -> Result<Self, String> {
+    pub fn start(project_root: &Path, data_dir: &Path, state_dir: &Path) -> Result<Self, String> {
         let initdb = program("initdb")?;
         let postgres_bin = program("postgres")?;
         let psql = program("psql")?;
         let createdb = program("createdb")?;
         let pg_isready = program("pg_isready")?;
         let pg_dump = program("pg_dump")?;
-        let pg_restore = if import_archive.is_some() {
-            Some(program("pg_restore")?)
-        } else {
-            None
-        };
         let xvfb = program("Xvfb")?;
         let xauth = program("xauth")?;
         let python = if project_root.join(".venv/bin/python").is_file() {
@@ -265,13 +230,7 @@ impl NativeServices {
         }
 
         let pg_data = data_dir.join("postgres");
-        if import_archive.is_some() && pg_data.exists() {
-            return Err("Локальная база уже существует. Импорт поверх неё запрещён".to_string());
-        }
         if !pg_data.join("PG_VERSION").exists() {
-            if legacy_database_exists(project_root) && import_archive.is_none() {
-                return Err("LEGACY_DATABASE:Найдена существующая база Docker. Перенесите историю цен перед первым запуском локальной базы".to_string());
-            }
             run_checked(
                 Command::new(&initdb)
                     .arg("-D")
@@ -353,44 +312,6 @@ impl NativeServices {
                     .arg("price_watch"),
                 "Создание локальной базы",
             )?;
-        }
-        if let Some(archive) = import_archive {
-            let restore = run_checked(
-                Command::new(pg_restore.as_ref().ok_or("Не найден pg_restore")?)
-                    .arg("-h")
-                    .arg(&socket_dir)
-                    .arg("-p")
-                    .arg(pg_port.to_string())
-                    .args([
-                        "--no-owner",
-                        "--no-privileges",
-                        "--exit-on-error",
-                        "-d",
-                        "price_watch",
-                    ])
-                    .arg(archive),
-                "Восстановление истории цен",
-            ).and_then(|_| {
-                let result = run_checked(
-                    Command::new(&psql).arg("-h").arg(&socket_dir).arg("-p").arg(pg_port.to_string())
-                        .arg("-d").arg("price_watch").arg("-tAc")
-                        .arg("SELECT to_regclass('public.marketplace_cards') IS NOT NULL AND to_regclass('public.price_history') IS NOT NULL AND to_regclass('public.collection_runs') IS NOT NULL"),
-                    "Проверка восстановленной схемы",
-                )?;
-                if String::from_utf8_lossy(&result.stdout).trim() == "t" {
-                    Ok(result)
-                } else {
-                    Err("В архиве нет всех таблиц истории цен".to_string())
-                }
-            });
-            if let Err(error) = restore {
-                drop(postgres);
-                let cleanup = fs::remove_dir_all(&pg_data);
-                return Err(match cleanup {
-                    Ok(()) => format!("{error}. Исходная Docker-база и архив {} сохранены", archive.display()),
-                    Err(cleanup_error) => format!("{error}. Не удалось удалить незавершённую базу {}: {cleanup_error}. Архив {} сохранён", pg_data.display(), archive.display()),
-                });
-            }
         }
         let backup_dir = data_dir.join("backups");
         backup_database(&pg_dump, &socket_dir, pg_port, &backup_dir)?;
@@ -642,7 +563,6 @@ mod tests {
             &root.join("project"),
             &root.join("smoke-data"),
             &root.join("smoke-state"),
-            None,
         )
         .expect("native services should start");
         assert!(services.is_ready());
@@ -652,59 +572,5 @@ mod tests {
             .unwrap()
             .next()
             .is_some());
-    }
-
-    #[test]
-    #[ignore = "requires PostgreSQL, Xvfb, xauth, Python dependencies and a private test root"]
-    fn restores_complete_archive_into_new_database() {
-        let root = std::path::PathBuf::from(
-            std::env::var("PRICE_WATCH_NATIVE_SMOKE_ROOT")
-                .expect("set PRICE_WATCH_NATIVE_SMOKE_ROOT"),
-        );
-        let project = root.join("project");
-        let source_data = root.join("restore-source-data");
-        let source_state = root.join("restore-source-state");
-        let source = NativeServices::start(&project, &source_data, &source_state, None)
-            .expect("source database should start");
-        drop(source);
-        let mut backups: Vec<_> = std::fs::read_dir(source_data.join("backups"))
-            .unwrap()
-            .map(|entry| entry.unwrap().path())
-            .filter(|path| {
-                path.extension()
-                    .is_some_and(|extension| extension == "dump")
-            })
-            .collect();
-        backups.sort();
-        let archive = backups.last().expect("backup should exist");
-        let mut restored = NativeServices::start(
-            &project,
-            &root.join("restore-target-data"),
-            &root.join("restore-target-state"),
-            Some(archive),
-        )
-        .expect("restored database should start");
-        assert!(restored.is_ready());
-    }
-
-    #[test]
-    #[ignore = "requires PostgreSQL, Xvfb, xauth and a private test root"]
-    fn failed_restore_removes_only_new_database() {
-        let root = std::path::PathBuf::from(
-            std::env::var("PRICE_WATCH_NATIVE_SMOKE_ROOT")
-                .expect("set PRICE_WATCH_NATIVE_SMOKE_ROOT"),
-        );
-        let invalid_archive = root.join("invalid-archive.dump");
-        std::fs::write(&invalid_archive, b"invalid archive").unwrap();
-        let data = root.join("invalid-target-data");
-        let result = NativeServices::start(
-            &root.join("project"),
-            &data,
-            &root.join("invalid-target-state"),
-            Some(&invalid_archive),
-        );
-        assert!(result.is_err());
-        assert!(!data.join("postgres").exists());
-        assert!(invalid_archive.exists());
     }
 }

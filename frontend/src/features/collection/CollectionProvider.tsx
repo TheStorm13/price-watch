@@ -10,7 +10,6 @@ interface CollectionContextValue {
   isStarting: boolean
   startError: string | null
   start: (cardId?: number) => void
-  openBrowser: () => void
   continueRun: () => void
   dismiss: () => void
   dealNotice: number | null
@@ -21,12 +20,6 @@ const CollectionContext = createContext<CollectionContextValue | null>(null)
 const ACTIVE_RUN_KEY = 'price-watch-active-run'
 const NOTIFIED_PRICES_KEY = 'price-watch-notified-prices'
 const NOTIFIED_RUN_KEY = 'price-watch-notified-run'
-const COLLECTOR_BROWSER_URL = '/browser/vnc.html?autoconnect=true&resize=scale&path=browser/websockify'
-
-function openCollectorBrowser() {
-  const browserWindow = window.open(COLLECTOR_BROWSER_URL, 'price-watch-collector-browser')
-  browserWindow?.focus()
-}
 
 function initialRunId() {
   const stored = window.localStorage.getItem(ACTIVE_RUN_KEY)
@@ -110,19 +103,16 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     startMutation.mutate(cardId)
   }, [startMutation])
 
-  const openBrowser = useCallback(() => openCollectorBrowser(), [])
-
   const value = useMemo<CollectionContextValue>(() => ({
     run,
     isStarting: startMutation.isPending,
     startError: startMutation.isError ? startMutation.error.message : null,
     start,
-    openBrowser,
     continueRun: () => runId !== null && continueMutation.mutate(runId),
     dismiss,
     dealNotice,
     dismissDealNotice: () => setDealNotice(null),
-  }), [continueMutation, dealNotice, dismiss, openBrowser, run, runId, start, startMutation.isPending, startMutation.isError, startMutation.error])
+  }), [continueMutation, dealNotice, dismiss, run, runId, start, startMutation.isPending, startMutation.isError, startMutation.error])
 
   return <CollectionContext.Provider value={value}>{children}</CollectionContext.Provider>
 }

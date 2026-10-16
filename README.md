@@ -32,8 +32,8 @@ Web-интерфейс находится в каталоге `frontend` и по
 ./price-watch
 ```
 
-По умолчанию приложение запускает локальные PostgreSQL, API, Xvfb и Playwright
-worker без Docker. Для этого нужны системные `postgresql`, `xorg-server-xvfb`,
+Приложение запускает локальные PostgreSQL, API, Xvfb и Playwright
+worker. Для этого нужны системные `postgresql`, `xorg-server-xvfb`,
 `xorg-xauth` и Google Chrome; подробности — в [инструкции](docs/guide/NATIVE_DESKTOP.md).
 При старте приложения Chrome не открывается. Кнопка «Открыть Chrome»
 запускает видимый браузер с профилем приложения и вкладками Ozon,
@@ -56,7 +56,6 @@ npm --prefix frontend run desktop:build
 [руководстве по упаковке](docs/guide/PACKAGING.md).
 `./price-watch` запускает именно этот файл. Для desktop worker требуется установленный
 Google Chrome; скрытый дисплей Xvfb запускается локально.
-Chromium из Docker применяется только в web-режиме.
 
 Для разработки с hot reload используется:
 
@@ -67,51 +66,7 @@ npm --prefix frontend run desktop
 Логи локальных служб находятся в `$XDG_STATE_HOME/price-watch/` (по умолчанию
 `~/.local/state/price-watch/`).
 
-### Web-запуск через Docker Compose
-
-```bash
-cp -n .env.example .env
-docker compose up --build -d
-```
-
-Этот альтернативный режим оставлен для запуска приложения в браузере. Compose:
-
-- поднимает PostgreSQL;
-- применяет Alembic-миграции отдельным сервисом `migrate`;
-- запускает FastAPI и worker;
-- собирает React и отдаёт его через Nginx;
-- запускает Playwright Chromium в виртуальном дисплее с noVNC;
-- показывает логи всех контейнеров проекта через Dozzle.
-
-Проверить состояние и посмотреть логи:
-
-```bash
-docker compose ps -a
-docker compose logs -f api worker
-```
-
-Откройте:
-
-- приложение: <http://127.0.0.1:5173>;
-- Swagger: <http://127.0.0.1:8000/docs>;
-- Chromium worker: <http://127.0.0.1:6080/vnc.html?autoconnect=true&resize=scale>;
-- логи приложения: <http://127.0.0.1:8080>.
-
-При запуске сбора вкладка Chromium больше не открывается автоматически.
-Если Ozon запросит проверку, откройте Chromium кнопкой в панели проверки,
-пройдите её и нажмите «Проверка пройдена». Профиль Chromium хранится в Docker
-volume и не теряется при обычном перезапуске.
-
-Остановить приложение с сохранением данных:
-
-```bash
-docker compose down
-```
-
-Команда `docker compose down --volumes` дополнительно удалит базу, профиль
-Chromium и настройки Dozzle, поэтому используйте её только для полного сброса.
-
-## Локальная разработка без полной контейнеризации
+## Локальная разработка
 
 ```bash
 python -m venv .venv
@@ -121,41 +76,21 @@ pip install -r requirements.txt
 
 При локальном запуске Playwright использует установленный Google Chrome через
 канал `chrome`, поэтому отдельная команда `playwright install-deps` на Arch
-Linux не нужна. В Docker используется Chromium из зафиксированного образа
-Playwright 1.63.0.
+Linux не нужна.
 
-Скопируйте настройки локального окружения и экспортируйте их для CLI:
-
-```bash
-cp .env.example .env
-set -a
-source .env
-set +a
-```
-
-Для локальной разработки можно поднять только PostgreSQL 18:
+Для прямых команд CLI с отдельным PostgreSQL задайте `DATABASE_URL`:
 
 ```bash
-docker compose up -d db
-docker compose ps
+export DATABASE_URL='postgresql://user:password@localhost:5432/price_watch'
 ```
 
-Примените миграции:
+Подключённая база должна существовать. Примените миграции:
 
 ```bash
 .venv/bin/python main.py db migrate
 ```
 
 Команда повторяемая: уже применённые миграции будут пропущены.
-
-Остановить PostgreSQL, сохранив данные:
-
-```bash
-docker compose down
-```
-
-Удалить контейнер вместе с локальной базой можно явно командой
-`docker compose down --volumes`. Она необратимо удаляет историю цен.
 
 ## Работа с карточками
 
@@ -294,7 +229,6 @@ npm run build
 тестовой базой:
 
 ```bash
-docker compose exec db createdb -U price_analyzer price_analyzer_test
-export TEST_DATABASE_URL='postgresql://price_analyzer:price_analyzer@localhost:5432/price_analyzer_test'
+export TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test'
 .venv/bin/python -m unittest tests.test_postgres_integration -v
 ```
