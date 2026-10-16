@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useDeferredValue, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, FolderPlus, LayoutGrid, List, Pencil, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, FolderPlus, LayoutGrid, List, Pencil, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCards, useDeals, useDeleteCard, useGroups, useUpdateCard } from '../../api/queries'
 import { Button } from '../../components/ui/Button'
@@ -10,12 +10,63 @@ import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
 import { ProductImage } from '../../components/ui/ProductImage'
 import { useCollection } from '../collection/CollectionProvider'
 import type { MarketplaceCard, ProductGroup } from '../../types/domain'
-import { formatDateTime, formatPrice, formatRelativeTime } from '../../utils/format'
+import { availabilityLabel, formatDateTime, formatPrice, formatRelativeTime, marketplaceLabel } from '../../utils/format'
 import { AddCardDrawer } from './AddCardDrawer'
 import { ImportExportControls } from './ImportExportControls'
 import { GroupDialog } from './GroupDialog'
 
-type Sort = 'default' | 'price-asc' | 'price-desc' | 'updated-desc'
+const columnSortKeys = ['title', 'marketplace', 'price', 'minimum', 'average', 'savings', 'availability'] as const
+type ColumnSortKey = typeof columnSortKeys[number]
+type SortKey = ColumnSortKey | 'updated'
+type Sort = { key: SortKey; direction: 'asc' | 'desc' } | null
+type DisplayItem = { kind: 'card'; card: MarketplaceCard; active: boolean } | { kind: 'group'; group: ProductGroup; active: boolean }
+const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
+const columnLabels: Record<ColumnSortKey, string> = {
+  title: 'Карточка', marketplace: 'Маркетплейс', price: 'Цена', minimum: 'Минимальная',
+  average: 'Средняя', savings: 'Выгода', availability: 'Наличие',
+}
+
+function parseSort(value: string | null): Sort {
+  if (!value) return null
+  const parts = value.split('-')
+  if (parts.length !== 2) return null
+  const [key, direction] = parts
+  const validColumn = columnSortKeys.includes(key as ColumnSortKey) && (direction === 'asc' || direction === 'desc')
+  return (validColumn || key === 'updated' && direction === 'desc')
+    ? { key: key as SortKey, direction }
+    : null
+}
+
+function sortValue(item: DisplayItem, key: SortKey, savings: Map<number, number>): string | number | null {
+  if (item.kind === 'group') {
+    if (key === 'title') return item.group.name
+    if (key === 'marketplace') return 'Группа'
+    if (key === 'price') return item.group.currentPrice
+    if (key === 'minimum') return item.group.minimumPrice
+    return null
+  }
+  const card = item.card
+  if (key === 'title') return card.title ?? card.externalId
+  if (key === 'marketplace') return marketplaceLabel[card.marketplace]
+  if (key === 'price') return card.currentPrice
+  if (key === 'minimum') return card.minimumPrice ?? null
+  if (key === 'average') return card.averagePrice ?? null
+  if (key === 'savings') return savings.get(card.id) ?? null
+  if (key === 'updated') return card.lastObservedAt ? Date.parse(card.updatedAt) : null
+  return card.currentAvailability ? availabilityLabel[card.currentAvailability] : null
+}
+
+function compareItems(left: DisplayItem, right: DisplayItem, sort: Sort, savings: Map<number, number>): number {
+  if (left.active !== right.active) return left.active ? -1 : 1
+  if (!sort) return left.kind === 'card' && right.kind === 'card' ? left.card.id - right.card.id : 0
+  const first = sortValue(left, sort.key, savings)
+  const second = sortValue(right, sort.key, savings)
+  if (first === null || second === null) return first === null ? (second === null ? 0 : 1) : -1
+  const order = typeof first === 'number' && typeof second === 'number'
+    ? first - second
+    : collator.compare(String(first), String(second))
+  return sort.direction === 'asc' ? order : -order
+}
 
 function matchesStatus(card: MarketplaceCard, status: string) {
   if (status === 'all') return true
@@ -42,11 +93,13 @@ export function CardsPage() {
   const marketplace = params.get('marketplace') ?? 'all'
   const rawStatus = params.get('status') ?? 'all'
   const status = rawStatus === 'archived' || rawStatus === 'paused' ? 'excluded' : rawStatus
-  const sort = (params.get('sort') ?? 'default') as Sort
+  const sortParam = params.get('sort')
+  const sort = useMemo(() => parseSort(sortParam), [sortParam])
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
   const dealsOnly = params.get('deals') === '1'
-  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort !== 'default' || dealsOnly)
+  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealsOnly)
   const deals = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal])), [dealsQuery.data])
+  const savings = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal.savings])), [dealsQuery.data])
   const groupNames = useMemo(() => new Map((groupsQuery.data ?? []).map((group) => [group.id, group.name.toLowerCase()])), [groupsQuery.data])
 
   const setParam = useCallback((name: string, value: string, defaultValue = 'all') => {
@@ -66,14 +119,10 @@ export function CardsPage() {
         && matchesStatus(card, status)
         && (!dealsOnly || deals.has(card.id))
     })
-    return result.toSorted((left, right) => {
-      if (left.isActive !== right.isActive) return left.isActive ? -1 : 1
-      if (sort === 'price-asc') return (left.currentPrice ?? Infinity) - (right.currentPrice ?? Infinity) || left.id - right.id
-      if (sort === 'price-desc') return (right.currentPrice ?? -Infinity) - (left.currentPrice ?? -Infinity) || left.id - right.id
-      if (sort === 'updated-desc') return (right.lastObservedAt ? Date.parse(right.updatedAt) : 0) - (left.lastObservedAt ? Date.parse(left.updatedAt) : 0) || left.id - right.id
-      return left.id - right.id
-    })
-  }, [cardsQuery.data, deals, dealsOnly, deferredQuery, groupNames, marketplace, sort, status])
+    return result.toSorted((left, right) => compareItems(
+      { kind: 'card', card: left, active: left.isActive },
+      { kind: 'card', card: right, active: right.isActive }, sort, savings))
+  }, [cardsQuery.data, deals, dealsOnly, deferredQuery, groupNames, marketplace, savings, sort, status])
 
   const groupedCards = useMemo(() => {
     const byGroup = new Map<number, MarketplaceCard[]>()
@@ -91,7 +140,22 @@ export function CardsPage() {
   const orderedItems = [
     ...visibleGroups.map((group) => ({ kind: 'group' as const, group, active: (groupedCards.get(group.id) ?? []).some((card) => card.isActive) })),
     ...standaloneCards.map((card) => ({ kind: 'card' as const, card, active: card.isActive })),
-  ].toSorted((left, right) => Number(right.active) - Number(left.active))
+  ].toSorted((left, right) => compareItems(left, right, sort, savings))
+
+  function toggleSort(key: ColumnSortKey) {
+    const next = sort?.key === key ? (sort.direction === 'asc' ? `${key}-desc` : '') : `${key}-asc`
+    setParam('sort', next, '')
+  }
+
+  function sortableHeader(label: string, key: ColumnSortKey) {
+    const direction = sort?.key === key ? sort.direction : null
+    return <th scope="col" aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+      <button type="button" className={`cards-table__sort${direction ? ' is-active' : ''}`} onClick={() => toggleSort(key)}
+        title={direction === 'asc' ? 'Сортировать по убыванию' : direction === 'desc' ? 'Сбросить сортировку' : 'Сортировать по возрастанию'}>
+        {label}<span className="cards-table__sort-icon" aria-hidden="true">{direction === 'desc' ? <ArrowDown /> : <ArrowUp />}</span>
+      </button>
+    </th>
+  }
 
   function toggleGroup(groupId: number) {
     setCollapsedGroups((current) => current.includes(groupId) ? current.filter((id) => id !== groupId) : [...current, groupId])
@@ -169,25 +233,36 @@ export function CardsPage() {
           <input value={query} onChange={(event) => setParam('q', event.target.value, '')} placeholder="Название или ID" aria-label="Поиск карточек" />
         </label>
         <div className="filters__selects">
-          <select value={marketplace} onChange={(event) => setParam('marketplace', event.target.value)} aria-label="Маркетплейс">
-            <option value="all">Все маркетплейсы</option>
-            <option value="ozon">Ozon</option>
-            <option value="wildberries">Wildberries</option>
-            <option value="aliexpress">AliExpress</option>
-          </select>
-          <select value={status} onChange={(event) => setParam('status', event.target.value)} aria-label="Состояние">
-            <option value="all">Все состояния</option>
-            <option value="in_stock">В наличии</option>
-            <option value="out_of_stock">Нет в наличии</option>
-            <option value="no_data">Нет данных</option>
-            <option value="excluded">Не в выгодных предложениях</option>
-          </select>
-          <select value={sort} onChange={(event) => setParam('sort', event.target.value, 'default')} aria-label="Сортировка">
-            <option value="default">По умолчанию</option>
-            <option value="price-asc">Сначала дешевле</option>
-            <option value="price-desc">Сначала дороже</option>
-            <option value="updated-desc">Недавно обновлённые</option>
-          </select>
+          <span className={`filter-select${marketplace !== 'all' ? ' filter-select--active' : ''}`}>
+            <select value={marketplace} onChange={(event) => setParam('marketplace', event.target.value)} aria-label="Маркетплейс">
+              <option value="all">Все маркетплейсы</option>
+              <option value="ozon">Ozon</option>
+              <option value="wildberries">Wildberries</option>
+              <option value="aliexpress">AliExpress</option>
+            </select>
+            <ChevronDown aria-hidden="true" />
+          </span>
+          <span className={`filter-select filter-select--status${status !== 'all' ? ' filter-select--active' : ''}`}>
+            <select value={status} onChange={(event) => setParam('status', event.target.value)} aria-label="Состояние">
+              <option value="all">Все состояния</option>
+              <option value="in_stock">В наличии</option>
+              <option value="out_of_stock">Нет в наличии</option>
+              <option value="no_data">Нет данных</option>
+              <option value="excluded">Не в выгодных предложениях</option>
+            </select>
+            <ChevronDown aria-hidden="true" />
+          </span>
+          <span className={`filter-select filter-select--sort${sort ? ' filter-select--active' : ''}`}>
+            <select value={sort ? `${sort.key}-${sort.direction}` : 'default'} onChange={(event) => setParam('sort', event.target.value, 'default')} aria-label="Сортировка">
+              <option value="default">По умолчанию</option>
+              <option value="price-asc">Сначала дешевле</option>
+              <option value="price-desc">Сначала дороже</option>
+              <option value="updated-desc">Недавно обновлённые</option>
+              {sort && sort.key !== 'updated' && !['price-asc', 'price-desc'].includes(`${sort.key}-${sort.direction}`)
+                ? <option value={`${sort.key}-${sort.direction}`}>{columnLabels[sort.key]} {sort.direction === 'asc' ? '↑' : '↓'}</option> : null}
+            </select>
+            <ChevronDown aria-hidden="true" />
+          </span>
           <label className="filters__checkbox"><input type="checkbox" checked={dealsOnly} onChange={(event) => setParam('deals', event.target.checked ? '1' : '', '')} />Выгодные предложения</label>
         </div>
         {hasFilters ? <div className="filters__reset"><Button variant="ghost" icon={<RotateCcw />} onClick={resetFilters}>Сбросить</Button></div> : null}
@@ -222,7 +297,7 @@ export function CardsPage() {
         ) : (
             <table className="cards-table">
               <caption className="sr-only">Отслеживаемые карточки маркетплейсов</caption>
-              <thead><tr><th>Карточка</th><th>Маркетплейс</th><th>Цена</th><th>Минимальная</th><th>Средняя</th><th>Выгода</th><th>Наличие</th><th><span className="sr-only">Действия</span></th></tr></thead>
+              <thead><tr>{sortableHeader('Карточка', 'title')}{sortableHeader('Маркетплейс', 'marketplace')}{sortableHeader('Цена', 'price')}{sortableHeader('Минимальная', 'minimum')}{sortableHeader('Средняя', 'average')}{sortableHeader('Выгода', 'savings')}{sortableHeader('Наличие', 'availability')}<th><span className="sr-only">Действия</span></th></tr></thead>
               <tbody>
                 {orderedItems.map((item) => item.kind === 'group' ? <Fragment key={`group-${item.group.id}`}>
                   <tr className="cards-table__group"><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}</td><td className="price-cell">{formatPrice(item.group.minimumPrice)}</td><td>—</td><td>Сейчас не выгодно</td><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>

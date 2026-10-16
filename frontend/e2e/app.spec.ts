@@ -153,6 +153,55 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   await page.screenshot({ path: '/tmp/price-watch-grid-filled.png' })
 })
 
+test('заголовки таблицы переключают единственную сортировку по трём состояниям', async ({ page }) => {
+  await page.goto('/cards')
+  const rows = page.locator('.cards-table tbody tr')
+  await expect(rows).toHaveCount(5)
+  await expect(rows.first()).toContainText('Смартфон Samsung Galaxy S24')
+  const sort = page.getByRole('combobox', { name: 'Сортировка' })
+  await expect(sort).toHaveValue('default')
+
+  const price = page.getByRole('columnheader', { name: 'Цена' })
+  await price.getByRole('button').click()
+  await expect(price).toHaveAttribute('aria-sort', 'ascending')
+  await expect(rows.first()).toContainText('Умные часы Xiaomi Watch S3')
+  await expect(page).toHaveURL(/sort=price-asc/)
+  await expect(sort).toHaveValue('price-asc')
+  await page.screenshot({ path: '/tmp/price-watch-sort-ascending.png' })
+
+  await price.getByRole('button').click()
+  await expect(price).toHaveAttribute('aria-sort', 'descending')
+  await expect(rows.first()).toContainText('Смартфон Samsung Galaxy S24')
+  await expect(page).toHaveURL(/sort=price-desc/)
+
+  await price.getByRole('button').click()
+  await expect(price).toHaveAttribute('aria-sort', 'none')
+  await expect(rows.first()).toContainText('Смартфон Samsung Galaxy S24')
+  await expect(page).not.toHaveURL(/sort=/)
+  await expect(sort).toHaveValue('default')
+
+  const title = page.getByRole('columnheader', { name: 'Карточка' })
+  await title.getByRole('button').click()
+  await expect(title).toHaveAttribute('aria-sort', 'ascending')
+  await expect(rows.first()).toContainText('Наушники Apple AirPods Pro 2')
+  await expect(sort).toHaveValue('title-asc')
+  await price.getByRole('button').click()
+  await expect(title).toHaveAttribute('aria-sort', 'none')
+  await expect(price).toHaveAttribute('aria-sort', 'ascending')
+
+  for (const label of ['Маркетплейс', 'Минимальная', 'Средняя', 'Выгода', 'Наличие']) {
+    const heading = page.getByRole('columnheader', { name: label })
+    await heading.getByRole('button').click()
+    await expect(heading).toHaveAttribute('aria-sort', 'ascending')
+    await expect(price).toHaveAttribute('aria-sort', 'none')
+  }
+  await sort.selectOption('updated-desc')
+  await expect(page).toHaveURL(/sort=updated-desc/)
+  await expect(page.getByRole('columnheader', { name: 'Наличие' })).toHaveAttribute('aria-sort', 'none')
+  await price.getByRole('button').click()
+  await expect(sort).toHaveValue('price-asc')
+})
+
 test('карточки переключаются между списком и адаптивной сеткой', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 })
   await page.goto('/cards')
@@ -289,8 +338,8 @@ test('исключённые карточки остаются в конце п�
   await page.getByRole('menuitem', { name: 'Исключить из выгодных предложений' }).click()
 
   const rows = page.locator('.cards-table tbody tr')
-  for (const sort of ['default', 'price-asc', 'price-desc', 'updated-desc']) {
-    await page.getByLabel('Сортировка').selectOption(sort)
+  for (const column of ['Карточка', 'Цена', 'Минимальная', 'Средняя', 'Выгода', 'Наличие']) {
+    await page.getByRole('button', { name: column, exact: true }).click()
     await expect(rows.nth(2)).not.toContainText('Не показывается в выгодных предложениях')
     await expect(rows.nth(3)).toContainText('Не показывается в выгодных предложениях')
     await expect(rows.nth(4)).toContainText('Не показывается в выгодных предложениях')
