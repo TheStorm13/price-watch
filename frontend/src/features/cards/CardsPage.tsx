@@ -141,6 +141,7 @@ export function CardsPage() {
     ...visibleGroups.map((group) => ({ kind: 'group' as const, group, active: (groupedCards.get(group.id) ?? []).some((card) => card.isActive) })),
     ...standaloneCards.map((card) => ({ kind: 'card' as const, card, active: card.isActive })),
   ].toSorted((left, right) => compareItems(left, right, sort, savings))
+  const gridItems = [...orderedItems.filter((item) => item.kind === 'group'), ...orderedItems.filter((item) => item.kind === 'card')]
 
   function toggleSort(key: ColumnSortKey) {
     const next = sort?.key === key ? (sort.direction === 'asc' ? `${key}-desc` : '') : `${key}-asc`
@@ -285,7 +286,7 @@ export function CardsPage() {
           <div className="state-message"><h2>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</h2><p>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</p><Button variant="primary" onClick={hasFilters ? resetFilters : () => setDrawerOpen(true)}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></div>
         ) : view === 'grid' ? (
           <ul className="cards-grid" aria-label="Отслеживаемые карточки маркетплейсов">
-            {orderedItems.map((item) => item.kind === 'group' ? <li key={`group-${item.group.id}`} className="cards-grid__group">
+            {gridItems.map((item) => item.kind === 'group' ? <li key={`group-${item.group.id}`} className="cards-grid__group">
               <div className="product-group__header">
                 <button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button>
                 <span>Цена от {formatPrice(item.group.currentPrice)} · Минимальная {formatPrice(item.group.minimumPrice)}</span>

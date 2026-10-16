@@ -25,7 +25,19 @@ test('группа объединяет товары и сохраняет ин�
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toHaveCount(0)
   await group.locator('.product-group__toggle').click()
   await page.getByRole('button', { name: 'Сетка' }).click()
-  await expect(page.locator('.cards-grid__group .cards-grid__item')).toHaveCount(2)
+  const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
+  await expect(grid.locator('.cards-grid__group .cards-grid__item')).toHaveCount(2)
+  await page.getByRole('combobox', { name: 'Сортировка' }).selectOption('price-desc')
+  await expect(grid.locator(':scope > li').first()).toHaveClass(/cards-grid__group/)
+  for (const width of [1024, 1536]) {
+    await page.setViewportSize({ width, height: 900 })
+    const tileWidths = await grid.evaluate((element) => ({
+      grouped: element.querySelector('.cards-grid__group .cards-grid__item')?.getBoundingClientRect().width ?? 0,
+      standalone: element.querySelector(':scope > .cards-grid__item')?.getBoundingClientRect().width ?? 0,
+    }))
+    expect(tileWidths.grouped).toBeGreaterThan(0)
+    expect(Math.abs(tileWidths.grouped - tileWidths.standalone)).toBeLessThan(16)
+  }
   await page.screenshot({ path: '/tmp/price-watch-groups-grid.png' })
   await page.getByRole('button', { name: 'Изменить группу Бутылка' }).click()
   const edit = page.getByRole('dialog', { name: 'Изменить группу' })
