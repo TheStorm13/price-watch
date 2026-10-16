@@ -8,6 +8,10 @@ chrome-launch.log
 .env
 output/
 release/
+packaging/aur/pkg/
+packaging/aur/src/
+packaging/aur/*.tar.gz
+packaging/aur/*.pkg.tar.zst
 frontend/node_modules/
 frontend/dist/
 frontend/.env

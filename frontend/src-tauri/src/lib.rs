@@ -617,6 +617,7 @@ mod path_tests {
         assert!(config.token.is_some());
         std::thread::sleep(std::time::Duration::from_millis(750));
         assert!(runtime.worker_is_running().unwrap());
+        assert!(runtime.native.lock().unwrap().as_mut().unwrap().is_ready());
         assert!(!runtime.profile_dir.join("DevToolsActivePort").exists());
         runtime.stop_worker();
         *runtime.native.lock().unwrap() = None;

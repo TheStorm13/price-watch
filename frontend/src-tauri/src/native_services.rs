@@ -5,10 +5,7 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     os::{
         fd::AsRawFd,
-        unix::{
-            fs::{OpenOptionsExt, PermissionsExt},
-            process::CommandExt,
-        },
+        unix::fs::{OpenOptionsExt, PermissionsExt},
     },
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
@@ -94,14 +91,9 @@ fn spawn_logged(
     state_dir: &Path,
     name: &str,
 ) -> Result<ManagedChild, String> {
-    unsafe {
-        command.pre_exec(|| {
-            if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM) == -1 {
-                return Err(std::io::Error::last_os_error());
-            }
-            Ok(())
-        });
-    }
+    // These processes are started by a short-lived spawn_blocking thread.
+    // PR_SET_PDEATHSIG would terminate them when that thread finishes, even
+    // while the Tauri process and its native services are still running.
     command
         .stdout(log_file(state_dir, name)?)
         .stderr(log_file(state_dir, name)?)
@@ -593,7 +585,37 @@ fn backup_database(
 
 #[cfg(test)]
 mod tests {
-    use super::{encoded_query_value, pg_major, NativeServices};
+    use super::{encoded_query_value, pg_major, spawn_logged, NativeServices};
+
+    #[test]
+    fn service_outlives_the_thread_that_starts_it() {
+        let state = std::env::temp_dir().join(format!(
+            "price-watch-child-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&state).unwrap();
+        let child = std::thread::spawn({
+            let state = state.clone();
+            move || {
+                spawn_logged(
+                    std::process::Command::new("sleep").arg("20"),
+                    &state,
+                    "child.log",
+                )
+            }
+        })
+        .join()
+        .unwrap()
+        .unwrap();
+        let mut child = child;
+        assert!(child.0.try_wait().unwrap().is_none());
+        drop(child);
+        std::fs::remove_dir_all(state).unwrap();
+    }
 
     #[test]
     fn compares_postgres_major_versions() {
