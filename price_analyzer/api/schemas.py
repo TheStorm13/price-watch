@@ -1,8 +1,10 @@
 from datetime import datetime
+from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
-from ..domain.models import CardOverview, CollectionRun, PriceHistoryPoint, PriceStatistics
+from ..domain.models import CardOverview, CollectionRun, Deal, PriceHistoryPoint, PriceStatistics
 
 
 def to_camel(value: str) -> str:
@@ -41,6 +43,72 @@ class CardUpdate(ApiModel):
     title: str | None = None
     url: HttpUrl | None = None
     is_active: bool | None = None
+
+
+class TransferHistoryPoint(ApiModel):
+    price: Decimal | None
+    availability: Literal["in_stock", "out_of_stock", "unknown"]
+    observed_at: datetime
+
+    @field_validator("price")
+    @classmethod
+    def validate_price(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and (not value.is_finite() or value < 0 or value.as_tuple().exponent < -2 or value >= 10**12):
+            raise ValueError("Некорректная цена в истории")
+        return value
+
+    @field_validator("observed_at")
+    @classmethod
+    def validate_observed_at(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Время наблюдения должно содержать часовой пояс")
+        return value
+
+
+class TransferCard(ApiModel):
+    marketplace: str
+    external_id: str
+    title: str | None
+    url: str | None
+    is_active: bool
+    created_at: datetime
+    history: list[TransferHistoryPoint]
+
+    @field_validator("marketplace", "external_id")
+    @classmethod
+    def validate_identity(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Маркетплейс и артикул обязательны")
+        return normalized
+
+    @field_validator("created_at")
+    @classmethod
+    def validate_created_at(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Дата добавления должна содержать часовой пояс")
+        return value
+
+
+class TransferDocument(ApiModel):
+    version: Literal[1]
+    cards: list[TransferCard]
+
+    @field_validator("cards")
+    @classmethod
+    def validate_cards(cls, cards: list[TransferCard]) -> list[TransferCard]:
+        keys = [(card.marketplace.lower(), card.external_id) for card in cards]
+        if len(keys) != len(set(keys)):
+            raise ValueError("В файле есть повторяющиеся карточки")
+        return cards
+
+
+class ImportSummary(ApiModel):
+    cards_added: int = 0
+    cards_merged: int = 0
+    observations_added: int = 0
+    observations_removed: int = 0
+    observations_skipped: int = 0
 
 
 class CardResponse(ApiModel):
@@ -114,6 +182,20 @@ class ChartResponse(ApiModel):
     points: list[HistoryPointResponse]
 
 
+class DealResponse(ApiModel):
+    card: CardResponse
+    average_price: float
+    savings: float
+    baseline_days: int
+    last_collection_run_id: int | None
+
+    @classmethod
+    def from_domain(cls, deal: Deal) -> "DealResponse":
+        return cls(card=CardResponse.from_overview(deal.card), average_price=deal.average_price,
+                   savings=deal.savings, baseline_days=deal.baseline_days,
+                   last_collection_run_id=deal.last_collection_run_id)
+
+
 class RunCurrentResponse(ApiModel):
     card_id: int
     marketplace: str
@@ -136,6 +218,7 @@ class RunResponse(ApiModel):
     started_at: datetime
     finished_at: datetime | None
     errors: list[dict] | None = None
+    retry_of_run_id: int | None = None
 
     @classmethod
     def from_domain(cls, run: CollectionRun, include_errors: bool = True) -> "RunResponse":
@@ -160,6 +243,7 @@ class RunResponse(ApiModel):
             started_at=run.started_at,
             finished_at=run.finished_at,
             errors=list(run.errors) if include_errors else None,
+            retry_of_run_id=run.retry_of_run_id,
         )
 
 

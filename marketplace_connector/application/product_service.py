@@ -1,5 +1,6 @@
 """Connector registration and marketplace-independent product lookup."""
 
+from inspect import iscoroutinefunction
 from typing import Dict, Iterable
 
 from ..domain.errors import UnknownMarketplace
@@ -14,6 +15,10 @@ class ConnectorRegistry:
             self.register(connector)
 
     def register(self, connector: MarketplaceConnector) -> None:
+        if not iscoroutinefunction(getattr(connector, "get_product", None)):
+            raise TypeError("Коннектор должен реализовать async get_product")
+        if not callable(getattr(connector, "collection_session", None)):
+            raise TypeError("Коннектор должен реализовать асинхронный collection_session")
         marketplace = connector.marketplace.strip().lower()
         if not marketplace:
             raise ValueError("marketplace коннектора не должен быть пустым")
@@ -33,5 +38,5 @@ class ProductService:
     def __init__(self, registry: ConnectorRegistry):
         self._registry = registry
 
-    def get_product(self, marketplace: str, external_id: str) -> ProductSnapshot:
-        return self._registry.get(marketplace).get_product(external_id)
+    async def get_product(self, marketplace: str, external_id: str) -> ProductSnapshot:
+        return await self._registry.get(marketplace).get_product(external_id)

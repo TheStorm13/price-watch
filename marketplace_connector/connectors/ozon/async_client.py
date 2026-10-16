@@ -223,20 +223,9 @@ class AsyncOzonClient(OzonClient):
                 f"Артикул {article}: перейдите на его вкладку в Chrome, "
                 "пройдите проверку и нажмите «Проверка пройдена» в приложении."
             )
-            async_handle = getattr(self.challenge_handler, "handle_async", None)
-            if async_handle is not None:
-                await async_handle(self.marketplace, message)
-            else:
-                await asyncio.to_thread(self.challenge_handler.handle, self.marketplace, message)
+            await self.challenge_handler.handle_async(self.marketplace, message)
             await page.reload(wait_until="domcontentloaded", timeout=90_000)
             if not await self._wait_for_antibot_async(page):
                 raise MarketplaceUnavailable(
                     "Ozon не пропустил проверку после подтверждения пользователя"
                 )
-
-    def fetch_product(self, external_id: Union[str, int]) -> RawMarketplaceResponse:
-        """Synchronous compatibility entry point using the async transport."""
-        return asyncio.run(self.fetch_product_async(external_id))
-
-    def fetch_raw_text(self, external_id: Union[str, int]) -> str:
-        return asyncio.run(self.fetch_raw_text_async(external_id))

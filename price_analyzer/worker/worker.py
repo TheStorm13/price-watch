@@ -1,13 +1,13 @@
 """Durable single-host collection worker."""
 
+import asyncio
 import logging
 import os
 import socket
 import time
 from datetime import datetime, timedelta, timezone
-from threading import Event, Thread
 import traceback
-from typing import Callable
+from typing import Awaitable, Callable
 
 from marketplace_connector.application.product_service import ConnectorRegistry
 
@@ -17,7 +17,7 @@ from ..infrastructure.postgres.repository import PostgresPriceAnalyzerRepository
 
 
 logger = logging.getLogger(__name__)
-ConnectorFactory = Callable[[CollectionRun], ConnectorRegistry]
+ConnectorFactory = Callable[[CollectionRun], Awaitable[ConnectorRegistry]]
 
 
 class CollectionWorker:
@@ -33,45 +33,58 @@ class CollectionWorker:
         self._worker_id = worker_id or f"{socket.gethostname()}:{os.getpid()}"
         self._poll_interval = poll_interval
         self._last_recovery = 0.0
+        self._last_schedule_check = 0.0
         self._stale_after_seconds = max(15.0, float(os.environ.get("RUN_STALE_SECONDS", "30")))
 
-    def _heartbeat(self, run_id: int, stop: Event) -> None:
-        while not stop.wait(5):
+    async def _heartbeat(self, run_id: int, stop: asyncio.Event) -> None:
+        while True:
             try:
-                self._repository.touch_run(run_id, self._worker_id)
+                await asyncio.wait_for(stop.wait(), timeout=5)
+                return
+            except TimeoutError:
+                pass
+            try:
+                await self._repository.touch_run(run_id, self._worker_id)
             except Exception:
                 logger.exception("Не удалось обновить heartbeat запуска %s", run_id)
 
-    def run_once(self) -> bool:
+    async def run_once(self) -> bool:
         if time.monotonic() - self._last_recovery >= 5:
-            self._repository.fail_stale_runs(datetime.now(timezone.utc) - timedelta(seconds=self._stale_after_seconds))
+            await self._repository.fail_stale_runs(datetime.now(timezone.utc) - timedelta(seconds=self._stale_after_seconds))
             self._last_recovery = time.monotonic()
-        run = self._repository.claim_next_run(self._worker_id)
+        if time.monotonic() - self._last_schedule_check >= 60:
+            try:
+                scheduled = await self._repository.create_due_run()
+                if scheduled:
+                    logger.info("Автоматический сбор поставлен в очередь: %s", scheduled.id)
+            except Exception:
+                logger.exception("Не удалось проверить расписание сбора")
+            self._last_schedule_check = time.monotonic()
+        run = await self._repository.claim_next_run(self._worker_id)
         if run is None:
             return False
         logger.info("Запуск %s взят worker=%s", run.id, self._worker_id)
-        stop_heartbeat = Event()
-        heartbeat = Thread(target=self._heartbeat, args=(run.id, stop_heartbeat), daemon=True)
-        heartbeat.start()
+        stop_heartbeat = asyncio.Event()
+        heartbeat = asyncio.create_task(self._heartbeat(run.id, stop_heartbeat))
         try:
             service = CollectionService(
                 self._repository,
-                self._connector_factory(run),
+                await self._connector_factory(run),
             )
-            service.execute_run(run)
+            await service.execute_run(run)
         except Exception as exc:
             logger.exception("Worker не смог выполнить запуск %s", run.id)
-            current = self._repository.get_run(run.id)
+            current = await self._repository.get_run(run.id)
             if current and current.status not in {
                 "completed", "completed_with_errors", "failed"
             }:
-                self._repository.record_run_error(run.id, {
+                await self._repository.record_run_error(run.id, {
                     "cardId": None, "marketplace": None, "externalId": None,
                     "at": datetime.now(timezone.utc).isoformat(),
                     "type": type(exc).__name__, "message": str(exc),
                     "traceback": traceback.format_exc(),
                 })
-                self._repository.finish_run(
+                await self._repository.finish_run(
                     run.id,
                     "failed",
                     current.success_count,
@@ -79,11 +92,11 @@ class CollectionWorker:
                 )
         finally:
             stop_heartbeat.set()
-            heartbeat.join(timeout=1)
+            await heartbeat
         return True
 
-    def run_forever(self) -> None:
+    async def run_forever(self) -> None:
         logger.info("Worker запущен: %s", self._worker_id)
         while True:
-            if not self.run_once():
-                time.sleep(self._poll_interval)
+            if not await self.run_once():
+                await asyncio.sleep(self._poll_interval)

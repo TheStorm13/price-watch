@@ -11,34 +11,67 @@ from ..schemas import (
     HistoryPointResponse,
     HistoryResponse,
     ChartResponse,
+    DealResponse,
     StatisticsResponse,
+    TransferDocument,
+    ImportSummary,
 )
 from ...domain.models import CardOverview
-from ...infrastructure.postgres.repository import CardAlreadyExists, CardInActiveRun
+from ...domain.history_merge import ConflictingObservation
+from ...infrastructure.postgres.repository import CardAlreadyExists, CardInActiveRun, ImportDuringRun
 
 
 router = APIRouter(prefix="/cards", tags=["cards"])
+
+
+@router.get("/deals", response_model=list[DealResponse])
+async def list_deals(repository: RepositoryDep):
+    return [DealResponse.from_domain(deal) for deal in await repository.list_deals()]
 
 
 @router.get("/{card_id}/chart", response_model=ChartResponse)
 async def get_chart(card_id: int, repository: RepositoryDep, days: int = 30):
     if days not in {7, 30, 90}:
         raise ApiProblem(422, "invalid_chart_query", "Некорректный период графика")
-    if repository.get_card(card_id) is None:
+    if await repository.get_card(card_id) is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
     return ChartResponse(points=[HistoryPointResponse.from_domain(point)
-                                 for point in repository.get_chart_points(card_id, days)])
+                                 for point in await repository.get_chart_points(card_id, days)])
 
 
 @router.get("", response_model=list[CardResponse])
 async def list_cards(repository: RepositoryDep):
-    return [CardResponse.from_overview(item) for item in repository.list_cards(include_inactive=True)]
+    return [CardResponse.from_overview(item) for item in await repository.list_cards(include_inactive=True)]
+
+
+@router.get("/export", response_model=TransferDocument)
+async def export_cards(repository: RepositoryDep):
+    return await repository.export_cards()
+
+
+async def _import_cards(payload: TransferDocument, repository: RepositoryDep, preview: bool):
+    try:
+        return await repository.import_cards(payload.model_dump()["cards"], preview=preview)
+    except ConflictingObservation as exc:
+        raise ApiProblem(409, "conflicting_observation", str(exc)) from exc
+    except ImportDuringRun as exc:
+        raise ApiProblem(409, "import_during_run", str(exc)) from exc
+
+
+@router.post("/import/preview", response_model=ImportSummary)
+async def preview_import(payload: TransferDocument, repository: RepositoryDep):
+    return await _import_cards(payload, repository, preview=True)
+
+
+@router.post("/import", response_model=ImportSummary)
+async def import_cards(payload: TransferDocument, repository: RepositoryDep):
+    return await _import_cards(payload, repository, preview=False)
 
 
 @router.post("", response_model=CardResponse, status_code=201)
 async def create_card(payload: CardCreate, repository: RepositoryDep):
     try:
-        card = repository.add_card(
+        card = await repository.add_card(
             payload.marketplace,
             payload.external_id,
             payload.title,
@@ -51,7 +84,7 @@ async def create_card(payload: CardCreate, repository: RepositoryDep):
 
 @router.get("/{card_id}", response_model=CardResponse)
 async def get_card(card_id: int, repository: RepositoryDep):
-    overview = repository.get_card(card_id)
+    overview = await repository.get_card(card_id)
     if overview is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
     return CardResponse.from_overview(overview)
@@ -60,7 +93,7 @@ async def get_card(card_id: int, repository: RepositoryDep):
 @router.patch("/{card_id}", response_model=CardResponse)
 async def update_card(card_id: int, payload: CardUpdate, repository: RepositoryDep):
     fields = payload.model_fields_set
-    card = repository.update_card(
+    card = await repository.update_card(
         card_id,
         title=payload.title,
         url=str(payload.url) if payload.url else None,
@@ -70,7 +103,7 @@ async def update_card(card_id: int, payload: CardUpdate, repository: RepositoryD
     )
     if card is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
-    overview = repository.get_card(card_id)
+    overview = await repository.get_card(card_id)
     return CardResponse.from_overview(overview)
 
 
@@ -81,7 +114,7 @@ async def update_card(card_id: int, payload: CardUpdate, repository: RepositoryD
 )
 async def delete_card(card_id: int, repository: RepositoryDep) -> Response:
     try:
-        deleted = repository.delete_card(card_id)
+        deleted = await repository.delete_card(card_id)
     except CardInActiveRun as exc:
         raise ApiProblem(409, "card_in_active_run", str(exc)) from exc
     if not deleted:
@@ -99,15 +132,15 @@ async def get_history(
 ):
     if days not in {7, 30, 90} or page < 1 or not 1 <= page_size <= 200:
         raise ApiProblem(422, "invalid_history_query", "Некорректные параметры истории")
-    overview = repository.get_card(card_id)
+    overview = await repository.get_card(card_id)
     if overview is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
-    history = repository.get_history(card_id, days, page, page_size)
+    history = await repository.get_history(card_id, days, page, page_size)
     return HistoryResponse(
         card=CardResponse.from_overview(overview),
-        statistics=StatisticsResponse.from_domain(repository.get_statistics(card_id, days)),
+        statistics=StatisticsResponse.from_domain(await repository.get_statistics(card_id, days)),
         history=[HistoryPointResponse.from_domain(item) for item in history],
         page=page,
         page_size=page_size,
-        total_count=repository.count_history(card_id, days),
+        total_count=await repository.count_history(card_id, days),
     )

@@ -112,6 +112,16 @@ class NormalizerTests(unittest.TestCase):
 
         self.assertIs(card.available, False)
 
+    def test_unavailable_snapshot_ignores_card_price(self):
+        price = json.loads(self.payload["widgetStates"]["webPrice-1"])
+        price["isAvailable"] = False
+        self.payload["widgetStates"]["webPrice-1"] = widget(price)
+
+        snapshot = OzonMapper.to_snapshot(self.payload)
+
+        self.assertEqual(snapshot.availability, Availability.OUT_OF_STOCK)
+        self.assertIsNone(snapshot.price)
+
     def test_accepts_prompt_before_json(self):
         raw = "Инструкция пользователю... " + json.dumps(self.payload)
 

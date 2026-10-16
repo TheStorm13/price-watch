@@ -48,6 +48,15 @@ class CardOverview:
 
 
 @dataclass(frozen=True)
+class Deal:
+    card: CardOverview
+    average_price: Decimal
+    savings: Decimal
+    baseline_days: int
+    last_collection_run_id: Optional[int]
+
+
+@dataclass(frozen=True)
 class CollectionSummary:
     run_id: int
     status: str
@@ -73,3 +82,4 @@ class CollectionRun:
     finished_at: Optional[datetime]
     target_card_ids: Optional[tuple[int, ...]] = None
     errors: tuple[dict[str, Any], ...] = ()
+    retry_of_run_id: Optional[int] = None

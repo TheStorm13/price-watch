@@ -67,39 +67,40 @@ def configure_logging(level: str) -> None:
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
+async def _run(args: argparse.Namespace) -> int:
+    client = AsyncOzonClient(
+        args.profile_dir,
+        challenge_handler=TerminalChallengeHandler(),
+        chrome_binary=args.chrome_binary,
+        chrome_platform=args.chrome_platform,
+    )
+    if args.raw:
+        output_text = (await client.fetch_product_async(args.article)).raw_text
+    else:
+        service = ProductService(ConnectorRegistry([OzonConnector(client)]))
+        snapshot = await service.get_product("ozon", args.article)
+        output_text = snapshot_to_json(snapshot)
+        logger.info(
+            "Снимок нормализован: attributes=%s, variants=%s",
+            len(snapshot.attributes), len(snapshot.variants),
+        )
+    if args.output:
+        output_path = args.output.expanduser().resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(output_text + "\n", encoding="utf-8")
+        logger.info("JSON сохранён: %s", output_path)
+    print(output_text)
+    logger.info("Готово")
+    return 0
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     configure_logging(args.log_level)
     logger.info("Старт: marketplace=ozon, external_id=%s", args.article)
 
     try:
-        client = AsyncOzonClient(
-            args.profile_dir,
-            challenge_handler=TerminalChallengeHandler(),
-            chrome_binary=args.chrome_binary,
-            chrome_platform=args.chrome_platform,
-        )
-        if args.raw:
-            output_text = client.fetch_product(args.article).raw_text
-        else:
-            service = ProductService(ConnectorRegistry([OzonConnector(client)]))
-            snapshot = service.get_product("ozon", args.article)
-            output_text = snapshot_to_json(snapshot)
-            logger.info(
-                "Снимок нормализован: attributes=%s, variants=%s",
-                len(snapshot.attributes),
-                len(snapshot.variants),
-            )
-
-        if args.output:
-            output_path = args.output.expanduser().resolve()
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(output_text + "\n", encoding="utf-8")
-            logger.info("JSON сохранён: %s", output_path)
-
-        print(output_text)
-        logger.info("Готово")
-        return 0
+        return asyncio.run(_run(args))
     except KeyboardInterrupt:
         logger.warning("Остановлено пользователем")
         return 130

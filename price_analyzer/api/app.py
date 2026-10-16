@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 import os
 
@@ -7,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .errors import ApiProblem, api_problem_handler, validation_error_handler
 from .routes import cards_router, runs_router
-from ..infrastructure.postgres import Database, MigrationRunner, PostgresPriceAnalyzerRepository
+from ..infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceAnalyzerRepository
 
 
 def create_app(
@@ -23,13 +24,17 @@ def create_app(
         url = database_url or os.environ.get("DATABASE_URL")
         if not url:
             raise RuntimeError("Задайте DATABASE_URL")
-        database = Database(url).open()
-        MigrationRunner(database).apply()
+        def migrate() -> None:
+            with Database(url) as migration_database:
+                MigrationRunner(migration_database).apply()
+
+        await asyncio.to_thread(migrate)
+        database = await AsyncDatabase(url).open()
         app.state.repository = PostgresPriceAnalyzerRepository(database)
         try:
             yield
         finally:
-            database.close()
+            await database.close()
 
     app = FastAPI(
         title="Marketplace Price Analyzer API",

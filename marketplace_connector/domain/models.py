@@ -106,6 +106,8 @@ class ProductSnapshot:
             self.price is not None and self.price < 0
         ):
             raise ValueError("Цена должна быть неотрицательным числом или null")
+        if self.availability == Availability.OUT_OF_STOCK:
+            object.__setattr__(self, "price", None)
         variants = tuple(self.variants)
         refs = [variant.ref for variant in variants]
         if len(refs) != len(set(refs)):

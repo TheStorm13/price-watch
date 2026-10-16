@@ -14,6 +14,9 @@ class RejectChallengeHandler:
     def handle(self, marketplace: str, message: str) -> None:
         raise ChallengeRequired(f"{marketplace}: {message}")
 
+    async def handle_async(self, marketplace: str, message: str) -> None:
+        raise ChallengeRequired(f"{marketplace}: {message}")
+
 
 class CallableChallengeHandler:
     def __init__(self, callback: Callable[[str], object]):

@@ -78,6 +78,8 @@ class CollectionRunRecord(Base):
         ),
         Index("collection_runs_requested_card_idx", "requested_card_id"),
         Index("collection_runs_current_card_idx", "current_card_id"),
+        Index("collection_runs_retry_of_unique", "retry_of_run_id", unique=True,
+              postgresql_where=text("retry_of_run_id is not null")),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -87,8 +89,12 @@ class CollectionRunRecord(Base):
     total_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     success_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     failure_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    is_full_collection: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     requested_card_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("marketplace_cards.id", ondelete="SET NULL")
+    )
+    retry_of_run_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("collection_runs.id", ondelete="SET NULL")
     )
     current_card_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("marketplace_cards.id", ondelete="SET NULL")
@@ -107,6 +113,8 @@ class PriceHistoryRecord(Base):
     __tablename__ = "price_history"
     __table_args__ = (
         CheckConstraint("price is null or price >= 0", name="price_history_price_check"),
+        CheckConstraint("availability <> 'out_of_stock' or price is null",
+                        name="price_history_unavailable_price_check"),
         CheckConstraint(
             "availability in ('in_stock', 'out_of_stock', 'unknown')",
             name="price_history_availability_check",

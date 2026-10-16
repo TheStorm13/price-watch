@@ -30,21 +30,35 @@ class FakeRepository:
         self.duplicate = False
         self.no_active_cards = False
 
-    def list_cards(self, include_inactive=False):
+    async def list_cards(self, include_inactive=False):
         return [CardOverview(self.card, 999, "in_stock", NOW)]
 
-    def add_card(self, marketplace, external_id, title=None, url=None):
+    async def export_cards(self):
+        return {"version": 1, "cards": [{
+            "marketplace": "ozon", "external_id": "1604900984",
+            "title": "Тестовый товар", "url": None, "is_active": True,
+            "created_at": NOW, "history": [{
+                "price": "999.00", "availability": "in_stock", "observed_at": NOW,
+            }],
+        }]}
+
+    async def import_cards(self, cards, *, preview=False):
+        return {"cards_added": 0, "cards_merged": len(cards),
+                "observations_added": 0 if preview else 1,
+                "observations_removed": 0, "observations_skipped": 1}
+
+    async def add_card(self, marketplace, external_id, title=None, url=None):
         if self.duplicate:
             raise CardAlreadyExists("Такая карточка уже добавлена")
         return make_card(2, external_id)
 
-    def delete_card(self, card_id):
+    async def delete_card(self, card_id):
         if self.card is None or self.card.id != card_id:
             return False
         self.card = None
         return True
 
-    def create_queued_run(self, card_id=None):
+    async def create_queued_run(self, card_id=None):
         if self.no_active_cards:
             raise NoActiveCards("Нет активных карточек для сбора")
         return CollectionRun(
@@ -63,10 +77,10 @@ class FakeRepository:
             finished_at=None,
         )
 
-    def get_run(self, run_id):
+    async def get_run(self, run_id):
         if run_id != 7:
             return None
-        run = self.create_queued_run(1)
+        run = await self.create_queued_run(1)
         return CollectionRun(**{**run.__dict__, "errors": ({
             "cardId": 1, "marketplace": "ozon", "externalId": "1604900984",
             "at": NOW.isoformat(), "type": "RuntimeError",
@@ -94,6 +108,25 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.json()[0]["externalId"], "1604900984")
         self.assertEqual(response.json()[0]["currentPrice"], 999.0)
         self.assertNotIn("external_id", response.json()[0])
+
+    async def test_export_and_import_use_card_history_contract(self):
+        exported = await self.client.get("/api/cards/export")
+        self.assertEqual(exported.status_code, 200)
+        card = exported.json()["cards"][0]
+        self.assertEqual(set(card), {"marketplace", "externalId", "title", "url",
+                                     "isActive", "createdAt", "history"})
+        preview = await self.client.post("/api/cards/import/preview", json=exported.json())
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(preview.json()["cardsMerged"], 1)
+        imported = await self.client.post("/api/cards/import", json=exported.json())
+        self.assertEqual(imported.status_code, 200)
+        self.assertEqual(imported.json()["observationsAdded"], 1)
+
+    async def test_import_rejects_invalid_history_before_writing(self):
+        document = (await self.client.get("/api/cards/export")).json()
+        document["cards"][0]["history"][0]["price"] = "-10"
+        response = await self.client.post("/api/cards/import", json=document)
+        self.assertEqual(response.status_code, 422)
 
     async def test_creates_queued_run(self):
         response = await self.client.post("/api/runs", json={"cardId": 1})

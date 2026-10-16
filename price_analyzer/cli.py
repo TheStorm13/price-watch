@@ -17,6 +17,7 @@ from marketplace_connector.connectors.ozon import AsyncOzonClient, OzonConnector
 
 from .application.collection_service import CollectionService
 from .infrastructure.postgres import (
+    AsyncDatabase,
     Database,
     MigrationRunner,
     PostgresPriceAnalyzerRepository,
@@ -166,16 +167,11 @@ def _build_connectors(
     return ConnectorRegistry(connectors)
 
 
-def _execute(args: argparse.Namespace, database: Database) -> int:
-    if args.command == "db" and args.db_command == "migrate":
-        applied = MigrationRunner(database).apply()
-        _print_json({"applied": applied})
-        return 0
-
+async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
     repository = PostgresPriceAnalyzerRepository(database)
 
     if args.command == "card" and args.card_command == "add":
-        card = repository.add_card(
+        card = await repository.add_card(
             args.marketplace, args.external_id, args.title, args.url
         )
         _print_json(asdict(card))
@@ -189,25 +185,25 @@ def _execute(args: argparse.Namespace, database: Database) -> int:
                 "current_availability": item.current_availability,
                 "last_observed_at": item.last_observed_at,
             }
-            for item in repository.list_cards(include_inactive=args.all)
+            for item in await repository.list_cards(include_inactive=args.all)
         ]
         _print_json(cards)
         return 0
 
     if args.command == "collect":
-        cards = repository.list_active_cards(args.card_id)
+        cards = await repository.list_active_cards(args.card_id)
         connectors = _build_connectors(
             args, (card.marketplace for card in cards)
         )
-        summary = CollectionService(repository, connectors).collect(args.card_id)
+        summary = await CollectionService(repository, connectors).collect(args.card_id)
         _print_json(asdict(summary))
         return 0 if summary.failure_count == 0 else 2
 
     if args.command == "worker":
         repository = PostgresPriceAnalyzerRepository(database)
 
-        def connector_factory(run):
-            cards = repository.list_active_cards(run.requested_card_id)
+        async def connector_factory(run):
+            cards = await repository.cards_for_run(run)
             marketplaces = {card.marketplace for card in cards}
             connectors = []
             if "ozon" in marketplaces:
@@ -230,22 +226,30 @@ def _execute(args: argparse.Namespace, database: Database) -> int:
 
         worker = CollectionWorker(repository, connector_factory)
         if args.once:
-            worker.run_once()
+            await worker.run_once()
         else:
-            worker.run_forever()
+            await worker.run_forever()
         return 0
 
     if args.command == "history":
-        history = [asdict(item) for item in repository.get_history(args.card_id, args.days)]
-        statistics = asdict(repository.get_statistics(args.card_id, args.days))
+        history = [asdict(item) for item in await repository.get_history(args.card_id, args.days)]
+        statistics = asdict(await repository.get_statistics(args.card_id, args.days))
         _print_json({"statistics": statistics, "history": history})
         return 0
 
     if args.command == "run" and args.run_command == "last":
-        _print_json(repository.get_last_run())
+        _print_json(await repository.get_last_run())
         return 0
 
     raise RuntimeError("Неизвестная команда")
+
+
+async def _execute_with_database(args: argparse.Namespace) -> int:
+    database = await AsyncDatabase(args.database_url).open()
+    try:
+        return await _execute(args, database)
+    finally:
+        await database.close()
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -262,8 +266,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         uvicorn.run(create_app(args.database_url), host=args.host, port=args.port)
         return 0
     try:
-        with Database(args.database_url) as database:
-            return _execute(args, database)
+        if args.command == "db" and args.db_command == "migrate":
+            with Database(args.database_url) as database:
+                applied = MigrationRunner(database).apply()
+            _print_json({"applied": applied})
+            return 0
+        return asyncio.run(_execute_with_database(args))
     except KeyboardInterrupt:
         logger.warning("Остановлено пользователем")
         return 130

@@ -1,5 +1,7 @@
 import json
+import asyncio
 import unittest
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from marketplace_connector.application.product_service import ConnectorRegistry, ProductService
@@ -16,7 +18,11 @@ from marketplace_connector.serialization.product_json import snapshot_to_json
 class FakeConnector:
     marketplace = "demo"
 
-    def get_product(self, external_id):
+    @asynccontextmanager
+    async def collection_session(self):
+        yield
+
+    async def get_product(self, external_id):
         return ProductSnapshot(
             ref=ProductRef(self.marketplace, external_id),
             title="Тестовый товар",
@@ -32,13 +38,13 @@ class ConnectorContractTests(unittest.TestCase):
     def test_service_returns_marketplace_independent_snapshot(self):
         service = ProductService(ConnectorRegistry([FakeConnector()]))
 
-        snapshot = service.get_product("DEMO", "product-1")
+        snapshot = asyncio.run(service.get_product("DEMO", "product-1"))
 
         self.assertEqual(snapshot.ref, ProductRef("demo", "product-1"))
         self.assertEqual(snapshot.price, 199.9)
 
     def test_serializes_stable_json_contract(self):
-        snapshot = FakeConnector().get_product("product-1")
+        snapshot = asyncio.run(FakeConnector().get_product("product-1"))
 
         payload = json.loads(snapshot_to_json(snapshot))
 
@@ -59,6 +65,14 @@ class ConnectorContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             registry.register(FakeConnector())
 
+    def test_rejects_synchronous_connector(self):
+        class SyncConnector(FakeConnector):
+            def get_product(self, external_id):
+                return None
+
+        with self.assertRaisesRegex(TypeError, "async get_product"):
+            ConnectorRegistry([SyncConnector()])
+
     def test_reports_unknown_marketplace(self):
         with self.assertRaises(UnknownMarketplace):
             ConnectorRegistry().get("unknown")
@@ -72,6 +86,16 @@ class ConnectorContractTests(unittest.TestCase):
                 availability=Availability.IN_STOCK,
                 price=-1,
             )
+
+    def test_unavailable_product_has_no_current_price(self):
+        snapshot = ProductSnapshot(
+            ref=ProductRef("demo", "1"), title="Товар",
+            url="https://example.test/1", availability=Availability.OUT_OF_STOCK,
+            price=199.9,
+        )
+
+        self.assertIsNone(snapshot.price)
+        self.assertIsNone(json.loads(snapshot_to_json(snapshot))["price"])
 
 
 if __name__ == "__main__":
