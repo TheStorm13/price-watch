@@ -31,7 +31,7 @@ _DEALS_SQL = text("""
     WHERE c.deals_enabled = true AND c.created_at <= :oldest_created
       AND l.availability = 'in_stock' AND l.price IS NOT NULL
     GROUP BY c.id, l.price, l.availability, l.observed_at, l.collection_run_id
-    HAVING count(d.day) >= 2 AND l.price < avg(d.daily_average)
+    HAVING count(d.day) >= 1 AND l.price < avg(d.daily_average)
     ORDER BY (avg(d.daily_average) - l.price) DESC, c.id
 """)
 
