@@ -1,4 +1,4 @@
-export type Marketplace = 'ozon' | 'wildberries' | 'aliexpress'
+export type Marketplace = 'ozon' | 'wildberries' | 'aliexpress' | 'yandex-market'
 export type Availability = 'in_stock' | 'out_of_stock' | 'unknown'
 export type RunStatus =
   | 'queued'

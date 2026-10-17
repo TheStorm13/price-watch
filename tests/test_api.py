@@ -219,7 +219,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(duplicate.status_code, 422)
 
     async def test_cards_can_be_added_for_marketplaces_without_connectors(self):
-        for marketplace in ("wildberries", "aliexpress"):
+        for marketplace in ("wildberries", "aliexpress", "yandex-market"):
             with self.subTest(marketplace=marketplace):
                 response = await self.client.post("/api/cards", json={
                     "marketplace": marketplace, "externalId": "123456",

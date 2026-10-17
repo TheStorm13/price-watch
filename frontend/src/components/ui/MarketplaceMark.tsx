@@ -5,7 +5,7 @@ export function MarketplaceMark({ marketplace }: { marketplace: Marketplace }) {
   return (
     <span className="marketplace-mark">
       <span className={`marketplace-mark__logo marketplace-mark__logo--${marketplace}`} aria-hidden="true">
-        {marketplace === 'ozon' ? 'ozon' : marketplace === 'wildberries' ? 'WB' : 'Ali'}
+        {marketplace === 'ozon' ? 'ozon' : marketplace === 'wildberries' ? 'WB' : marketplace === 'aliexpress' ? 'Ali' : 'Я'}
       </span>
       <span>{marketplaceLabel[marketplace]}</span>
     </span>

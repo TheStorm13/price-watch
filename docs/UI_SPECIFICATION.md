@@ -103,7 +103,7 @@ SPA на React, TypeScript и Vite и работает поверх HTTP API Pyt
 ### Панель фильтров
 
 - текстовый поиск по названию и внешнему ID;
-- фильтр маркетплейса: «Все», «Ozon», «Wildberries», «AliExpress»;
+- фильтр маркетплейса: «Все», «Ozon», «Wildberries», «AliExpress», «Яндекс Маркет»;
 - фильтр состояния: «Все», «В наличии», «Нет в наличии», «Нет данных»;
 - кнопка сброса появляется только при активных фильтрах.
 
@@ -394,7 +394,7 @@ frontend/
 ## 16. Типы frontend
 
 ```ts
-type Marketplace = 'ozon' | 'wildberries' | 'aliexpress'
+type Marketplace = 'ozon' | 'wildberries' | 'aliexpress' | 'yandex-market'
 type Availability = 'in_stock' | 'out_of_stock' | 'unknown'
 
 interface MarketplaceCard {

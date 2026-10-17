@@ -140,11 +140,12 @@ test('из каталога запускается сбор только выб�
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('1 из 1', { timeout: 8_000 })
 })
 
-test('карточки AliExpress и Wildberries добавляются без запуска сбора', async ({ page }) => {
+test('карточки площадок без коннектора добавляются без запуска сбора', async ({ page }) => {
   await page.goto('/cards')
   for (const [marketplace, title, id] of [
     ['Wildberries', 'Бутылка WB', '123456789'],
     ['AliExpress', 'Бутылка Ali', '987654321'],
+    ['Яндекс Маркет', 'Бутылка Яндекс', '246813579'],
   ]) {
     await page.getByRole('button', { name: 'Добавить карточку' }).click()
     const drawer = page.getByRole('dialog', { name: 'Добавить карточку' })
@@ -161,6 +162,10 @@ test('карточки AliExpress и Wildberries добавляются без �
     await expect(page.getByText('Сбор цен пока недоступен: коннектор не подключён')).toBeVisible()
     await page.getByRole('link', { name: 'К карточкам' }).click()
   }
+  await page.getByRole('combobox', { name: 'Маркетплейс' }).selectOption('yandex-market')
+  await expect(page.getByRole('row', { name: /Бутылка Яндекс/ })).toBeVisible()
+  await expect(page.getByRole('row', { name: /Бутылка WB/ })).toHaveCount(0)
+  await page.getByRole('combobox', { name: 'Маркетплейс' }).selectOption('all')
   await page.getByRole('button', { name: 'Обновить цены' }).click()
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('из 5')
 })

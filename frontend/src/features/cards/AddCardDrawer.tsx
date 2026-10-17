@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button'
 import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
 import { useCreateCard } from '../../api/queries'
 import type { Marketplace } from '../../types/domain'
+import { marketplaceLabel } from '../../utils/format'
 import { parseTags } from './tags'
 
 interface Props {
@@ -30,7 +31,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) return
     const previous = document.activeElement as HTMLElement | null
-    window.requestAnimationFrame(() => idInputRef.current?.focus())
+    window.requestAnimationFrame(() => idInputRef.current?.focus({ preventScroll: true }))
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
     }
@@ -47,7 +48,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
 
   function validate() {
     const next: Errors = {}
-    if (!/^\d+$/.test(externalId.trim())) next.externalId = `Введите числовой ID карточки ${marketplace === 'ozon' ? 'Ozon' : marketplace === 'wildberries' ? 'Wildberries' : 'AliExpress'}`
+    if (!/^\d+$/.test(externalId.trim())) next.externalId = `Введите числовой ID карточки ${marketplaceLabel[marketplace]}`
     if (url.trim()) {
       try {
         const parsed = new URL(url)
@@ -112,6 +113,10 @@ export function AddCardDrawer({ open, onClose }: Props) {
                 <input type="radio" name="marketplace" value="aliexpress" checked={marketplace === 'aliexpress'} onChange={() => { setMarketplace('aliexpress'); setErrors({}) }} />
                 <span><MarketplaceMark marketplace="aliexpress" /><small>Сбор цен пока недоступен</small></span>
               </label>
+              <label className={`marketplace-option${marketplace === 'yandex-market' ? ' is-selected' : ''}`}>
+                <input type="radio" name="marketplace" value="yandex-market" checked={marketplace === 'yandex-market'} onChange={() => { setMarketplace('yandex-market'); setErrors({}) }} />
+                <span><MarketplaceMark marketplace="yandex-market" /><small>Сбор цен пока недоступен</small></span>
+              </label>
             </fieldset>
 
             <label className="field" htmlFor="external-id">
@@ -143,7 +148,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
                 id="card-url"
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
-                placeholder={marketplace === 'ozon' ? 'https://www.ozon.ru/product/...' : marketplace === 'wildberries' ? 'https://www.wildberries.ru/catalog/...' : 'https://aliexpress.ru/item/...'}
+                placeholder={marketplace === 'ozon' ? 'https://www.ozon.ru/product/...' : marketplace === 'wildberries' ? 'https://www.wildberries.ru/catalog/...' : marketplace === 'aliexpress' ? 'https://aliexpress.ru/item/...' : 'https://market.yandex.ru/product/...'}
                 aria-invalid={Boolean(errors.url)}
                 aria-describedby={errors.url ? 'url-error' : 'url-hint'}
               />

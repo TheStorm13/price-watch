@@ -31,6 +31,7 @@ export const marketplaceLabel: Record<Marketplace, string> = {
   ozon: 'Ozon',
   wildberries: 'Wildberries',
   aliexpress: 'AliExpress',
+  'yandex-market': 'Яндекс Маркет',
 }
 
 export const runStatusLabel: Record<RunStatus, string> = {

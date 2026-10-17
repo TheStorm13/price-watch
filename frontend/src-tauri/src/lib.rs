@@ -227,6 +227,7 @@ impl RuntimeState {
             "https://www.ozon.ru/",
             "https://www.wildberries.ru/",
             "https://aliexpress.ru/",
+            "https://market.yandex.ru/",
         ];
         let profile = self.profile_dir.clone();
         fs::create_dir_all(&profile)

@@ -38,7 +38,7 @@ class CardCreate(ApiModel):
     @classmethod
     def validate_marketplace(cls, value: str) -> str:
         normalized = value.strip().lower()
-        if normalized not in {"ozon", "wildberries", "aliexpress"}:
+        if normalized not in {"ozon", "wildberries", "aliexpress", "yandex-market"}:
             raise ValueError("Неизвестный маркетплейс")
         return normalized
 

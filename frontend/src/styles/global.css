@@ -207,6 +207,7 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .marketplace-mark__logo--ozon { background: #1260f6; }
 .marketplace-mark__logo--wildberries { background: #b110bd; }
 .marketplace-mark__logo--aliexpress { background: #e84612; }
+.marketplace-mark__logo--yandex-market { background: #fc3f1d; }
 .status { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--text-muted); }
 .status__dot { width: 8px; height: 8px; border-radius: 50%; background: #98a2b3; }
 .status--in_stock { color: var(--green); }

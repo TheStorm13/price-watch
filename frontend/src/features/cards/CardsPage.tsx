@@ -249,6 +249,7 @@ export function CardsPage() {
               <option value="ozon">Ozon</option>
               <option value="wildberries">Wildberries</option>
               <option value="aliexpress">AliExpress</option>
+              <option value="yandex-market">Яндекс Маркет</option>
             </select>
             <ChevronDown aria-hidden="true" />
           </span>

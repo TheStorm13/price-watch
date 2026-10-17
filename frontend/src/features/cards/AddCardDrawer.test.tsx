@@ -31,5 +31,8 @@ describe('AddCardDrawer', () => {
     expect(screen.getByText('Укажите название: автоматический сбор пока недоступен')).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /AliExpress/ }))
     expect(screen.getByRole('radio', { name: /AliExpress/ })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: /Яндекс Маркет/ }))
+    expect(screen.getByRole('radio', { name: /Яндекс Маркет/ })).toBeChecked()
+    expect(screen.getByPlaceholderText('https://market.yandex.ru/product/...')).toBeInTheDocument()
   })
 })
