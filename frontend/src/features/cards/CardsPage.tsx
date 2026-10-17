@@ -208,8 +208,8 @@ export function CardsPage() {
   }
 
   function row(card: MarketplaceCard, nested = false) {
-    return <tr key={card.id} className={nested ? 'cards-table__nested' : ''} onClick={() => navigate(`/cards/${card.id}`)}>
-      <td><div className="card-identity"><ProductImage card={card} /><span><strong>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small><TagList tags={card.tags} />{dealStatus(card)}</span></div></td>
+    return <tr key={card.id} className={`cards-table__product${nested ? ' cards-table__nested' : ''}`} onClick={() => navigate(`/cards/${card.id}`)}>
+      <td><div className="card-identity"><ProductImage card={card} /><span><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small><TagList tags={card.tags} />{dealStatus(card)}</span></div></td>
       <td><MarketplaceMark marketplace={card.marketplace} /></td>
       <td className="price-cell">{formatPrice(card.currentPrice)}</td>
       <td className="price-cell">{formatPrice(card.minimumPrice)}</td>
