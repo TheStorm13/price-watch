@@ -319,6 +319,38 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 session.execute(delete(MarketplaceCardRecord).where(MarketplaceCardRecord.id == card.id))
                 session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
 
+    async def test_collection_keeps_nonempty_title_and_refreshes_known_url(self):
+        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        manual = await repository.add_card("integration-test", f"test-{uuid4()}", title="Моё название")
+        automatic = await repository.add_card("integration-test", f"test-{uuid4()}")
+        run_id = await repository.start_run(2)
+        try:
+            async def save(card, title, url):
+                await repository.save_observation(card, run_id, ProductSnapshot(
+                    ref=ProductRef(card.marketplace, card.external_id),
+                    title=title, url=url, availability=Availability.IN_STOCK, price=100,
+                ))
+
+            await save(manual, "Название площадки", "https://example.test/first")
+            await save(automatic, "Первое название", "https://example.test/first")
+            await save(manual, "Новое название площадки", "https://example.test/second")
+            await save(automatic, "Второе название", "")
+            manual_card = (await repository.get_card(manual.id)).card
+            automatic_card = (await repository.get_card(automatic.id)).card
+            self.assertEqual((manual_card.title, manual_card.url),
+                             ("Моё название", "https://example.test/second"))
+            self.assertEqual((automatic_card.title, automatic_card.url),
+                             ("Первое название", "https://example.test/first"))
+            await repository.update_card(automatic.id, title="", update_title=True)
+            await save(automatic, "Название после очистки", "")
+            self.assertEqual((await repository.get_card(automatic.id)).card.title,
+                             "Название после очистки")
+        finally:
+            await repository.delete_card(manual.id)
+            await repository.delete_card(automatic.id)
+            with self.database.session() as session, session.begin():
+                session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
+
     async def test_import_keeps_availability_transitions_at_the_same_price(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         external_id = f"test-{uuid4()}"

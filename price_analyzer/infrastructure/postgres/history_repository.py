@@ -33,8 +33,10 @@ class HistoryRepository:
                 .order_by(PriceHistoryRecord.observed_at.desc(), PriceHistoryRecord.id.desc())
                 .limit(1)
             )).first()
-            card_record.title = snapshot.title
-            card_record.url = snapshot.url or None
+            if not card_record.title or not card_record.title.strip():
+                card_record.title = snapshot.title
+            if snapshot.url:
+                card_record.url = snapshot.url
             card_record.image_url = snapshot.image_url or card_record.image_url
             card_record.updated_at = datetime.now(timezone.utc)
             if latest is not None and (latest.price, latest.availability) == (price, availability):
