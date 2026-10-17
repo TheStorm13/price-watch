@@ -7,9 +7,9 @@ import re
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Iterable, Mapping, Optional, Union
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
-from ...domain.errors import MarketplaceSchemaChanged
+from ...domain.errors import MarketplaceSchemaChanged, ProductNotFound
 from ...domain.models import (
     Attribute,
     Availability,
@@ -39,6 +39,8 @@ class OzonMapper:
         widget_states = payload.get("widgetStates")
         if not isinstance(widget_states, dict):
             raise MarketplaceSchemaChanged("В ответе Ozon отсутствует widgetStates")
+        if cls._is_unavailable_search(payload, widget_states, expected_external_id):
+            raise ProductNotFound(f"Ozon перенаправил товар {expected_external_id} на поиск")
 
         heading = cls._widget(widget_states, "webProductHeading-")
         price = cls._widget(widget_states, "webPrice-")
@@ -152,6 +154,29 @@ class OzonMapper:
                 if isinstance(decoded, dict):
                     return decoded
         return {}
+
+    @staticmethod
+    def _is_unavailable_search(
+        payload: JsonObject, widget_states: JsonObject, expected_external_id: Optional[str]
+    ) -> bool:
+        if not expected_external_id or any(
+            key.startswith(("webProductHeading-", "webPrice-"))
+            for key in widget_states
+        ):
+            return False
+        page_info = payload.get("pageInfo")
+        if not isinstance(page_info, dict) or page_info.get("pageType") != "search":
+            return False
+        page_url = page_info.get("url")
+        if not isinstance(page_url, str):
+            return False
+        parsed = urlparse(page_url)
+        return (
+            parsed.netloc in ("", "ozon.ru", "www.ozon.ru")
+            and parsed.scheme in ("", "https")
+            and parsed.path.rstrip("/") == "/search"
+            and parse_qs(parsed.query).get("product_id") == [expected_external_id]
+        )
 
     @classmethod
     def _ld_product(cls, payload: JsonObject) -> JsonObject:

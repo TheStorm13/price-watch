@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from marketplace_connector.application.product_service import ConnectorRegistry
+from marketplace_connector.domain.errors import ProductNotFound
+from marketplace_connector.domain.models import Availability, ProductRef, ProductSnapshot
 
 from ..domain.models import CollectionRun, CollectionSummary
 from ..ports.repository import PriceAnalyzerRepository
@@ -60,6 +62,16 @@ class CollectionService:
                         connector = self._connectors.get(card.marketplace)
                         try:
                             snapshot = await connector.get_product(card.external_id)
+                            return card, snapshot, None, None
+                        except ProductNotFound:
+                            snapshot = ProductSnapshot(
+                                ref=ProductRef(card.marketplace, card.external_id),
+                                title=(card.title if card.title and card.title.strip()
+                                       else f"Товар {card.external_id}"),
+                                url=card.url or "",
+                                availability=Availability.OUT_OF_STOCK,
+                                collected_at=datetime.now(timezone.utc),
+                            )
                             return card, snapshot, None, None
                         except Exception as exc:
                             return card, None, exc, traceback.format_exc()

@@ -3,7 +3,7 @@ import unittest
 
 from ozon_article_json.normalizer import ProductCardNormalizer
 from marketplace_connector.connectors.ozon.mapper import OzonMapper
-from marketplace_connector.domain.errors import MarketplaceSchemaChanged
+from marketplace_connector.domain.errors import MarketplaceSchemaChanged, ProductNotFound
 from marketplace_connector.domain.models import Availability
 from marketplace_connector.serialization.product_json import snapshot_to_dict
 
@@ -185,6 +185,35 @@ class NormalizerTests(unittest.TestCase):
 
         with self.assertRaises(MarketplaceSchemaChanged):
             OzonMapper.to_snapshot(self.payload)
+
+    def test_search_redirect_for_requested_product_means_not_found(self):
+        self.payload["pageInfo"] = {
+            "pageType": "search",
+            "url": "/search/?text=Чай&product_id=1604900984",
+        }
+        self.payload["widgetStates"] = {"searchResults-1": widget({"items": []})}
+        self.payload["seo"]["script"] = []
+
+        with self.assertRaises(ProductNotFound):
+            OzonMapper.to_snapshot(self.payload, expected_external_id="1604900984")
+
+    def test_ambiguous_search_response_remains_an_error(self):
+        self.payload["pageInfo"] = {
+            "pageType": "search", "url": "/search/?product_id=999"
+        }
+        self.payload["widgetStates"] = {"searchResults-1": widget({"items": []})}
+        self.payload["seo"]["script"] = []
+
+        for page_url, widgets in (
+            ("/search/?product_id=999", self.payload["widgetStates"]),
+            ("/search/?text=Чай", self.payload["widgetStates"]),
+            ("/search/?product_id=1604900984", {"webPrice-1": "{}"}),
+        ):
+            with self.subTest(page_url=page_url, widgets=widgets):
+                self.payload["pageInfo"]["url"] = page_url
+                self.payload["widgetStates"] = widgets
+                with self.assertRaises(MarketplaceSchemaChanged):
+                    OzonMapper.to_snapshot(self.payload, expected_external_id="1604900984")
 
 
 if __name__ == "__main__":

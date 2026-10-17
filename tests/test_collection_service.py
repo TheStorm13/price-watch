@@ -10,6 +10,7 @@ from marketplace_connector import (
     ProductRef,
     ProductSnapshot,
 )
+from marketplace_connector.domain.errors import ProductNotFound
 from price_analyzer.application.collection_service import CollectionService
 from price_analyzer.domain.models import CollectionRun, MarketplaceCard
 
@@ -160,7 +161,7 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
                     self.closes += 1
 
             async def get_product(self, external_id):
-                if external_id == "100":
+                if external_id in {"100", "300"}:
                     raise RuntimeError("first card failed")
                 return await super().get_product(external_id)
 
@@ -240,6 +241,38 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status, "completed")
         self.assertEqual(repository.total_count, 1)
         self.assertEqual(repository.saved[0][0].id, 2)
+
+    async def test_missing_product_is_successful_out_of_stock_observation(self):
+        class MissingProductConnector(FakeConnector):
+            async def get_product(self, external_id):
+                if external_id == "100":
+                    raise ProductNotFound("Ozon перенаправил товар на поиск")
+                return await super().get_product(external_id)
+
+        missing = replace(
+            card(1, "ozon", "100"), title="Старое название",
+            url="https://ozon.ru/t/example",
+        )
+        repository = FakeRepository([missing, card(2, "ozon", "200"),
+                                     card(3, "ozon", "300")])
+        service = CollectionService(
+            repository, ConnectorRegistry([MissingProductConnector("ozon")])
+        )
+
+        result = await service.collect()
+
+        self.assertEqual((result.status, result.success_count, result.failure_count),
+                         ("completed", 3, 0))
+        self.assertEqual(repository.errors, [])
+        snapshot = next(snapshot for item, _, snapshot in repository.saved if item.id == 1)
+        self.assertEqual(snapshot.ref, ProductRef("ozon", "100"))
+        self.assertEqual(snapshot.availability, Availability.OUT_OF_STOCK)
+        self.assertIsNone(snapshot.price)
+        self.assertEqual((snapshot.title, snapshot.url),
+                         ("Старое название", "https://ozon.ru/t/example"))
+        untitled = next(snapshot for item, _, snapshot in repository.saved if item.id == 3)
+        self.assertEqual(untitled.title, "Товар 300")
+        self.assertEqual(repository.finished, [(42, "completed", 3, 0)])
 
     async def test_rejects_unknown_card_without_creating_run(self):
         repository = FakeRepository([])
