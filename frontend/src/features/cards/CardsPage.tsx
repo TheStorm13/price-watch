@@ -13,6 +13,7 @@ import { useCollection } from '../collection/CollectionProvider'
 import type { MarketplaceCard, ProductGroup } from '../../types/domain'
 import { availabilityLabel, formatDateTime, formatPrice, formatRelativeTime, marketplaceLabel } from '../../utils/format'
 import { AddCardDrawer } from './AddCardDrawer'
+import { compareDefaultCards } from './defaultCardSort'
 import { ImportExportControls } from './ImportExportControls'
 import { GroupDialog } from './GroupDialog'
 
@@ -59,7 +60,8 @@ function sortValue(item: DisplayItem, key: SortKey, savings: Map<number, number>
 
 function compareItems(left: DisplayItem, right: DisplayItem, sort: Sort, savings: Map<number, number>): number {
   if (left.dealsEnabled !== right.dealsEnabled) return left.dealsEnabled ? -1 : 1
-  if (!sort) return left.kind === 'card' && right.kind === 'card' ? left.card.id - right.card.id : 0
+  if (!sort) return left.kind === 'card' && right.kind === 'card'
+    ? compareDefaultCards(left.card, right.card, savings) : 0
   const first = sortValue(left, sort.key, savings)
   const second = sortValue(right, sort.key, savings)
   if (first === null || second === null) return first === null ? (second === null ? 0 : 1) : -1
