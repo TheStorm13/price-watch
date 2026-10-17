@@ -181,7 +181,7 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
                 "current_availability": item.current_availability,
                 "last_observed_at": item.last_observed_at,
             }
-            for item in await repository.list_cards(include_inactive=True)
+            for item in await repository.list_cards()
         ]
         _print_json(cards)
         return 0

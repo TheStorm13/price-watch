@@ -50,7 +50,7 @@ class CardRepository:
         *,
         title: Optional[str] = None,
         url: Optional[str] = None,
-        is_active: Optional[bool] = None,
+        deals_enabled: Optional[bool] = None,
         update_title: bool = False,
         update_url: bool = False,
         group_id: Optional[int] = None,
@@ -65,8 +65,8 @@ class CardRepository:
                 record.title = title
             if update_url:
                 record.url = url
-            if is_active is not None:
-                record.is_active = is_active
+            if deals_enabled is not None:
+                record.deals_enabled = deals_enabled
             if update_group:
                 if group_id is not None and await session.get(ProductGroupRecord, group_id) is None:
                     raise ValueError("Группа не найдена")
@@ -104,11 +104,9 @@ class CardRepository:
         latest = aliased(PriceHistoryRecord)
         return select(MarketplaceCardRecord, latest).outerjoin(latest, latest.id == latest_id)
 
-    async def list_cards(self, include_inactive: bool = False) -> List[CardOverview]:
+    async def list_cards(self) -> List[CardOverview]:
         statement = self._overview_statement()
-        if not include_inactive:
-            statement = statement.where(MarketplaceCardRecord.is_active.is_(True))
-        statement = statement.order_by(MarketplaceCardRecord.is_active.desc(), MarketplaceCardRecord.id)
+        statement = statement.order_by(MarketplaceCardRecord.deals_enabled.desc(), MarketplaceCardRecord.id)
         async with self._database.session() as session:
             rows = (await session.execute(statement)).all()
         return [

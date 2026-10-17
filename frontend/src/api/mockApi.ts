@@ -23,7 +23,7 @@ let cards: MarketplaceCard[] = [
     title: 'Смартфон Samsung Galaxy S24',
     url: 'https://www.ozon.ru/product/1604900984',
     imageUrl: null,
-    isActive: true,
+    dealsEnabled: true,
     currentPrice: 72990,
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 5 * 60_000).toISOString(),
@@ -37,7 +37,7 @@ let cards: MarketplaceCard[] = [
     title: 'Наушники Apple AirPods Pro 2',
     url: 'https://www.ozon.ru/product/1587342210',
     imageUrl: null,
-    isActive: true,
+    dealsEnabled: true,
     currentPrice: 24990,
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 2 * 86_400_000).toISOString(),
@@ -51,7 +51,7 @@ let cards: MarketplaceCard[] = [
     title: 'Умные часы Xiaomi Watch S3',
     url: 'https://www.ozon.ru/product/1620013375',
     imageUrl: null,
-    isActive: true,
+    dealsEnabled: true,
     currentPrice: 12490,
     currentAvailability: 'out_of_stock',
     lastObservedAt: new Date(now - 60 * 60_000).toISOString(),
@@ -65,7 +65,7 @@ let cards: MarketplaceCard[] = [
     title: 'Пылесос Dyson V12 Detect Slim',
     url: 'https://www.ozon.ru/product/1598827711',
     imageUrl: null,
-    isActive: true,
+    dealsEnabled: true,
     currentPrice: null,
     currentAvailability: null,
     lastObservedAt: null,
@@ -79,7 +79,7 @@ let cards: MarketplaceCard[] = [
     title: 'Конструктор LEGO Technic McLaren P1',
     url: 'https://www.ozon.ru/product/1579984456',
     imageUrl: null,
-    isActive: false,
+    dealsEnabled: false,
     currentPrice: 34990,
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 26 * 60 * 60_000).toISOString(),
@@ -171,7 +171,12 @@ const delay = <T>(value: T, milliseconds = 180) =>
   new Promise<T>((resolve) => window.setTimeout(() => resolve(value), milliseconds))
 
 function mergeImportedCards(document: TransferDocument, apply: boolean): ImportSummary {
-  if (document.version !== 1 || !Array.isArray(document.cards)) throw new Error('Неверный формат файла экспорта')
+  if (document.version !== 2 || !Array.isArray(document.cards)) throw new Error('Неверный формат файла экспорта')
+  const cardFields = new Set(['marketplace', 'externalId', 'title', 'url', 'imageUrl', 'tags', 'dealsEnabled', 'createdAt', 'history'])
+  if (document.cards.some((card) => typeof card.dealsEnabled !== 'boolean' ||
+    Object.keys(card).some((field) => !cardFields.has(field)))) {
+    throw new Error('Неверный формат карточки в файле экспорта')
+  }
   const summary: ImportSummary = {
     cardsAdded: 0, cardsMerged: 0, observationsAdded: 0,
     observationsRemoved: 0, observationsSkipped: 0, groupsAdded: 0,
@@ -225,7 +230,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
       externalId: importedCard.externalId, title: importedCard.title, url: importedCard.url,
       tags: importedCard.tags ?? [],
       imageUrl: importedCard.imageUrl ?? null,
-      isActive: importedCard.isActive && !(importedCard as typeof importedCard & { isArchived?: boolean }).isArchived,
+      dealsEnabled: importedCard.dealsEnabled,
       currentPrice: null, currentAvailability: null,
       lastObservedAt: null, createdAt: importedCard.createdAt, updatedAt: importedCard.createdAt,
     }
@@ -294,7 +299,7 @@ export const mockApi = {
   },
   async exportCards(): Promise<TransferDocument> {
     return delay({
-      version: 1,
+      version: 2,
       groups: groups.map((group) => ({
         name: group.name,
         tags: group.tags,
@@ -308,7 +313,7 @@ export const mockApi = {
         url: card.url,
         imageUrl: card.imageUrl,
         tags: card.tags ?? [],
-        isActive: card.isActive,
+        dealsEnabled: card.dealsEnabled,
         createdAt: card.createdAt,
         history: history.filter((point) => point.cardId === card.id)
           .sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt))
@@ -359,7 +364,7 @@ export const mockApi = {
       url: input.url?.trim() || null,
       imageUrl: null,
       tags: input.tags ?? [],
-      isActive: true,
+      dealsEnabled: true,
       currentPrice: null,
       currentAvailability: null,
       lastObservedAt: null,
@@ -436,7 +441,7 @@ export const mockApi = {
   },
 
   async listDeals(): Promise<Deal[]> {
-    return delay(cards.filter((card) => card.isActive && card.currentAvailability === 'in_stock' &&
+    return delay(cards.filter((card) => card.dealsEnabled && card.currentAvailability === 'in_stock' &&
       card.currentPrice !== null && Date.now() - Date.parse(card.createdAt) >= 7 * 86_400_000 &&
       card.id === 1).map((card) => ({ card, averagePrice: 78000,
       savings: 78000 - (card.currentPrice ?? 0), baselineDays: 8,

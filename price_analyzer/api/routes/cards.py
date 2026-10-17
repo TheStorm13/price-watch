@@ -41,7 +41,7 @@ async def get_chart(card_id: int, repository: RepositoryDep, days: int = 30):
 
 @router.get("", response_model=list[CardResponse])
 async def list_cards(repository: RepositoryDep):
-    cards = await repository.list_cards(include_inactive=True)
+    cards = await repository.list_cards()
     metrics = await repository.list_card_price_metrics()
     result = []
     for item in cards:
@@ -110,7 +110,7 @@ async def update_card(card_id: int, payload: CardUpdate, repository: RepositoryD
             card_id,
             title=payload.title,
             url=str(payload.url) if payload.url else None,
-            is_active=payload.is_active if "is_active" in fields else None,
+            deals_enabled=payload.deals_enabled if "deals_enabled" in fields else None,
             update_title="title" in fields,
             update_url="url" in fields,
             group_id=payload.group_id,

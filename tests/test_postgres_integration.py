@@ -164,11 +164,11 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     ))
             exported = await repository.export_cards()
             item = next(item for item in exported["cards"] if item["external_id"] == external_id)
-            self.assertEqual(exported["version"], 1)
+            self.assertEqual(exported["version"], 2)
             self.assertEqual(len(item["history"]), 4)
             self.assertEqual(set(item["history"][0]), {"price", "availability", "observed_at"})
             self.assertEqual(set(item), {"marketplace", "external_id", "title", "url", "image_url",
-                                         "tags", "is_active", "created_at", "history"})
+                                         "tags", "deals_enabled", "created_at", "history"})
             item["title"] = "Название из файла"
             item["image_url"] = "https://img.test/import.jpg"
             item["created_at"] = start - timedelta(days=20)
@@ -178,7 +178,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             } for minute, price in ((1, "100.00"), (3, "90.00"),
                                     (5, "100.00"), (6, "80.00")))
             new_item = {**item, "external_id": new_external_id, "title": "Новая карточка",
-                        "is_active": True, "is_archived": True, "history": [{
+                        "deals_enabled": False, "history": [{
                             "price": Decimal("200.00"), "availability": "in_stock",
                             "observed_at": start,
                         }]}
@@ -199,12 +199,12 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                               Decimal("100.00"), Decimal("80.00")])
             self.assertEqual(await repository.count_history(card.id, 365), 5)
             self.assertEqual((await repository.import_cards(payload))["observations_added"], 0)
-            imported = next(overview.card for overview in await repository.list_cards(include_inactive=True)
+            imported = next(overview.card for overview in await repository.list_cards()
                             if overview.card.external_id == new_external_id)
-            self.assertFalse(imported.is_active)
+            self.assertFalse(imported.deals_enabled)
             self.assertEqual(await repository.count_history(imported.id, 1), 1)
         finally:
-            for overview in await repository.list_cards(include_inactive=True):
+            for overview in await repository.list_cards():
                 if overview.card.external_id in {external_id, new_external_id}:
                     await repository.delete_card(overview.card.id)
 
@@ -240,7 +240,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(preview["groups_added"], 1)
             self.assertEqual(await repository.import_cards(cards, groups=groups), preview)
 
-            restored = [overview.card for overview in await repository.list_cards(include_inactive=True)
+            restored = [overview.card for overview in await repository.list_cards()
                         if overview.card.external_id in members]
             restored_card_ids = [card.id for card in restored]
             restored_group = next(group for group in await repository.list_groups() if group["name"] == group_name)
@@ -334,7 +334,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         try:
             summary = await repository.import_cards([{
                 "marketplace": "integration-test", "external_id": external_id,
-                "title": "Товар", "url": None, "is_active": True,
+                "title": "Товар", "url": None, "deals_enabled": True,
                 "created_at": start, "history": history,
             }])
             self.assertEqual(summary["observations_added"], 3)
@@ -413,7 +413,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         run = await repository.create_queued_run(card.id)
         try:
-            await repository.update_card(card.id, is_active=False)
+            await repository.update_card(card.id, deals_enabled=False)
             self.assertEqual(run.target_card_ids, (card.id,))
             self.assertEqual([item.id for item in await repository.cards_for_run(run)], [card.id])
             with self.assertRaises(CardInActiveRun):
@@ -533,7 +533,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_only_full_runs_reset_automatic_collection_clock(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         cards = [await repository.add_card("integration-test", f"test-{uuid4()}") for _ in range(2)]
-        await repository.update_card(cards[1].id, is_active=False)
+        await repository.update_card(cards[1].id, deals_enabled=False)
         future = datetime(2100, 1, 1, tzinfo=timezone.utc)
         scheduled = single = later = manual_full = final = None
         try:
@@ -584,7 +584,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         try:
             await repository.record_run_error(source.id, {"cardId": cards[0].id, "marketplace": "integration-test",
                                                     "externalId": cards[0].external_id, "message": "failed"}, 1, 1)
-            await repository.update_card(cards[0].id, is_active=False)
+            await repository.update_card(cards[0].id, deals_enabled=False)
             await repository.finish_run(source.id, "completed_with_errors", 1, 1)
             app = create_app(repository=repository)
             app.state.repository = repository
@@ -672,9 +672,10 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             app = create_app(repository=repository)
             app.state.repository = repository
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-                response = await client.patch(f"/api/cards/{card.id}", json={"isActive": False})
+                response = await client.patch(f"/api/cards/{card.id}", json={"dealsEnabled": False})
                 self.assertEqual(response.status_code, 200)
-                self.assertFalse(response.json()["isActive"])
+                self.assertFalse(response.json()["dealsEnabled"])
+                self.assertNotIn("isActive", response.json())
                 self.assertNotIn("isArchived", response.json())
             self.assertIn(card.id, [item.id for item in await repository.list_collection_cards()])
             run = await repository.create_queued_run(card.id)
@@ -685,7 +686,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await repository.finish_run(full_run.id, "completed", full_run.total_count, 0)
             self.assertFalse(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
 
-            await repository.update_card(card.id, is_active=True)
+            await repository.update_card(card.id, deals_enabled=True)
             self.assertTrue(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
         finally:
             await repository.delete_card(card.id)

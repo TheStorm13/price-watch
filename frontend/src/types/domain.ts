@@ -15,7 +15,7 @@ export interface MarketplaceCard {
   title: string | null
   url: string | null
   imageUrl: string | null
-  isActive: boolean
+  dealsEnabled: boolean
   groupId?: number | null
   tags?: string[]
   currentPrice: number | null
@@ -109,7 +109,7 @@ export interface CreateCardInput {
 export interface UpdateCardInput {
   title?: string | null
   url?: string | null
-  isActive?: boolean
+  dealsEnabled?: boolean
   groupId?: number | null
   tags?: string[]
 }
@@ -142,13 +142,13 @@ export interface TransferCard {
   url: string | null
   imageUrl?: string | null
   tags?: string[]
-  isActive: boolean
+  dealsEnabled: boolean
   createdAt: string
   history: TransferHistoryPoint[]
 }
 
 export interface TransferDocument {
-  version: 1
+  version: 2
   cards: TransferCard[]
   groups?: { name: string; tags?: string[]; cards: { marketplace: string; externalId: string }[] }[]
 }

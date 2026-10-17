@@ -17,7 +17,7 @@ class GroupRepository:
                        PriceHistoryRecord.price.is_not(None))
                 .group_by(MarketplaceCardRecord.group_id)
             )).all())
-        cards = await self.list_cards(include_inactive=True)
+        cards = await self.list_cards()
         result = []
         for group in groups:
             members = [item for item in cards if item.card.group_id == group.id]

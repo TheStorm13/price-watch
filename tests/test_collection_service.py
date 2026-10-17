@@ -25,7 +25,7 @@ def card(card_id, marketplace, external_id):
         external_id=external_id,
         title=None,
         url=None,
-        is_active=True,
+        deals_enabled=True,
         created_at=NOW,
         updated_at=NOW,
     )
@@ -93,7 +93,7 @@ class FakeRepository:
 
 class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_excluded_card_still_collects_in_full_and_single_runs(self):
-        excluded = replace(card(2, "ozon", "200"), is_active=False)
+        excluded = replace(card(2, "ozon", "200"), deals_enabled=False)
         repository = FakeRepository([card(1, "ozon", "100"), excluded])
         service = CollectionService(repository, ConnectorRegistry([FakeConnector("ozon")]))
 

@@ -18,7 +18,7 @@ def make_card(card_id=1, external_id="1604900984"):
         external_id=external_id,
         title="Тестовый товар",
         url="https://www.ozon.ru/product/1604900984",
-        is_active=True,
+        deals_enabled=True,
         created_at=NOW,
         updated_at=NOW,
     )
@@ -51,16 +51,16 @@ class FakeRepository:
     async def delete_group(self, group_id):
         return self.groups.pop(group_id, None) is not None
 
-    async def list_cards(self, include_inactive=False):
+    async def list_cards(self):
         return [CardOverview(self.card, 999, "in_stock", NOW)]
 
     async def list_card_price_metrics(self):
         return {1: (800, 1100)}
 
     async def export_cards(self):
-        return {"version": 1, "cards": [{
+        return {"version": 2, "cards": [{
             "marketplace": "ozon", "external_id": "1604900984",
-            "title": "Тестовый товар", "url": None, "tags": ["кухня"], "is_active": True,
+            "title": "Тестовый товар", "url": None, "tags": ["кухня"], "deals_enabled": True,
             "created_at": NOW, "history": [{
                 "price": "999.00", "availability": "in_stock", "observed_at": NOW,
             }],
@@ -181,18 +181,18 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         document = exported.json()
         card = document["cards"][0]
         self.assertEqual(set(card), {"marketplace", "externalId", "title", "url", "imageUrl", "tags",
-                                     "isActive", "createdAt", "history"})
+                                     "dealsEnabled", "createdAt", "history"})
         self.assertEqual(card["tags"], ["кухня"])
         self.assertEqual(document["groups"], [{
             "name": "Бутылки", "tags": ["подарок"],
             "cards": [{"marketplace": "ozon", "externalId": "1604900984"}],
         }])
-        card["isArchived"] = True  # Старый архив превращается в приостановку.
+        card["dealsEnabled"] = False
         del card["imageUrl"]
         preview = await self.client.post("/api/cards/import/preview", json=document)
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview.json()["cardsMerged"], 1)
-        self.assertFalse(self.repository.last_imported_cards[0]["is_active"])
+        self.assertFalse(self.repository.last_imported_cards[0]["deals_enabled"])
         self.assertEqual(self.repository.last_imported_cards[0]["tags"], ["кухня"])
         self.assertEqual(self.repository.last_imported_groups, [{
             "name": "Бутылки", "tags": ["подарок"],
@@ -202,6 +202,18 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(imported.status_code, 200)
         self.assertEqual(imported.json()["observationsAdded"], 1)
         self.assertEqual(imported.json()["groupsAdded"], 1)
+
+    async def test_import_rejects_old_deal_fields_and_version(self):
+        self.assertEqual((await self.client.patch("/api/cards/1", json={"isActive": False})).status_code, 422)
+        document = (await self.client.get("/api/cards/export")).json()
+        document["version"] = 1
+        self.assertEqual((await self.client.post("/api/cards/import/preview", json=document)).status_code, 422)
+        document["version"] = 2
+        document["cards"][0]["isActive"] = document["cards"][0].pop("dealsEnabled")
+        self.assertEqual((await self.client.post("/api/cards/import/preview", json=document)).status_code, 422)
+        document["cards"][0]["dealsEnabled"] = True
+        document["cards"][0]["isArchived"] = True
+        self.assertEqual((await self.client.post("/api/cards/import/preview", json=document)).status_code, 422)
 
     async def test_card_tags_are_limited_to_two(self):
         valid = await self.client.post("/api/cards", json={

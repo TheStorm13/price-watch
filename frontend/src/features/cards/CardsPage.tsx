@@ -20,7 +20,7 @@ const columnSortKeys = ['title', 'marketplace', 'price', 'minimum', 'average', '
 type ColumnSortKey = typeof columnSortKeys[number]
 type SortKey = ColumnSortKey | 'updated'
 type Sort = { key: SortKey; direction: 'asc' | 'desc' } | null
-type DisplayItem = { kind: 'card'; card: MarketplaceCard; active: boolean } | { kind: 'group'; group: ProductGroup; active: boolean }
+type DisplayItem = { kind: 'card'; card: MarketplaceCard; dealsEnabled: boolean } | { kind: 'group'; group: ProductGroup; dealsEnabled: boolean }
 const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
 const columnLabels: Record<ColumnSortKey, string> = {
   title: 'Карточка', marketplace: 'Маркетплейс', price: 'Цена', minimum: 'Минимальная',
@@ -58,7 +58,7 @@ function sortValue(item: DisplayItem, key: SortKey, savings: Map<number, number>
 }
 
 function compareItems(left: DisplayItem, right: DisplayItem, sort: Sort, savings: Map<number, number>): number {
-  if (left.active !== right.active) return left.active ? -1 : 1
+  if (left.dealsEnabled !== right.dealsEnabled) return left.dealsEnabled ? -1 : 1
   if (!sort) return left.kind === 'card' && right.kind === 'card' ? left.card.id - right.card.id : 0
   const first = sortValue(left, sort.key, savings)
   const second = sortValue(right, sort.key, savings)
@@ -71,7 +71,7 @@ function compareItems(left: DisplayItem, right: DisplayItem, sort: Sort, savings
 
 function matchesStatus(card: MarketplaceCard, status: string) {
   if (status === 'all') return true
-  if (status === 'excluded') return !card.isActive
+  if (status === 'deals_disabled') return !card.dealsEnabled
   if (status === 'no_data') return card.lastObservedAt === null
   return card.currentAvailability === status
 }
@@ -92,8 +92,7 @@ export function CardsPage() {
   const query = params.get('q') ?? ''
   const deferredQuery = useDeferredValue(query.trim().toLowerCase())
   const marketplace = params.get('marketplace') ?? 'all'
-  const rawStatus = params.get('status') ?? 'all'
-  const status = rawStatus === 'archived' || rawStatus === 'paused' ? 'excluded' : rawStatus
+  const status = params.get('status') ?? 'all'
   const sortParam = params.get('sort')
   const sort = useMemo(() => parseSort(sortParam), [sortParam])
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
@@ -128,8 +127,8 @@ export function CardsPage() {
         && (!dealsOnly || deals.has(card.id))
     })
     return result.toSorted((left, right) => compareItems(
-      { kind: 'card', card: left, active: left.isActive },
-      { kind: 'card', card: right, active: right.isActive }, sort, savings))
+      { kind: 'card', card: left, dealsEnabled: left.dealsEnabled },
+      { kind: 'card', card: right, dealsEnabled: right.dealsEnabled }, sort, savings))
   }, [cardsQuery.data, deals, dealsOnly, deferredQuery, groupNames, groupTags, marketplace, savings, selectedTag, sort, status])
 
   const groupedCards = useMemo(() => {
@@ -146,8 +145,8 @@ export function CardsPage() {
     groupedCards.has(group.id) || (!dealsOnly && !deferredQuery && marketplace === 'all' && status === 'all' && group.cardIds.length === 0 && (!selectedTag || (group.tags ?? []).includes(selectedTag))))
   const standaloneCards = visibleCards.filter((card) => !groupedCards.has(card.groupId ?? -1))
   const orderedItems = [
-    ...visibleGroups.map((group) => ({ kind: 'group' as const, group, active: (groupedCards.get(group.id) ?? []).some((card) => card.isActive) })),
-    ...standaloneCards.map((card) => ({ kind: 'card' as const, card, active: card.isActive })),
+    ...visibleGroups.map((group) => ({ kind: 'group' as const, group, dealsEnabled: (groupedCards.get(group.id) ?? []).some((card) => card.dealsEnabled) })),
+    ...standaloneCards.map((card) => ({ kind: 'card' as const, card, dealsEnabled: card.dealsEnabled })),
   ].toSorted((left, right) => compareItems(left, right, sort, savings))
   const gridItems = [...orderedItems.filter((item) => item.kind === 'group'), ...orderedItems.filter((item) => item.kind === 'card')]
 
@@ -175,15 +174,15 @@ export function CardsPage() {
   }
 
   function actions(card: MarketplaceCard) {
-    return <CardActionsMenu cardTitle={card.title ?? card.externalId} isActive={card.isActive}
+    return <CardActionsMenu cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled}
       onRefresh={card.marketplace === 'ozon' ? () => collection.start(card.id) : undefined} refreshDisabled={collection.isStarting}
-      onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })}
+      onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })}
       onDelete={() => deleteCard.mutateAsync(card.id)} />
   }
 
   function dealStatus(card: MarketplaceCard) {
     return <>
-      {!card.isActive ? <span className="tracking-status">Не показывается в выгодных предложениях</span> : null}
+      {!card.dealsEnabled ? <span className="tracking-status">Не учитывается в выгодных предложениях</span> : null}
     </>
   }
 
@@ -204,7 +203,7 @@ export function CardsPage() {
       <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
       <dl className="cards-grid__prices"><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div><div><dt>Выгода</dt><dd>{saving(card)}</dd></div></dl>
       <div className="cards-grid__details"><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
-      {!card.isActive ? <div className="cards-grid__tracking">{dealStatus(card)}</div> : null}
+      {!card.dealsEnabled ? <div className="cards-grid__tracking">{dealStatus(card)}</div> : null}
     </li>
   }
 
@@ -259,7 +258,7 @@ export function CardsPage() {
               <option value="in_stock">В наличии</option>
               <option value="out_of_stock">Нет в наличии</option>
               <option value="no_data">Нет данных</option>
-              <option value="excluded">Не в выгодных предложениях</option>
+              <option value="deals_disabled">Не учитывается в выгодных предложениях</option>
             </select>
             <ChevronDown aria-hidden="true" />
           </span>

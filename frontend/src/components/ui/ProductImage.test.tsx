@@ -5,7 +5,7 @@ import { ProductImage } from './ProductImage'
 
 const card: MarketplaceCard = {
   id: 1, marketplace: 'ozon', externalId: '123', title: 'Товар', url: null,
-  imageUrl: 'https://img.test/photo.jpg', isActive: true,
+  imageUrl: 'https://img.test/photo.jpg', dealsEnabled: true,
   currentPrice: null, currentAvailability: null, lastObservedAt: null,
   createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
 }

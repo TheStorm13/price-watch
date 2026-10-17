@@ -123,7 +123,7 @@ test('основной desktop-сценарий', async ({ page }) => {
   await expect(page.getByText('72 990 ₽').first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Открыть на Ozon' })).toHaveAttribute('href', 'https://www.ozon.ru/product/1604900984')
   await page.getByRole('button', { name: /Действия с карточкой/ }).click()
-  await expect(page.getByRole('menuitem', { name: 'Исключить из выгодных предложений' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Удалить карточку' })).toBeVisible()
   await page.keyboard.press('Escape')
   await page.screenshot({ path: '/tmp/price-watch-detail.png' })
@@ -189,7 +189,7 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   const status = page.getByRole('combobox', { name: 'Состояние' })
   const sort = page.getByRole('combobox', { name: 'Сортировка' })
   const before = await Promise.all([marketplace, status, sort].map((control) => control.boundingBox()))
-  await status.selectOption('excluded')
+  await status.selectOption('deals_disabled')
   await expect(page.getByRole('button', { name: 'Сбросить' })).toBeVisible()
   const after = await Promise.all([marketplace, status, sort].map((control) => control.boundingBox()))
   for (let index = 0; index < before.length; index += 1) {
@@ -198,7 +198,7 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   }
   const reset = await page.getByRole('button', { name: 'Сбросить' }).boundingBox()
   expect(reset?.y).toBeGreaterThan((after[1]?.y ?? 0) + (after[1]?.height ?? 0))
-  await expect(status).toHaveValue('excluded')
+  await expect(status).toHaveValue('deals_disabled')
   await page.screenshot({ path: '/tmp/price-watch-filters.png' })
   await page.setViewportSize({ width: 1024, height: 768 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
@@ -284,7 +284,7 @@ test('карточки переключаются между списком и �
   expect(imageBox?.height).toBeCloseTo(imageBox?.width ?? 0, 0)
   await page.screenshot({ path: '/tmp/price-watch-grid.png' })
   await grid.locator('li').first().getByRole('button', { name: /Действия с карточкой/ }).click()
-  await expect(page.getByRole('menuitem', { name: 'Исключить из выгодных предложений' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' })).toBeVisible()
   await page.keyboard.press('Escape')
   await page.getByRole('heading', { name: 'Карточки' }).click()
   await page.setViewportSize({ width: 1536, height: 900 })
@@ -310,11 +310,11 @@ test('вертикальное фото видно целиком, а время
   await page.getByRole('button', { name: 'Импорт', exact: true }).click()
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="400"><rect width="200" height="400" fill="blue"/></svg>'
   const imported = {
-    version: 1,
+    version: 2,
     cards: [{
       marketplace: 'ozon', externalId: 'portrait-test', title: 'Вертикальное фото',
       url: null, imageUrl: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-      isActive: true, createdAt: new Date().toISOString(),
+      dealsEnabled: true, createdAt: new Date().toISOString(),
       history: [{ price: '100.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
     }],
   }
@@ -356,10 +356,12 @@ test('экспорт и импорт объединяют карточки и и
   expect(exportData.cards[0].history[0]).toEqual(expect.objectContaining({
     price: expect.any(String), availability: expect.any(String), observedAt: expect.any(String),
   }))
+  expect(exportData.version).toBe(2)
+  expect(exportData.cards[0]).not.toHaveProperty('isActive')
   expect(exportData.cards[0]).not.toHaveProperty('isArchived')
   exportData.cards.push({
     marketplace: 'ozon', externalId: '9999911111', title: 'Тестовый импорт',
-    url: null, isActive: true, isArchived: true, createdAt: new Date().toISOString(),
+    url: null, dealsEnabled: false, createdAt: new Date().toISOString(),
     history: [{ price: '123.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
   })
   await page.getByLabel('Дополнительные действия').click()
@@ -373,7 +375,7 @@ test('экспорт и импорт объединяют карточки и и
   await page.screenshot({ path: '/tmp/price-watch-import-preview.png' })
   await dialog.getByRole('button', { name: 'Импортировать' }).click()
   await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toBeVisible()
-  await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toContainText('Не показывается в выгодных предложениях')
+  await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toContainText('Не учитывается в выгодных предложениях')
   await page.screenshot({ path: '/tmp/price-watch-imported.png' })
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })
@@ -382,36 +384,36 @@ test('меню карточки управляет показом в выгод�
   await page.goto('/cards')
   const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
-  await expect(page.getByRole('menuitem', { name: 'Исключить из выгодных предложений' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'В архив' })).toHaveCount(0)
-  await page.getByRole('menuitem', { name: 'Исключить из выгодных предложений' }).click()
-  await expect(row.getByText('Не показывается в выгодных предложениях')).toBeVisible()
+  await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
+  await expect(row.getByText('Не учитывается в выгодных предложениях')).toBeVisible()
 
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
-  await expect(page.getByRole('menuitem', { name: 'Показывать в выгодных предложениях' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' })).toBeVisible()
   await page.screenshot({ path: '/tmp/price-watch-card-actions.png' })
-  await page.getByRole('menuitem', { name: 'Показывать в выгодных предложениях' }).click()
-  await expect(row.getByText('Не показывается в выгодных предложениях')).toBeHidden()
+  await page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' }).click()
+  await expect(row.getByText('Не учитывается в выгодных предложениях')).toBeHidden()
 })
 
 test('исключённые карточки остаются в конце при любой сортировке и в сетке', async ({ page }) => {
   await page.goto('/cards')
   const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
-  await page.getByRole('menuitem', { name: 'Исключить из выгодных предложений' }).click()
+  await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
 
   const rows = page.locator('.cards-table tbody tr')
   for (const column of ['Карточка', 'Цена', 'Минимальная', 'Средняя', 'Выгода', 'Наличие']) {
     await page.getByRole('button', { name: column, exact: true }).click()
-    await expect(rows.nth(2)).not.toContainText('Не показывается в выгодных предложениях')
-    await expect(rows.nth(3)).toContainText('Не показывается в выгодных предложениях')
-    await expect(rows.nth(4)).toContainText('Не показывается в выгодных предложениях')
+    await expect(rows.nth(2)).not.toContainText('Не учитывается в выгодных предложениях')
+    await expect(rows.nth(3)).toContainText('Не учитывается в выгодных предложениях')
+    await expect(rows.nth(4)).toContainText('Не учитывается в выгодных предложениях')
   }
 
   await page.getByRole('button', { name: 'Сетка' }).click()
   const tiles = page.locator('.cards-grid__item')
-  await expect(tiles.nth(3)).toContainText('Не показывается в выгодных предложениях')
-  await expect(tiles.nth(4)).toContainText('Не показывается в выгодных предложениях')
+  await expect(tiles.nth(3)).toContainText('Не учитывается в выгодных предложениях')
+  await expect(tiles.nth(4)).toContainText('Не учитывается в выгодных предложениях')
 })
 
 test('исключённая карточка обновляется, но не попадает в выгодные предложения', async ({ page }) => {
@@ -422,9 +424,9 @@ test('исключённая карточка обновляется, но не 
   await expect(page.getByRole('checkbox', { name: 'Выгодные предложения' })).not.toBeChecked()
   const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
-  await page.getByRole('menuitem', { name: 'Исключить из выгодных предложений' }).click()
-  await expect(row).toContainText('Не показывается в выгодных предложениях')
-  await page.getByLabel('Состояние').selectOption('excluded')
+  await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
+  await expect(row).toContainText('Не учитывается в выгодных предложениях')
+  await page.getByLabel('Состояние').selectOption('deals_disabled')
   await expect(row).toBeVisible()
 
   await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
@@ -432,7 +434,7 @@ test('исключённая карточка обновляется, но не 
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toHaveCount(0)
   await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
   await expect(page.getByRole('checkbox', { name: 'Выгодные предложения' })).not.toBeChecked()
-  await page.getByLabel('Состояние').selectOption('excluded')
+  await page.getByLabel('Состояние').selectOption('deals_disabled')
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Обновить только эту карточку' }).click()
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('0 из 1')

@@ -52,9 +52,10 @@ class CardCreate(ApiModel):
 
 
 class CardUpdate(ApiModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
     title: str | None = None
     url: HttpUrl | None = None
-    is_active: bool | None = None
+    deals_enabled: bool | None = None
     group_id: int | None = Field(default=None, ge=1)
     tags: list[str] | None = Field(default=None, max_length=2)
 
@@ -107,6 +108,7 @@ class TransferHistoryPoint(ApiModel):
 
 
 class TransferCard(ApiModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
     marketplace: str
     external_id: str
     title: str | None
@@ -114,16 +116,9 @@ class TransferCard(ApiModel):
     image_url: str | None = None
     tags: list[str] = Field(default_factory=list, max_length=2)
     _normalize_tags = field_validator("tags")(normalize_tags)
-    is_active: bool
+    deals_enabled: bool
     created_at: datetime
     history: list[TransferHistoryPoint]
-
-    @model_validator(mode="before")
-    @classmethod
-    def import_old_archive_as_excluded(cls, value: object) -> object:
-        if isinstance(value, dict) and (value.get("isArchived") is True or value.get("is_archived") is True):
-            return {**value, "isActive": False, "is_active": False}
-        return value
 
     @field_validator("marketplace", "external_id")
     @classmethod
@@ -162,7 +157,7 @@ class TransferGroup(ApiModel):
 
 
 class TransferDocument(ApiModel):
-    version: Literal[1]
+    version: Literal[2]
     cards: list[TransferCard]
     groups: list[TransferGroup] = Field(default_factory=list)
 
@@ -206,7 +201,7 @@ class CardResponse(ApiModel):
     url: str | None
     image_url: str | None
     tags: list[str]
-    is_active: bool
+    deals_enabled: bool
     group_id: int | None = None
     current_price: float | None
     minimum_price: float | None = None
@@ -229,7 +224,7 @@ class CardResponse(ApiModel):
             url=card.url,
             image_url=card.image_url,
             tags=list(card.tags),
-            is_active=card.is_active,
+            deals_enabled=card.deals_enabled,
             group_id=card.group_id,
             current_price=overview.current_price,
             minimum_price=minimum_price,

@@ -28,7 +28,7 @@ class TransferRepository:
                 "url": card.url,
                 "image_url": card.image_url,
                 "tags": card.tags,
-                "is_active": card.is_active,
+                "deals_enabled": card.deals_enabled,
                 "created_at": card.created_at,
                 "history": [],
             } for card in cards]
@@ -45,7 +45,7 @@ class TransferRepository:
                 "cards": [{"marketplace": card.marketplace, "external_id": card.external_id}
                           for card in cards if card.group_id == group.id],
             } for group in groups]
-        return {"version": 1, "cards": result, "groups": group_data}
+        return {"version": 2, "cards": result, "groups": group_data}
 
     async def import_cards(self, cards: list[dict], *, groups: list[dict] | None = None, preview: bool = False) -> dict:
         """Merge cards and histories atomically; preview computes the same result."""
@@ -102,7 +102,7 @@ class TransferRepository:
                                              default=item["created_at"])
                     card = MarketplaceCardRecord(
                         marketplace=key[0], external_id=key[1], title=item["title"],
-                        url=item["url"], is_active=item["is_active"] and not item.get("is_archived", False),
+                        url=item["url"], deals_enabled=item["deals_enabled"],
                         image_url=item.get("image_url"),
                         tags=item.get("tags", []),
                         created_at=item["created_at"],

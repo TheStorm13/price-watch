@@ -98,14 +98,14 @@ export function CardDetailsPage() {
       <header className="detail-header">
         <div className="detail-header__product">
           <ProductImage card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager />
-          <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.isActive ? <><span>·</span><span className="tracking-status">Не показывается в выгодных предложениях</span></> : null}</div></div>
+          <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.dealsEnabled ? <><span>·</span><span className="tracking-status">Не учитывается в выгодных предложениях</span></> : null}</div></div>
         </div>
         <div className="page-actions">
           {card.url ? <a className="button button--secondary" href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a> : null}
           {card.marketplace === 'ozon'
             ? <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)} disabled={collection.isStarting}>Обновить эту карточку</Button>
             : <span className="tracking-status">Сбор цен пока недоступен: коннектор не подключён</span>}
-          <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} isActive={card.isActive} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { isActive: !card.isActive } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
+          <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
         </div>
       </header>
       {openError ? <p className="action-error" role="alert">{openError}</p> : null}

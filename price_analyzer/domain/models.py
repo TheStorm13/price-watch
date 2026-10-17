@@ -13,7 +13,7 @@ class MarketplaceCard:
     external_id: str
     title: Optional[str]
     url: Optional[str]
-    is_active: bool
+    deals_enabled: bool
     created_at: datetime
     updated_at: datetime
     image_url: Optional[str] = None
