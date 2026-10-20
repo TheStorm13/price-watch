@@ -6,7 +6,10 @@
     "beforeDevCommand": "npm run dev:desktop",
     "devUrl": "http://127.0.0.1:1420",
     "beforeBuildCommand": "npm run build:desktop",
-    "frontendDist": "../dist"
+    "frontendDist": "../dist",
+    "windows": {
+      "staticVCRuntime": true
+    }
   },
   "app": {
     "windows": [
