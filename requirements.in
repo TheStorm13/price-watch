@@ -1,0 +1,10 @@
+# Linux x86_64, Python 3.14; compile with pip-tools==7.6.2:
+# pip-compile --generate-hashes --resolver=backtracking --output-file=requirements.txt requirements.in
+alembic>=1.20,<1.21
+fastapi>=0.141,<0.142
+httpx>=0.28.1,<0.29
+playwright==1.63.0
+psycopg[binary]>=3.3.6,<3.4
+pydantic>=2.13.5,<2.14
+sqlalchemy>=2.0.54,<2.1
+uvicorn>=0.53,<0.54

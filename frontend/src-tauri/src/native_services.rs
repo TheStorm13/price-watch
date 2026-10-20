@@ -430,6 +430,18 @@ impl NativeServices {
                 .is_ok_and(|status| status.is_none())
             && api_ready(self.api_port, &self.api_token)
     }
+
+    #[cfg(test)]
+    pub fn stop_service_for_test(&mut self, service: &str) {
+        let child = match service {
+            "api" => &mut self.api.0,
+            "postgres" => &mut self.postgres.0,
+            "display" => &mut self.display.0,
+            _ => panic!("unknown service: {service}"),
+        };
+        child.kill().unwrap();
+        child.wait().unwrap();
+    }
 }
 
 fn backup_database(

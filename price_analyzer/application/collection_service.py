@@ -32,7 +32,7 @@ class CollectionService:
         cards = list(await self._repository.list_collection_cards(card_id))
         if card_id is not None and not cards:
             raise LookupError(f"Карточка не найдена: {card_id}")
-        run_id = await self._repository.start_run(len(cards))
+        run_id = await self._repository.start_run(len(cards), card_id)
         return await self._collect_cards(run_id, cards, report_progress=False)
 
     async def execute_run(self, run: CollectionRun) -> CollectionSummary:

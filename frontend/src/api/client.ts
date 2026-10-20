@@ -24,7 +24,7 @@ export class ApiError extends Error {
   }
 }
 
-export const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true'
+export const isE2ETestMode = import.meta.env.VITE_E2E_TEST_MODE === 'true'
 export const isDesktopMode = import.meta.env.VITE_DESKTOP_MODE === 'true'
 
 export interface DesktopApiConfig {
@@ -35,15 +35,16 @@ export interface DesktopApiConfig {
 let desktopApiConfig: DesktopApiConfig | null = null
 
 export function configureDesktopApi(config: DesktopApiConfig) {
+  const changed = desktopApiConfig?.baseUrl !== config.baseUrl || desktopApiConfig?.token !== config.token
   desktopApiConfig = config
+  return changed
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  if (isDesktopMode && !desktopApiConfig) {
+  if (!desktopApiConfig) {
     throw new Error('Локальный API ещё не запущен')
   }
-  const apiBaseUrl = isDesktopMode ? desktopApiConfig!.baseUrl : ''
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${desktopApiConfig.baseUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -65,63 +66,63 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   listGroups: (): Promise<ProductGroup[]> =>
-    isDemoMode ? mockApi.listGroups() : request('/api/groups'),
+    isE2ETestMode ? mockApi.listGroups() : request('/api/groups'),
   createGroup: (input: GroupInput): Promise<ProductGroup> =>
-    isDemoMode ? mockApi.createGroup(input) : request('/api/groups', { method: 'POST', body: JSON.stringify(input) }),
+    isE2ETestMode ? mockApi.createGroup(input) : request('/api/groups', { method: 'POST', body: JSON.stringify(input) }),
   updateGroup: (id: number, input: GroupInput): Promise<ProductGroup> =>
-    isDemoMode ? mockApi.updateGroup(id, input) : request(`/api/groups/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
+    isE2ETestMode ? mockApi.updateGroup(id, input) : request(`/api/groups/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   deleteGroup: (id: number): Promise<void> =>
-    isDemoMode ? mockApi.deleteGroup(id) : request(`/api/groups/${id}`, { method: 'DELETE' }),
+    isE2ETestMode ? mockApi.deleteGroup(id) : request(`/api/groups/${id}`, { method: 'DELETE' }),
   exportCards: (): Promise<TransferDocument> =>
-    isDemoMode ? mockApi.exportCards() : request('/api/cards/export'),
+    isE2ETestMode ? mockApi.exportCards() : request('/api/cards/export'),
 
   previewImportCards: (document: TransferDocument): Promise<ImportSummary> =>
-    isDemoMode ? mockApi.previewImportCards(document) : request('/api/cards/import/preview', {
+    isE2ETestMode ? mockApi.previewImportCards(document) : request('/api/cards/import/preview', {
       method: 'POST', body: JSON.stringify(document),
     }),
 
   importCards: (document: TransferDocument): Promise<ImportSummary> =>
-    isDemoMode ? mockApi.importCards(document) : request('/api/cards/import', {
+    isE2ETestMode ? mockApi.importCards(document) : request('/api/cards/import', {
       method: 'POST', body: JSON.stringify(document),
     }),
 
   listCards: (): Promise<MarketplaceCard[]> =>
-    isDemoMode ? mockApi.listCards() : request('/api/cards'),
+    isE2ETestMode ? mockApi.listCards() : request('/api/cards'),
 
   getCard: (cardId: number): Promise<MarketplaceCard> =>
-    isDemoMode ? mockApi.getCard(cardId) : request(`/api/cards/${cardId}`),
+    isE2ETestMode ? mockApi.getCard(cardId) : request(`/api/cards/${cardId}`),
 
   createCard: (input: CreateCardInput): Promise<MarketplaceCard> =>
-    isDemoMode
+    isE2ETestMode
       ? mockApi.createCard(input)
       : request('/api/cards', { method: 'POST', body: JSON.stringify(input) }),
 
   updateCard: (cardId: number, input: UpdateCardInput): Promise<MarketplaceCard> =>
-    isDemoMode
+    isE2ETestMode
       ? mockApi.updateCard(cardId, input)
       : request(`/api/cards/${cardId}`, { method: 'PATCH', body: JSON.stringify(input) }),
 
   deleteCard: (cardId: number): Promise<void> =>
-    isDemoMode
+    isE2ETestMode
       ? mockApi.deleteCard(cardId)
       : request(`/api/cards/${cardId}`, { method: 'DELETE' }),
 
   getHistory: (cardId: number, days: number, page = 1, pageSize = 50): Promise<CardHistoryResponse> =>
-    isDemoMode
+    isE2ETestMode
       ? mockApi.getHistory(cardId, days, page, pageSize)
       : request(`/api/cards/${cardId}/history?days=${days}&page=${page}&pageSize=${pageSize}`),
 
   getChart: (cardId: number, days: number): Promise<ChartResponse> =>
-    isDemoMode ? mockApi.getChart(cardId, days) : request(`/api/cards/${cardId}/chart?days=${days}`),
+    isE2ETestMode ? mockApi.getChart(cardId, days) : request(`/api/cards/${cardId}/chart?days=${days}`),
 
   listDeals: (): Promise<Deal[]> =>
-    isDemoMode ? mockApi.listDeals() : request('/api/cards/deals'),
+    isE2ETestMode ? mockApi.listDeals() : request('/api/cards/deals'),
 
   listRuns: (): Promise<CollectionRun[]> =>
-    isDemoMode ? mockApi.listRuns() : request('/api/runs?page=1&pageSize=50'),
+    isE2ETestMode ? mockApi.listRuns() : request('/api/runs?page=1&pageSize=50'),
 
   startRun: (cardId?: number): Promise<CollectionRun> =>
-    isDemoMode
+    isE2ETestMode
       ? mockApi.startRun(cardId)
       : request('/api/runs', {
           method: 'POST',
@@ -129,15 +130,15 @@ export const api = {
         }),
 
   getRun: (runId: number, includeErrors = false): Promise<CollectionRun> =>
-    isDemoMode ? mockApi.getRun(runId, includeErrors) : request(`/api/runs/${runId}?includeErrors=${includeErrors}`),
+    isE2ETestMode ? mockApi.getRun(runId, includeErrors) : request(`/api/runs/${runId}?includeErrors=${includeErrors}`),
 
   continueRun: (runId: number): Promise<CollectionRun> =>
-    isDemoMode
+    isE2ETestMode
       ? mockApi.continueRun(runId)
       : request(`/api/runs/${runId}/continue`, { method: 'POST' }),
 
   retryRun: (runId: number): Promise<CollectionRun> =>
-    isDemoMode ? mockApi.retryRun(runId) : request(`/api/runs/${runId}/retry`, { method: 'POST' }),
+    isE2ETestMode ? mockApi.retryRun(runId) : request(`/api/runs/${runId}/retry`, { method: 'POST' }),
 }
 
-export const apiModeLabel = isDemoMode ? 'Демо-данные' : isDesktopMode ? 'Desktop' : 'API'
+export const apiModeLabel = isE2ETestMode ? 'Тестовые данные' : 'Desktop'

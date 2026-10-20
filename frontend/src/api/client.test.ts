@@ -7,6 +7,17 @@ afterEach(() => {
 })
 
 describe('desktop API client', () => {
+  it('rejects live requests before the desktop API is configured', async () => {
+    vi.stubEnv('VITE_DESKTOP_MODE', 'false')
+    vi.stubEnv('VITE_E2E_TEST_MODE', 'false')
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { api } = await import('./client')
+
+    await expect(api.listCards()).rejects.toThrow('Локальный API ещё не запущен')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('uses the runtime address and session token', async () => {
     vi.stubEnv('VITE_DESKTOP_MODE', 'true')
     const fetchMock = vi.fn().mockResolvedValue(new Response('[]', { status: 200 }))

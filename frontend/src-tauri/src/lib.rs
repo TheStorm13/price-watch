@@ -13,6 +13,8 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
+use tauri::{Emitter, Manager};
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
 
 mod native_services;
@@ -25,6 +27,24 @@ struct ApiConfig {
     token: Option<String>,
 }
 
+impl PartialEq for ApiConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.base_url == other.base_url && self.token == other.token
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BackgroundState {
+    enabled: bool,
+    service_error: Option<String>,
+}
+
+enum ServiceEvent<'a> {
+    Changed(&'a ApiConfig),
+    Error(&'a str),
+}
+
 struct RuntimeState {
     project_root: PathBuf,
     profile_dir: PathBuf,
@@ -35,6 +55,8 @@ struct RuntimeState {
     worker: Mutex<Option<WorkerProcess>>,
     manual_browser: Mutex<Option<Child>>,
     startup: Mutex<()>,
+    last_config: Mutex<Option<ApiConfig>>,
+    service_error: Mutex<Option<String>>,
 }
 
 struct WorkerProcess {
@@ -43,7 +65,84 @@ struct WorkerProcess {
     supervisor: JoinHandle<()>,
 }
 
+fn wait_for_worker_exit(child: &mut Child, timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    while matches!(child.try_wait(), Ok(None)) && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(50));
+    }
+    matches!(child.try_wait(), Ok(Some(_)))
+}
+
+fn stop_child_gracefully(child: &mut Child, interrupt_timeout: Duration, term_timeout: Duration) {
+    if matches!(child.try_wait(), Ok(Some(_))) {
+        return;
+    }
+    // asyncio.run handles SIGINT by cancelling the active task, which lets
+    // CollectionService and the Ozon context manager close their resources.
+    #[cfg(unix)]
+    unsafe {
+        libc::kill(child.id() as i32, libc::SIGINT);
+    }
+    if !wait_for_worker_exit(child, interrupt_timeout) {
+        #[cfg(unix)]
+        unsafe {
+            libc::kill(child.id() as i32, libc::SIGTERM);
+        }
+        if !wait_for_worker_exit(child, term_timeout) {
+            let _ = child.kill();
+        }
+    }
+    let _ = child.wait();
+}
+
 impl RuntimeState {
+    fn ensure_and_publish(&self, app: &tauri::AppHandle) -> Result<ApiConfig, String> {
+        let result = self.ensure_services();
+        self.record_service_result(&result, |event| match event {
+            ServiceEvent::Changed(config) => {
+                let _ = app.emit("services-changed", config);
+            }
+            ServiceEvent::Error(message) => {
+                let _ = app.emit("services-error", message);
+            }
+        });
+        result
+    }
+
+    fn record_service_result(
+        &self,
+        result: &Result<ApiConfig, String>,
+        mut publish: impl FnMut(ServiceEvent<'_>),
+    ) {
+        match &result {
+            Ok(config) => {
+                if let Ok(mut previous) = self.last_config.lock() {
+                    if previous.as_ref() != Some(config) {
+                        *previous = Some(config.clone());
+                        publish(ServiceEvent::Changed(config));
+                    }
+                }
+                if let Ok(mut error) = self.service_error.lock() {
+                    *error = None;
+                }
+            }
+            Err(message) => {
+                if let Ok(mut previous) = self.last_config.lock() {
+                    *previous = None;
+                }
+                if let Ok(mut error) = self.service_error.lock() {
+                    if error.as_ref() != Some(message) {
+                        eprintln!(
+                            "Не удалось запустить или восстановить локальные службы: {message}"
+                        );
+                        *error = Some(message.clone());
+                        publish(ServiceEvent::Error(message));
+                    }
+                }
+            }
+        }
+    }
+
     fn ensure_services(&self) -> Result<ApiConfig, String> {
         let _startup_guard = self
             .startup
@@ -163,8 +262,11 @@ impl RuntimeState {
 
             loop {
                 if stop_rx.try_recv().is_ok() {
-                    let _ = child.kill();
-                    let _ = child.wait();
+                    stop_child_gracefully(
+                        &mut child,
+                        Duration::from_secs(12),
+                        Duration::from_secs(3),
+                    );
                     break;
                 }
                 match child.try_wait() {
@@ -285,6 +387,7 @@ impl RuntimeState {
             .args([
                 "--no-first-run",
                 "--no-default-browser-check",
+                "--start-maximized",
                 "--ozone-platform=x11",
             ])
             .args(store_urls)
@@ -403,13 +506,138 @@ fn migrate_profile(old: &Path, new: &Path) -> Result<(), String> {
 
 #[cfg(test)]
 mod path_tests {
-    use super::{migrate_profile, RuntimeState};
+    use super::{
+        is_background_launch, migrate_profile, stop_child_gracefully, ApiConfig, RuntimeState,
+        ServiceEvent,
+    };
     use std::{
         fs,
+        io::{BufRead, BufReader},
         path::PathBuf,
-        sync::Mutex,
-        time::{SystemTime, UNIX_EPOCH},
+        process::{Command, Stdio},
+        sync::{Arc, Mutex},
+        time::{Duration, SystemTime, UNIX_EPOCH},
     };
+
+    fn signal_test_child(script: &str, marker: &std::path::Path) -> std::process::Child {
+        let mut child = Command::new("python3")
+            .args(["-u", "-c", script])
+            .arg(marker)
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("test Python process should start");
+        let mut ready = String::new();
+        BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut ready)
+            .unwrap();
+        assert_eq!(ready, "ready\n");
+        child
+    }
+
+    #[test]
+    fn graceful_worker_stop_sends_sigint_before_fallback() {
+        let marker =
+            std::env::temp_dir().join(format!("price-watch-sigint-{}", std::process::id()));
+        let mut child = signal_test_child(
+            "import signal,sys,time\ndef stop(sig, frame):\n open(sys.argv[1], 'w').write('sigint')\n sys.exit(0)\nsignal.signal(signal.SIGINT, stop)\nprint('ready')\nwhile True: time.sleep(.1)",
+            &marker,
+        );
+        stop_child_gracefully(
+            &mut child,
+            Duration::from_secs(2),
+            Duration::from_millis(100),
+        );
+        assert_eq!(fs::read_to_string(&marker).unwrap(), "sigint");
+        assert!(child.try_wait().unwrap().is_some());
+        fs::remove_file(marker).unwrap();
+    }
+
+    #[test]
+    fn unresponsive_worker_is_killed_after_bounded_wait() {
+        let marker =
+            std::env::temp_dir().join(format!("price-watch-fallback-{}", std::process::id()));
+        let mut child = signal_test_child(
+            "import signal,time\nsignal.signal(signal.SIGINT, signal.SIG_IGN)\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nprint('ready')\nwhile True: time.sleep(.1)",
+            &marker,
+        );
+        stop_child_gracefully(
+            &mut child,
+            Duration::from_millis(150),
+            Duration::from_millis(150),
+        );
+        assert!(child.try_wait().unwrap().is_some());
+        assert!(!marker.exists());
+    }
+
+    #[test]
+    fn recognizes_only_explicit_background_flag() {
+        assert!(is_background_launch([
+            "price-watch".into(),
+            "--background".into()
+        ]));
+        assert!(!is_background_launch(["price-watch".into()]));
+        assert!(!is_background_launch([
+            "price-watch".into(),
+            "--background=false".into()
+        ]));
+    }
+
+    #[test]
+    fn service_events_replace_failed_or_stale_api_connections() {
+        let runtime = RuntimeState {
+            project_root: PathBuf::new(),
+            profile_dir: PathBuf::new(),
+            data_dir: PathBuf::new(),
+            state_dir: PathBuf::new(),
+            config_dir: PathBuf::new(),
+            native: Mutex::new(None),
+            worker: Mutex::new(None),
+            manual_browser: Mutex::new(None),
+            startup: Mutex::new(()),
+            last_config: Mutex::new(None),
+            service_error: Mutex::new(None),
+        };
+        let first = ApiConfig {
+            base_url: "http://127.0.0.1:49123".into(),
+            token: Some("first".into()),
+        };
+        let second = ApiConfig {
+            base_url: "http://127.0.0.1:49124".into(),
+            token: Some("second".into()),
+        };
+        let mut events = Vec::new();
+        let mut record = |event: ServiceEvent<'_>| match event {
+            ServiceEvent::Changed(config) => events.push(format!(
+                "changed:{}:{}",
+                config.base_url,
+                config.token.as_deref().unwrap()
+            )),
+            ServiceEvent::Error(message) => events.push(format!("error:{message}")),
+        };
+
+        runtime.record_service_result(&Ok(first.clone()), &mut record);
+        runtime.record_service_result(&Ok(first), &mut record);
+        runtime.record_service_result(&Err("API недоступен".into()), &mut record);
+        runtime.record_service_result(&Err("API недоступен".into()), &mut record);
+        assert!(runtime.last_config.lock().unwrap().is_none());
+        assert_eq!(
+            runtime.service_error.lock().unwrap().as_deref(),
+            Some("API недоступен")
+        );
+        runtime.record_service_result(&Ok(second.clone()), &mut record);
+        drop(record);
+
+        assert_eq!(
+            events,
+            [
+                "changed:http://127.0.0.1:49123:first",
+                "error:API недоступен",
+                "changed:http://127.0.0.1:49124:second",
+            ]
+        );
+        assert!(runtime.last_config.lock().unwrap().as_ref() == Some(&second));
+        assert!(runtime.service_error.lock().unwrap().is_none());
+    }
 
     #[test]
     fn moves_existing_browser_profile_without_losing_data() {
@@ -450,15 +678,62 @@ mod path_tests {
             worker: Mutex::new(None),
             manual_browser: Mutex::new(None),
             startup: Mutex::new(()),
+            last_config: Mutex::new(None),
+            service_error: Mutex::new(None),
         };
         let config = runtime
             .ensure_services()
             .expect("native runtime should start");
         assert!(config.token.is_some());
+        let initial_worker = Arc::clone(&runtime.worker.lock().unwrap().as_ref().unwrap().running);
+        let repeat = runtime
+            .ensure_services()
+            .expect("native runtime should be reusable");
+        assert!(
+            config == repeat,
+            "repeated ensure must retain the API connection"
+        );
+        assert!(Arc::ptr_eq(
+            &initial_worker,
+            &runtime.worker.lock().unwrap().as_ref().unwrap().running,
+        ));
         std::thread::sleep(std::time::Duration::from_millis(750));
         assert!(runtime.worker_is_running().unwrap());
         assert!(runtime.native.lock().unwrap().as_mut().unwrap().is_ready());
         assert!(!runtime.profile_dir.join("DevToolsActivePort").exists());
+        runtime.stop_worker();
+        assert!(!runtime.worker_is_running().unwrap());
+        runtime
+            .ensure_services()
+            .expect("stopped worker should restart");
+        assert!(runtime.worker_is_running().unwrap());
+        assert!(!Arc::ptr_eq(
+            &initial_worker,
+            &runtime.worker.lock().unwrap().as_ref().unwrap().running,
+        ));
+
+        let mut previous = repeat;
+        for service in ["api", "display", "postgres"] {
+            runtime
+                .native
+                .lock()
+                .unwrap()
+                .as_mut()
+                .unwrap()
+                .stop_service_for_test(service);
+            let recovered = runtime
+                .ensure_services()
+                .unwrap_or_else(|error| panic!("{service} should recover: {error}"));
+            assert_ne!(
+                recovered.token, previous.token,
+                "{service} must replace the API token"
+            );
+            assert!(
+                runtime.worker_is_running().unwrap(),
+                "{service} must restart the worker"
+            );
+            previous = recovered;
+        }
         runtime.stop_worker();
         *runtime.native.lock().unwrap() = None;
     }
@@ -510,12 +785,105 @@ fn user_base_dir(variable: &str, fallback: &str) -> Result<PathBuf, String> {
     Ok(home.join(fallback))
 }
 
+fn is_background_launch(args: impl IntoIterator<Item = String>) -> bool {
+    args.into_iter()
+        .skip(1)
+        .any(|argument| argument == "--background")
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+fn install_tray(app: &mut tauri::App) -> tauri::Result<()> {
+    use tauri::{
+        menu::{MenuBuilder, MenuItemBuilder},
+        tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    };
+
+    let open = MenuItemBuilder::with_id("open", "Открыть Price Watch").build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "Выход").build(app)?;
+    let menu = MenuBuilder::new(app).items(&[&open, &quit]).build()?;
+    let mut tray = TrayIconBuilder::new()
+        .menu(&menu)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "open" => show_main_window(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.build(app)?;
+    Ok(())
+}
+
 #[tauri::command]
-async fn ensure_services(state: tauri::State<'_, Arc<RuntimeState>>) -> Result<ApiConfig, String> {
+async fn ensure_services(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<RuntimeState>>,
+) -> Result<ApiConfig, String> {
     let state = Arc::clone(state.inner());
-    tauri::async_runtime::spawn_blocking(move || state.ensure_services())
+    tauri::async_runtime::spawn_blocking(move || state.ensure_and_publish(&app))
         .await
         .map_err(|error| format!("Ошибка задачи запуска: {error}"))?
+}
+
+#[tauri::command]
+fn get_background_state(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<RuntimeState>>,
+) -> Result<BackgroundState, String> {
+    let enabled = app
+        .autolaunch()
+        .is_enabled()
+        .map_err(|error| error.to_string())?;
+    let service_error = state
+        .service_error
+        .lock()
+        .map_err(|_| "Ошибка состояния служб")?
+        .clone();
+    Ok(BackgroundState {
+        enabled,
+        service_error,
+    })
+}
+
+#[tauri::command]
+fn set_background_enabled(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<RuntimeState>>,
+    enabled: bool,
+) -> Result<BackgroundState, String> {
+    if enabled {
+        app.autolaunch()
+            .enable()
+            .map_err(|error| format!("Не удалось включить фоновый режим: {error}"))?;
+    } else {
+        app.autolaunch()
+            .disable()
+            .map_err(|error| format!("Не удалось отключить фоновый режим: {error}"))?;
+    }
+    get_background_state(app, state)
+}
+
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 #[tauri::command]
@@ -561,6 +929,19 @@ async fn save_export_file(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let background_launch = is_background_launch(env::args());
+    let mut context = tauri::generate_context!();
+    if background_launch {
+        if let Some(main) = context
+            .config_mut()
+            .app
+            .windows
+            .iter_mut()
+            .find(|window| window.label == "main")
+        {
+            main.visible = false;
+        }
+    }
     let runtime = Arc::new(RuntimeState {
         project_root: project_root(),
         profile_dir: user_base_dir("XDG_DATA_HOME", ".local/share")
@@ -579,24 +960,90 @@ pub fn run() {
         worker: Mutex::new(None),
         manual_browser: Mutex::new(None),
         startup: Mutex::new(()),
+        last_config: Mutex::new(None),
+        service_error: Mutex::new(None),
     });
     let cleanup = Arc::clone(&runtime);
+    let setup_runtime = Arc::clone(&runtime);
+    let monitor_shutdown = Arc::new(AtomicBool::new(false));
+    let setup_shutdown = Arc::clone(&monitor_shutdown);
+    let monitor_join = Arc::new(Mutex::new(None::<JoinHandle<()>>));
+    let setup_join = Arc::clone(&monitor_join);
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app)
+        }))
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--background"]),
+        ))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(runtime)
         .invoke_handler(tauri::generate_handler![
             ensure_services,
+            get_background_state,
+            set_background_enabled,
+            quit_app,
             open_store_browser,
             prepare_collection,
             save_export_file
         ])
-        .build(tauri::generate_context!())
+        .setup(move |app| {
+            if let Err(error) = install_tray(app) {
+                eprintln!("Не удалось создать значок в системном tray: {error}");
+            }
+            if background_launch {
+                if let Some(window) = app.get_webview_window("main") {
+                    window.hide()?;
+                }
+            }
+            let handle = app.handle().clone();
+            let runtime = Arc::clone(&setup_runtime);
+            let shutdown = Arc::clone(&setup_shutdown);
+            let monitor = thread::spawn(move || {
+                // Own the services independently of the webview. Failed starts are
+                // retried at most once every five seconds while the app is alive.
+                while !shutdown.load(Ordering::Acquire) {
+                    let _ = runtime.ensure_and_publish(&handle);
+                    for _ in 0..50 {
+                        if shutdown.load(Ordering::Acquire) {
+                            return;
+                        }
+                        thread::sleep(Duration::from_millis(100));
+                    }
+                }
+            });
+            *setup_join
+                .lock()
+                .map_err(|_| "Ошибка запуска монитора служб")? = Some(monitor);
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window
+                    .app_handle()
+                    .autolaunch()
+                    .is_enabled()
+                    .unwrap_or(false)
+                {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
+        .build(context)
         .expect("Не удалось собрать Tauri-приложение");
 
     app.run(move |_app_handle, event| {
         if matches!(event, tauri::RunEvent::Exit) {
+            monitor_shutdown.store(true, Ordering::Release);
+            if let Ok(mut monitor) = monitor_join.lock() {
+                if let Some(monitor) = monitor.take() {
+                    let _ = monitor.join();
+                }
+            }
             cleanup.stop_worker();
             cleanup.stop_manual_browser();
             if let Ok(mut native) = cleanup.native.lock() {

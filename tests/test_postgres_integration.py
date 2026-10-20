@@ -1,3 +1,4 @@
+import asyncio
 import os
 import unittest
 from contextlib import asynccontextmanager
@@ -504,6 +505,11 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         run = await repository.create_queued_run(card.id)
         try:
+            await repository.save_observation(card, run.id, ProductSnapshot(
+                ref=ProductRef("integration-test", card.external_id), title="Товар",
+                url="https://example.test/product", availability=Availability.IN_STOCK,
+                price=123.45,
+            ))
             old = datetime.now(timezone.utc) - timedelta(minutes=2)
             with self.database.session() as session, session.begin():
                 record = session.get(CollectionRunRecord, run.id)
@@ -515,6 +521,8 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(loaded.status, "failed")
             self.assertEqual(loaded.errors[0]["type"], "WorkerStopped")
             self.assertIsNotNone(loaded.finished_at)
+            self.assertEqual([point.price for point in await repository.get_history(card.id, 1)],
+                             [Decimal("123.45")])
         finally:
             await repository.delete_card(card.id)
             with self.database.session() as session, session.begin():
@@ -567,44 +575,71 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         cards = [await repository.add_card("integration-test", f"test-{uuid4()}") for _ in range(2)]
         await repository.update_card(cards[1].id, deals_enabled=False)
         future = datetime(2100, 1, 1, tzinfo=timezone.utc)
-        scheduled = single = later = manual_full = final = None
+        scheduled = single = later = overdue = manual_full = final = None
         try:
+            # With no previous full run, the first check queues all supported cards.
             scheduled = await repository.create_due_run(future)
             self.assertIsNotNone(scheduled)
             self.assertIn(cards[0].id, scheduled.target_card_ids)
             self.assertIn(cards[1].id, scheduled.target_card_ids)
-            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=13)))
+            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=7)))
             await repository.finish_run(scheduled.id, "completed", 0, 0)
-            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=11)))
+            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=6, seconds=-1)))
 
-            single = await repository.create_queued_run(cards[0].id)
+            single = await repository.get_run(await repository.start_run(1, cards[0].id))
             with self.database.session() as session, session.begin():
-                session.get(CollectionRunRecord, single.id).started_at = future + timedelta(hours=11)
+                single_record = session.get(CollectionRunRecord, single.id)
+                self.assertFalse(single_record.is_full_collection)
+                self.assertEqual(single_record.requested_card_id, cards[0].id)
+                single_record.started_at = future + timedelta(hours=5)
             await repository.finish_run(single.id, "completed", 1, 0)
             await repository.delete_card(cards[0].id)
             self.assertIsNone((await repository.get_run(single.id)).requested_card_id)
 
-            later = await repository.create_due_run(future + timedelta(hours=13))
+            # The single-card run does not move the deadline; concurrent checks
+            # at the six-hour boundary create exactly one full run.
+            results = await asyncio.gather(*(
+                repository.create_due_run(future + timedelta(hours=6)) for _ in range(2)
+            ))
+            self.assertEqual(sum(run is not None for run in results), 1)
+            later = next(run for run in results if run is not None)
             self.assertIsNotNone(later)
-            self.assertEqual(later.started_at, future + timedelta(hours=13))
+            self.assertEqual(later.started_at, future + timedelta(hours=6))
             self.assertEqual(later.target_card_ids, (cards[1].id,))
-            await repository.finish_run(later.id, "completed", 1, 0)
+            await repository.record_run_error(later.id, {
+                "cardId": cards[1].id, "marketplace": "integration-test",
+                "externalId": cards[1].external_id, "message": "collection failed",
+            }, 0, 1)
+            await repository.finish_run(later.id, "failed", 0, 1)
+            self.assertEqual((await repository.get_run(later.id)).errors[0]["message"], "collection failed")
+            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=12, seconds=-1)))
 
-            manual_full = await repository.create_queued_run()
+            # Missed intervals are not replayed: one overdue run resets the clock.
+            overdue_at = future + timedelta(days=2)
+            overdue = await repository.create_due_run(overdue_at)
+            self.assertIsNotNone(overdue)
+            self.assertIsNone(await repository.create_due_run(overdue_at))
+            await repository.finish_run(overdue.id, "completed", 1, 0)
+            self.assertIsNone(await repository.create_due_run(overdue_at))
+
+            manual_full = await repository.get_run(await repository.start_run(1))
             with self.database.session() as session, session.begin():
-                session.get(CollectionRunRecord, manual_full.id).started_at = future + timedelta(hours=14)
+                manual_record = session.get(CollectionRunRecord, manual_full.id)
+                self.assertTrue(manual_record.is_full_collection)
+                self.assertIsNone(manual_record.requested_card_id)
+                manual_record.started_at = overdue_at + timedelta(hours=1)
             await repository.finish_run(manual_full.id, "completed", 1, 0)
-            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=25)))
-            final = await repository.create_due_run(future + timedelta(hours=27))
+            self.assertIsNone(await repository.create_due_run(overdue_at + timedelta(hours=7, seconds=-1)))
+            final = await repository.create_due_run(overdue_at + timedelta(hours=7))
             self.assertIsNotNone(final)
         finally:
-            for run in (scheduled, single, later, manual_full, final):
+            for run in (scheduled, single, later, overdue, manual_full, final):
                 if run:
                     await repository.finish_run(run.id, "failed", 0, 0)
             for card in cards:
                 await repository.delete_card(card.id)
             with self.database.session() as session, session.begin():
-                for run in (scheduled, single, later, manual_full, final):
+                for run in (scheduled, single, later, overdue, manual_full, final):
                     if run:
                         session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
 

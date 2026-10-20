@@ -9,4 +9,4 @@ if [ ! -x "$binary" ]; then
     exit 1
 fi
 
-exec "$binary"
+exec "$binary" "$@"

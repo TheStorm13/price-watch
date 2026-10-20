@@ -174,6 +174,11 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                 "Access-Control-Request-Headers": "x-price-watch-token",
             })
             self.assertEqual(preflight.status_code, 200)
+            web_preflight = await client.options("/api/cards", headers={
+                "Origin": "http://127.0.0.1:5173",
+                "Access-Control-Request-Method": "GET",
+            })
+            self.assertEqual(web_preflight.status_code, 400)
 
     async def test_export_and_import_use_card_history_contract(self):
         exported = await self.client.get("/api/cards/export")

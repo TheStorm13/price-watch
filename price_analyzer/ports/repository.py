@@ -16,7 +16,7 @@ class PriceAnalyzerRepository(Protocol):
     ) -> Iterable[MarketplaceCard]:
         ...
 
-    async def start_run(self, total_count: int) -> int:
+    async def start_run(self, total_count: int, card_id: Optional[int] = None) -> int:
         ...
 
     async def save_observation(

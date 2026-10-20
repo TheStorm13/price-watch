@@ -89,7 +89,7 @@ test('теги карточек и групп можно менять и фил�
   await expect(page.getByRole('row', { name: /Техника/ })).toHaveCount(0)
 })
 
-test('основной desktop-сценарий', async ({ page }) => {
+test('основной сценарий интерфейса в браузерном E2E', async ({ page }) => {
   const errors: string[] = []
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text())
@@ -532,6 +532,20 @@ test('фильтр предложений показывает цену, мин�
   await expect(page.locator('.cards-grid__item')).toContainText(['78 000 ₽'])
   await page.goto('/deals')
   await expect(page).toHaveURL(/\/cards$/)
+})
+
+test('после повторного открытия видны сохранённые предложения и результат запуска', async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem('price-watch-active-run', '20'))
+  await page.goto('/cards?deals=1')
+  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toContainText('72 990 ₽')
+  await expect(page.getByLabel('Состояние обновления цен')).toContainText('Показать ошибки')
+
+  await page.reload()
+  await expect(page.getByRole('checkbox', { name: 'Выгодные предложения' })).toBeChecked()
+  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toContainText('5 010 ₽')
+  const run = page.getByLabel('Состояние обновления цен')
+  await run.getByText('Показать ошибки').click()
+  await expect(run).toContainText('Не удалось получить страницу товара')
 })
 
 test('ошибки запуска можно повторить отдельно', async ({ page }) => {

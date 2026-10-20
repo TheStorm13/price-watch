@@ -1,6 +1,8 @@
 import asyncio
 import json
+import subprocess
 import unittest
+from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -10,6 +12,68 @@ from marketplace_connector.domain.errors import MarketplaceUnavailable
 
 
 class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_cancelled_collection_closes_browser_and_profile_process(self):
+        with TemporaryDirectory() as directory:
+            client = AsyncOzonClient(directory, virtual_display=True)
+            browser = MagicMock()
+            browser.close = AsyncMock()
+            process = MagicMock()
+            process.poll.return_value = None
+            entered = asyncio.Event()
+
+            @asynccontextmanager
+            async def fake_playwright():
+                yield MagicMock()
+
+            async def fake_launch(_playwright):
+                client._async_browser = browser
+                client._async_process = process
+
+            async def collect_until_cancelled():
+                async with client.collection_session():
+                    entered.set()
+                    await asyncio.Event().wait()
+
+            async def immediate_to_thread(function, *args, **kwargs):
+                return function(*args, **kwargs)
+
+            with (
+                patch("marketplace_connector.connectors.ozon.async_client.async_playwright", fake_playwright),
+                patch.object(client, "_launch_async_context", side_effect=fake_launch),
+                patch("marketplace_connector.connectors.ozon.async_client.asyncio.to_thread", immediate_to_thread),
+            ):
+                task = asyncio.create_task(collect_until_cancelled())
+                await entered.wait()
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+
+            browser.close.assert_awaited_once()
+            process.terminate.assert_called_once()
+            process.wait.assert_called_once_with(timeout=5)
+            process.kill.assert_not_called()
+            self.assertIsNone(client._async_process)
+            self.assertIsNone(client._async_playwright)
+
+    async def test_browser_cleanup_kills_process_that_ignores_terminate(self):
+        with TemporaryDirectory() as directory:
+            client = AsyncOzonClient(directory)
+            process = MagicMock()
+            process.poll.return_value = None
+            process.wait.side_effect = [subprocess.TimeoutExpired("chrome", 5), 0]
+            client._async_process = process
+
+            async def immediate_to_thread(function, *args, **kwargs):
+                return function(*args, **kwargs)
+
+            with patch("marketplace_connector.connectors.ozon.async_client.asyncio.to_thread", immediate_to_thread):
+                await client._close_async_context()
+
+            process.terminate.assert_called_once()
+            process.kill.assert_called_once()
+            self.assertEqual(process.wait.call_count, 2)
+            self.assertIsNone(client._async_process)
+
     async def test_background_collection_closes_open_profile_browser(self):
         with TemporaryDirectory() as directory:
             Path(directory, "DevToolsActivePort").write_text(
@@ -45,8 +109,13 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
             browser.close = AsyncMock()
             playwright = MagicMock()
             playwright.chromium.connect_over_cdp = AsyncMock(return_value=browser)
+            async def immediate_to_thread(function, *args, **kwargs):
+                return function(*args, **kwargs)
             with patch("marketplace_connector.connectors.ozon.async_client.http.client.HTTPConnection",
-                       return_value=Connection()):
+                       return_value=Connection()), patch(
+                           "marketplace_connector.connectors.ozon.async_client.asyncio.to_thread",
+                           immediate_to_thread,
+                       ):
                 await client._close_open_profile_browser(playwright)
 
             session.send.assert_awaited_once_with("Browser.close")
@@ -64,8 +133,13 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
             connection = MagicMock()
             connection.getresponse.return_value = response
             playwright = MagicMock()
+            async def immediate_to_thread(function, *args, **kwargs):
+                return function(*args, **kwargs)
             with patch("marketplace_connector.connectors.ozon.async_client.http.client.HTTPConnection",
-                       return_value=connection):
+                       return_value=connection), patch(
+                           "marketplace_connector.connectors.ozon.async_client.asyncio.to_thread",
+                           immediate_to_thread,
+                       ):
                 await AsyncOzonClient(directory, virtual_display=True)._close_open_profile_browser(playwright)
             playwright.chromium.connect_over_cdp.assert_not_called()
 

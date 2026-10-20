@@ -14,9 +14,10 @@ from .repository_common import ConnectorNotAvailable, NoCards, _RUN_CREATION_LOC
 
 
 class RunRepository:
-    async def start_run(self, total_count: int) -> int:
+    async def start_run(self, total_count: int, card_id: Optional[int] = None) -> int:
         record = CollectionRunRecord(status="running", total_count=total_count,
-                                     is_full_collection=True)
+                                     requested_card_id=card_id,
+                                     is_full_collection=card_id is None)
         async with self._database.session() as session, session.begin():
             session.add(record)
             await session.flush()
@@ -47,7 +48,7 @@ class RunRepository:
         return _run(record)
 
     async def create_due_run(self, now: datetime | None = None) -> Optional[CollectionRun]:
-        """Queue all cards once every 12 hours while a worker is alive."""
+        """Queue all cards once every 6 hours while a worker is alive."""
         now = now or datetime.now(timezone.utc)
         async with self._database.session() as session, session.begin():
             await session.execute(_RUN_CREATION_LOCK)
@@ -61,7 +62,7 @@ class RunRepository:
             ).order_by(
                 CollectionRunRecord.started_at.desc(), CollectionRunRecord.id.desc()
             ).limit(1)))
-            if last_started is not None and now - last_started < timedelta(hours=12):
+            if last_started is not None and now - last_started < timedelta(hours=6):
                 return None
             cards = (await session.scalars(select(MarketplaceCardRecord).where(
                 MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES)

@@ -66,8 +66,9 @@ class FakeRepository:
     async def list_collection_cards(self, card_id=None):
         return [item for item in self.cards if card_id is None or item.id == card_id]
 
-    async def start_run(self, total_count):
+    async def start_run(self, total_count, card_id=None):
         self.total_count = total_count
+        self.started_card_id = card_id
         return 42
 
     async def save_observation(self, item, run_id, snapshot):
@@ -100,11 +101,13 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         summary = await service.collect()
         self.assertEqual(summary.success_count, 2)
         self.assertEqual({item.id for item, _, _ in repository.saved}, {1, 2})
+        self.assertIsNone(repository.started_card_id)
 
         repository.saved.clear()
         summary = await service.collect(excluded.id)
         self.assertEqual(summary.success_count, 1)
         self.assertEqual([item.id for item, _, _ in repository.saved], [2])
+        self.assertEqual(repository.started_card_id, excluded.id)
 
     async def test_async_collection_limits_to_five_tabs_and_keeps_card_errors(self):
         class AsyncConnector(FakeConnector):

@@ -5,14 +5,16 @@
 Команды выполняются из корня репозитория. Для desktop нужны системные
 `postgresql`, `xorg-server-xvfb`, `xorg-xauth`, Google Chrome, Python,
 Node.js/npm и Rust. Локальные PostgreSQL, API, Xvfb и worker запускаются
-вместе с приложением и завершаются при его закрытии.
+вместе с приложением. При включённом фоновом режиме они продолжают работу
+после закрытия окна; полный выход через интерфейс или tray останавливает их.
 
 ## Первый запуск
 
 ```bash
 python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-npm --prefix frontend install
+.venv/bin/pip install --require-hashes -r requirements.txt
+.venv/bin/pip check
+npm --prefix frontend ci
 npm --prefix frontend run desktop:build
 ./price-watch
 ```
@@ -22,6 +24,13 @@ npm --prefix frontend run desktop:build
 или интерфейса повторите `desktop:build`; после изменения Python перезапустите
 приложение. AppImage не создаётся. При установке готового пакета из релиза
 сборка из исходников не требуется.
+
+Фоновый режим включается в интерфейсе и регистрирует скрытый запуск после
+следующего входа в графическую сессию. Для проверки локального бинарника
+можно выполнить `./price-watch --background`; повторный запуск
+`./price-watch` откроет уже работающее окно. Сбор при выключенном ПК или до
+входа в графическую сессию не выполняется. После простоя worker поставит
+один просроченный полный сбор.
 
 База, профиль Chrome и логи находятся в пользовательских каталогах XDG;
 подробности приведены в [описании локальных служб](NATIVE_DESKTOP.md).
@@ -36,8 +45,10 @@ npm --prefix frontend run desktop
 ```
 
 Команда запускает Tauri и Vite на `127.0.0.1:1420` с обновлением интерфейса.
-Для разработки интерфейса без базы используйте
-`npm --prefix frontend run dev:demo`.
+Для браузерных E2E-тестов интерфейса без базы используйте
+`npm --prefix frontend run dev:e2e`. Это тестовый стенд с mock API;
+рабочего браузерного режима с живым API нет. Правила обновления зависимостей —
+в [отдельном разделе](DEPENDENCIES.md).
 
 ## CLI без интерфейса
 

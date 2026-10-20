@@ -1,0 +1,22 @@
+schema: spec-driven
+
+context: |
+  Marketplace Price Analyzer: React/Tauri desktop UI, FastAPI, Python worker,
+  PostgreSQL/Alembic, Chrome collection, CLI, and database-free JSON mode.
+  Inspect affected code and tests; read only relevant docs, ADRs, and specs.
+  Preserve existing behavior unless the approved change says otherwise.
+
+rules:
+  proposal:
+    - State the goal, affected components, acceptance criteria, and compatibility risks.
+  design:
+    - Compare alternatives and propose an ADR for significant architecture changes.
+    - Include migrations and affected execution paths when applicable.
+  tasks:
+    - Cover relevant tests, contracts, modes, migrations, and documentation.
+    - Use only a disposable TEST_DATABASE_URL for PostgreSQL integration tests.
+
+operations:
+  apply:
+    guidance:
+      - Run relevant checks and report any that could not run.

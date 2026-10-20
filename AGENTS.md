@@ -1,30 +1,39 @@
-# Руководство по репозиторию
+# Marketplace Price Analyzer — Agent Instructions
 
-## Структура проекта
+Desktop price tracker: React/Tauri, FastAPI, Python worker, PostgreSQL/Alembic,
+Chrome collection, CLI, and database-free single-product JSON mode.
 
-`marketplace_connector/` содержит общий контракт товара и коннектор Ozon. В `price_analyzer/` находятся доменная модель, сервис сбора, маршруты FastAPI, worker и работа с PostgreSQL; миграции Alembic — в `price_analyzer/infrastructure/postgres/alembic/`. `ozon_article_json/` предоставляет CLI для одного товара. Интерфейс React расположен в `frontend/src/`, оболочка Tauri и иконки — в `frontend/src-tauri/`. Тесты Python находятся в `tests/`, компонентные тесты — рядом с компонентами, браузерные — в `frontend/e2e/`. Начните с `README.md` и `docs/guide/`; планы записаны в `docs/FUTURE_CHANGES.md`.
+## Working scope
 
-## Запуск, сборка и проверки
+- Inspect only the code, tests, OpenSpec artifacts, ADRs, and guides relevant to
+  the task. Check source before relying on documentation; reuse findings already
+  established unless the code or question changed.
+- Keep changes focused and preserve existing behavior and interfaces unless the
+  approved plan changes them. Do not invent contracts or add needless dependencies.
+- Use `$vibe-flow` for substantial features, cross-component work, and architecture
+  changes. Small isolated fixes can use a direct workflow without OpenSpec. Keep
+  human review before implementation and before completion.
 
-- `python -m venv .venv && .venv/bin/pip install -r requirements.txt` — подготовить окружение Python.
-- `npm --prefix frontend run desktop:build` и `./price-watch` — собрать и запустить приложение с локальными PostgreSQL, API и worker. Для прямого CLI с отдельной базой задайте `DATABASE_URL` и выполните `.venv/bin/python main.py db migrate`.
-- `npm --prefix frontend install` и `npm --prefix frontend run dev:demo` — запустить интерфейс с тестовыми данными. Для реального API используйте `npm --prefix frontend run dev`.
-- `npm --prefix frontend run build` — проверить типы и собрать web-интерфейс. `npm --prefix frontend run desktop:build` собирает исполняемый файл Tauri без установочного пакета.
+## Architecture and compatibility
 
-## Стиль кода и имена
+- Architecture can change. For a significant change, inspect the current design,
+  compare options, propose an ADR, obtain approval, then implement through OpenSpec.
+  Update relevant architecture documentation afterward; do not rewrite old ADRs.
+- Check affected consumers and execution paths: desktop UI, API, worker, collection,
+  persistence/migrations, CLI, and database-free JSON mode. For collection changes,
+  check queued desktop/API/worker collection, `main.py collect`, and numeric Ozon ID
+  mode separately. The numeric mode needs no `DATABASE_URL`, but both CLI imports
+  must remain available. Demo UI uses a mock API and does not verify live services.
 
-Следуйте существующему коду: Python — отступ четыре пробела и `snake_case`; TypeScript — два пробела, `camelCase` для значений и `PascalCase` для компонентов React. Доменную логику размещайте вне маршрутов API и компонентов интерфейса. Изменения схемы БД оформляйте новой миграцией Alembic. Команда `npm run lint` проверяет сборку TypeScript; общего форматтера в проекте нет.
+## Data and verification
 
-## Тестирование
-
-Для Python и API запускайте `.venv/bin/python -m unittest discover -s tests -v`. Новые файлы называйте `test_*.py`, методы — `test_*`. При изменении интерфейса запускайте `npm --prefix frontend test`, `npm --prefix frontend run test:e2e` и `npm --prefix frontend run lint`; модульные тесты frontend имеют суффикс `*.test.ts(x)`. Интеграционные тесты PostgreSQL требуют отдельной базы в `TEST_DATABASE_URL`: не указывайте рабочую БД. Числовой порог покрытия не задан.
-
-## Коммиты и pull request
-
-В истории используются короткие повелительные заголовки с префиксами `feat:` и `docs:`; придерживайтесь этого формата. В pull request опишите изменение поведения, укажите связанную задачу или пункт плана и перечислите выполненные проверки. Для изменений интерфейса приложите скриншоты. Отдельно отметьте миграции, новые настройки и ручную проверку браузера, если они нужны.
-
-После каждой завершённой задачи или доработки проверьте изменения и создайте отдельный git-коммит. Затем выполните сжатие контекста, если среда предоставляет такую возможность. Если принудительное сжатие недоступно, сохраните краткую сводку результата и состояния работы для следующего шага. Незавершённую работу не коммитьте как завершённую задачу.
-
-## Конфигурация и безопасность
-
-Храните учётные данные в локальном `.env`, не добавляйте их в коммиты. Не коммитьте профили браузера, логи и экспортированные данные товаров. Для разработки desktop-версии нужны системные PostgreSQL, Xvfb, xauth и Google Chrome. Перед изменением портов или запуска браузера прочитайте `docs/guide/CURRENT_NUANCES.md`.
+- Preserve price history and avoid duplicate records. Deleting a card cascades to
+  history; import may compact it. Review data effects and migrations before use.
+  Require explicit approval for destructive operations. Never test on user data;
+  PostgreSQL integration tests need a separate disposable `TEST_DATABASE_URL`.
+- Run relevant existing tests and applicable lint/type checks. Verify affected
+  contracts and modes; report checks that could not run. Frontend E2E covers the
+  demo UI only. Commands: `docs/guide/TESTING_AND_TROUBLESHOOTING.md`.
+- Update only documentation whose subject changed. Report changes, verification,
+  compatibility or migration concerns, and remaining risks. Never claim a check
+  passed without running it.

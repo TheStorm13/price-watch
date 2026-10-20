@@ -28,6 +28,22 @@ h2 { font-size: 20px; line-height: 28px; letter-spacing: -0.015em; font-weight: 
 .app-header__browser-button:disabled { opacity: .52; cursor: not-allowed; }
 .app-header__browser-button svg { width: 18px; height: 18px; color: var(--blue); }
 .app-header__browser-error { max-width: 1440px; margin: 16px auto -16px; padding: 0 32px; color: var(--red); overflow-wrap: anywhere; }
+.background-settings { position: relative; }
+.background-settings > summary { width: 36px; height: 36px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); display: grid; place-items: center; background: var(--surface); cursor: pointer; list-style: none; }
+.background-settings > summary::-webkit-details-marker { display: none; }
+.background-settings > summary:hover { background: var(--surface-subtle); }
+.background-settings > summary svg { width: 18px; height: 18px; color: var(--blue); }
+.background-settings__panel { position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; width: 340px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-overlay); }
+.background-settings__panel > strong { font-size: 15px; }
+.background-settings__panel p { margin-top: 8px; color: var(--text-muted); font-size: 12px; }
+.background-settings__toggle { margin-top: 16px; display: flex; align-items: center; gap: 9px; cursor: pointer; font-weight: 560; }
+.background-settings__toggle input { width: 17px; height: 17px; margin: 0; accent-color: var(--blue); }
+.background-settings__toggle:has(input:disabled) { opacity: .6; cursor: wait; }
+.background-settings__panel .background-settings__error { color: var(--red); overflow-wrap: anywhere; }
+.background-settings__quit { width: 100%; min-height: 36px; margin-top: 18px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); cursor: pointer; }
+.background-settings__quit:hover { background: var(--surface-subtle); }
+.desktop-service-error { max-width: 1440px; margin: 16px auto 0; padding: 12px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--red); background: #fff1f0; overflow-wrap: anywhere; }
+.desktop-service-error button { flex: 0 0 auto; border: 0; background: transparent; color: var(--red); font-weight: 650; cursor: pointer; text-decoration: underline; }
 .main-content { min-height: calc(100vh - 64px); }
 .page { width: min(100%, 1440px); min-height: calc(100vh - 64px); padding: 36px 32px 72px; margin-inline: auto; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }

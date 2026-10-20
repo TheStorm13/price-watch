@@ -19,6 +19,7 @@ npm --prefix frontend run lint
 npm --prefix frontend test
 npm --prefix frontend run test:e2e
 cargo test --locked --manifest-path frontend/src-tauri/Cargo.toml
+npm --prefix frontend run desktop:build
 ```
 
 Интеграционный тест PostgreSQL запускается только с `TEST_DATABASE_URL`,
@@ -31,15 +32,15 @@ TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test' \
 ```
 
 Тест применяет миграции и изменяет данные этой базы. Не указывайте здесь
-рабочую базу приложения. E2E тесты сами запускают Vite в demo режиме;
-они проверяют интерфейс, но не живое соединение с Ozon.
+рабочую базу приложения. Браузерные E2E тесты сами запускают Vite в тестовом режиме
+с mock API; они проверяют интерфейс, но не живые desktop-службы и Ozon.
 
 ## Типовые проблемы
 
 | Симптом | Что проверить |
 | --- | --- |
 | `./price-watch` сообщает, что приложение не собрано | Запустить `npm --prefix frontend run desktop:build` |
-| Не найден Python или Python модули | Создать `.venv` и установить `requirements.txt` |
+| Не найден Python или Python модули | Создать `.venv` и установить `requirements.txt` с `--require-hashes` |
 | PostgreSQL не стартует | Открыть `postgres.log`; проверить установленную версию и права на каталог `$XDG_DATA_HOME/price-watch/postgres` |
 | API не отвечает | Открыть `api.log`; проверить ошибки миграций и запуска Python |
 | Нет Chrome | Проверить `google-chrome-stable --version` |
