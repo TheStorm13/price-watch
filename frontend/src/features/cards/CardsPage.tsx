@@ -184,7 +184,7 @@ export function CardsPage() {
 
   function dealStatus(card: MarketplaceCard) {
     return <>
-      {!card.dealsEnabled ? <span className="tracking-status">Не учитывается в выгодных предложениях</span> : null}
+      {!card.dealsEnabled ? <span className="tracking-status" title="Не учитывается в выгодных предложениях">Не учитывается в выгодных предложениях</span> : null}
     </>
   }
 
@@ -198,14 +198,14 @@ export function CardsPage() {
       <div className="cards-grid__actions">{actions(card)}</div>
       <Link className="cards-grid__link" to={`/cards/${card.id}`}>
         <ProductImage card={card} large />
-        <span className="cards-grid__title">{card.title ?? 'Без названия'}</span>
+        <span className="cards-grid__title" title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</span>
         <span className="cards-grid__id">ID: {card.externalId}</span>
       </Link>
-      <TagList tags={card.tags} />
+      <div className="cards-grid__tags" title={card.tags?.join(', ')}><TagList tags={card.tags} /></div>
       <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
       <dl className="cards-grid__prices"><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div><div><dt>Выгода</dt><dd>{saving(card)}</dd></div></dl>
       <div className="cards-grid__details"><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
-      {!card.dealsEnabled ? <div className="cards-grid__tracking">{dealStatus(card)}</div> : null}
+      <div className="cards-grid__tracking">{dealStatus(card)}</div>
     </li>
   }
 

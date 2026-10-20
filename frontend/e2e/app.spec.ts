@@ -303,45 +303,86 @@ test('карточки переключаются между списком и �
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })
 
-test('вертикальное фото видно целиком, а время обновления стоит перед наличием', async ({ page }) => {
+test('плитки одинаковы при разных фото и данных, а статус списка не растягивает строку', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 900 })
   await page.goto('/cards')
   await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('button', { name: 'Импорт', exact: true }).click()
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="400"><rect width="200" height="400" fill="blue"/></svg>'
+  const portrait = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="400"><rect width="200" height="400" fill="blue"/></svg>'
+  const landscape = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="green"/></svg>'
   const imported = {
     version: 2,
-    cards: [{
-      marketplace: 'ozon', externalId: 'portrait-test', title: 'Вертикальное фото',
-      url: null, imageUrl: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-      dealsEnabled: true, createdAt: new Date().toISOString(),
-      history: [{ price: '100.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
-    }],
+    cards: [
+      {
+        marketplace: 'ozon', externalId: 'portrait-test',
+        title: 'Очень длинное название вертикального товара, которое должно обрезаться внутри двух строк плитки',
+        url: null, imageUrl: `data:image/svg+xml,${encodeURIComponent(portrait)}`,
+        tags: ['длинный тег для проверки фиксированной области', 'ещё один тег'],
+        dealsEnabled: false, createdAt: new Date().toISOString(),
+        history: [{ price: '100.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
+      },
+      {
+        marketplace: 'ozon', externalId: 'landscape-test', title: 'Горизонтальное фото',
+        url: null, imageUrl: `data:image/svg+xml,${encodeURIComponent(landscape)}`,
+        dealsEnabled: true, createdAt: new Date().toISOString(), history: [],
+      },
+    ],
   }
   const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await dialog.locator('input[type="file"]').setInputFiles({
     name: 'portrait.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(imported)),
   })
-  await expect(dialog).toContainText('Добавлено карточек: 1')
+  await expect(dialog).toContainText('Добавлено карточек: 2')
   await dialog.getByRole('button', { name: 'Импортировать' }).click()
-  await page.getByRole('button', { name: 'Сетка' }).click()
+  const excludedRow = page.getByRole('row', { name: /Очень длинное название вертикального товара/ })
+  const ordinaryRow = page.getByRole('row', { name: /Горизонтальное фото/ })
+  for (const width of [1024, 1536]) {
+    await page.setViewportSize({ width, height: 900 })
+    const badge = excludedRow.locator('.tracking-status')
+    const rowBoxes = await Promise.all([excludedRow.boundingBox(), ordinaryRow.boundingBox(), badge.boundingBox()])
+    expect(rowBoxes[0]?.height).toBe(rowBoxes[1]?.height)
+    expect(rowBoxes[0]?.height).toBeLessThanOrEqual(85)
+    expect(rowBoxes[2]?.height).toBeLessThanOrEqual(18)
+    const firstCell = await excludedRow.locator('td').first().boundingBox()
+    expect((rowBoxes[2]?.x ?? 0) + (rowBoxes[2]?.width ?? 0)).toBeLessThanOrEqual((firstCell?.x ?? 0) + (firstCell?.width ?? 0))
+  }
+  await excludedRow.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: '/tmp/price-watch-list-uniform.png', fullPage: true })
 
-  const tile = page.locator('.cards-grid__item').filter({ hasText: 'Вертикальное фото' })
-  const image = tile.locator('img')
-  await expect(image).toBeVisible()
-  const dimensions = await image.evaluate((element) => ({
-    width: element.getBoundingClientRect().width,
-    height: element.getBoundingClientRect().height,
-    naturalWidth: element.naturalWidth,
-    naturalHeight: element.naturalHeight,
-  }))
-  expect(dimensions.naturalWidth).toBe(200)
-  expect(dimensions.naturalHeight).toBe(400)
-  expect(dimensions.height).toBeCloseTo(dimensions.width * 2, 0)
-  const updatedAt = await tile.locator('time').boundingBox()
-  const availability = await tile.locator('.status').boundingBox()
+  await page.getByRole('button', { name: 'Сетка' }).click()
+  const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
+  const portraitTile = grid.locator('.cards-grid__item').filter({ hasText: 'Очень длинное название вертикального товара' })
+  const landscapeTile = grid.locator('.cards-grid__item').filter({ hasText: 'Горизонтальное фото' })
+  await expect(grid.locator('.cards-grid__item')).toHaveCount(7)
+  for (const width of [1024, 1536]) {
+    await page.setViewportSize({ width, height: 900 })
+    const tiles = await grid.locator('.cards-grid__item').all()
+    const tileBoxes = await Promise.all(tiles.map((tile) => tile.boundingBox()))
+    const widths = tileBoxes.map((box) => box?.width ?? 0)
+    const heights = tileBoxes.map((box) => box?.height ?? 0)
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1)
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1)
+    const imageBoxes = await Promise.all([portraitTile, landscapeTile].map((tile) => tile.locator('.product-placeholder--large').boundingBox()))
+    expect(imageBoxes[0]?.width).toBeCloseTo(imageBoxes[0]?.height ?? 0, 0)
+    expect(imageBoxes[1]?.height).toBeCloseTo(imageBoxes[0]?.height ?? 0, 0)
+    const badgeBox = await portraitTile.locator('.tracking-status').boundingBox()
+    expect(badgeBox?.height).toBeLessThanOrEqual(14)
+  }
+  for (const [tile, naturalWidth, naturalHeight] of [[portraitTile, 200, 400], [landscapeTile, 400, 200]] as const) {
+    const image = tile.locator('img')
+    await expect(image).toBeVisible()
+    const dimensions = await image.evaluate((element) => ({
+      naturalWidth: element.naturalWidth,
+      naturalHeight: element.naturalHeight,
+      fit: getComputedStyle(element).objectFit,
+    }))
+    expect(dimensions).toEqual({ naturalWidth, naturalHeight, fit: 'contain' })
+  }
+  expect(await portraitTile.locator('.cards-grid__title').getAttribute('title')).toContain('Очень длинное название')
+  const updatedAt = await portraitTile.locator('time').boundingBox()
+  const availability = await portraitTile.locator('.status').boundingBox()
   expect(updatedAt?.x).toBeLessThan(availability?.x ?? 0)
-  await page.screenshot({ path: '/tmp/price-watch-grid-portrait.png' })
+  await page.screenshot({ path: '/tmp/price-watch-grid-uniform.png' })
 })
 
 test('экспорт и импорт объединяют карточки и историю', async ({ page }) => {
