@@ -281,7 +281,7 @@ test('карточки переключаются между списком и �
   const imageBox = await image.boundingBox()
   const tileBox = await tile.boundingBox()
   expect(imageBox?.width).toBeCloseTo((tileBox?.width ?? 0) - 2, 0)
-  expect(imageBox?.height).toBeCloseTo(imageBox?.width ?? 0, 0)
+  expect(imageBox?.height).toBe(190)
   await page.screenshot({ path: '/tmp/price-watch-grid.png' })
   await grid.locator('li').first().getByRole('button', { name: /Действия с карточкой/ }).click()
   await expect(page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' })).toBeVisible()
@@ -363,8 +363,17 @@ test('плитки одинаковы при разных фото и данны
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1)
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1)
     const imageBoxes = await Promise.all([portraitTile, landscapeTile].map((tile) => tile.locator('.product-placeholder--large').boundingBox()))
-    expect(imageBoxes[0]?.width).toBeCloseTo(imageBoxes[0]?.height ?? 0, 0)
-    expect(imageBoxes[1]?.height).toBeCloseTo(imageBoxes[0]?.height ?? 0, 0)
+    expect(imageBoxes[0]?.height).toBe(190)
+    expect(imageBoxes[1]?.height).toBe(190)
+    const positions = await Promise.all([portraitTile, landscapeTile, grid.locator('.cards-grid__item').first()].map((tile) => tile.evaluate((element) => {
+      const top = element.getBoundingClientRect().top
+      return ['.cards-grid__media', '.cards-grid__title', '.cards-grid__id', '.cards-grid__prices', 'time']
+        .map((selector) => element.querySelector(selector)!.getBoundingClientRect().top - top)
+    })))
+    for (let index = 0; index < positions[0].length; index += 1) {
+      const offsets = positions.map((card) => card[index])
+      expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThan(1)
+    }
     const badgeBox = await portraitTile.locator('.tracking-status').boundingBox()
     expect(badgeBox?.height).toBeLessThanOrEqual(14)
   }
@@ -382,7 +391,34 @@ test('плитки одинаковы при разных фото и данны
   const updatedAt = await portraitTile.locator('time').boundingBox()
   const availability = await portraitTile.locator('.status').boundingBox()
   expect(updatedAt?.x).toBeLessThan(availability?.x ?? 0)
-  await page.screenshot({ path: '/tmp/price-watch-grid-uniform.png' })
+
+  const layout = () => portraitTile.evaluate((element) => {
+    const tile = element.getBoundingClientRect()
+    const section = (selector: string) => {
+      const rect = element.querySelector(selector)!.getBoundingClientRect()
+      return { top: rect.top - tile.top, height: rect.height }
+    }
+    return {
+      height: tile.height,
+      image: section('.product-placeholder--large'),
+      title: section('.cards-grid__title'),
+      prices: section('.cards-grid__prices'),
+      time: section('time'),
+    }
+  })
+  for (const width of [1536, 1024]) {
+    await page.setViewportSize({ width, height: 900 })
+    const beforeToggle = await layout()
+    await portraitTile.getByRole('button', { name: /Действия с карточкой/ }).click()
+    await page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' }).click()
+    await expect(portraitTile.locator('.tracking-status')).toHaveCount(0)
+    expect(await layout()).toEqual(beforeToggle)
+    await portraitTile.getByRole('button', { name: /Действия с карточкой/ }).click()
+    await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
+    await expect(portraitTile.locator('.tracking-status')).toHaveText('Не участвует в выгодных')
+    expect(await layout()).toEqual(beforeToggle)
+  }
+  await page.screenshot({ path: '/tmp/price-watch-grid-uniform.png', fullPage: true })
 })
 
 test('экспорт и импорт объединяют карточки и историю', async ({ page }) => {
@@ -416,7 +452,7 @@ test('экспорт и импорт объединяют карточки и и
   await page.screenshot({ path: '/tmp/price-watch-import-preview.png' })
   await dialog.getByRole('button', { name: 'Импортировать' }).click()
   await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toBeVisible()
-  await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toContainText('Не учитывается в выгодных предложениях')
+  await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toContainText('Не участвует в выгодных')
   await page.screenshot({ path: '/tmp/price-watch-imported.png' })
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })
@@ -428,13 +464,13 @@ test('меню карточки управляет показом в выгод�
   await expect(page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'В архив' })).toHaveCount(0)
   await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
-  await expect(row.getByText('Не учитывается в выгодных предложениях')).toBeVisible()
+  await expect(row.getByText('Не участвует в выгодных')).toBeVisible()
 
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await expect(page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' })).toBeVisible()
   await page.screenshot({ path: '/tmp/price-watch-card-actions.png' })
   await page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' }).click()
-  await expect(row.getByText('Не учитывается в выгодных предложениях')).toBeHidden()
+  await expect(row.getByText('Не участвует в выгодных')).toBeHidden()
 })
 
 test('исключённые карточки остаются в конце при любой сортировке и в сетке', async ({ page }) => {
@@ -446,15 +482,15 @@ test('исключённые карточки остаются в конце п�
   const rows = page.locator('.cards-table tbody tr')
   for (const column of ['Карточка', 'Цена', 'Минимальная', 'Средняя', 'Выгода', 'Наличие']) {
     await page.getByRole('button', { name: column, exact: true }).click()
-    await expect(rows.nth(2)).not.toContainText('Не учитывается в выгодных предложениях')
-    await expect(rows.nth(3)).toContainText('Не учитывается в выгодных предложениях')
-    await expect(rows.nth(4)).toContainText('Не учитывается в выгодных предложениях')
+    await expect(rows.nth(2)).not.toContainText('Не участвует в выгодных')
+    await expect(rows.nth(3)).toContainText('Не участвует в выгодных')
+    await expect(rows.nth(4)).toContainText('Не участвует в выгодных')
   }
 
   await page.getByRole('button', { name: 'Сетка' }).click()
   const tiles = page.locator('.cards-grid__item')
-  await expect(tiles.nth(3)).toContainText('Не учитывается в выгодных предложениях')
-  await expect(tiles.nth(4)).toContainText('Не учитывается в выгодных предложениях')
+  await expect(tiles.nth(3)).toContainText('Не участвует в выгодных')
+  await expect(tiles.nth(4)).toContainText('Не участвует в выгодных')
 })
 
 test('исключённая карточка обновляется, но не попадает в выгодные предложения', async ({ page }) => {
@@ -466,7 +502,7 @@ test('исключённая карточка обновляется, но не 
   const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
-  await expect(row).toContainText('Не учитывается в выгодных предложениях')
+  await expect(row).toContainText('Не участвует в выгодных')
   await page.getByLabel('Состояние').selectOption('deals_disabled')
   await expect(row).toBeVisible()
 

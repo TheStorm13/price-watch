@@ -184,7 +184,7 @@ export function CardsPage() {
 
   function dealStatus(card: MarketplaceCard) {
     return <>
-      {!card.dealsEnabled ? <span className="tracking-status" title="Не учитывается в выгодных предложениях">Не учитывается в выгодных предложениях</span> : null}
+      {!card.dealsEnabled ? <span className="tracking-status" title="Не участвует в выгодных">Не участвует в выгодных</span> : null}
     </>
   }
 
@@ -197,7 +197,7 @@ export function CardsPage() {
     return <li key={card.id} className="cards-grid__item">
       <div className="cards-grid__actions">{actions(card)}</div>
       <Link className="cards-grid__link" to={`/cards/${card.id}`}>
-        <ProductImage card={card} large />
+        <span className="cards-grid__media"><ProductImage card={card} large /></span>
         <span className="cards-grid__title" title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</span>
         <span className="cards-grid__id">ID: {card.externalId}</span>
       </Link>
@@ -260,7 +260,7 @@ export function CardsPage() {
               <option value="in_stock">В наличии</option>
               <option value="out_of_stock">Нет в наличии</option>
               <option value="no_data">Нет данных</option>
-              <option value="deals_disabled">Не учитывается в выгодных предложениях</option>
+              <option value="deals_disabled">Не участвует в выгодных</option>
             </select>
             <ChevronDown aria-hidden="true" />
           </span>
