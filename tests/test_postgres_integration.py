@@ -742,6 +742,32 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await repository.delete_card(card.id)
 
+    async def test_recent_card_qualifies_without_waiting_seven_days(self):
+        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        card = await repository.add_card("integration-test", f"test-{uuid4()}")
+        now = datetime.now(timezone.utc)
+        try:
+            async with self.async_database.session() as session, session.begin():
+                session.add(PriceHistoryRecord(
+                    card_id=card.id, collection_run_id=None,
+                    price=Decimal("100"), availability="in_stock",
+                    observed_at=now - timedelta(minutes=2), snapshot={},
+                ))
+            self.assertFalse(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+
+            async with self.async_database.session() as session, session.begin():
+                session.add(PriceHistoryRecord(
+                    card_id=card.id, collection_run_id=None,
+                    price=Decimal("80"), availability="in_stock",
+                    observed_at=now - timedelta(minutes=1), snapshot={},
+                ))
+            deal = next(item for item in await repository.list_deals(now) if item.card.card.id == card.id)
+            self.assertEqual(deal.average_price, Decimal("100"))
+            self.assertEqual(deal.savings, Decimal("20"))
+            self.assertEqual(deal.baseline_days, 1)
+        finally:
+            await repository.delete_card(card.id)
+
     async def test_excluded_card_is_collected_but_not_offered_as_deal(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")

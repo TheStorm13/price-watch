@@ -442,7 +442,7 @@ export const mockApi = {
 
   async listDeals(): Promise<Deal[]> {
     return delay(cards.filter((card) => card.dealsEnabled && card.currentAvailability === 'in_stock' &&
-      card.currentPrice !== null && Date.now() - Date.parse(card.createdAt) >= 7 * 86_400_000 &&
+      card.currentPrice !== null &&
       card.id === 1).map((card) => ({ card, averagePrice: 78000,
       savings: 78000 - (card.currentPrice ?? 0), baselineDays: 8,
       lastCollectionRunId: history.at(-1)?.collectionRunId ?? null })))

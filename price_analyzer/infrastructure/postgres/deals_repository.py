@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import List
 
 from sqlalchemy import select, text
@@ -28,7 +28,7 @@ _DEALS_SQL = text("""
     FROM marketplace_cards c
     JOIN latest l ON l.card_id = c.id
     JOIN daily d ON d.card_id = c.id
-    WHERE c.deals_enabled = true AND c.created_at <= :oldest_created
+    WHERE c.deals_enabled = true
       AND l.availability = 'in_stock' AND l.price IS NOT NULL
     GROUP BY c.id, l.price, l.availability, l.observed_at, l.collection_run_id
     HAVING count(d.day) >= 1 AND l.price < avg(d.daily_average)
@@ -38,9 +38,8 @@ _DEALS_SQL = text("""
 
 class DealRepository:
     async def list_deals(self, now: datetime | None = None) -> List[Deal]:
-        now = now or datetime.now(timezone.utc)
         async with self._database.session() as session:
-            rows = (await session.execute(_DEALS_SQL, {"oldest_created": now - timedelta(days=7)})).all()
+            rows = (await session.execute(_DEALS_SQL)).all()
             cards = {record.id: _card(record) for record in (await session.scalars(
                 select(MarketplaceCardRecord).where(MarketplaceCardRecord.id.in_([row.id for row in rows]))
             )).all()} if rows else {}
