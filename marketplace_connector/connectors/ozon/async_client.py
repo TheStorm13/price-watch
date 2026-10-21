@@ -23,6 +23,7 @@ from playwright.async_api import Playwright, async_playwright
 from ...domain.errors import InvalidProductId, MarketplaceUnavailable
 from ...domain.raw import RawMarketplaceResponse
 from ...ports.challenge import ChallengeHandler, RejectChallengeHandler
+from .profile_lifecycle import close_profile_browser, request_browser_close
 
 
 logger = logging.getLogger(__name__)
@@ -135,53 +136,8 @@ class AsyncOzonClient:
 
     async def _close_open_profile_browser(self, playwright: Playwright) -> None:
         """Close the app's visible Chrome before a desktop worker reuses its profile."""
-        port_file = self.profile_dir / "DevToolsActivePort"
-        try:
-            port_text, browser_path = port_file.read_text().splitlines()[:2]
-            port = int(port_text)
-        except (OSError, ValueError, IndexError):
-            return
-        if not 1 <= port <= 65535 or not browser_path.startswith("/devtools/browser/"):
-            return
-
-        def matching_browser_is_listening() -> bool:
-            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=0.5)
-            try:
-                connection.request("GET", "/json/version")
-                response = connection.getresponse()
-                if response.status != 200:
-                    return False
-                details = json.loads(response.read())
-                return details.get("webSocketDebuggerUrl", "").endswith(browser_path)
-            except (OSError, ValueError, http.client.HTTPException):
-                return False
-            finally:
-                connection.close()
-
-        if not await asyncio.to_thread(matching_browser_is_listening):
-            return
-        logger.info("Закрываю Chrome приложения перед фоновым сбором Ozon")
-        browser = await playwright.chromium.connect_over_cdp(
-            f"http://127.0.0.1:{port}", timeout=5_000, is_local=True, no_defaults=True,
-        )
-        try:
-            with suppress(PlaywrightError):
-                session = await browser.new_browser_cdp_session()
-                await session.send("Browser.close")
-        finally:
-            with suppress(PlaywrightError):
-                await browser.close()
-        deadline = asyncio.get_running_loop().time() + 5
-        while True:
-            if not await asyncio.to_thread(matching_browser_is_listening):
-                try:
-                    self._cleanup_stale_profile_locks()
-                    return
-                except MarketplaceUnavailable:
-                    pass
-            if asyncio.get_running_loop().time() >= deadline:
-                raise MarketplaceUnavailable("Не удалось закрыть Chrome приложения перед сбором")
-            await asyncio.sleep(0.1)
+        if await close_profile_browser(self.profile_dir, playwright):
+            self._cleanup_stale_profile_locks()
 
     @staticmethod
     def _check_virtual_display(display: str) -> None:
@@ -203,17 +159,26 @@ class AsyncOzonClient:
         self._async_process = None
         try:
             if browser is not None:
+                try:
+                    await request_browser_close(browser)
+                except PlaywrightError as exc:
+                    logger.warning("Не удалось штатно закрыть Chrome сбора: %s", exc)
                 with suppress(PlaywrightError):
                     await browser.close()
         finally:
             if process is not None and process.poll() is None:
-                with suppress(ProcessLookupError):
-                    process.terminate()
                 try:
                     await asyncio.to_thread(process.wait, timeout=5)
                 except subprocess.TimeoutExpired:
-                    process.kill()
-                    await asyncio.to_thread(process.wait, timeout=5)
+                    logger.warning("Chrome сбора не завершился штатно; посылаю SIGTERM")
+                    with suppress(ProcessLookupError):
+                        process.terminate()
+                    try:
+                        await asyncio.to_thread(process.wait, timeout=3)
+                    except subprocess.TimeoutExpired:
+                        logger.error("Chrome сбора завис; посылаю SIGKILL")
+                        process.kill()
+                        await asyncio.to_thread(process.wait, timeout=5)
 
     async def fetch_product_async(self, external_id: Union[str, int]) -> RawMarketplaceResponse:
         article = self.normalize_product_id(external_id)

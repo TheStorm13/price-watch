@@ -96,6 +96,15 @@ fn stop_child_gracefully(child: &mut Child, interrupt_timeout: Duration, term_ti
 }
 
 impl RuntimeState {
+    fn python_executable(&self) -> PathBuf {
+        let venv_python = self.project_root.join(".venv/bin/python");
+        if venv_python.is_file() {
+            venv_python
+        } else {
+            PathBuf::from("python3")
+        }
+    }
+
     fn ensure_and_publish(&self, app: &tauri::AppHandle) -> Result<ApiConfig, String> {
         let result = self.ensure_services();
         self.record_service_result(&result, |event| match event {
@@ -189,12 +198,7 @@ impl RuntimeState {
         display_number: u16,
         xauthority: Option<PathBuf>,
     ) -> Result<(), String> {
-        let venv_python = self.project_root.join(".venv/bin/python");
-        let python = if venv_python.is_file() {
-            venv_python
-        } else {
-            PathBuf::from("python3")
-        };
+        let python = self.python_executable();
 
         let log_path = self.state_dir.join("desktop-worker.log");
         let stdout = OpenOptions::new()
@@ -426,28 +430,74 @@ impl RuntimeState {
         Ok(())
     }
 
-    fn stop_manual_browser(&self) {
-        if let Ok(mut browser) = self.manual_browser.lock() {
-            if let Some(mut child) = browser.take() {
-                #[cfg(target_os = "linux")]
-                unsafe {
-                    libc::kill(child.id() as i32, libc::SIGTERM);
-                }
-                let deadline = Instant::now() + Duration::from_secs(3);
-                while matches!(child.try_wait(), Ok(None)) && Instant::now() < deadline {
-                    thread::sleep(Duration::from_millis(100));
-                }
-                if matches!(child.try_wait(), Ok(None)) {
-                    let _ = child.kill();
-                }
-                let _ = child.wait();
+    fn request_profile_browser_close(&self) -> Result<(), String> {
+        let mut closer = Command::new(self.python_executable())
+            .args([
+                "-c",
+                "from marketplace_connector.connectors.ozon.profile_lifecycle import main; raise SystemExit(main())",
+            ])
+            .arg(&self.profile_dir)
+            .current_dir(&self.project_root)
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| format!("Не удалось запустить закрытие Chrome: {error}"))?;
+        if !wait_for_worker_exit(&mut closer, Duration::from_secs(12)) {
+            let _ = closer.kill();
+            let _ = closer.wait();
+            return Err("Ожидание штатного закрытия Chrome превысило 12 секунд".to_string());
+        }
+        let output = closer
+            .wait_with_output()
+            .map_err(|error| format!("Не удалось проверить закрытие Chrome: {error}"))?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(format!(
+                "Не удалось штатно закрыть Chrome: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ))
+        }
+    }
+
+    fn stop_manual_browser(&self) -> Result<(), String> {
+        let mut browser = self
+            .manual_browser
+            .lock()
+            .map_err(|_| "Ошибка состояния Chrome")?;
+        let Some(mut child) = browser.take() else {
+            return Ok(());
+        };
+        if child
+            .try_wait()
+            .map_err(|error| format!("Не удалось проверить Chrome: {error}"))?
+            .is_some()
+        {
+            return Ok(());
+        }
+
+        let close_result = self.request_profile_browser_close();
+        if !wait_for_worker_exit(&mut child, Duration::from_secs(5)) {
+            eprintln!("Chrome не завершился штатно; посылаю SIGTERM");
+            #[cfg(target_os = "linux")]
+            unsafe {
+                libc::kill(child.id() as i32, libc::SIGTERM);
+            }
+            if !wait_for_worker_exit(&mut child, Duration::from_secs(3)) {
+                eprintln!("Chrome завис; посылаю SIGKILL");
+                let _ = child.kill();
             }
         }
+        let _ = child.wait();
+        if active_debug_port(&self.profile_dir).is_some() {
+            return Err("Chrome не освободил профиль после закрытия".to_string());
+        }
+        close_result
     }
 
     fn prepare_collection(&self) -> Result<(), String> {
         self.prepare_user_paths()?;
-        self.stop_manual_browser();
+        self.stop_manual_browser()?;
         if active_debug_port(&self.profile_dir).is_some() {
             return Err("Не удалось закрыть Chrome приложения перед сбором цен".to_string());
         }
@@ -507,8 +557,8 @@ fn migrate_profile(old: &Path, new: &Path) -> Result<(), String> {
 #[cfg(test)]
 mod path_tests {
     use super::{
-        is_background_launch, migrate_profile, stop_child_gracefully, ApiConfig, RuntimeState,
-        ServiceEvent,
+        active_debug_port, is_background_launch, migrate_profile, stop_child_gracefully, ApiConfig,
+        RuntimeState, ServiceEvent,
     };
     use std::{
         fs,
@@ -516,7 +566,8 @@ mod path_tests {
         path::PathBuf,
         process::{Command, Stdio},
         sync::{Arc, Mutex},
-        time::{Duration, SystemTime, UNIX_EPOCH},
+        thread,
+        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
     };
 
     fn signal_test_child(script: &str, marker: &std::path::Path) -> std::process::Child {
@@ -659,6 +710,56 @@ mod path_tests {
         assert!(!old.exists());
         assert_eq!(fs::read(new.join("Cookies")).unwrap(), b"saved session");
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires system Google Chrome and the project Python dependencies"]
+    fn closes_manual_chrome_cleanly_in_a_temporary_profile() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let profile = std::env::temp_dir().join(format!(
+            "price-watch-desktop-chrome-test-{}-{unique}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&profile).unwrap();
+        let child = Command::new("google-chrome-stable")
+            .args([
+                "--headless=new",
+                "--remote-debugging-port=0",
+                "--no-first-run",
+            ])
+            .arg(format!("--user-data-dir={}", profile.display()))
+            .arg("about:blank")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while active_debug_port(&profile).is_none() {
+            assert!(Instant::now() < deadline, "Chrome did not open CDP");
+            thread::sleep(Duration::from_millis(100));
+        }
+        let runtime = RuntimeState {
+            project_root: std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+            profile_dir: profile.clone(),
+            data_dir: PathBuf::new(),
+            state_dir: PathBuf::new(),
+            config_dir: PathBuf::new(),
+            native: Mutex::new(None),
+            worker: Mutex::new(None),
+            manual_browser: Mutex::new(Some(child)),
+            startup: Mutex::new(()),
+            last_config: Mutex::new(None),
+            service_error: Mutex::new(None),
+        };
+        runtime.stop_manual_browser().unwrap();
+        assert!(runtime.manual_browser.lock().unwrap().is_none());
+        assert!(active_debug_port(&profile).is_none());
+        let preferences = fs::read_to_string(profile.join("Default/Preferences")).unwrap();
+        assert!(preferences.contains("\"exit_type\":\"Normal\""));
+        fs::remove_dir_all(profile).unwrap();
     }
 
     #[test]
@@ -1045,7 +1146,9 @@ pub fn run() {
                 }
             }
             cleanup.stop_worker();
-            cleanup.stop_manual_browser();
+            if let Err(error) = cleanup.stop_manual_browser() {
+                eprintln!("{error}");
+            }
             if let Ok(mut native) = cleanup.native.lock() {
                 *native = None;
             }
