@@ -192,7 +192,8 @@ export function CardsPage() {
   }
 
   function resetFilters() {
-    setParams(view === 'grid' ? { view: 'grid' } : {}, { replace: true })
+    // Commit the reset before another control can reuse the previous search params.
+    setParams(view === 'grid' ? { view: 'grid' } : {}, { replace: true, flushSync: true })
   }
 
   function actions(card: MarketplaceCard) {

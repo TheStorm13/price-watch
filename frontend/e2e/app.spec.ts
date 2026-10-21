@@ -371,7 +371,11 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   await page.screenshot({ path: '/tmp/price-watch-filters-compact.png' })
   await page.getByRole('button', { name: 'Сбросить' }).click()
   await page.getByRole('radio', { name: 'Сетка' }).click()
+  await expect(page).toHaveURL(/\/cards\?view=grid$/)
+  await expect(status).toHaveText('Все состояния')
+  await expect(page.getByRole('button', { name: 'Сбросить' })).toHaveCount(0)
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
+  await expect(grid.locator(':scope > .cards-grid__item')).toHaveCount(5)
   const width = await grid.evaluate((element) => {
     const tiles = Array.from(element.querySelectorAll(':scope > .cards-grid__item'))
     const right = Math.max(...tiles.map((tile) => tile.getBoundingClientRect().right))
@@ -380,6 +384,13 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   expect(width.gridRight - width.tileRight).toBeLessThan(2)
   await expect(grid.locator('.cards-grid__item').filter({ hasText: 'Наушники Apple AirPods Pro 2' })).toContainText('Сейчас не выгодно')
   await page.screenshot({ path: '/tmp/price-watch-grid-filled.png' })
+  await chooseOption(status, 'Не участвует в выгодных')
+  await expect(grid.locator(':scope > .cards-grid__item')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Сбросить' }).click()
+  await expect(page.getByRole('radio', { name: 'Сетка' })).toBeChecked()
+  await expect(page).toHaveURL(/\/cards\?view=grid$/)
+  await expect(status).toHaveText('Все состояния')
+  await expect(grid.locator(':scope > .cards-grid__item')).toHaveCount(5)
 })
 
 test('заголовки таблицы переключают единственную сортировку по трём состояниям', async ({ page }) => {
