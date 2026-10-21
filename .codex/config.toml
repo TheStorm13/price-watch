@@ -11,3 +11,8 @@ command = "repowise"
 args = ["mcp", "--tools", "get_overview,get_context,get_risk,get_change_risk,get_why,get_dead_code,get_health"]
 cwd = "/home/ilya-groza/DevProjects/article_json_parser"
 startup_timeout_sec = 20
+
+[mcp_servers.shadcn]
+command = "npx"
+args = ["-y", "shadcn@latest", "mcp"]
+cwd = "/home/ilya-groza/DevProjects/article_json_parser/frontend"
