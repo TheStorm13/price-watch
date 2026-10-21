@@ -112,7 +112,7 @@ h2 { font-size: 20px; line-height: 28px; letter-spacing: -0.015em; font-weight: 
 .filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
 .search-field { position: relative; flex: 1 1 230px; max-width: 280px; height: 44px; align-self: flex-start; }
 .search-field svg { position: absolute; left: 14px; top: 50%; width: 19px; transform: translateY(-50%); color: var(--text-muted); }
-.search-field input, .filters select, .field input { width: 100%; height: 44px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); color: var(--text); background: var(--surface); }
+.search-field input, .filters select, .field input, .field select { width: 100%; height: 44px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); color: var(--text); background: var(--surface); }
 .search-field input { padding: 0 14px 0 43px; }
 input::placeholder { color: #98a2b3; }
 .filters__selects { flex: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
@@ -146,9 +146,12 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .cards-table__sort-icon { width: 14px; height: 14px; visibility: hidden; }
 .cards-table__sort.is-active .cards-table__sort-icon { visibility: visible; }
 .cards-table__sort-icon svg { display: block; width: 14px; height: 14px; stroke-width: 2; }
-.cards-table th:first-child { width: 27%; }
-.cards-table td:first-child { white-space: normal; }
+.cards-table th:nth-child(2) { width: 27%; }
+.cards-table td:nth-child(2) { white-space: normal; }
 .cards-table th:last-child, .cards-table td:last-child { position: relative; width: 48px; padding-inline: 4px; }
+.cards-table th.cards-table__selection, .cards-table td.cards-table__selection { width: 42px; padding-inline: 8px 4px; text-align: center; }
+.cards-table__selection input { width: 18px; height: 18px; accent-color: var(--blue); cursor: pointer; }
+.cards-table__product.is-selected { background: var(--blue-soft); }
 .cards-table__product { height: 84px; }
 .cards-table__product td { height: 84px; padding-block: 0; }
 .cards-table__product .card-identity { height: 84px; overflow: hidden; }
@@ -211,7 +214,7 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .product-group__minimum { display: block; margin-top: 4px; color: var(--text-muted); font-size: 11px; font-weight: 400; }
 .cards-table__group { background: var(--surface-subtle); }
 .cards-table__group td { padding-block: 9px; }
-.cards-table__nested td:first-child { padding-left: 42px; }
+.cards-table__nested td:nth-child(2) { padding-left: 42px; }
 .product-group__edit { width: 32px; height: 32px; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; }
 .product-group__edit:hover { color: var(--blue); background: var(--blue-soft); }
 .product-group__edit svg { width: 16px; height: 16px; }
@@ -219,6 +222,11 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .group-dialog { width: min(540px, 100%); max-height: min(720px, 90vh); overflow: auto; padding: 24px; border-radius: 12px; background: #fff; box-shadow: var(--shadow-overlay); }
 .group-dialog h2 { margin: 0 0 20px; }
 .group-dialog__hint { margin: 18px 0 10px; color: var(--text-muted); font-size: 12px; }
+.group-dialog__controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, .8fr); gap: 10px; }
+.group-dialog__controls .field select { padding: 0 12px; }
+.group-dialog__selection { margin: 10px 0; color: var(--text); font-size: 13px; font-weight: 620; }
+.group-dialog__warning { margin: 8px 0; color: var(--amber); font-size: 12px; }
+.group-dialog__empty { padding: 16px; color: var(--text-muted); font-size: 13px; }
 .group-dialog__cards { max-height: 310px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
 .group-dialog__card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
 .group-dialog__card:last-child { border-bottom: 0; }
@@ -228,6 +236,14 @@ td { min-height: 72px; padding: 14px 20px; border-top: 1px solid var(--border); 
 .group-dialog__card small { margin-top: 3px; color: var(--text-muted); font-size: 11px; }
 .group-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .group-dialog__actions .button--danger { margin-right: auto; }
+.bulk-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.bulk-card-actions > strong { margin-right: 8px; white-space: nowrap; }
+.bulk-card-actions .button { min-height: 36px; padding-inline: 10px; font-size: 12px; }
+.bulk-card-actions__group-picker { flex-basis: 100%; display: flex; align-items: end; flex-wrap: wrap; gap: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+.bulk-card-actions__group-picker .field { min-width: 210px; }
+.bulk-card-actions__group-picker .field select { padding-inline: 10px; }
+.bulk-card-actions__group-picker p { flex: 1 1 240px; margin: 0; color: var(--amber); font-size: 12px; }
+@media (max-width: 560px) { .group-dialog__controls { grid-template-columns: 1fr; } }
 .price-cell { color: var(--text); font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .marketplace-mark { display: inline-flex; align-items: center; gap: 8px; color: #475467; }
 .marketplace-mark__logo { width: 28px; height: 28px; border-radius: 7px; display: inline-grid; place-items: center; color: #fff; font-size: 9px; font-weight: 750; line-height: 1; }

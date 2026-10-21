@@ -16,6 +16,8 @@ import { AddCardDrawer } from './AddCardDrawer'
 import { compareDefaultCards } from './defaultCardSort'
 import { ImportExportControls } from './ImportExportControls'
 import { GroupDialog } from './GroupDialog'
+import { BulkCardActions } from './BulkCardActions'
+import { useCardSelection } from './useCardSelection'
 
 const columnSortKeys = ['title', 'marketplace', 'price', 'minimum', 'average', 'savings', 'availability'] as const
 type ColumnSortKey = typeof columnSortKeys[number]
@@ -83,9 +85,11 @@ export function CardsPage() {
   const [params, setParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<ProductGroup | 'new' | null>(null)
+  const [initialGroupCardIds, setInitialGroupCardIds] = useState<number[]>([])
   const [collapsedGroups, setCollapsedGroups] = useState<number[]>([])
   const [transferStatus, setTransferStatus] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
   const cardsQuery = useCards()
+  const selection = useCardSelection(cardsQuery.data)
   const groupsQuery = useGroups()
   const dealsQuery = useDeals()
   const updateCard = useUpdateCard()
@@ -100,6 +104,7 @@ export function CardsPage() {
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
   const dealsOnly = params.get('deals') === '1'
   const selectedTag = params.get('tag') ?? ''
+  const selectedIds = [...selection.selectedIds]
   const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealsOnly || selectedTag)
   const deals = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal])), [dealsQuery.data])
   const savings = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal.savings])), [dealsQuery.data])
@@ -109,6 +114,11 @@ export function CardsPage() {
     ...(cardsQuery.data ?? []).flatMap((card) => card.tags ?? []),
     ...(groupsQuery.data ?? []).flatMap((group) => group.tags ?? []),
   ])].sort(collator.compare), [cardsQuery.data, groupsQuery.data])
+
+  function openCreateGroup(ids: number[]) {
+    setInitialGroupCardIds(ids)
+    setEditingGroup('new')
+  }
 
   const setParam = useCallback((name: string, value: string, defaultValue = 'all') => {
     setParams((current) => {
@@ -210,7 +220,9 @@ export function CardsPage() {
   }
 
   function row(card: MarketplaceCard, nested = false) {
-    return <tr key={card.id} className={`cards-table__product${nested ? ' cards-table__nested' : ''}`} onClick={() => navigate(`/cards/${card.id}`)}>
+    return <tr key={card.id} className={`cards-table__product${nested ? ' cards-table__nested' : ''}${selection.selectedIds.has(card.id) ? ' is-selected' : ''}`} onClick={() => navigate(`/cards/${card.id}`)}>
+      <td className="cards-table__selection"><input type="checkbox" aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
+        checked={selection.selectedIds.has(card.id)} onClick={(event) => event.stopPropagation()} onChange={() => selection.toggle(card.id)} /></td>
       <td><div className="card-identity"><ProductImage card={card} /><span><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small><TagList tags={card.tags} />{dealStatus(card)}</span></div></td>
       <td><MarketplaceMark marketplace={card.marketplace} /></td>
       <td className="price-cell">{formatPrice(card.currentPrice)}</td>
@@ -228,7 +240,7 @@ export function CardsPage() {
         <div><h1>Карточки</h1><p>Текущие цены и история отслеживаемых карточек</p></div>
         <div className="page-actions">
           <ImportExportControls onStatus={(message, kind) => setTransferStatus({ message, kind })} />
-          <Button icon={<FolderPlus />} onClick={() => setEditingGroup('new')}>Создать группу</Button>
+          <Button icon={<FolderPlus />} onClick={() => openCreateGroup([])}>Создать группу</Button>
           <Button icon={<RefreshCw />} onClick={() => collection.start()} disabled={collection.isStarting}>Обновить цены</Button>
           <Button variant="primary" icon={<Plus />} onClick={() => setDrawerOpen(true)}>Добавить карточку</Button>
         </div>
@@ -298,6 +310,9 @@ export function CardsPage() {
         </div>
       </div>
 
+      <BulkCardActions selectedIds={selectedIds} cards={cardsQuery.data ?? []} groups={groupsQuery.data ?? []}
+        onCreateGroup={() => openCreateGroup(selectedIds)} onProcessed={selection.clearProcessed} onClear={selection.clear} />
+
       <div className={view === 'list' || cardsQuery.isLoading || groupsQuery.isLoading || cardsQuery.isError || groupsQuery.isError || (visibleCards.length === 0 && visibleGroups.length === 0) ? 'table-surface' : ''}>
         {cardsQuery.isLoading || groupsQuery.isLoading || dealsOnly && dealsQuery.isLoading ? <LoadingRows /> : cardsQuery.isError || groupsQuery.isError || dealsOnly && dealsQuery.isError ? (
           <div className="state-message"><h2>{dealsOnly && dealsQuery.isError ? 'Не удалось загрузить выгодные предложения' : 'Не удалось загрузить карточки'}</h2><p>Проверьте соединение с API и повторите.</p><Button onClick={() => { void cardsQuery.refetch(); void groupsQuery.refetch(); void dealsQuery.refetch() }}>Повторить</Button></div>
@@ -317,10 +332,10 @@ export function CardsPage() {
         ) : (
             <table className="cards-table">
               <caption className="sr-only">Отслеживаемые карточки маркетплейсов</caption>
-              <thead><tr>{sortableHeader('Карточка', 'title')}{sortableHeader('Маркетплейс', 'marketplace')}{sortableHeader('Цена', 'price')}{sortableHeader('Минимальная', 'minimum')}{sortableHeader('Средняя', 'average')}{sortableHeader('Выгода', 'savings')}{sortableHeader('Наличие', 'availability')}<th><span className="sr-only">Действия</span></th></tr></thead>
+              <thead><tr><th className="cards-table__selection"><span className="sr-only">Выбор</span></th>{sortableHeader('Карточка', 'title')}{sortableHeader('Маркетплейс', 'marketplace')}{sortableHeader('Цена', 'price')}{sortableHeader('Минимальная', 'minimum')}{sortableHeader('Средняя', 'average')}{sortableHeader('Выгода', 'savings')}{sortableHeader('Наличие', 'availability')}<th><span className="sr-only">Действия</span></th></tr></thead>
               <tbody>
                 {orderedItems.map((item) => item.kind === 'group' ? <Fragment key={`group-${item.group.id}`}>
-                  <tr className="cards-table__group"><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button><TagList tags={item.group.tags} /></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}</td><td className="price-cell">{formatPrice(item.group.minimumPrice)}</td><td>—</td><td>Сейчас не выгодно</td><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>
+                  <tr className="cards-table__group"><td className="cards-table__selection" /><td><button type="button" className="product-group__toggle" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></button><TagList tags={item.group.tags} /></td><td>Группа</td><td className="price-cell">{formatPrice(item.group.currentPrice)}</td><td className="price-cell">{formatPrice(item.group.minimumPrice)}</td><td>—</td><td>Сейчас не выгодно</td><td /><td><button type="button" className="product-group__edit" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></button></td></tr>
                   {!collapsedGroups.includes(item.group.id) ? (groupedCards.get(item.group.id) ?? []).map((card) => row(card, true)) : null}
                 </Fragment> : row(item.card))}
               </tbody>
@@ -328,7 +343,9 @@ export function CardsPage() {
         )}
       </div>
       <AddCardDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      {editingGroup ? <GroupDialog key={editingGroup === 'new' ? 'new' : editingGroup.id} group={editingGroup === 'new' ? null : editingGroup} cards={cardsQuery.data ?? []} onClose={() => setEditingGroup(null)} /> : null}
+      {editingGroup ? <GroupDialog key={editingGroup === 'new' ? 'new' : editingGroup.id} group={editingGroup === 'new' ? null : editingGroup}
+        cards={cardsQuery.data ?? []} initialCardIds={editingGroup === 'new' ? initialGroupCardIds : []}
+        onSaved={editingGroup === 'new' ? selection.clearProcessed : undefined} onClose={() => setEditingGroup(null)} /> : null}
     </section>
   )
 }
