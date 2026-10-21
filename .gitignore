@@ -5,6 +5,7 @@
 chrome-launch.log
 .venv/
 .codegraph/
+.repowise/
 .env
 output/
 release/

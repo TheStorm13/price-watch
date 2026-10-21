@@ -8,6 +8,9 @@ Chrome collection, CLI, and database-free single-product JSON mode.
 - Inspect only the code, tests, OpenSpec artifacts, ADRs, and guides relevant to
   the task. Check source before relying on documentation; reuse findings already
   established unless the code or question changed.
+- Use `codegraph_explore` first for code navigation and impact. Use Repowise for
+  architecture, history, risks, and affected tests. Avoid duplicate queries;
+  verify critical findings in current source, especially Tauri `invoke` paths.
 - Keep changes focused and preserve existing behavior and interfaces unless the
   approved plan changes them. Do not invent contracts or add needless dependencies.
 - Use `$vibe-flow` for substantial features, cross-component work, and architecture
@@ -37,3 +40,5 @@ Chrome collection, CLI, and database-free single-product JSON mode.
 - Update only documentation whose subject changed. Report changes, verification,
   compatibility or migration concerns, and remaining risks. Never claim a check
   passed without running it.
+
+@RTK.md
