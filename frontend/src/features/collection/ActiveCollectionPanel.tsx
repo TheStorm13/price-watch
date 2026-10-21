@@ -21,15 +21,15 @@ export function ActiveCollectionPanel() {
     : 'Обновление цен'
 
   return (
-    <Card asChild className="gap-0"><aside className="collection-panel" aria-live="polite" aria-label="Состояние обновления цен">
-      <CardHeader className="flex flex-row items-center gap-2 px-0">
+    <Card asChild className="gap-3 p-4 has-data-[slot=card-footer]:pb-4"><aside className="collection-panel" aria-live="polite" aria-label="Состояние обновления цен">
+      <CardHeader className="flex shrink-0 flex-row items-center gap-2 p-0">
         <span className={cn('collection-panel__symbol', hasErrors ? 'is-error' : waiting ? 'is-warning' : complete && 'is-complete')}>
           {waiting || hasErrors ? <AlertCircle /> : complete ? <Check /> : <LoaderCircle className="spin" />}
         </span>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="min-w-0 flex-1">{title}</CardTitle>
         {complete ? <Button variant="ghost" size="icon-sm" className="ml-auto" onClick={dismiss} aria-label="Закрыть"><X /></Button> : null}
       </CardHeader>
-      <CardContent className="px-0">{waiting ? (
+      <CardContent className="min-h-0 overflow-y-auto px-0">{waiting ? (
         <div className="collection-panel__challenge">
           <div>
             <strong>Требуется проверка Ozon</strong>
@@ -64,9 +64,9 @@ export function ActiveCollectionPanel() {
             : run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
         </p>
       )}
-      </CardContent><CardFooter className="contents"><div className="collection-panel__progress-row">
+      </CardContent><CardFooter className="shrink-0 px-0 pt-3 pb-0"><div className="collection-panel__progress-row">
         <Progress value={waiting ? Math.max(progress, 34) : progress} aria-label="Прогресс обновления цен" className="flex-1" />
-        <span>{run.successCount + run.failureCount} из {run.totalCount}</span>
+        <span className="shrink-0 whitespace-nowrap">{run.successCount + run.failureCount} из {run.totalCount}</span>
       </div>
     </CardFooter></aside></Card>
   )

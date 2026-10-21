@@ -231,16 +231,16 @@ export function CardsPage() {
 
   function row(card: MarketplaceCard, nested = false) {
     return <TableRow key={card.id} className={cn('cards-table__product', nested && 'cards-table__nested', selection.selectedIds.has(card.id) && 'is-selected')} onClick={() => navigate(`/cards/${card.id}`)}>
-      <TableCell className="cards-table__selection py-0"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
+      <TableCell className="cards-table__selection py-2"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
         checked={selection.selectedIds.has(card.id)} onClick={(event) => event.stopPropagation()} onCheckedChange={() => selection.toggle(card.id)} /></TableCell>
-      <TableCell className="py-0"><div className="card-identity"><ProductImage card={card} /><span><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small><TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
-      <TableCell className="py-0"><MarketplaceMark marketplace={card.marketplace} /></TableCell>
-      <TableCell className="price-cell py-0">{formatPrice(card.currentPrice)}</TableCell>
-      <TableCell className="price-cell py-0">{formatPrice(card.minimumPrice)}</TableCell>
-      <TableCell className="price-cell py-0">{formatPrice(card.averagePrice)}</TableCell>
-      <TableCell className="py-0">{saving(card)}</TableCell>
-      <TableCell className="py-0"><AvailabilityStatus value={card.currentAvailability} /></TableCell>
-      <TableCell className="py-0">{actions(card)}</TableCell>
+      <TableCell className="py-2"><div className="card-identity"><ProductImage card={card} /><span><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small><TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
+      <TableCell className="py-2"><MarketplaceMark marketplace={card.marketplace} /></TableCell>
+      <TableCell className="price-cell py-2">{formatPrice(card.currentPrice)}</TableCell>
+      <TableCell className="price-cell py-2">{formatPrice(card.minimumPrice)}</TableCell>
+      <TableCell className="price-cell py-2">{formatPrice(card.averagePrice)}</TableCell>
+      <TableCell className="py-2">{saving(card)}</TableCell>
+      <TableCell className="py-2"><AvailabilityStatus value={card.currentAvailability} /></TableCell>
+      <TableCell className="py-2">{actions(card)}</TableCell>
     </TableRow>
   }
 

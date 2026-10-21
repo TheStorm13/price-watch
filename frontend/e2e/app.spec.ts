@@ -469,7 +469,7 @@ test('карточки переключаются между списком и �
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })
 
-test('плитки одинаковы при разных фото и данных, а статус списка не растягивает строку', async ({ page }) => {
+test('плитки одинаковы при разных фото, а метаданные списка помещаются в строку', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 900 })
   await page.goto('/cards')
   await page.getByLabel('Дополнительные действия').click()
@@ -506,10 +506,12 @@ test('плитки одинаковы при разных фото и данны
     await page.setViewportSize({ width, height: 900 })
     const badge = excludedRow.locator('.tracking-status')
     const rowBoxes = await Promise.all([excludedRow.boundingBox(), ordinaryRow.boundingBox(), badge.boundingBox()])
-    expect(rowBoxes[0]?.height).toBe(rowBoxes[1]?.height)
-    expect(rowBoxes[0]?.height).toBeLessThanOrEqual(85)
-    expect(rowBoxes[2]?.height).toBeLessThanOrEqual(18)
+    expect(rowBoxes[0]!.height).toBeGreaterThanOrEqual(rowBoxes[1]!.height)
+    expect(rowBoxes[2]!.y).toBeGreaterThanOrEqual(rowBoxes[0]!.y)
+    expect(rowBoxes[2]!.y + rowBoxes[2]!.height).toBeLessThanOrEqual(rowBoxes[0]!.y + rowBoxes[0]!.height)
     const firstCell = await excludedRow.locator('td').nth(1).boundingBox()
+    const titleBox = (await excludedRow.locator('.card-identity strong').boundingBox())!
+    expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(firstCell!.x + firstCell!.width)
     expect((rowBoxes[2]?.x ?? 0) + (rowBoxes[2]?.width ?? 0)).toBeLessThanOrEqual((firstCell?.x ?? 0) + (firstCell?.width ?? 0))
   }
   await excludedRow.scrollIntoViewIfNeeded()
@@ -529,6 +531,10 @@ test('плитки одинаковы при разных фото и данны
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1)
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1)
     const imageBoxes = await Promise.all([portraitTile, landscapeTile].map((tile) => tile.locator('.product-placeholder--large').boundingBox()))
+    for (const tile of [portraitTile, landscapeTile]) {
+      const [tileBox, mediaBox] = await Promise.all([tile.boundingBox(), tile.locator('.cards-grid__media').boundingBox()])
+      expect(mediaBox!.y - tileBox!.y).toBeGreaterThanOrEqual(8)
+    }
     expect(imageBoxes[0]?.height).toBe(190)
     expect(imageBoxes[1]?.height).toBe(190)
     const positions = await Promise.all([portraitTile, landscapeTile, grid.locator('.cards-grid__item').first()].map((tile) => tile.evaluate((element) => {

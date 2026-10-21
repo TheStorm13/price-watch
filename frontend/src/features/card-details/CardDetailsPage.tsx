@@ -43,9 +43,17 @@ function CardTagsEditor({ card }: { card: NonNullable<ReturnType<typeof useCard>
   }
 
   return <form className="detail-tags" onSubmit={(event) => void save(event)}>
-    <FieldGroup className="max-w-[360px]"><Field data-invalid={Boolean(error)}><FieldLabel htmlFor="field-carddetailspage-1">Теги товара</FieldLabel><Input id="field-carddetailspage-1" aria-invalid={Boolean(error)} value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" /><FieldDescription>Не больше двух тегов, через запятую</FieldDescription></Field></FieldGroup>
-    <Button variant="outline" type="submit" disabled={updateCard.isPending}>Сохранить теги</Button>
-    {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
+    <FieldGroup className="max-w-[560px]">
+      <Field data-invalid={Boolean(error)}>
+        <FieldLabel htmlFor="field-carddetailspage-1">Теги товара</FieldLabel>
+        <div className="detail-tags__controls">
+          <Input id="field-carddetailspage-1" className="min-w-0 flex-1" aria-invalid={Boolean(error)} aria-describedby={error ? 'card-tags-description card-tags-error' : 'card-tags-description'} value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" />
+          <Button variant="outline" type="submit" disabled={updateCard.isPending}>Сохранить теги</Button>
+        </div>
+        <FieldDescription id="card-tags-description">Не больше двух тегов, через запятую</FieldDescription>
+        {error ? <Alert id="card-tags-error" variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
+      </Field>
+    </FieldGroup>
   </form>
 }
 
