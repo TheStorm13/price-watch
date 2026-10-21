@@ -18,9 +18,21 @@ PostgreSQL, Xvfb и Google Chrome устанавливаются пакетны�
 изменения в Git и выполните:
 
 ```bash
-packaging/build-local-aur.sh
+packaging/build-local-aur.sh && \
 sudo pacman -U release/aur-local/price-watch-bin-latest.pkg.tar.zst
 ```
+
+Связка `&&` запускает установку только после успешной сборки. Скрипт теперь удаляет ссылку `latest` перед сборкой и
+создаёт её только после проверки, что в пакете лежит только что собранный
+Tauri-бинарник. Для проверки установки сравните содержимое пакета с
+`/usr/bin/price-watch`:
+
+```bash
+cmp <(bsdtar -xOf release/aur-local/price-watch-bin-latest.pkg.tar.zst usr/bin/price-watch) /usr/bin/price-watch
+```
+
+Перед обновлением полностью завершите запущенное приложение, включая фоновый
+процесс, а после установки запустите заново.
 
 Скрипт требует чистого рабочего дерева, чтобы Python-код в архиве соответствовал
 тому же коммиту, что и бинарник. Он создаёт архив в `release/`, подставляет
