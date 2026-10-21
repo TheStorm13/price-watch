@@ -160,9 +160,16 @@ input::placeholder { color: #98a2b3; }
 .product-group__toggle strong { font-size: 14px; }
 .product-group__toggle small { color: var(--text-muted); font-size: 11px; }
 .product-group__minimum { display: block; margin-top: 4px; color: var(--text-muted); font-size: 11px; font-weight: 400; }
-.cards-table__group { background: var(--surface-subtle); }
-.cards-table__group td { padding-block: 9px; }
+.cards-table__group { background: var(--accent); }
+.cards-table__group td { background: var(--accent); padding-block: 9px; border-top: 2px solid color-mix(in srgb, var(--primary) 25%, var(--border)); }
+.cards-table__group td:first-child { box-shadow: inset 3px 0 var(--primary); }
+.cards-table__group .product-group__toggle { color: var(--accent-foreground); }
+.cards-table__group td:nth-child(3) { color: var(--accent-foreground); font-size: 11px; font-weight: 600; }
+.cards-table__nested { background: color-mix(in srgb, var(--accent) 35%, var(--surface)); }
+.cards-table__nested td:first-child { box-shadow: inset 3px 0 color-mix(in srgb, var(--primary) 45%, var(--border)); }
 .cards-table__nested td:nth-child(2) { padding-left: 42px; }
+.cards-table__nested:not(:has(+ .cards-table__nested)) td { border-bottom: 2px solid color-mix(in srgb, var(--primary) 25%, var(--border)); }
+.cards-table__nested.is-selected, .cards-table__nested:hover { background: color-mix(in srgb, var(--primary) 10%, var(--surface)); }
 .product-group__edit { width: 32px; height: 32px; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; }
 .product-group__edit:hover { color: var(--blue); background: var(--blue-soft); }
 .product-group__edit svg { width: 16px; height: 16px; }
