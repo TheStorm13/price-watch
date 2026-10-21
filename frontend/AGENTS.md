@@ -18,6 +18,8 @@ Radix primitives (`asChild`), Lucide, and the official `@shadcn` registry.
 - Use semantic colors and shared variants. Theme variables live in
   `src/styles/tokens.css`; Tailwind mappings and layer order live in
   `src/styles/global.css`. Keep the system font stack; no remote font loading.
+- Use Select for dropdown choices so the popup follows the shared theme; a
+  NativeSelect retains a system-rendered popup and needs an explicit UX reason.
 - Forms use FieldGroup/Field and linked labels. Dialog/Sheet/AlertDialog need
   titles and descriptions. Preserve keyboard navigation, validation, pending
   states, and focus restoration, including transitions between overlays.

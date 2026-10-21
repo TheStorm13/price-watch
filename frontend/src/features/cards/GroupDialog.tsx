@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogHeader, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import { Field, FieldLabel, FieldGroup, FieldDescription, FieldSet, FieldLegend } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
@@ -83,7 +83,18 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
           <Field><FieldLabel htmlFor="group-tags">Теги группы</FieldLabel><Input id="group-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, посуда" /><FieldDescription>Разделяйте теги запятыми</FieldDescription></Field>
           <div className="flex gap-3">
             <Field><FieldLabel htmlFor="group-search">Поиск карточек</FieldLabel><Input id="group-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название или ID" /></Field>
-            <Field><FieldLabel htmlFor="group-sort">Сортировка карточек</FieldLabel><NativeSelect id="group-sort" value={direction} onChange={(event) => setDirection(event.target.value as 'asc' | 'desc')}><option value="asc">По названию: А–Я</option><option value="desc">По названию: Я–А</option></NativeSelect></Field>
+            <Field>
+              <FieldLabel htmlFor="group-sort">Сортировка карточек</FieldLabel>
+              <Select value={direction} onValueChange={(value) => setDirection(value as 'asc' | 'desc')}>
+                <SelectTrigger id="group-sort" className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="asc">По названию: А–Я</SelectItem>
+                    <SelectItem value="desc">По названию: Я–А</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
           </div>
           <p role="status">Выбрано карточек: {selected.length}</p>
           {movingCards ? <Alert><AlertDescription>Выбранные карточки из других групп перейдут в эту группу. Их история цен сохранится.</AlertDescription></Alert> : null}

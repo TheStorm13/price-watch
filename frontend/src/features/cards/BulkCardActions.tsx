@@ -1,7 +1,7 @@
 import { restoreFocus } from '@/lib/focus'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Field, FieldLabel, FieldDescription, FieldGroup } from '@/components/ui/field'
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -111,10 +111,19 @@ export function BulkCardActions({ selectedIds, cards, groups, onCreateGroup, onP
       <Button ref={deleteTrigger} variant="destructive" disabled={busy} onClick={() => setConfirmDelete(true)}>Удалить выбранные</Button>
       <Button variant="ghost" disabled={busy} onClick={() => { onClear(); setGroupPickerOpen(false); setMessage(null) }}>Снять выбор</Button>
       {groupPickerOpen ? <div className="bulk-card-actions__group-picker">
-        <FieldGroup><Field><FieldLabel htmlFor="field-bulkcardactions-1">Существующая группа</FieldLabel><NativeSelect id="field-bulkcardactions-1" value={groupId} onChange={(event) => setGroupId(event.target.value)}>
-          <option value="">Выберите группу</option>
-          {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-        </NativeSelect></Field></FieldGroup>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="field-bulkcardactions-1">Существующая группа</FieldLabel>
+            <Select value={groupId} onValueChange={setGroupId}>
+              <SelectTrigger id="field-bulkcardactions-1" className="w-full"><SelectValue placeholder="Выберите группу" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {groups.map((group) => <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>)}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+        </FieldGroup>
         {movingCards && targetGroup ? <Alert><AlertDescription>Карточки из других групп перейдут в «{targetGroup.name}». История цен сохранится.</AlertDescription></Alert> : null}
         <Button variant="default" disabled={busy || !groupId} onClick={() => void addToGroup()}>Добавить карточки</Button>
       </div> : null}

@@ -7,7 +7,7 @@ import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from '@/components/ui/table'
-import { NativeSelect } from '@/components/ui/native-select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Fragment, useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, FolderPlus, LayoutGrid, List, Pencil, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -267,42 +267,62 @@ export function CardsPage() {
         </InputGroup>
         <div className="filters__selects">
           <span className={cn('filter-select', marketplace !== 'all' && 'filter-select--active')}>
-            <NativeSelect className="w-full" value={marketplace} onChange={(event) => setParam('marketplace', event.target.value)} aria-label="Маркетплейс">
-              <option value="all">Все маркетплейсы</option>
-              <option value="ozon">Ozon</option>
-              <option value="wildberries">Wildberries</option>
-              <option value="aliexpress">AliExpress</option>
-              <option value="yandex-market">Яндекс Маркет</option>
-            </NativeSelect>
+            <Select value={marketplace} onValueChange={(value) => setParam('marketplace', value)}>
+              <SelectTrigger className="w-full" aria-label="Маркетплейс"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">Все маркетплейсы</SelectItem>
+                  <SelectItem value="ozon">Ozon</SelectItem>
+                  <SelectItem value="wildberries">Wildberries</SelectItem>
+                  <SelectItem value="aliexpress">AliExpress</SelectItem>
+                  <SelectItem value="yandex-market">Яндекс Маркет</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
 
           </span>
           <span className={cn('filter-select filter-select--status', status !== 'all' && 'filter-select--active')}>
-            <NativeSelect className="w-full" value={status} onChange={(event) => setParam('status', event.target.value)} aria-label="Состояние">
-              <option value="all">Все состояния</option>
-              <option value="in_stock">В наличии</option>
-              <option value="out_of_stock">Нет в наличии</option>
-              <option value="no_data">Нет данных</option>
-              <option value="deals_disabled">Не участвует в выгодных</option>
-            </NativeSelect>
+            <Select value={status} onValueChange={(value) => setParam('status', value)}>
+              <SelectTrigger className="w-full" aria-label="Состояние"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">Все состояния</SelectItem>
+                  <SelectItem value="in_stock">В наличии</SelectItem>
+                  <SelectItem value="out_of_stock">Нет в наличии</SelectItem>
+                  <SelectItem value="no_data">Нет данных</SelectItem>
+                  <SelectItem value="deals_disabled">Не участвует в выгодных</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
 
           </span>
           <span className={cn('filter-select filter-select--sort', sort && 'filter-select--active')}>
-            <NativeSelect className="w-full" value={sort ? `${sort.key}-${sort.direction}` : 'default'} onChange={(event) => setParam('sort', event.target.value, 'default')} aria-label="Сортировка">
-              <option value="default">По умолчанию</option>
-              <option value="price-asc">Сначала дешевле</option>
-              <option value="price-desc">Сначала дороже</option>
-              <option value="updated-desc">Недавно обновлённые</option>
-              {sort && sort.key !== 'updated' && !['price-asc', 'price-desc'].includes(`${sort.key}-${sort.direction}`)
-                ? <option value={`${sort.key}-${sort.direction}`}>{columnLabels[sort.key]} {sort.direction === 'asc' ? '↑' : '↓'}</option> : null}
-            </NativeSelect>
+            <Select value={sort ? `${sort.key}-${sort.direction}` : 'default'} onValueChange={(value) => setParam('sort', value, 'default')}>
+              <SelectTrigger className="w-full" aria-label="Сортировка"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="default">По умолчанию</SelectItem>
+                  <SelectItem value="price-asc">Сначала дешевле</SelectItem>
+                  <SelectItem value="price-desc">Сначала дороже</SelectItem>
+                  <SelectItem value="updated-desc">Недавно обновлённые</SelectItem>
+                  {sort && sort.key !== 'updated' && !['price-asc', 'price-desc'].includes(`${sort.key}-${sort.direction}`)
+                    ? <SelectItem value={`${sort.key}-${sort.direction}`}>{columnLabels[sort.key]} {sort.direction === 'asc' ? '↑' : '↓'}</SelectItem> : null}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
 
           </span>
           <span className={cn('filter-select', selectedTag && 'filter-select--active')}>
-            <NativeSelect className="w-full" value={selectedTag} onChange={(event) => setParam('tag', event.target.value, '')} aria-label="Тег">
-              <option value="">Все теги</option>
-              {selectedTag && !availableTags.includes(selectedTag) ? <option value={selectedTag}>{selectedTag}</option> : null}
-              {availableTags.map((tag) => <option value={tag} key={tag}>{tag}</option>)}
-            </NativeSelect>
+            <Select value={selectedTag ? `tag:${selectedTag}` : 'all'} onValueChange={(value) => setParam('tag', value === 'all' ? '' : value.slice(4), '')}>
+              <SelectTrigger className="w-full" aria-label="Тег"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">Все теги</SelectItem>
+                  {selectedTag && !availableTags.includes(selectedTag) ? <SelectItem value={`tag:${selectedTag}`}>{selectedTag}</SelectItem> : null}
+                  {availableTags.map((tag) => <SelectItem value={`tag:${tag}`} key={tag}>{tag}</SelectItem>)}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
 
           </span>
           <div className="flex items-center gap-2"><Checkbox id="deals-only" checked={dealsOnly} onCheckedChange={(checked) => setParam('deals', checked === true ? '1' : '', '')} /><label htmlFor="deals-only" className="filters__checkbox">Выгодные предложения</label></div>

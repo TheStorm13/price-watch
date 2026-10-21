@@ -1,5 +1,11 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+
+async function chooseOption(control: Locator, label: string) {
+  await control.click()
+  await control.page().getByRole('option', { name: label, exact: true }).click()
+  await expect(control).toHaveAttribute('aria-expanded', 'false')
+}
 
 test('выбор в списке сохраняется при поиске и создаёт группу с найденными карточками', async ({ page }) => {
   await page.goto('/cards')
@@ -18,10 +24,10 @@ test('выбор в списке сохраняется при поиске и �
   await page.getByLabel('Поиск карточек').fill('Dyson')
   await expect(bulk).toContainText('Выбрано карточек: 2')
   await page.getByLabel('Поиск карточек').fill('')
-  await page.getByRole('combobox', { name: 'Сортировка' }).selectOption('price-desc')
-  await page.getByRole('combobox', { name: 'Состояние' }).selectOption('out_of_stock')
+  await chooseOption(page.getByRole('combobox', { name: 'Сортировка' }), 'Сначала дороже')
+  await chooseOption(page.getByRole('combobox', { name: 'Состояние' }), 'Нет в наличии')
   await expect(bulk).toContainText('Выбрано карточек: 2')
-  await page.getByRole('combobox', { name: 'Состояние' }).selectOption('all')
+  await chooseOption(page.getByRole('combobox', { name: 'Состояние' }), 'Все состояния')
   await bulk.getByRole('button', { name: 'Создать группу' }).click()
   const dialog = page.getByRole('dialog', { name: 'Создать группу' })
   await expect(dialog).toContainText('Выбрано карточек: 2')
@@ -35,7 +41,7 @@ test('выбор в списке сохраняется при поиске и �
   await expect(dialog).toContainText('Выбрано карточек: 3')
   await dialog.getByRole('textbox', { name: 'Поиск карточек' }).fill('')
   const ascending = await dialog.locator('.group-dialog__card strong').allTextContents()
-  await dialog.getByRole('combobox', { name: 'Сортировка карточек' }).selectOption('desc')
+  await chooseOption(dialog.getByRole('combobox', { name: 'Сортировка карточек' }), 'По названию: Я–А')
   const descending = await dialog.locator('.group-dialog__card strong').allTextContents()
   expect(descending).toEqual([...ascending].reverse())
   await dialog.getByRole('textbox', { name: 'Название' }).fill('Выбранные товары')
@@ -61,7 +67,7 @@ test('выбранные карточки добавляются в сущест
   await page.getByRole('row', { name: /Вторая группа/ }).locator('.product-group__toggle').click()
   await expect(bulk).toContainText('Выбрано карточек: 2')
   await bulk.getByRole('button', { name: 'Добавить в группу' }).click()
-  await bulk.getByRole('combobox', { name: 'Существующая группа' }).selectOption({ label: 'Первая группа' })
+  await chooseOption(bulk.getByRole('combobox', { name: 'Существующая группа' }), 'Первая группа')
   await expect(bulk).toContainText('Карточки из других групп перейдут')
   await bulk.getByRole('button', { name: 'Добавить карточки' }).click()
   await expect(page.getByRole('row', { name: /Первая группа/ })).toContainText('3 товаров')
@@ -150,7 +156,7 @@ test('ошибка добавления в группу и частичное и
   })
   const bulk = page.getByRole('group', { name: 'Действия с выбранными карточками' })
   await bulk.getByRole('button', { name: 'Добавить в группу' }).click()
-  await bulk.getByRole('combobox', { name: 'Существующая группа' }).selectOption({ label: 'Целевая группа' })
+  await chooseOption(bulk.getByRole('combobox', { name: 'Существующая группа' }), 'Целевая группа')
   await bulk.getByRole('button', { name: 'Добавить карточки' }).click()
   await expect(page.getByRole('alert')).toContainText('Не удалось сохранить группу')
   await expect(bulk).toContainText('Выбрано карточек: 2')
@@ -187,7 +193,7 @@ test('группа объединяет товары и сохраняет ин�
   await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
   await expect(grid.locator('.cards-grid__group .cards-grid__item')).toHaveCount(2)
-  await page.getByRole('combobox', { name: 'Сортировка' }).selectOption('price-desc')
+  await chooseOption(page.getByRole('combobox', { name: 'Сортировка' }), 'Сначала дороже')
   await expect(grid.locator(':scope > li').first()).toHaveClass(/cards-grid__group/)
   for (const width of [1024, 1536]) {
     await page.setViewportSize({ width, height: 900 })
@@ -240,11 +246,11 @@ test('теги карточек и групп можно менять и фил�
   await dialog.getByRole('textbox', { name: 'Теги группы' }).fill('дом')
   await dialog.getByRole('checkbox', { name: /Наушники Apple/ }).check()
   await dialog.getByRole('button', { name: 'Сохранить' }).click()
-  await page.getByRole('combobox', { name: 'Тег' }).selectOption('дом')
+  await chooseOption(page.getByRole('combobox', { name: 'Тег' }), 'дом')
   await expect(page.getByRole('row', { name: /Техника/ })).toBeVisible()
   await expect(page.getByRole('row', { name: /Наушники Apple/ })).toBeVisible()
   await expect(page.getByRole('row', { name: /Смартфон Samsung/ })).toHaveCount(0)
-  await page.getByRole('combobox', { name: 'Тег' }).selectOption('подарок')
+  await chooseOption(page.getByRole('combobox', { name: 'Тег' }), 'подарок')
   await expect(page.getByRole('row', { name: /Смартфон Samsung/ })).toBeVisible()
   await expect(page.getByRole('row', { name: /Техника/ })).toHaveCount(0)
 })
@@ -322,10 +328,10 @@ test('карточки площадок без коннектора добавл
     await expect(page.getByText('Сбор цен пока недоступен: коннектор не подключён')).toBeVisible()
     await page.getByRole('link', { name: 'К карточкам' }).click()
   }
-  await page.getByRole('combobox', { name: 'Маркетплейс' }).selectOption('yandex-market')
+  await chooseOption(page.getByRole('combobox', { name: 'Маркетплейс' }), 'Яндекс Маркет')
   await expect(page.getByRole('row', { name: /Бутылка Яндекс/ })).toBeVisible()
   await expect(page.getByRole('row', { name: /Бутылка WB/ })).toHaveCount(0)
-  await page.getByRole('combobox', { name: 'Маркетплейс' }).selectOption('all')
+  await chooseOption(page.getByRole('combobox', { name: 'Маркетплейс' }), 'Все маркетплейсы')
   await page.getByRole('button', { name: 'Обновить цены' }).click()
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('из 5')
 })
@@ -349,7 +355,7 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   const status = page.getByRole('combobox', { name: 'Состояние' })
   const sort = page.getByRole('combobox', { name: 'Сортировка' })
   const before = await Promise.all([marketplace, status, sort].map((control) => control.boundingBox()))
-  await status.selectOption('deals_disabled')
+  await chooseOption(status, 'Не участвует в выгодных')
   await expect(page.getByRole('button', { name: 'Сбросить' })).toBeVisible()
   const after = await Promise.all([marketplace, status, sort].map((control) => control.boundingBox()))
   for (let index = 0; index < before.length; index += 1) {
@@ -358,7 +364,7 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   }
   const reset = await page.getByRole('button', { name: 'Сбросить' }).boundingBox()
   expect(reset?.y).toBeGreaterThan((after[1]?.y ?? 0) + (after[1]?.height ?? 0))
-  await expect(status).toHaveValue('deals_disabled')
+  await expect(status).toHaveText('Не участвует в выгодных')
   await page.screenshot({ path: '/tmp/price-watch-filters.png' })
   await page.setViewportSize({ width: 1024, height: 768 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
@@ -382,14 +388,14 @@ test('заголовки таблицы переключают единстве�
   await expect(rows).toHaveCount(5)
   await expect(rows.first()).toContainText('Смартфон Samsung Galaxy S24')
   const sort = page.getByRole('combobox', { name: 'Сортировка' })
-  await expect(sort).toHaveValue('default')
+  await expect(sort).toHaveText('По умолчанию')
 
   const price = page.getByRole('columnheader', { name: 'Цена' })
   await price.getByRole('button').click()
   await expect(price).toHaveAttribute('aria-sort', 'ascending')
   await expect(rows.first()).toContainText('Умные часы Xiaomi Watch S3')
   await expect(page).toHaveURL(/sort=price-asc/)
-  await expect(sort).toHaveValue('price-asc')
+  await expect(sort).toHaveText('Сначала дешевле')
   await page.screenshot({ path: '/tmp/price-watch-sort-ascending.png' })
 
   await price.getByRole('button').click()
@@ -401,13 +407,13 @@ test('заголовки таблицы переключают единстве�
   await expect(price).toHaveAttribute('aria-sort', 'none')
   await expect(rows.first()).toContainText('Смартфон Samsung Galaxy S24')
   await expect(page).not.toHaveURL(/sort=/)
-  await expect(sort).toHaveValue('default')
+  await expect(sort).toHaveText('По умолчанию')
 
   const title = page.getByRole('columnheader', { name: 'Карточка' })
   await title.getByRole('button').click()
   await expect(title).toHaveAttribute('aria-sort', 'ascending')
   await expect(rows.first()).toContainText('Наушники Apple AirPods Pro 2')
-  await expect(sort).toHaveValue('title-asc')
+  await expect(sort).toHaveText('Карточка ↑')
   await price.getByRole('button').click()
   await expect(title).toHaveAttribute('aria-sort', 'none')
   await expect(price).toHaveAttribute('aria-sort', 'ascending')
@@ -418,11 +424,11 @@ test('заголовки таблицы переключают единстве�
     await expect(heading).toHaveAttribute('aria-sort', 'ascending')
     await expect(price).toHaveAttribute('aria-sort', 'none')
   }
-  await sort.selectOption('updated-desc')
+  await chooseOption(sort, 'Недавно обновлённые')
   await expect(page).toHaveURL(/sort=updated-desc/)
   await expect(page.getByRole('columnheader', { name: 'Наличие' })).toHaveAttribute('aria-sort', 'none')
   await price.getByRole('button').click()
-  await expect(sort).toHaveValue('price-asc')
+  await expect(sort).toHaveText('Сначала дешевле')
 })
 
 test('карточки переключаются между списком и адаптивной сеткой', async ({ page }) => {
@@ -663,7 +669,7 @@ test('исключённая карточка обновляется, но не 
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
   await expect(row).toContainText('Не участвует в выгодных')
-  await page.getByLabel('Состояние').selectOption('deals_disabled')
+  await chooseOption(page.getByLabel('Состояние'), 'Не участвует в выгодных')
   await expect(row).toBeVisible()
 
   await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
@@ -671,7 +677,7 @@ test('исключённая карточка обновляется, но не 
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toHaveCount(0)
   await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
   await expect(page.getByRole('checkbox', { name: 'Выгодные предложения' })).not.toBeChecked()
-  await page.getByLabel('Состояние').selectOption('deals_disabled')
+  await chooseOption(page.getByLabel('Состояние'), 'Не участвует в выгодных')
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Обновить только эту карточку' }).click()
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('0 из 1')
@@ -842,4 +848,44 @@ test('переход меню → подтверждение → отмена в
   await expect(trigger).toBeFocused()
   await expect(row).toBeVisible()
   await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
+test('выпадающие фильтры оформлены в общей теме и управляются клавиатурой', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/cards')
+  await expect(page.getByRole('row', { name: /Смартфон Samsung/ })).toBeVisible()
+  for (const width of [1440, 1024]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const name of ['Состояние', 'Маркетплейс', 'Сортировка', 'Тег']) {
+      const trigger = page.getByRole('combobox', { name, exact: true })
+      await trigger.click()
+      const popup = page.getByRole('listbox')
+      await expect(popup).toBeVisible()
+      await expect(popup).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+      await expect(popup).toHaveCSS('border-radius', '8px')
+      await popup.evaluate(async (element) => {
+        await Promise.all(element.getAnimations().map((animation) => animation.finished))
+      })
+      const bounds = await popup.boundingBox()
+      expect(bounds!.x).toBeGreaterThanOrEqual(0)
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+      if (name === 'Состояние') await page.screenshot({ path: `/tmp/price-watch-select-state-${width}.png` })
+      await page.keyboard.press('Escape')
+      await expect(popup).toBeHidden()
+      await expect(trigger).toBeFocused()
+    }
+  }
+  const state = page.getByRole('combobox', { name: 'Состояние', exact: true })
+  await state.press('ArrowDown')
+  await expect(page.getByRole('listbox')).toBeVisible()
+  await page.keyboard.press('End')
+  await expect(page.getByRole('option', { name: 'Не участвует в выгодных', exact: true })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(state).toHaveText('Не участвует в выгодных')
+  await expect(state).toBeFocused()
+  await expect(page).toHaveURL(/status=deals_disabled/)
+  await page.getByRole('button', { name: 'Сбросить' }).click()
+  await expect(state).toHaveText('Все состояния')
+  expect(errors).toEqual([])
 })

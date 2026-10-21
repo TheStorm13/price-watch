@@ -81,9 +81,7 @@ input::placeholder { color: #98a2b3; }
 .filter-select { position: relative; width: 190px; }
 .filter-select--status { width: 250px; }
 .filter-select--sort { width: 200px; }
-.filter-select--active [data-slot="native-select"] { border-color: var(--primary); background: var(--accent); }
-.filter-select { position: relative; width: 190px; }
-.filter-select { position: relative; width: 190px; }
+.filter-select--active [data-slot="select-trigger"] { border-color: var(--primary); background: var(--accent); }
 .filters__reset { flex-basis: 100%; display: flex; justify-content: flex-end; }
 .cards-view-bar { display: flex; align-items: center; justify-content: space-between; margin: -5px 0 12px; color: var(--text-muted); font-size: 12px; }
 
@@ -179,7 +177,6 @@ input::placeholder { color: #98a2b3; }
 .bulk-card-actions > strong { margin-right: 8px; white-space: nowrap; }
 .bulk-card-actions__group-picker { flex-basis: 100%; display: flex; align-items: end; flex-wrap: wrap; gap: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
 .bulk-card-actions__group-picker .field { min-width: 210px; }
-.bulk-card-actions__group-picker .field select { padding-inline: 10px; }
 .bulk-card-actions__group-picker p { flex: 1 1 240px; margin: 0; color: var(--amber); font-size: 12px; }
 @media (max-width: 560px) { .group-dialog__controls { grid-template-columns: 1fr; } }
 .price-cell { color: var(--text); font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
