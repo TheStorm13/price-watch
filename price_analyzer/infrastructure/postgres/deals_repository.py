@@ -37,12 +37,14 @@ _DEALS_SQL = text("""
 
 
 class DealRepository:
-    async def list_deals(self, now: datetime | None = None) -> List[Deal]:
-        async with self._database.session() as session:
-            rows = (await session.execute(_DEALS_SQL)).all()
-            cards = {record.id: _card(record) for record in (await session.scalars(
-                select(MarketplaceCardRecord).where(MarketplaceCardRecord.id.in_([row.id for row in rows]))
-            )).all()} if rows else {}
+    async def list_deals(self, now: datetime | None = None, *, session=None) -> List[Deal]:
+        if session is None:
+            async with self._database.session() as session:
+                return await self.list_deals(now, session=session)
+        rows = (await session.execute(_DEALS_SQL)).all()
+        cards = {record.id: _card(record) for record in (await session.scalars(
+            select(MarketplaceCardRecord).where(MarketplaceCardRecord.id.in_([row.id for row in rows]))
+        )).all()} if rows else {}
         return [Deal(CardOverview(cards[row.id], row.price, row.availability, row.observed_at),
                      row.average_price, row.average_price - row.price, row.baseline_days,
                      row.collection_run_id)

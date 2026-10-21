@@ -121,6 +121,12 @@ export interface ProductGroup {
   cardIds: number[]
   currentPrice: number | null
   minimumPrice: number | null
+  representativeCardId: number | null
+  representativeCard: MarketplaceCard | null
+  savings: number | null
+  baselineDays: number
+  isDeal: boolean
+  hasMemberDeals: boolean
 }
 
 export interface GroupInput {

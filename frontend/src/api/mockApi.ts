@@ -1,3 +1,4 @@
+import { priceMetrics } from './mockPriceMetrics'
 import type {
   CardHistoryResponse,
   CollectionRun,
@@ -97,7 +98,7 @@ let history: PriceHistoryPoint[] = [
     collectionRunId: 21 - index,
     price,
     availability: 'in_stock' as const,
-    observedAt: new Date(now - (priceSeries.length - 1 - index) * 3 * 86_400_000).toISOString(),
+    observedAt: new Date(now - (priceSeries.length - 1 - index) * 3 * 86_400_000 - 5 * 60_000).toISOString(),
   })),
   ...cards.filter((card) => card.id !== 1 && card.currentPrice !== null && card.lastObservedAt !== null)
     .map((card, index) => ({
@@ -142,17 +143,38 @@ let nextCardId = 6
 let groups: { id: number; name: string; tags: string[] }[] = []
 let nextGroupId = 1
 
+function cardMetrics(card: MarketplaceCard) {
+  return priceMetrics(history.filter((point) => point.cardId === card.id))
+}
+
+function cardView(card: MarketplaceCard): MarketplaceCard {
+  const metrics = cardMetrics(card)
+  return { ...card, currentPrice: metrics.latest?.price ?? null,
+    currentAvailability: metrics.latest?.availability ?? null,
+    lastObservedAt: metrics.latest?.observedAt ?? null,
+    minimumPrice: metrics.minimumPrice, averagePrice: metrics.averagePrice }
+}
+
+function cardDeal(card: MarketplaceCard): Deal | null {
+  const view = cardView(card)
+  const metrics = cardMetrics(card)
+  if (!view.dealsEnabled || view.currentAvailability !== 'in_stock' || view.currentPrice === null
+    || metrics.averagePrice === null || view.currentPrice >= metrics.averagePrice) return null
+  return { card: view, averagePrice: metrics.averagePrice, savings: metrics.averagePrice - view.currentPrice,
+    baselineDays: metrics.baselineDays, lastCollectionRunId: metrics.latest?.collectionRunId ?? null }
+}
+
 function groupView(group: { id: number; name: string; tags: string[] }): ProductGroup {
-  const members = cards.filter((card) => card.groupId === group.id)
-  const current = members.filter((card) => card.currentAvailability === 'in_stock' && card.currentPrice !== null)
-    .map((card) => card.currentPrice as number)
-  const prices = history.filter((point) => members.some((card) => card.id === point.cardId)
-    && point.availability === 'in_stock' && point.price !== null).map((point) => point.price as number)
-  return {
-    ...group, cardIds: members.map((card) => card.id),
-    currentPrice: current.length ? Math.min(...current) : null,
-    minimumPrice: prices.length ? Math.min(...prices) : null,
-  }
+  const members = cards.filter((card) => card.groupId === group.id).map(cardView)
+  const representative = members.toSorted((a, b) => Number(a.currentPrice === null) - Number(b.currentPrice === null)
+    || (a.currentPrice ?? 0) - (b.currentPrice ?? 0) || a.id - b.id)[0] ?? null
+  const deal = representative ? cardDeal(representative) : null
+  return { ...group, cardIds: members.map((card) => card.id).sort((a, b) => a - b),
+    representativeCardId: representative?.id ?? null, representativeCard: representative,
+    currentPrice: representative?.currentPrice ?? null, minimumPrice: representative?.minimumPrice ?? null,
+    savings: deal?.savings ?? null, isDeal: !!deal,
+    baselineDays: representative ? cardMetrics(representative).baselineDays : 0,
+    hasMemberDeals: members.some((card) => !!cardDeal(card)) }
 }
 
 function assignGroup(groupId: number, cardIds: number[]) {
@@ -335,18 +357,13 @@ export const mockApi = {
   },
 
   async listCards() {
-    return delay(cards.map((card) => {
-      const prices = history.filter((point) => point.cardId === card.id && point.availability === 'in_stock' && point.price !== null)
-        .map((point) => point.price as number)
-      return { ...card, minimumPrice: prices.length ? Math.min(...prices) : null,
-        averagePrice: card.id === 1 ? 78000 : null }
-    }))
+    return delay(cards.map(cardView))
   },
 
   async getCard(cardId: number) {
     const card = cards.find((item) => item.id === cardId)
     if (!card) throw new Error('Карточка не найдена')
-    return delay({ ...card })
+    return delay(cardView(card))
   },
 
   async createCard(input: CreateCardInput) {
@@ -441,11 +458,8 @@ export const mockApi = {
   },
 
   async listDeals(): Promise<Deal[]> {
-    return delay(cards.filter((card) => card.dealsEnabled && card.currentAvailability === 'in_stock' &&
-      card.currentPrice !== null &&
-      card.id === 1).map((card) => ({ card, averagePrice: 78000,
-      savings: 78000 - (card.currentPrice ?? 0), baselineDays: 8,
-      lastCollectionRunId: history.at(-1)?.collectionRunId ?? null })))
+    return delay(cards.flatMap((card) => { const deal = cardDeal(card); return deal ? [deal] : [] })
+      .toSorted((a, b) => b.savings - a.savings || a.card.id - b.card.id))
   },
 
   async retryRun(runId: number): Promise<CollectionRun> {

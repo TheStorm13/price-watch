@@ -1,35 +1,58 @@
 """Product groups are display aggregates; collection still targets individual cards."""
 
-from sqlalchemy import func, select, update
+from dataclasses import asdict
 
-from .models import MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
+from sqlalchemy import select, update
+
+from .models import MarketplaceCardRecord, ProductGroupRecord
 
 
 class GroupRepository:
     async def list_groups(self) -> list[dict]:
-        async with self._database.session() as session:
+        # All parts of the projection must describe the same saved state.
+        async with self._database.session() as session, session.begin():
+            await session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
             groups = (await session.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
-            minimums = dict((await session.execute(
-                select(MarketplaceCardRecord.group_id, func.min(PriceHistoryRecord.price))
-                .join(PriceHistoryRecord, PriceHistoryRecord.card_id == MarketplaceCardRecord.id)
-                .where(MarketplaceCardRecord.group_id.is_not(None),
-                       PriceHistoryRecord.availability == "in_stock",
-                       PriceHistoryRecord.price.is_not(None))
-                .group_by(MarketplaceCardRecord.group_id)
-            )).all())
-        cards = await self.list_cards()
+            cards = await self.list_cards(session=session)
+            metrics = {row.id: row for row in await self._list_card_price_metric_rows(session)}
+            deals = {deal.card.card.id: deal for deal in await self.list_deals(session=session)}
+        by_group = {}
+        for item in cards:
+            by_group.setdefault(item.card.group_id, []).append(item)
         result = []
         for group in groups:
-            members = [item for item in cards if item.card.group_id == group.id]
-            current = [item.current_price for item in members
-                       if item.current_availability == "in_stock" and item.current_price is not None]
+            members = by_group.get(group.id, [])
+            representative = min(members, key=lambda item: (
+                item.current_price is None,
+                item.current_price if item.current_price is not None else 0,
+                item.card.id,
+            ), default=None)
+            card_id = representative.card.id if representative else None
+            metric = metrics.get(card_id)
+            deal = deals.get(card_id)
+            card_view = None
+            if representative:
+                card_view = {
+                    **asdict(representative.card),
+                    "current_price": representative.current_price,
+                    "current_availability": representative.current_availability,
+                    "last_observed_at": representative.last_observed_at,
+                    "minimum_price": metric.minimum_price,
+                    "average_price": metric.average_price,
+                }
             result.append({
                 "id": group.id,
                 "name": group.name,
                 "tags": group.tags,
-                "card_ids": [item.card.id for item in members],
-                "current_price": min(current) if current else None,
-                "minimum_price": minimums.get(group.id),
+                "card_ids": sorted(item.card.id for item in members),
+                "representative_card_id": card_id,
+                "representative_card": card_view,
+                "current_price": representative.current_price if representative else None,
+                "minimum_price": metric.minimum_price if metric else None,
+                "savings": deal.savings if deal else None,
+                "baseline_days": metric.baseline_days if metric else 0,
+                "is_deal": deal is not None,
+                "has_member_deals": any(item.card.id in deals for item in members),
             })
         return result
 

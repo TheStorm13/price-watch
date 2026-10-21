@@ -78,15 +78,6 @@ class GroupInput(ApiModel):
         return value
 
 
-class GroupResponse(ApiModel):
-    id: int
-    name: str
-    tags: list[str]
-    card_ids: list[int]
-    current_price: float | None
-    minimum_price: float | None
-
-
 class TransferHistoryPoint(ApiModel):
     price: Decimal | None
     availability: Literal["in_stock", "out_of_stock", "unknown"]
@@ -234,6 +225,21 @@ class CardResponse(ApiModel):
             created_at=card.created_at,
             updated_at=card.updated_at,
         )
+
+
+class GroupResponse(ApiModel):
+    id: int
+    name: str
+    tags: list[str]
+    card_ids: list[int]
+    current_price: float | None
+    minimum_price: float | None
+    representative_card_id: int | None
+    representative_card: CardResponse | None
+    savings: float | None
+    baseline_days: int
+    is_deal: bool
+    has_member_deals: bool
 
 
 class HistoryPointResponse(ApiModel):

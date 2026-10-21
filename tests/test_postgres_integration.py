@@ -50,7 +50,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 response = await client.get("/api/cards")
         self.assertEqual(response.status_code, 200)
 
-    async def test_group_uses_cheapest_available_now_and_any_historical_minimum(self):
+    async def test_group_uses_cheapest_card_with_its_own_historical_minimum(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         first = await repository.add_card("integration-test", f"test-{uuid4()}")
         second = await repository.add_card("integration-test", f"test-{uuid4()}")

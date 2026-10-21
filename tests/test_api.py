@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from httpx import ASGITransport, AsyncClient
 
 from price_analyzer.api import create_app
+from price_analyzer.api.schemas import CardResponse
 from price_analyzer.domain.models import CardOverview, CollectionRun, MarketplaceCard
 from price_analyzer.infrastructure.postgres.repository import CardAlreadyExists, NoCards
 
@@ -35,7 +36,14 @@ class FakeRepository:
         return [{"id": group_id, "name": group["name"], "card_ids": group["card_ids"],
                  "tags": group["tags"],
                  "current_price": 999 if group["card_ids"] else None,
-                 "minimum_price": 800 if group["card_ids"] else None}
+                 "minimum_price": 800 if group["card_ids"] else None,
+                 "representative_card_id": self.card.id if group["card_ids"] else None,
+                 "representative_card": CardResponse.from_overview(
+                     CardOverview(self.card, 999, "in_stock", NOW), minimum_price=800, average_price=1100
+                 ) if group["card_ids"] else None,
+                 "savings": 101 if group["card_ids"] else None,
+                 "baseline_days": 1 if group["card_ids"] else 0,
+                 "is_deal": bool(group["card_ids"]), "has_member_deals": bool(group["card_ids"])}
                 for group_id, group in self.groups.items()]
 
     async def create_group(self, name, card_ids, tags=None):
@@ -146,6 +154,11 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
     async def test_group_contract_and_lifecycle(self):
         created = await self.client.post("/api/groups", json={"name": "Бутылка", "cardIds": [1], "tags": ["кухня"]})
         self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.json()["representativeCardId"], 1)
+        self.assertEqual(created.json()["representativeCard"]["averagePrice"], 1100)
+        self.assertEqual(created.json()["representativeCard"]["currentPrice"], created.json()["currentPrice"])
+        self.assertTrue(created.json()["isDeal"])
+        self.assertEqual(created.json()["savings"], 101)
         self.assertEqual(created.json()["minimumPrice"], 800)
         self.assertEqual(created.json()["cardIds"], [1])
         self.assertEqual(created.json()["tags"], ["кухня"])
@@ -154,6 +167,10 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(updated.json()["name"], "Термос")
         self.assertEqual(updated.json()["tags"], ["подарок"])
         self.assertIsNone(updated.json()["currentPrice"])
+        self.assertIsNone(updated.json()["representativeCardId"])
+        self.assertIsNone(updated.json()["representativeCard"])
+        self.assertFalse(updated.json()["isDeal"])
+        self.assertEqual(updated.json()["baselineDays"], 0)
         self.assertEqual((await self.client.delete("/api/groups/1")).status_code, 204)
         self.assertEqual((await self.client.get("/api/groups")).json(), [])
 

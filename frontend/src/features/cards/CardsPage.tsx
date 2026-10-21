@@ -21,73 +21,18 @@ import { ProductImage } from '../../components/product/ProductImage'
 import { TagList } from '../../components/product/TagList'
 import { useCollection } from '../collection/CollectionProvider'
 import type { MarketplaceCard, ProductGroup } from '../../types/domain'
-import { availabilityLabel, formatDateTime, formatPrice, formatRelativeTime, marketplaceLabel } from '../../utils/format'
+import { formatDateTime, formatPrice, formatRelativeTime } from '../../utils/format'
 import { AddCardDrawer } from './AddCardDrawer'
-import { compareDefaultCards } from './defaultCardSort'
+import { cardItem, catalogItems, columnSortKeys, compareItems, matchesItem, parseSort, type ColumnSortKey } from './catalogItems'
 import { ImportExportControls } from './ImportExportControls'
 import { GroupDialog } from './GroupDialog'
 import { BulkCardActions } from './BulkCardActions'
 import { useCardSelection } from './useCardSelection'
 
-const columnSortKeys = ['title', 'marketplace', 'price', 'minimum', 'average', 'savings', 'availability'] as const
-type ColumnSortKey = typeof columnSortKeys[number]
-type SortKey = ColumnSortKey | 'updated'
-type Sort = { key: SortKey; direction: 'asc' | 'desc' } | null
-type DisplayItem = { kind: 'card'; card: MarketplaceCard; dealsEnabled: boolean } | { kind: 'group'; group: ProductGroup; dealsEnabled: boolean }
 const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
 const columnLabels: Record<ColumnSortKey, string> = {
   title: 'Карточка', marketplace: 'Маркетплейс', price: 'Цена', minimum: 'Минимальная',
   average: 'Средняя', savings: 'Выгода', availability: 'Наличие',
-}
-
-function parseSort(value: string | null): Sort {
-  if (!value) return null
-  const parts = value.split('-')
-  if (parts.length !== 2) return null
-  const [key, direction] = parts
-  const validColumn = columnSortKeys.includes(key as ColumnSortKey) && (direction === 'asc' || direction === 'desc')
-  return (validColumn || key === 'updated' && direction === 'desc')
-    ? { key: key as SortKey, direction }
-    : null
-}
-
-function sortValue(item: DisplayItem, key: SortKey, savings: Map<number, number>): string | number | null {
-  if (item.kind === 'group') {
-    if (key === 'title') return item.group.name
-    if (key === 'marketplace') return 'Группа'
-    if (key === 'price') return item.group.currentPrice
-    if (key === 'minimum') return item.group.minimumPrice
-    return null
-  }
-  const card = item.card
-  if (key === 'title') return card.title ?? card.externalId
-  if (key === 'marketplace') return marketplaceLabel[card.marketplace]
-  if (key === 'price') return card.currentPrice
-  if (key === 'minimum') return card.minimumPrice ?? null
-  if (key === 'average') return card.averagePrice ?? null
-  if (key === 'savings') return savings.get(card.id) ?? null
-  if (key === 'updated') return card.lastObservedAt ? Date.parse(card.updatedAt) : null
-  return card.currentAvailability ? availabilityLabel[card.currentAvailability] : null
-}
-
-function compareItems(left: DisplayItem, right: DisplayItem, sort: Sort, savings: Map<number, number>): number {
-  if (left.dealsEnabled !== right.dealsEnabled) return left.dealsEnabled ? -1 : 1
-  if (!sort) return left.kind === 'card' && right.kind === 'card'
-    ? compareDefaultCards(left.card, right.card, savings) : 0
-  const first = sortValue(left, sort.key, savings)
-  const second = sortValue(right, sort.key, savings)
-  if (first === null || second === null) return first === null ? (second === null ? 0 : 1) : -1
-  const order = typeof first === 'number' && typeof second === 'number'
-    ? first - second
-    : collator.compare(String(first), String(second))
-  return sort.direction === 'asc' ? order : -order
-}
-
-function matchesStatus(card: MarketplaceCard, status: string) {
-  if (status === 'all') return true
-  if (status === 'deals_disabled') return !card.dealsEnabled
-  if (status === 'no_data') return card.lastObservedAt === null
-  return card.currentAvailability === status
 }
 
 export function CardsPage() {
@@ -117,13 +62,9 @@ export function CardsPage() {
   const selectedIds = [...selection.selectedIds]
   const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealsOnly || selectedTag)
   const deals = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal])), [dealsQuery.data])
-  const savings = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal.savings])), [dealsQuery.data])
-  const groupNames = useMemo(() => new Map((groupsQuery.data ?? []).map((group) => [group.id, group.name.toLowerCase()])), [groupsQuery.data])
-  const groupTags = useMemo(() => new Map((groupsQuery.data ?? []).map((group) => [group.id, group.tags ?? []])), [groupsQuery.data])
-  const availableTags = useMemo(() => [...new Set([
-    ...(cardsQuery.data ?? []).flatMap((card) => card.tags ?? []),
-    ...(groupsQuery.data ?? []).flatMap((group) => group.tags ?? []),
-  ])].sort(collator.compare), [cardsQuery.data, groupsQuery.data])
+  const allItems = useMemo(() => catalogItems(cardsQuery.data ?? [], groupsQuery.data ?? [], deals),
+    [cardsQuery.data, groupsQuery.data, deals])
+  const availableTags = useMemo(() => [...new Set(allItems.flatMap((item) => item.card?.tags ?? []))].sort(collator.compare), [allItems])
 
   function openCreateGroup(ids: number[]) {
     setInitialGroupCardIds(ids)
@@ -139,38 +80,23 @@ export function CardsPage() {
     }, { replace: true })
   }, [setParams])
 
-  const visibleCards = useMemo(() => {
-    const result = (cardsQuery.data ?? []).filter((card) => {
-      const text = `${card.title ?? ''} ${card.externalId}`.toLowerCase()
-      return (!deferredQuery || text.includes(deferredQuery) || groupNames.get(card.groupId ?? -1)?.includes(deferredQuery))
-        && (marketplace === 'all' || card.marketplace === marketplace)
-        && matchesStatus(card, status)
-        && (!selectedTag || (card.tags ?? []).includes(selectedTag) || (groupTags.get(card.groupId ?? -1) ?? []).includes(selectedTag))
-        && (!dealsOnly || deals.has(card.id))
-    })
-    return result.toSorted((left, right) => compareItems(
-      { kind: 'card', card: left, dealsEnabled: left.dealsEnabled },
-      { kind: 'card', card: right, dealsEnabled: right.dealsEnabled }, sort, savings))
-  }, [cardsQuery.data, deals, dealsOnly, deferredQuery, groupNames, groupTags, marketplace, savings, selectedTag, sort, status])
+  const orderedItems = useMemo(() => allItems.filter((item) => matchesItem(item, {
+    query: deferredQuery, marketplace, status, tag: selectedTag, dealsOnly,
+  })).toSorted((left, right) => compareItems(left, right, sort)),
+  [allItems, deferredQuery, marketplace, status, selectedTag, dealsOnly, sort])
 
   const groupedCards = useMemo(() => {
     const byGroup = new Map<number, MarketplaceCard[]>()
-    for (const card of visibleCards) {
-      if (card.groupId === null || card.groupId === undefined) continue
+    for (const card of cardsQuery.data ?? []) {
+      if (card.groupId == null) continue
       const members = byGroup.get(card.groupId) ?? []
       members.push(card)
       byGroup.set(card.groupId, members)
     }
+    for (const members of byGroup.values()) members.sort((left, right) =>
+      compareItems(cardItem(left, deals), cardItem(right, deals), sort))
     return byGroup
-  }, [visibleCards])
-  const visibleGroups = (groupsQuery.data ?? []).filter((group) =>
-    groupedCards.has(group.id) || (!dealsOnly && !deferredQuery && marketplace === 'all' && status === 'all' && group.cardIds.length === 0 && (!selectedTag || (group.tags ?? []).includes(selectedTag))))
-  const standaloneCards = visibleCards.filter((card) => !groupedCards.has(card.groupId ?? -1))
-  const orderedItems = [
-    ...visibleGroups.map((group) => ({ kind: 'group' as const, group, dealsEnabled: (groupedCards.get(group.id) ?? []).some((card) => card.dealsEnabled) })),
-    ...standaloneCards.map((card) => ({ kind: 'card' as const, card, dealsEnabled: card.dealsEnabled })),
-  ].toSorted((left, right) => compareItems(left, right, sort, savings))
-  const gridItems = [...orderedItems.filter((item) => item.kind === 'group'), ...orderedItems.filter((item) => item.kind === 'card')]
+  }, [cardsQuery.data, deals, sort])
 
   function toggleSort(key: ColumnSortKey) {
     const next = sort?.key === key ? (sort.direction === 'asc' ? `${key}-desc` : '') : `${key}-asc`
@@ -212,6 +138,20 @@ export function CardsPage() {
   function saving(card: MarketplaceCard) {
     const deal = deals.get(card.id)
     return deal ? <span className="deal-savings">{formatPrice(deal.savings)}</span> : 'Сейчас не выгодно'
+  }
+
+  function groupSaving(group: ProductGroup) {
+    return group.savings !== null ? <span className="deal-savings">{formatPrice(group.savings)}</span> : 'Сейчас не выгодно'
+  }
+
+  function groupDetails(group: ProductGroup) {
+    const card = group.representativeCard
+    const updated = card?.lastObservedAt ? card.updatedAt : null
+    return <div className="flex flex-wrap items-center gap-2">
+      {card ? dealStatus(card) : null}
+      {group.hasMemberDeals && !group.isDeal ? <Badge variant="secondary">Есть выгодный товар внутри</Badge> : null}
+      <time dateTime={updated ?? undefined} title={formatDateTime(updated)}>{formatRelativeTime(updated)}</time>
+    </div>
   }
 
   function tile(card: MarketplaceCard) {
@@ -332,7 +272,7 @@ export function CardsPage() {
       </div>
 
       <div className="cards-view-bar">
-        <span>{visibleCards.length} из {cardsQuery.data?.length ?? 0}</span>
+        <span>{orderedItems.length} из {allItems.length}</span>
         <ToggleGroup type="single" value={view} onValueChange={(value) => { if (value) setParam('view', value, 'list') }} variant="outline" spacing={0} aria-label="Вид карточек">
           <ToggleGroupItem value="list" aria-label="Список" title="Список"><List aria-hidden="true" /></ToggleGroupItem>
           <ToggleGroupItem value="grid" aria-label="Сетка" title="Сетка"><LayoutGrid aria-hidden="true" /></ToggleGroupItem>
@@ -342,17 +282,22 @@ export function CardsPage() {
       <BulkCardActions selectedIds={selectedIds} cards={cardsQuery.data ?? []} groups={groupsQuery.data ?? []}
         onCreateGroup={() => openCreateGroup(selectedIds)} onProcessed={selection.clearProcessed} onClear={selection.clear} />
 
-      <div className={cn(view === 'list' || cardsQuery.isLoading || groupsQuery.isLoading || cardsQuery.isError || groupsQuery.isError || (visibleCards.length === 0 && visibleGroups.length === 0) ? 'table-surface' : '')}>
+      <div className={cn(view === 'list' || cardsQuery.isLoading || groupsQuery.isLoading || cardsQuery.isError || groupsQuery.isError || (orderedItems.length === 0) ? 'table-surface' : '')}>
         {cardsQuery.isLoading || groupsQuery.isLoading || dealsOnly && dealsQuery.isLoading ? <LoadingRows /> : cardsQuery.isError || groupsQuery.isError || dealsOnly && dealsQuery.isError ? (
           <Empty><EmptyHeader><EmptyTitle>{dealsOnly && dealsQuery.isError ? 'Не удалось загрузить выгодные предложения' : 'Не удалось загрузить карточки'}</EmptyTitle><EmptyDescription>Проверьте соединение с API и повторите.</EmptyDescription></EmptyHeader><EmptyContent><Button onClick={() => { void cardsQuery.refetch(); void groupsQuery.refetch(); void dealsQuery.refetch() }}>Повторить</Button></EmptyContent></Empty>
-        ) : visibleCards.length === 0 && visibleGroups.length === 0 ? (
+        ) : orderedItems.length === 0 ? (
           <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</EmptyTitle><EmptyDescription>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</EmptyDescription></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : () => setDrawerOpen(true)}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></EmptyContent></Empty>
         ) : view === 'grid' ? (
           <ul className="cards-grid" aria-label="Отслеживаемые карточки маркетплейсов">
-            {gridItems.map((item) => item.kind === 'group' ? <li key={`group-${item.group.id}`} className="cards-grid__group">
+            {orderedItems.map((item) => item.kind === 'group' ? <li key={`group-${item.group.id}`} className="cards-grid__group">
               <div className="product-group__header">
-                <Button variant="ghost" type="button" className="product-group__toggle px-0" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></Button><TagList tags={item.group.tags} />
-                <span>Цена от {formatPrice(item.group.currentPrice)} · Минимальная {formatPrice(item.group.minimumPrice)}</span>
+                <Button variant="ghost" type="button" className="product-group__toggle px-0" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></Button><TagList tags={item.card?.tags} />
+                <div className="flex flex-wrap items-center gap-3">
+                  {item.card ? <><ProductImage card={item.card} /><MarketplaceMark marketplace={item.card.marketplace} /></> : null}
+                  <span>Цена {formatPrice(item.card?.currentPrice)} · Минимальная {formatPrice(item.card?.minimumPrice)} · Средняя {formatPrice(item.card?.averagePrice)}</span>
+                  {groupSaving(item.group)}<AvailabilityStatus value={item.card?.currentAvailability ?? null} />
+                  {groupDetails(item.group)}
+                </div>
                 <Button variant="ghost" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil data-icon="inline-start" />Изменить</Button>
               </div>
               {!collapsedGroups.includes(item.group.id) ? <ul className="cards-grid cards-grid--nested">{(groupedCards.get(item.group.id) ?? []).map(tile)}</ul> : null}
@@ -365,7 +310,7 @@ export function CardsPage() {
               <TableBody>
                 {orderedItems.map((item) => item.kind === 'group' ? <Fragment key={`group-${item.group.id}`}>
                   <tr className="cards-table__group-gap" aria-hidden="true"><td colSpan={9} /></tr>
-                  <TableRow className="cards-table__group"><TableCell className="cards-table__selection py-0" /><TableCell className="py-0"><Button variant="ghost" type="button" className="product-group__toggle px-0" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></Button><TagList tags={item.group.tags} /></TableCell><TableCell className="py-0">Группа</TableCell><TableCell className="price-cell py-0">{formatPrice(item.group.currentPrice)}</TableCell><TableCell className="price-cell py-0">{formatPrice(item.group.minimumPrice)}</TableCell><TableCell className="py-0">—</TableCell><TableCell className="py-0">Сейчас не выгодно</TableCell><TableCell /><TableCell className="py-0"><Button variant="ghost" size="icon-sm" type="button" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></Button></TableCell></TableRow>
+                  <TableRow className="cards-table__group"><TableCell className="cards-table__selection py-0" /><TableCell className="py-0"><Button variant="ghost" type="button" className="product-group__toggle px-0" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></Button><TagList tags={item.card?.tags} />{groupDetails(item.group)}</TableCell><TableCell className="py-0">{item.card ? <MarketplaceMark marketplace={item.card.marketplace} /> : '—'}</TableCell><TableCell className="price-cell py-0">{formatPrice(item.group.currentPrice)}</TableCell><TableCell className="price-cell py-0">{formatPrice(item.group.minimumPrice)}</TableCell><TableCell className="price-cell py-0">{formatPrice(item.card?.averagePrice)}</TableCell><TableCell className="py-0">{groupSaving(item.group)}</TableCell><TableCell className="py-0"><AvailabilityStatus value={item.card?.currentAvailability ?? null} /></TableCell><TableCell className="py-0"><Button variant="ghost" size="icon-sm" type="button" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></Button></TableCell></TableRow>
                   {!collapsedGroups.includes(item.group.id) ? (groupedCards.get(item.group.id) ?? []).map((card) => row(card, true)) : null}
                   <tr className="cards-table__group-gap" aria-hidden="true"><td colSpan={9} /></tr>
                 </Fragment> : row(item.card))}

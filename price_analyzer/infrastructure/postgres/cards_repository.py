@@ -104,11 +104,13 @@ class CardRepository:
         latest = aliased(PriceHistoryRecord)
         return select(MarketplaceCardRecord, latest).outerjoin(latest, latest.id == latest_id)
 
-    async def list_cards(self) -> List[CardOverview]:
+    async def list_cards(self, *, session=None) -> List[CardOverview]:
+        if session is None:
+            async with self._database.session() as session:
+                return await self.list_cards(session=session)
         statement = self._overview_statement()
         statement = statement.order_by(MarketplaceCardRecord.deals_enabled.desc(), MarketplaceCardRecord.id)
-        async with self._database.session() as session:
-            rows = (await session.execute(statement)).all()
+        rows = (await session.execute(statement)).all()
         return [
             CardOverview(
                 card=_card(card),
@@ -121,6 +123,11 @@ class CardRepository:
 
     async def list_card_price_metrics(self) -> dict[int, tuple[Decimal | None, Decimal | None]]:
         """All-time minimum and mean of previous daily prices for every card."""
+        async with self._database.session() as session:
+            rows = await self._list_card_price_metric_rows(session)
+        return {row.id: (row.minimum_price, row.average_price) for row in rows}
+
+    async def _list_card_price_metric_rows(self, session):
         statement = text("""
             WITH latest AS (
                 SELECT DISTINCT ON (card_id) card_id, id
@@ -132,7 +139,7 @@ class CardRepository:
                 WHERE h.id <> l.id AND h.availability = 'in_stock' AND h.price IS NOT NULL
                 GROUP BY h.card_id, date_trunc('day', h.observed_at)
             ), averages AS (
-                SELECT card_id, avg(daily_average) AS average_price
+                SELECT card_id, avg(daily_average) AS average_price, count(*) AS baseline_days
                 FROM daily GROUP BY card_id
             ), minimums AS (
                 SELECT card_id, min(price) AS minimum_price
@@ -140,14 +147,12 @@ class CardRepository:
                 WHERE availability = 'in_stock' AND price IS NOT NULL
                 GROUP BY card_id
             )
-            SELECT c.id, m.minimum_price, a.average_price
+            SELECT c.id, m.minimum_price, a.average_price, coalesce(a.baseline_days, 0) AS baseline_days
             FROM marketplace_cards c
             LEFT JOIN minimums m ON m.card_id = c.id
             LEFT JOIN averages a ON a.card_id = c.id
         """)
-        async with self._database.session() as session:
-            rows = (await session.execute(statement)).all()
-        return {row.id: (row.minimum_price, row.average_price) for row in rows}
+        return (await session.execute(statement)).all()
 
     async def get_card(self, card_id: int) -> Optional[CardOverview]:
         async with self._database.session() as session:
