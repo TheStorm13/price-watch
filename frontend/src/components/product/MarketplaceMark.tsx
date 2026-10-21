@@ -1,10 +1,11 @@
+import { cn } from '@/lib/utils'
 import type { Marketplace } from '../../types/domain'
 import { marketplaceLabel } from '../../utils/format'
 
 export function MarketplaceMark({ marketplace }: { marketplace: Marketplace }) {
   return (
     <span className="marketplace-mark">
-      <span className={`marketplace-mark__logo marketplace-mark__logo--${marketplace}`} aria-hidden="true">
+      <span className={cn('marketplace-mark__logo', `marketplace-mark__logo--${marketplace}`)} aria-hidden="true">
         {marketplace === 'ozon' ? 'ozon' : marketplace === 'wildberries' ? 'WB' : marketplace === 'aliexpress' ? 'Ali' : 'Я'}
       </span>
       <span>{marketplaceLabel[marketplace]}</span>

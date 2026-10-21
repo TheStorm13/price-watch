@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { restoreFocus } from '@/lib/focus'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
+import { NativeSelect } from '@/components/ui/native-select'
+import { Field, FieldLabel, FieldDescription, FieldGroup } from '@/components/ui/field'
+import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import { queryKeys } from '../../api/queries'
-import { Button } from '../../components/ui/Button'
+import { Button } from '../../components/ui/button'
 import type { MarketplaceCard, ProductGroup } from '../../types/domain'
 
 interface Props {
@@ -26,6 +31,7 @@ export function BulkCardActions({ selectedIds, cards, groups, onCreateGroup, onP
   const queryClient = useQueryClient()
   const [groupPickerOpen, setGroupPickerOpen] = useState(false)
   const [groupId, setGroupId] = useState('')
+  const deleteTrigger = useRef<HTMLButtonElement>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null)
@@ -98,32 +104,33 @@ export function BulkCardActions({ selectedIds, cards, groups, onCreateGroup, onP
   return <>
     {selectedIds.length > 0 ? <div className="bulk-card-actions" role="group" aria-label="Действия с выбранными карточками">
       <strong>Выбрано карточек: {selectedIds.length}</strong>
-      <Button disabled={busy} onClick={onCreateGroup}>Создать группу</Button>
-      <Button disabled={busy || groups.length === 0} onClick={() => setGroupPickerOpen((value) => !value)}>Добавить в группу</Button>
-      <Button disabled={busy} onClick={() => void runMany('enable')}>Учитывать в выгодных</Button>
-      <Button disabled={busy} onClick={() => void runMany('disable')}>Не учитывать в выгодных</Button>
-      <Button variant="danger" disabled={busy} onClick={() => setConfirmDelete(true)}>Удалить выбранные</Button>
+      <Button variant="outline" disabled={busy} onClick={onCreateGroup}>Создать группу</Button>
+      <Button variant="outline" disabled={busy || groups.length === 0} onClick={() => setGroupPickerOpen((value) => !value)}>Добавить в группу</Button>
+      <Button variant="outline" disabled={busy} onClick={() => void runMany('enable')}>Учитывать в выгодных</Button>
+      <Button variant="outline" disabled={busy} onClick={() => void runMany('disable')}>Не учитывать в выгодных</Button>
+      <Button ref={deleteTrigger} variant="destructive" disabled={busy} onClick={() => setConfirmDelete(true)}>Удалить выбранные</Button>
       <Button variant="ghost" disabled={busy} onClick={() => { onClear(); setGroupPickerOpen(false); setMessage(null) }}>Снять выбор</Button>
       {groupPickerOpen ? <div className="bulk-card-actions__group-picker">
-        <label className="field"><span>Существующая группа</span><select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
+        <FieldGroup><Field><FieldLabel htmlFor="field-bulkcardactions-1">Существующая группа</FieldLabel><NativeSelect id="field-bulkcardactions-1" value={groupId} onChange={(event) => setGroupId(event.target.value)}>
           <option value="">Выберите группу</option>
           {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-        </select></label>
-        {movingCards && targetGroup ? <p>Карточки из других групп перейдут в «{targetGroup.name}». История цен сохранится.</p> : null}
-        <Button variant="primary" disabled={busy || !groupId} onClick={() => void addToGroup()}>Добавить карточки</Button>
+        </NativeSelect></Field></FieldGroup>
+        {movingCards && targetGroup ? <Alert><AlertDescription>Карточки из других групп перейдут в «{targetGroup.name}». История цен сохранится.</AlertDescription></Alert> : null}
+        <Button variant="default" disabled={busy || !groupId} onClick={() => void addToGroup()}>Добавить карточки</Button>
       </div> : null}
     </div> : null}
-    {message ? <p className={message.error ? 'action-error' : 'transfer-page-status transfer-page-status--success'} role={message.error ? 'alert' : 'status'}>{message.text}</p> : null}
-    {confirmDelete ? <div className="confirm-dialog-layer">
-      <section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="bulk-delete-title" aria-describedby="bulk-delete-description"
-        onKeyDown={(event) => { if (event.key === 'Escape' && !busy) setConfirmDelete(false) }}>
-        <h2 id="bulk-delete-title">Удалить выбранные карточки?</h2>
-        <p id="bulk-delete-description">Будет удалено карточек: {selectedIds.length}. Вся их история цен также будет удалена без возможности восстановления.</p>
-        <div className="confirm-dialog__actions">
-          <Button autoFocus disabled={busy} onClick={() => setConfirmDelete(false)}>Отмена</Button>
-          <Button variant="danger" disabled={busy} onClick={() => void runMany('delete')}>{busy ? 'Удаляем…' : 'Удалить карточки'}</Button>
-        </div>
-      </section>
-    </div> : null}
+    {message ? <Alert variant={message.error ? 'destructive' : 'default'} role={message.error ? 'alert' : 'status'}><AlertDescription>{message.text}</AlertDescription></Alert> : null}
+    <AlertDialog open={confirmDelete} onOpenChange={(next) => { if (!busy) setConfirmDelete(next) }}>
+      <AlertDialogContent onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(deleteTrigger.current) }}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Удалить выбранные карточки?</AlertDialogTitle>
+          <AlertDialogDescription>Будет удалено карточек: {selectedIds.length}. Вся их история цен также будет удалена без возможности восстановления.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>Отмена</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" disabled={busy} onClick={(event) => { event.preventDefault(); void runMany('delete') }}>{busy ? 'Удаляем…' : 'Удалить карточки'}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </>
 }

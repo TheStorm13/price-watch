@@ -1,15 +1,23 @@
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Field, FieldLabel, FieldDescription, FieldGroup } from '@/components/ui/field'
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { ArrowLeft, ExternalLink, RefreshCw } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, isDesktopMode } from '../../api/client'
 import { useCard, useCardChart, useCardHistory, useDeleteCard, useUpdateCard } from '../../api/queries'
-import { AvailabilityStatus } from '../../components/ui/AvailabilityStatus'
-import { Button } from '../../components/ui/Button'
-import { CardActionsMenu } from '../../components/ui/CardActionsMenu'
-import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
-import { ProductImage } from '../../components/ui/ProductImage'
-import { TagList } from '../../components/ui/TagList'
+import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
+import { Button } from '../../components/ui/button'
+import { CardActionsMenu } from '../../components/product/CardActionsMenu'
+import { MarketplaceMark } from '../../components/product/MarketplaceMark'
+import { ProductImage } from '../../components/product/ProductImage'
+import { TagList } from '../../components/product/TagList'
 import { formatDateTime, formatPrice, marketplaceLabel } from '../../utils/format'
 import { useCollection } from '../collection/CollectionProvider'
 import { PriceChart } from './PriceChart'
@@ -35,9 +43,9 @@ function CardTagsEditor({ card }: { card: NonNullable<ReturnType<typeof useCard>
   }
 
   return <form className="detail-tags" onSubmit={(event) => void save(event)}>
-    <label className="field"><span>Теги товара</span><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" /><small>Не больше двух тегов, через запятую</small></label>
-    <Button type="submit" disabled={updateCard.isPending}>Сохранить теги</Button>
-    {error ? <span className="field__error" role="alert">{error}</span> : null}
+    <FieldGroup className="max-w-[360px]"><Field data-invalid={Boolean(error)}><FieldLabel htmlFor="field-carddetailspage-1">Теги товара</FieldLabel><Input id="field-carddetailspage-1" aria-invalid={Boolean(error)} value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" /><FieldDescription>Не больше двух тегов, через запятую</FieldDescription></Field></FieldGroup>
+    <Button variant="outline" type="submit" disabled={updateCard.isPending}>Сохранить теги</Button>
+    {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
   </form>
 }
 
@@ -75,19 +83,17 @@ export function CardDetailsPage() {
     }
   }
 
-  if (cardQuery.isLoading || historyQuery.isLoading || chartQuery.isLoading) return <section className="page detail-page"><div className="detail-loading" aria-label="Загрузка карточки" /></section>
+  if (cardQuery.isLoading || historyQuery.isLoading || chartQuery.isLoading) return <section className="page detail-page"><Skeleton className="min-h-[560px]" aria-label="Загрузка карточки" /></section>
   if (cardQuery.error instanceof ApiError && cardQuery.error.code === 'card_not_found') {
-    return <section className="page"><div className="state-message"><h1>Карточка не найдена</h1><Link className="text-link" to="/cards">Вернуться к карточкам</Link></div></section>
+    return <section className="page"><Empty><EmptyHeader><EmptyTitle>Карточка не найдена</EmptyTitle></EmptyHeader><EmptyContent><Link className="text-link" to="/cards">Вернуться к карточкам</Link></EmptyContent></Empty></section>
   }
   if (!card || cardQuery.isError || historyQuery.isError || chartQuery.isError) {
     return (
       <section className="page">
-        <div className="state-message">
-          <h1>Не удалось загрузить данные карточки</h1>
-          <p>Сервис временно не смог получить карточку или историю её цены.</p>
-          <Button onClick={() => void Promise.all([cardQuery.refetch(), historyQuery.refetch(), chartQuery.refetch()])}>Повторить</Button>
-          <Link className="text-link" to="/cards">Вернуться к карточкам</Link>
-        </div>
+        <Empty><EmptyHeader><EmptyTitle>Не удалось загрузить данные карточки</EmptyTitle><EmptyDescription>Сервис временно не смог получить карточку или историю её цены.</EmptyDescription></EmptyHeader><EmptyContent>
+          <Button variant="outline" onClick={() => void Promise.all([cardQuery.refetch(), historyQuery.refetch(), chartQuery.refetch()])}>Повторить</Button>
+          <Link className="text-link" to="/cards">Вернуться к карточкам</Link></EmptyContent>
+        </Empty>
       </section>
     )
   }
@@ -98,18 +104,18 @@ export function CardDetailsPage() {
       <header className="detail-header">
         <div className="detail-header__product">
           <ProductImage card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager />
-          <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.dealsEnabled ? <><span>·</span><span className="tracking-status">Не участвует в выгодных</span></> : null}</div></div>
+          <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.dealsEnabled ? <><span>·</span><Badge variant="warning" className="tracking-status">Не участвует в выгодных</Badge></> : null}</div></div>
         </div>
         <div className="page-actions">
-          {card.url ? <a className="button button--secondary" href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a> : null}
+          {card.url ? <Button variant="outline" asChild><a href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink data-icon="inline-start" aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a></Button> : null}
           {card.marketplace === 'ozon'
-            ? <Button icon={<RefreshCw />} onClick={() => collection.start(card.id)} disabled={collection.isStarting}>Обновить эту карточку</Button>
-            : <span className="tracking-status">Сбор цен пока недоступен: коннектор не подключён</span>}
+            ? <Button variant="outline" onClick={() => collection.start(card.id)} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить эту карточку</Button>
+            : <Badge variant="warning" className="tracking-status">Сбор цен пока недоступен: коннектор не подключён</Badge>}
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
         </div>
       </header>
-      {openError ? <p className="action-error" role="alert">{openError}</p> : null}
-      {collection.startError ? <p className="action-error" role="alert">{collection.startError}</p> : null}
+      {openError ? <Alert variant="destructive"><AlertDescription>{openError}</AlertDescription></Alert> : null}
+      {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
       <TagList tags={card.tags} />
       <CardTagsEditor key={card.id} card={card} />
 
@@ -127,21 +133,21 @@ export function CardDetailsPage() {
 
       <div className="chart-heading">
         <h2>История цены</h2>
-        <div className="period-control" aria-label="Период истории">
-          {periods.map((period) => <button key={period} className={days === period ? 'is-active' : ''} onClick={() => setParams({ days: String(period) })}>{period} дней</button>)}
-        </div>
+        <ToggleGroup type="single" value={String(days)} onValueChange={(value) => { if (value) setParams({ days: value }) }} variant="outline" spacing={0} aria-label="Период истории">
+          {periods.map((period) => <ToggleGroupItem key={period} value={String(period)}>{period} дней</ToggleGroupItem>)}
+        </ToggleGroup>
       </div>
       <PriceChart history={chart} midpoint={midpoint} />
 
       <section className="measurements">
         <h2>Измерения</h2>
         <div className="table-surface">
-          <table className="history-table">
-            <caption className="sr-only">История измерений цены</caption>
-            <thead><tr><th>Дата и время</th><th>Цена</th><th>Наличие</th></tr></thead>
-            <tbody>{history.map((point) => <tr key={point.id}><td>{formatDateTime(point.observedAt)}</td><td className="price-cell">{formatPrice(point.price)}</td><td><AvailabilityStatus value={point.availability} /></td></tr>)}</tbody>
-          </table>
-          {history.length === 0 ? <div className="state-message state-message--compact">Измерений за выбранный период нет</div> : null}
+          <Table className="history-table">
+            <TableCaption className="sr-only">История измерений цены</TableCaption>
+            <TableHeader><TableRow><TableHead>Дата и время</TableHead><TableHead>Цена</TableHead><TableHead>Наличие</TableHead></TableRow></TableHeader>
+            <TableBody>{history.map((point) => <TableRow key={point.id}><TableCell>{formatDateTime(point.observedAt)}</TableCell><TableCell className="price-cell">{formatPrice(point.price)}</TableCell><TableCell><AvailabilityStatus value={point.availability} /></TableCell></TableRow>)}</TableBody>
+          </Table>
+          {history.length === 0 ? <Empty><EmptyHeader><EmptyTitle>Измерений за выбранный период нет</EmptyTitle></EmptyHeader></Empty> : null}
         </div>
         {historyQuery.data && historyQuery.data.totalCount > historyQuery.data.pageSize ? (
           <div className="history-pagination">

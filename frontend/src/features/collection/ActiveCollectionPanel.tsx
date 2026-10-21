@@ -1,5 +1,9 @@
+import { cn } from '@/lib/utils'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, Check, LoaderCircle, X } from 'lucide-react'
-import { Button } from '../../components/ui/Button'
+import { Button } from '../../components/ui/button'
 import { useRun } from '../../api/queries'
 import { useCollection } from './CollectionProvider'
 
@@ -17,22 +21,22 @@ export function ActiveCollectionPanel() {
     : 'Обновление цен'
 
   return (
-    <aside className="collection-panel" aria-live="polite" aria-label="Состояние обновления цен">
-      <div className="collection-panel__header">
-        <span className={`collection-panel__symbol ${hasErrors ? 'is-error' : waiting ? 'is-warning' : complete ? 'is-complete' : ''}`}>
+    <Card asChild className="gap-0"><aside className="collection-panel" aria-live="polite" aria-label="Состояние обновления цен">
+      <CardHeader className="flex flex-row items-center gap-2 px-0">
+        <span className={cn('collection-panel__symbol', hasErrors ? 'is-error' : waiting ? 'is-warning' : complete && 'is-complete')}>
           {waiting || hasErrors ? <AlertCircle /> : complete ? <Check /> : <LoaderCircle className="spin" />}
         </span>
-        <strong>{title}</strong>
-        {complete ? <button className="icon-button" onClick={dismiss} aria-label="Закрыть"><X /></button> : null}
-      </div>
-      {waiting ? (
+        <CardTitle>{title}</CardTitle>
+        {complete ? <Button variant="ghost" size="icon-sm" className="ml-auto" onClick={dismiss} aria-label="Закрыть"><X /></Button> : null}
+      </CardHeader>
+      <CardContent className="px-0">{waiting ? (
         <div className="collection-panel__challenge">
           <div>
             <strong>Требуется проверка Ozon</strong>
             <p>{run.challenge?.message ?? 'Завершите проверку в открывшемся Chrome, затем продолжите'}</p>
           </div>
           <div className="collection-panel__challenge-actions">
-            <Button variant="primary" onClick={continueRun}>Проверка пройдена</Button>
+            <Button variant="default" onClick={continueRun}>Проверка пройдена</Button>
           </div>
         </div>
       ) : complete ? (
@@ -49,8 +53,8 @@ export function ActiveCollectionPanel() {
                 </li>)}</ul>
               </details>
             ) : <p>Подробностей об ошибках нет.</p>}
-            {details.data?.errors?.some((error) => error.cardId !== null) ? <Button onClick={retryErrors} disabled={isRetrying}>{isRetrying ? 'Повторяем…' : 'Повторить ошибки'}</Button> : null}
-            {retryError ? <p className="action-error" role="alert">{retryError}</p> : null}
+            {details.data?.errors?.some((error) => error.cardId !== null) ? <Button variant="outline" onClick={retryErrors} disabled={isRetrying}>{isRetrying ? 'Повторяем…' : 'Повторить ошибки'}</Button> : null}
+            {retryError ? <Alert variant="destructive"><AlertDescription>{retryError}</AlertDescription></Alert> : null}
           </> : null}
         </div>
       ) : (
@@ -60,10 +64,10 @@ export function ActiveCollectionPanel() {
             : run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
         </p>
       )}
-      <div className="collection-panel__progress-row">
-        <div className="progress"><span style={{ width: `${waiting ? Math.max(progress, 34) : progress}%` }} /></div>
+      </CardContent><CardFooter className="contents"><div className="collection-panel__progress-row">
+        <Progress value={waiting ? Math.max(progress, 34) : progress} aria-label="Прогресс обновления цен" className="flex-1" />
         <span>{run.successCount + run.failureCount} из {run.totalCount}</span>
       </div>
-    </aside>
+    </CardFooter></aside></Card>
   )
 }

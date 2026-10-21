@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -87,8 +89,8 @@ function DesktopBootstrap({ children }: { children: ReactNode }) {
           <h1>{error ? 'Не удалось запустить приложение' : 'Запускаем Price Watch'}</h1>
           <p>{error ?? 'Поднимаем PostgreSQL и API, затем запускаем браузерный агент…'}</p>
           {error
-            ? <button className="button button--primary" onClick={() => { setError(null); setAttempt((value) => value + 1) }}>Повторить</button>
-            : <span className="desktop-bootstrap__loader" />}
+            ? <Button onClick={() => { setError(null); setAttempt((value) => value + 1) }}>Повторить</Button>
+            : <Skeleton className="size-8" />}
         </main>
       )}
     </DesktopRuntimeContext.Provider>

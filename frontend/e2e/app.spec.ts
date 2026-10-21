@@ -184,7 +184,7 @@ test('группа объединяет товары и сохраняет ин�
   await group.locator('.product-group__toggle').click()
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toHaveCount(0)
   await group.locator('.product-group__toggle').click()
-  await page.getByRole('button', { name: 'Сетка' }).click()
+  await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
   await expect(grid.locator('.cards-grid__group .cards-grid__item')).toHaveCount(2)
   await page.getByRole('combobox', { name: 'Сортировка' }).selectOption('price-desc')
@@ -206,7 +206,7 @@ test('группа объединяет товары и сохраняет ин�
   await expect(page.locator('.cards-grid__group')).toContainText('Техника')
   const downloadPromise = page.waitForEvent('download')
   await page.getByLabel('Дополнительные действия').click()
-  await page.getByRole('button', { name: 'Экспорт', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Экспорт', exact: true }).click()
   const exported = JSON.parse(await readFile(await (await downloadPromise).path(), 'utf8'))
   expect(exported.groups).toEqual([{ name: 'Техника', tags: [], cards: [
     { marketplace: 'ozon', externalId: '1604900984' },
@@ -214,11 +214,11 @@ test('группа объединяет товары и сохраняет ин�
   ] }])
   await page.getByRole('button', { name: 'Изменить группу Техника' }).click()
   await edit.getByRole('button', { name: 'Удалить группу' }).click()
-  await edit.getByRole('button', { name: 'Подтвердить удаление' }).click()
+  await page.getByRole('alertdialog', { name: 'Удалить группу?' }).getByRole('button', { name: 'Подтвердить удаление' }).click()
   await expect(page.locator('.cards-grid__group')).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
   await page.getByLabel('Дополнительные действия').click()
-  await page.getByRole('button', { name: 'Импорт', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
   const importDialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await importDialog.locator('input[type="file"]').setInputFiles({
     name: 'price-watch-export.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(exported)),
@@ -364,7 +364,7 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
   await page.screenshot({ path: '/tmp/price-watch-filters-compact.png' })
   await page.getByRole('button', { name: 'Сбросить' }).click()
-  await page.getByRole('button', { name: 'Сетка' }).click()
+  await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
   const width = await grid.evaluate((element) => {
     const tiles = Array.from(element.querySelectorAll(':scope > .cards-grid__item'))
@@ -431,7 +431,7 @@ test('карточки переключаются между списком и �
   const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
   await expect(row).toBeVisible()
   const rowHeight = await row.evaluate((element) => element.getBoundingClientRect().height)
-  await page.getByRole('button', { name: 'Сетка' }).click()
+  await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
   await expect(grid.locator('li')).toHaveCount(5)
   const compactColumns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length)
@@ -457,7 +457,7 @@ test('карточки переключаются между списком и �
   await expect(page).toHaveURL(/\/cards\/1/)
   await page.setViewportSize({ width: 1024, height: 768 })
   await page.goto('/cards?view=grid')
-  await page.getByRole('button', { name: 'Список' }).click()
+  await page.getByRole('radio', { name: 'Список' }).click()
   await expect(row).toBeVisible()
   expect(await row.evaluate((element) => element.getBoundingClientRect().height)).toBe(rowHeight)
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
@@ -467,7 +467,7 @@ test('плитки одинаковы при разных фото и данны
   await page.setViewportSize({ width: 1024, height: 900 })
   await page.goto('/cards')
   await page.getByLabel('Дополнительные действия').click()
-  await page.getByRole('button', { name: 'Импорт', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
   const portrait = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="400"><rect width="200" height="400" fill="blue"/></svg>'
   const landscape = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="green"/></svg>'
   const imported = {
@@ -509,7 +509,7 @@ test('плитки одинаковы при разных фото и данны
   await excludedRow.scrollIntoViewIfNeeded()
   await page.screenshot({ path: '/tmp/price-watch-list-uniform.png', fullPage: true })
 
-  await page.getByRole('button', { name: 'Сетка' }).click()
+  await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
   const portraitTile = grid.locator('.cards-grid__item').filter({ hasText: 'Очень длинное название вертикального товара' })
   const landscapeTile = grid.locator('.cards-grid__item').filter({ hasText: 'Горизонтальное фото' })
@@ -549,7 +549,7 @@ test('плитки одинаковы при разных фото и данны
   }
   expect(await portraitTile.locator('.cards-grid__title').getAttribute('title')).toContain('Очень длинное название')
   const updatedAt = await portraitTile.locator('time').boundingBox()
-  const availability = await portraitTile.locator('.status').boundingBox()
+  const availability = await portraitTile.getByText('В наличии', { exact: true }).boundingBox()
   expect(updatedAt?.x).toBeLessThan(availability?.x ?? 0)
 
   const layout = () => portraitTile.evaluate((element) => {
@@ -586,7 +586,7 @@ test('экспорт и импорт объединяют карточки и и
   await page.goto('/cards')
   const downloadPromise = page.waitForEvent('download')
   await page.getByLabel('Дополнительные действия').click()
-  await page.getByRole('button', { name: 'Экспорт', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Экспорт', exact: true }).click()
   const download = await downloadPromise
   const exportData = JSON.parse(await readFile(await download.path(), 'utf8'))
   expect(exportData.cards).toHaveLength(5)
@@ -602,7 +602,7 @@ test('экспорт и импорт объединяют карточки и и
     history: [{ price: '123.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
   })
   await page.getByLabel('Дополнительные действия').click()
-  await page.getByRole('button', { name: 'Импорт', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await dialog.locator('input[type="file"]').setInputFiles({
     name: 'price-watch-export.json', mimeType: 'application/json',
@@ -647,7 +647,7 @@ test('исключённые карточки остаются в конце п�
     await expect(rows.nth(4)).toContainText('Не участвует в выгодных')
   }
 
-  await page.getByRole('button', { name: 'Сетка' }).click()
+  await page.getByRole('radio', { name: 'Сетка' }).click()
   const tiles = page.locator('.cards-grid__item')
   await expect(tiles.nth(3)).toContainText('Не участвует в выгодных')
   await expect(tiles.nth(4)).toContainText('Не участвует в выгодных')
@@ -690,7 +690,7 @@ test('удаление карточки требует подтверждени�
   await page.screenshot({ path: '/tmp/price-watch-delete-confirmation.png' })
   await dialog.getByRole('button', { name: 'Отмена' }).click()
   await expect(row).toBeVisible()
-
+  await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Удалить карточку' }).click()
   await dialog.getByRole('button', { name: 'Удалить', exact: true }).click()
   await expect(row).toBeHidden()
@@ -741,7 +741,7 @@ test('одиночное измерение остаётся точкой на �
 test('дата обновления карточки новее первой сохранённой точки цены', async ({ page }) => {
   await page.goto('/cards')
   await expect(page.getByRole('columnheader', { name: 'Обновлено' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Сетка' }).click()
+  await page.getByRole('radio', { name: 'Сетка' }).click()
   const tile = page.locator('.cards-grid__item').filter({ hasText: 'Наушники Apple AirPods Pro 2' })
   const updatedAt = await tile.locator('time').getAttribute('datetime')
   expect(Date.now() - Date.parse(updatedAt ?? '')).toBeLessThan(30 * 60_000)
@@ -764,7 +764,7 @@ test('фильтр предложений показывает цену, мин�
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ }).locator('td').nth(4)).toContainText('72 990 ₽')
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ }).locator('td').nth(6)).toContainText('5 010 ₽')
   await page.screenshot({ path: '/tmp/price-watch-deals-filter.png' })
-  await page.getByRole('button', { name: 'Сетка' }).click()
+  await page.getByRole('radio', { name: 'Сетка' }).click()
   await expect(page.locator('.cards-grid__item')).toHaveCount(1)
   await expect(page.locator('.cards-grid__item')).toContainText(['78 000 ₽'])
   await page.goto('/deals')
@@ -792,4 +792,54 @@ test('ошибки запуска можно повторить отдельно
   await panel.getByRole('button', { name: 'Повторить ошибки' }).click()
   await expect(panel).toContainText('0 из 1')
   await expect(page).toHaveURL(/\/cards$/)
+})
+
+test('панель и диалог удерживают фокус и возвращают его после Escape', async ({ page }) => {
+  await page.goto('/cards')
+  const add = page.getByRole('button', { name: 'Добавить карточку', exact: true })
+  await add.click()
+  const sheet = page.getByRole('dialog', { name: 'Добавить карточку' })
+  await expect(sheet.getByRole('textbox', { name: 'ID карточки' })).toBeFocused()
+  for (const key of ['Shift+Tab', 'Tab']) {
+    for (let step = 0; step < 12; step += 1) {
+      await page.keyboard.press(key)
+      expect(await sheet.evaluate((element) => element.contains(document.activeElement))).toBe(true)
+    }
+  }
+  await page.keyboard.press('Escape')
+  await expect(sheet).toHaveCount(0)
+  await expect(add).toBeFocused()
+
+  const create = page.getByRole('button', { name: 'Создать группу', exact: true })
+  await create.click()
+  const dialog = page.getByRole('dialog', { name: 'Создать группу' })
+  await expect(dialog.getByRole('textbox', { name: 'Название', exact: true })).toBeFocused()
+  for (const key of ['Tab', 'Shift+Tab']) {
+    for (let step = 0; step < 14; step += 1) {
+      await page.keyboard.press(key)
+      expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true)
+    }
+  }
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(create).toBeFocused()
+})
+
+test('переход меню → подтверждение → отмена возвращает фокус без удаления', async ({ page }) => {
+  await page.goto('/cards')
+  await page.evaluate(async () => {
+    const { mockApi } = await import('/src/api/mockApi.ts')
+    mockApi.deleteCard = async () => { throw new Error('Отмена не должна вызывать удаление') }
+  })
+  const row = page.getByRole('row', { name: /Смартфон Samsung/ })
+  const trigger = row.getByRole('button', { name: /Действия с карточкой/ })
+  await trigger.click()
+  await page.getByRole('menuitem', { name: 'Удалить карточку', exact: true }).click()
+  const confirm = page.getByRole('alertdialog', { name: 'Удалить карточку?' })
+  await expect(confirm.getByRole('button', { name: 'Отмена' })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(confirm).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  await expect(row).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
 })

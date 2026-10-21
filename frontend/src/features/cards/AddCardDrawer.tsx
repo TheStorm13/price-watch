@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { X } from 'lucide-react'
-import { Button } from '../../components/ui/Button'
-import { MarketplaceMark } from '../../components/ui/MarketplaceMark'
+import { restoreFocus } from '@/lib/focus'
+import { useRef, useState, type FormEvent } from 'react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet'
+import { Field, FieldLabel, FieldGroup, FieldDescription, FieldError, FieldSet, FieldLegend } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Button } from '../../components/ui/button'
+import { MarketplaceMark } from '../../components/product/MarketplaceMark'
 import { useCreateCard } from '../../api/queries'
 import type { Marketplace } from '../../types/domain'
 import { marketplaceLabel } from '../../utils/format'
@@ -28,23 +32,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
   const idInputRef = useRef<HTMLInputElement>(null)
   const mutation = useCreateCard()
 
-  useEffect(() => {
-    if (!open) return
-    const previous = document.activeElement as HTMLElement | null
-    window.requestAnimationFrame(() => idInputRef.current?.focus({ preventScroll: true }))
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    document.body.classList.add('has-overlay')
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.classList.remove('has-overlay')
-      previous?.focus()
-    }
-  }, [onClose, open])
-
-  if (!open) return null
+  const returnFocusRef = useRef<HTMLElement | null>(null)
 
   function validate() {
     const next: Errors = {}
@@ -90,85 +78,61 @@ export function AddCardDrawer({ open, onClose }: Props) {
   }
 
   return (
-    <div className="drawer-layer">
-      <button className="drawer-backdrop" onClick={onClose} aria-label="Закрыть панель" />
-      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="add-card-title">
-        <form className="drawer__form" onSubmit={submit}>
-          <div className="drawer__header">
-            <h2 id="add-card-title">Добавить карточку</h2>
-            <button className="icon-button" type="button" onClick={onClose} aria-label="Закрыть"><X /></button>
-          </div>
-          <div className="drawer__body">
-            <fieldset className="marketplace-choice">
-              <legend>Маркетплейс</legend>
-              <label className={`marketplace-option${marketplace === 'ozon' ? ' is-selected' : ''}`}>
-                <input type="radio" name="marketplace" value="ozon" checked={marketplace === 'ozon'} onChange={() => { setMarketplace('ozon'); setErrors({}) }} />
-                <MarketplaceMark marketplace="ozon" />
-              </label>
-              <label className={`marketplace-option${marketplace === 'wildberries' ? ' is-selected' : ''}`}>
-                <input type="radio" name="marketplace" value="wildberries" checked={marketplace === 'wildberries'} onChange={() => { setMarketplace('wildberries'); setErrors({}) }} />
-                <span><MarketplaceMark marketplace="wildberries" /><small>Сбор цен пока недоступен</small></span>
-              </label>
-              <label className={`marketplace-option${marketplace === 'aliexpress' ? ' is-selected' : ''}`}>
-                <input type="radio" name="marketplace" value="aliexpress" checked={marketplace === 'aliexpress'} onChange={() => { setMarketplace('aliexpress'); setErrors({}) }} />
-                <span><MarketplaceMark marketplace="aliexpress" /><small>Сбор цен пока недоступен</small></span>
-              </label>
-              <label className={`marketplace-option${marketplace === 'yandex-market' ? ' is-selected' : ''}`}>
-                <input type="radio" name="marketplace" value="yandex-market" checked={marketplace === 'yandex-market'} onChange={() => { setMarketplace('yandex-market'); setErrors({}) }} />
-                <span><MarketplaceMark marketplace="yandex-market" /><small>Сбор цен пока недоступен</small></span>
-              </label>
-            </fieldset>
-
-            <label className="field" htmlFor="external-id">
-              <span>ID карточки</span>
-              <input
-                id="external-id"
-                ref={idInputRef}
-                value={externalId}
-                onChange={(event) => setExternalId(event.target.value)}
-                inputMode="numeric"
-                placeholder={marketplace === 'ozon' ? '1604900984' : 'Введите ID товара'}
-                aria-invalid={Boolean(errors.externalId)}
-                aria-describedby={errors.externalId ? 'external-id-error' : 'external-id-hint'}
-              />
-              <small id={errors.externalId ? 'external-id-error' : 'external-id-hint'} className={errors.externalId ? 'field__error' : ''}>
-                {errors.externalId ?? 'Введите числовой ID карточки товара'}
-              </small>
-            </label>
-
-            <label className="field" htmlFor="card-title">
-              <span>Название</span>
-              <input id="card-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Например, смартфон Samsung" />
-              <small>{marketplace === 'ozon' ? 'Можно оставить пустым — название обновится при сборе' : 'Укажите название: автоматический сбор пока недоступен'}</small>
-            </label>
-
-            <label className="field" htmlFor="card-url">
-              <span>URL</span>
-              <input
-                id="card-url"
-                value={url}
-                onChange={(event) => setUrl(event.target.value)}
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose() }}>
+      <SheetContent className="w-[420px] sm:max-w-[420px]" onOpenAutoFocus={(event) => {
+        event.preventDefault()
+        returnFocusRef.current = document.activeElement as HTMLElement | null
+        idInputRef.current?.focus()
+      }} onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(returnFocusRef.current) }}>
+        <form className="flex h-full min-h-0 flex-col" onSubmit={submit}>
+          <SheetHeader>
+            <SheetTitle>Добавить карточку</SheetTitle>
+            <SheetDescription>Добавьте товар для отслеживания цены.</SheetDescription>
+          </SheetHeader>
+          <FieldGroup className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
+            <FieldSet>
+              <FieldLegend>Маркетплейс</FieldLegend>
+              <RadioGroup value={marketplace} onValueChange={(value) => { setMarketplace(value as Marketplace); setErrors({}) }}>
+                {(['ozon', 'wildberries', 'aliexpress', 'yandex-market'] as const).map((value) => (
+                  <Field key={value} orientation="horizontal">
+                    <RadioGroupItem id={`marketplace-${value}`} value={value} />
+                    <FieldLabel htmlFor={`marketplace-${value}`}>
+                      <span><MarketplaceMark marketplace={value} />{value !== 'ozon' ? <FieldDescription>Сбор цен пока недоступен</FieldDescription> : null}</span>
+                    </FieldLabel>
+                  </Field>
+                ))}
+              </RadioGroup>
+            </FieldSet>
+            <Field data-invalid={Boolean(errors.externalId)}>
+              <FieldLabel htmlFor="external-id">ID карточки</FieldLabel>
+              <Input id="external-id" ref={idInputRef} value={externalId} onChange={(event) => setExternalId(event.target.value)} inputMode="numeric"
+                placeholder={marketplace === 'ozon' ? '1604900984' : 'Введите ID товара'} aria-invalid={Boolean(errors.externalId)} aria-describedby="external-id-hint" />
+              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">Введите числовой ID карточки товара</FieldDescription>}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="card-title">Название</FieldLabel>
+              <Input id="card-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Например, смартфон Samsung" />
+              <FieldDescription>{marketplace === 'ozon' ? 'Можно оставить пустым — название обновится при сборе' : 'Укажите название: автоматический сбор пока недоступен'}</FieldDescription>
+            </Field>
+            <Field data-invalid={Boolean(errors.url)}>
+              <FieldLabel htmlFor="card-url">URL</FieldLabel>
+              <Input id="card-url" value={url} onChange={(event) => setUrl(event.target.value)}
                 placeholder={marketplace === 'ozon' ? 'https://www.ozon.ru/product/...' : marketplace === 'wildberries' ? 'https://www.wildberries.ru/catalog/...' : marketplace === 'aliexpress' ? 'https://aliexpress.ru/item/...' : 'https://market.yandex.ru/product/...'}
-                aria-invalid={Boolean(errors.url)}
-                aria-describedby={errors.url ? 'url-error' : 'url-hint'}
-              />
-              <small id={errors.url ? 'url-error' : 'url-hint'} className={errors.url ? 'field__error' : ''}>
-                {errors.url ?? 'Ссылка на карточку товара (необязательно)'}
-              </small>
-            </label>
-            <label className="field" htmlFor="card-tags"><span>Теги</span>
-              <input id="card-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" aria-invalid={Boolean(errors.tags)} />
-              <small className={errors.tags ? 'field__error' : ''}>{errors.tags ?? 'До двух тегов через запятую'}</small>
-            </label>
-          </div>
-          <div className="drawer__footer">
-            <Button type="button" onClick={onClose}>Отмена</Button>
-            <Button variant="primary" type="submit" disabled={mutation.isPending || !externalId.trim()}>
-              {mutation.isPending ? 'Добавление…' : 'Добавить'}
-            </Button>
-          </div>
+                aria-invalid={Boolean(errors.url)} aria-describedby="url-hint" />
+              {errors.url ? <FieldError id="url-hint">{errors.url}</FieldError> : <FieldDescription id="url-hint">Ссылка на карточку товара (необязательно)</FieldDescription>}
+            </Field>
+            <Field data-invalid={Boolean(errors.tags)}>
+              <FieldLabel htmlFor="card-tags">Теги</FieldLabel>
+              <Input id="card-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" aria-invalid={Boolean(errors.tags)} aria-describedby="tags-hint" />
+              {errors.tags ? <FieldError id="tags-hint">{errors.tags}</FieldError> : <FieldDescription id="tags-hint">До двух тегов через запятую</FieldDescription>}
+            </Field>
+          </FieldGroup>
+          <SheetFooter className="flex-row justify-end">
+            <Button variant="outline" type="button" onClick={onClose}>Отмена</Button>
+            <Button type="submit" disabled={mutation.isPending || !externalId.trim()}>{mutation.isPending ? 'Добавление…' : 'Добавить'}</Button>
+          </SheetFooter>
         </form>
-      </aside>
-    </div>
+      </SheetContent>
+    </Sheet>
   )
 }

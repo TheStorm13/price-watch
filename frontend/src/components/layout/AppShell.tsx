@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { BarChart3, Globe2 } from 'lucide-react'
@@ -35,21 +37,20 @@ export function AppShell() {
           <span className="app-header__mode">{apiModeLabel}</span>
           {isDesktopMode ? <BackgroundSettings /> : null}
           {isDesktopMode ? (
-            <button
-              className="app-header__browser-button"
+            <Button variant="outline"
               type="button"
               disabled={collecting || openingBrowser}
               onClick={() => void openBrowser()}
             >
-              <Globe2 aria-hidden="true" /><span>Открыть Chrome</span>
-            </button>
+              <Globe2 data-icon="inline-start" aria-hidden="true" /><span>Открыть Chrome</span>
+            </Button>
           ) : null}
         </div>
       </header>
       <main className="main-content">
-        {serviceError ? <div className="desktop-service-error" role="alert"><span>Фоновые службы: {serviceError}</span><button type="button" onClick={() => void retryServices()}>Повторить запуск</button></div> : null}
-        {browserError ? <p className="app-header__browser-error" role="alert">Не удалось открыть Chrome: {browserError}</p> : null}
-        {dealNotice ? <div className="deal-notice" role="status"><span>Найдено выгодных предложений: {dealNotice}</span><Link to="/cards?deals=1" onClick={dismissDealNotice}>Посмотреть</Link><button type="button" onClick={dismissDealNotice} aria-label="Закрыть уведомление">×</button></div> : null}
+        {serviceError ? <Alert variant="destructive" className="mx-auto mt-4 max-w-[1440px]"><AlertDescription><span>Фоновые службы: {serviceError}</span><Button variant="ghost" type="button" onClick={() => void retryServices()}>Повторить запуск</Button></AlertDescription></Alert> : null}
+        {browserError ? <Alert variant="destructive"><AlertDescription>Не удалось открыть Chrome: {browserError}</AlertDescription></Alert> : null}
+        {dealNotice ? <Alert role="status"><AlertDescription><span>Найдено выгодных предложений: {dealNotice}</span><Link to="/cards?deals=1" onClick={dismissDealNotice}>Посмотреть</Link><Button variant="ghost" type="button" onClick={dismissDealNotice} aria-label="Закрыть уведомление">×</Button></AlertDescription></Alert> : null}
         <Outlet />
       </main>
       <ActiveCollectionPanel />

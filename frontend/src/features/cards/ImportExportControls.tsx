@@ -1,9 +1,14 @@
+import { restoreFocus } from '@/lib/focus'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useRef, useState } from 'react'
-import { Download, MoreHorizontal, Upload, X } from 'lucide-react'
+import { Download, MoreHorizontal, Upload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { api, isDesktopMode } from '../../api/client'
-import { Button } from '../../components/ui/Button'
+import { Button } from '../../components/ui/button'
 import type { ImportSummary, TransferDocument } from '../../types/domain'
 
 function summaryText(summary: ImportSummary) {
@@ -17,7 +22,7 @@ interface Props {
 
 export function ImportExportControls({ onStatus }: Props) {
   const queryClient = useQueryClient()
-  const menuRef = useRef<HTMLDetailsElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [exportBusy, setExportBusy] = useState(false)
@@ -108,48 +113,49 @@ export function ImportExportControls({ onStatus }: Props) {
 
   return (
     <>
-      <details className="transfer-menu" ref={menuRef}>
-        <summary aria-label="Дополнительные действия" title="Дополнительные действия"><MoreHorizontal aria-hidden="true" /></summary>
-        <div className="transfer-menu__popover">
-          <button type="button" onClick={() => { menuRef.current?.removeAttribute('open'); void exportCards() }} disabled={exportBusy}><Download aria-hidden="true" />{exportBusy ? 'Экспорт…' : 'Экспорт'}</button>
-          <button type="button" onClick={() => { menuRef.current?.removeAttribute('open'); setError(null); setOpen(true) }}><Upload aria-hidden="true" />Импорт</button>
-        </div>
-      </details>
-      {open ? (
-        <div className="confirm-dialog-layer" role="presentation">
-          <button className="confirm-dialog-backdrop" type="button" onClick={close} aria-label="Закрыть импорт" />
-          <div className="confirm-dialog transfer-dialog" role="dialog" aria-modal="true" aria-labelledby="transfer-title">
-            <button className="transfer-dialog__close" type="button" onClick={close} disabled={busy} aria-label="Закрыть"><X /></button>
-            <h2 id="transfer-title">Импорт карточек и истории</h2>
-            <p>Выберите файл, сохранённый через «Экспорт». Существующие карточки и их история будут объединены.</p>
-            <label className="transfer-dialog__file">
-              <span>Файл экспорта</span>
-              <input type="file" accept=".json,application/json" disabled={busy}
+      <div className="order-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><Button ref={triggerRef} variant="outline" size="icon" aria-label="Дополнительные действия" title="Дополнительные действия"><MoreHorizontal aria-hidden="true" /></Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onCloseAutoFocus={(event) => { if (open) event.preventDefault() }}>
+            <DropdownMenuGroup>
+              <DropdownMenuItem onSelect={() => void exportCards()} disabled={exportBusy}><Download />{exportBusy ? 'Экспорт…' : 'Экспорт'}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { setError(null); setOpen(true) }}><Upload />Импорт</DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <Dialog open={open} onOpenChange={(next) => { if (!next) close() }}>
+        <DialogContent className="sm:max-w-[520px]" onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(triggerRef.current) }}
+          onEscapeKeyDown={(event) => { if (busy) event.preventDefault() }} onInteractOutside={(event) => { if (busy) event.preventDefault() }}>
+          <DialogHeader><DialogTitle>Импорт карточек и истории</DialogTitle><DialogDescription>Выберите файл, сохранённый через «Экспорт». Существующие карточки и их история будут объединены.</DialogDescription></DialogHeader>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="transfer-file">Файл экспорта</FieldLabel>
+              <input id="transfer-file" type="file" accept=".json,application/json" disabled={busy}
                 onChange={(event) => {
                   const file = event.currentTarget.files?.[0]
                   event.currentTarget.value = ''
                   void chooseFile(file)
                 }} />
-            </label>
+            </Field></FieldGroup>
             {busy && !preview ? <p role="status">Проверяем файл…</p> : null}
             {fileName && preview ? (
-              <div className="transfer-dialog__preview" role="status">
+              <Alert role="status"><AlertDescription>
                 <strong>{fileName}</strong>
                 <p>{summaryText(preview)}</p>
                 <p>Пропущено повторов: {preview.observationsSkipped}; удалено одинаковых соседних цен: {preview.observationsRemoved}.</p>
                 <p>Настройки уже существующих карточек сохранятся.</p>
-              </div>
+              </AlertDescription></Alert>
             ) : null}
-            {error ? <p className="action-error" role="alert">{error}</p> : null}
-            <div className="confirm-dialog__actions">
-              <Button onClick={close} disabled={busy}>Отмена</Button>
-              <Button variant="primary" onClick={() => void importCards()} disabled={!preview || busy}>
+            {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
+            <DialogFooter>
+              <Button variant="outline" onClick={close} disabled={busy}>Отмена</Button>
+              <Button variant="default" onClick={() => void importCards()} disabled={!preview || busy}>
                 {busy ? 'Импортируем…' : 'Импортировать'}
               </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

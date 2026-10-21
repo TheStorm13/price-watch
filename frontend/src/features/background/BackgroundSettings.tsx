@@ -1,3 +1,8 @@
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldLabel } from '@/components/ui/field'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Settings2 } from 'lucide-react'
@@ -43,25 +48,20 @@ export function BackgroundSettings() {
   }
 
   return (
-    <details className="background-settings">
-      <summary aria-label="Настройки фонового сбора" title="Настройки фонового сбора"><Settings2 aria-hidden="true" /></summary>
-      <div className="background-settings__panel">
+    <Popover>
+      <PopoverTrigger asChild><Button variant="outline" size="icon" aria-label="Настройки фонового сбора" title="Настройки фонового сбора"><Settings2 aria-hidden="true" /></Button></PopoverTrigger>
+      <PopoverContent align="end" className="flex w-[340px] flex-col gap-3">
         <strong>Фоновый сбор цен</strong>
         <p>Автоматический полный сбор — каждые 6 часов, пока приложение работает.</p>
-        <label className="background-settings__toggle">
-          <input
-            type="checkbox"
-            checked={state?.enabled ?? false}
-            disabled={!state || busy}
-            onChange={(event) => void setEnabled(event.currentTarget.checked)}
-          />
-          <span>Запускать после входа в систему</span>
-        </label>
+        <Field orientation="horizontal" data-disabled={!state || busy}>
+          <Checkbox id="background-enabled" checked={state?.enabled ?? false} disabled={!state || busy} onCheckedChange={(checked) => void setEnabled(checked === true)} />
+          <FieldLabel htmlFor="background-enabled">Запускать после входа в систему</FieldLabel>
+        </Field>
         {state?.enabled ? <p>Закрытие окна оставит сбор работающим. Открыть окно снова можно через ярлык или значок приложения.</p> : null}
-        {serviceError ? <p className="background-settings__error" role="alert">Службы: {serviceError}</p> : null}
-        {error ? <p className="background-settings__error" role="alert">{error}</p> : null}
-        <button type="button" className="background-settings__quit" onClick={() => void quit()}>Полностью выйти</button>
-      </div>
-    </details>
+        {serviceError ? <Alert variant="destructive"><AlertDescription>Службы: {serviceError}</AlertDescription></Alert> : null}
+        {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
+        <Button variant="outline" type="button" onClick={() => void quit()}>Полностью выйти</Button>
+      </PopoverContent>
+    </Popover>
   )
 }

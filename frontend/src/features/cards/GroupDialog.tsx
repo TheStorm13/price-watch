@@ -1,6 +1,15 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { restoreFocus } from '@/lib/focus'
+import { useRef, useState, type FormEvent } from 'react'
 import { useDeleteGroup, useSaveGroup } from '../../api/queries'
-import { Button } from '../../components/ui/Button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogHeader, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
+import { Field, FieldLabel, FieldGroup, FieldDescription, FieldSet, FieldLegend } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
+import { Button } from '../../components/ui/button'
 import type { MarketplaceCard, ProductGroup } from '../../types/domain'
 import { parseTags } from './tags'
 
@@ -32,17 +41,8 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
     })
   const movingCards = cards.some((card) => selected.includes(card.id) && card.groupId != null && card.groupId !== group?.id)
 
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busy) onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      previous?.focus()
-    }
-  }, [busy, onClose])
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null)
+  const returnFocusRef = useRef(document.activeElement as HTMLElement | null)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -70,35 +70,50 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
     }
   }
 
-  return <div className="group-dialog-layer" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
-    <section className="group-dialog" role="dialog" aria-modal="true" aria-label={group ? 'Изменить группу' : 'Создать группу'}>
-      <form onSubmit={(event) => void submit(event)}>
-        <h2>{group ? 'Изменить группу' : 'Новая группа'}</h2>
-        <label className="field"><span>Название</span><input autoFocus value={name} maxLength={120} onChange={(event) => setName(event.target.value)} placeholder="Например, бутылка" /></label>
-        <label className="field"><span>Теги группы</span><input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, посуда" /><small>Разделяйте теги запятыми</small></label>
-        <p className="group-dialog__hint">Выберите товары для группы. Сбор цен каждого товара продолжится отдельно.</p>
-        <div className="group-dialog__controls">
-          <label className="field"><span>Поиск карточек</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название или ID" /></label>
-          <label className="field"><span>Сортировка карточек</span><select value={direction} onChange={(event) => setDirection(event.target.value as 'asc' | 'desc')}><option value="asc">По названию: А–Я</option><option value="desc">По названию: Я–А</option></select></label>
-        </div>
-        <p className="group-dialog__selection" role="status">Выбрано карточек: {selected.length}</p>
-        {movingCards ? <p className="group-dialog__warning">Выбранные карточки из других групп перейдут в эту группу. Их история цен сохранится.</p> : null}
-        <div className="group-dialog__cards" role="group" aria-label="Товары группы">
-          {filteredCards.map((card) => <label key={card.id} className="group-dialog__card">
-            <input type="checkbox" checked={selected.includes(card.id)} onChange={(event) => setSelected((previous) =>
-              event.target.checked ? [...previous, card.id] : previous.filter((id) => id !== card.id))} />
-            <span><strong>{card.title ?? card.externalId}</strong><small>{card.marketplace} · ID: {card.externalId}</small></span>
-          </label>)}
-          {filteredCards.length === 0 ? <p className="group-dialog__empty">Карточки не найдены. Измените или очистите запрос.</p> : null}
-        </div>
-        {error ? <p className="action-error" role="alert">{error}</p> : null}
-        {confirmDelete ? <p>Товары останутся в общем списке. Удалить группу?</p> : null}
-        <div className="group-dialog__actions">
-          {group ? <Button type="button" variant="danger" disabled={busy} onClick={() => confirmDelete ? void deleteGroup() : setConfirmDelete(true)}>{confirmDelete ? 'Подтвердить удаление' : 'Удалить группу'}</Button> : null}
-          <Button type="button" disabled={busy} onClick={onClose}>Отмена</Button>
-          <Button type="submit" variant="primary" disabled={busy}>{busy ? 'Сохраняем…' : 'Сохранить'}</Button>
-        </div>
+  return <Dialog open onOpenChange={(next) => { if (!next && !busy) onClose() }}>
+    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[620px]" onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(returnFocusRef.current) }}
+      onEscapeKeyDown={(event) => { if (busy) event.preventDefault() }} onInteractOutside={(event) => { if (busy) event.preventDefault() }}>
+      <form className="flex flex-col gap-5" onSubmit={(event) => void submit(event)}>
+        <DialogHeader>
+          <DialogTitle>{group ? 'Изменить группу' : 'Создать группу'}</DialogTitle>
+          <DialogDescription>Выберите товары для группы. Сбор цен каждого товара продолжится отдельно.</DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field><FieldLabel htmlFor="group-name">Название</FieldLabel><Input id="group-name" autoFocus value={name} maxLength={120} onChange={(event) => setName(event.target.value)} placeholder="Например, бутылка" /></Field>
+          <Field><FieldLabel htmlFor="group-tags">Теги группы</FieldLabel><Input id="group-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, посуда" /><FieldDescription>Разделяйте теги запятыми</FieldDescription></Field>
+          <div className="flex gap-3">
+            <Field><FieldLabel htmlFor="group-search">Поиск карточек</FieldLabel><Input id="group-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название или ID" /></Field>
+            <Field><FieldLabel htmlFor="group-sort">Сортировка карточек</FieldLabel><NativeSelect id="group-sort" value={direction} onChange={(event) => setDirection(event.target.value as 'asc' | 'desc')}><option value="asc">По названию: А–Я</option><option value="desc">По названию: Я–А</option></NativeSelect></Field>
+          </div>
+          <p role="status">Выбрано карточек: {selected.length}</p>
+          {movingCards ? <Alert><AlertDescription>Выбранные карточки из других групп перейдут в эту группу. Их история цен сохранится.</AlertDescription></Alert> : null}
+          <FieldSet className="max-h-[260px] overflow-y-auto">
+            <FieldLegend className="sr-only">Товары группы</FieldLegend>
+            <FieldGroup>
+              {filteredCards.map((card) => <Field key={card.id} orientation="horizontal" className="group-dialog__card">
+                <Checkbox id={`group-card-${card.id}`} checked={selected.includes(card.id)} onCheckedChange={(checked) => setSelected((previous) => checked === true ? [...previous, card.id] : previous.filter((id) => id !== card.id))} />
+                <FieldLabel htmlFor={`group-card-${card.id}`}><span><strong>{card.title ?? card.externalId}</strong><FieldDescription>{card.marketplace} · ID: {card.externalId}</FieldDescription></span></FieldLabel>
+              </Field>)}
+            </FieldGroup>
+            {filteredCards.length === 0 ? <Empty><EmptyHeader><EmptyTitle>Карточки не найдены</EmptyTitle><EmptyDescription>Измените или очистите запрос.</EmptyDescription></EmptyHeader></Empty> : null}
+          </FieldSet>
+        </FieldGroup>
+        {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
+        <DialogFooter>
+          {group ? <Button ref={deleteTriggerRef} type="button" variant="destructive" disabled={busy} onClick={() => setConfirmDelete(true)}>Удалить группу</Button> : null}
+          <Button type="button" variant="outline" disabled={busy} onClick={onClose}>Отмена</Button>
+          <Button type="submit" disabled={busy}>{busy ? 'Сохраняем…' : 'Сохранить'}</Button>
+        </DialogFooter>
       </form>
-    </section>
-  </div>
+      <AlertDialog open={confirmDelete} onOpenChange={(next) => { if (!busy) setConfirmDelete(next) }}>
+        <AlertDialogContent onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(deleteTriggerRef.current) }}>
+          <AlertDialogHeader><AlertDialogTitle>Удалить группу?</AlertDialogTitle><AlertDialogDescription>Товары останутся в общем списке. Их история цен сохранится.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Отмена</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" disabled={busy} onClick={(event) => { event.preventDefault(); void deleteGroup() }}>Подтвердить удаление</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </DialogContent>
+  </Dialog>
 }
