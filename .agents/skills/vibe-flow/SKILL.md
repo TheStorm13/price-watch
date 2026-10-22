@@ -26,8 +26,13 @@ Implement the approved plan. Run relevant tests and checks; inspect the diff,
 affected contracts, execution modes, data effects, and migrations. Fix findings.
 Present changed files, verification results, and remaining risks. **Wait for
 explicit user acceptance before completion.** Then update only relevant
-documentation, sync specs and archive the OpenSpec change when one exists, and
-report completion. Do not push or merge without separate permission.
+documentation, sync specs and archive the OpenSpec change when one exists.
+**Before reporting completion, create one or more Git commits containing all
+changes belonging to the accepted task, including its tests, documentation,
+and OpenSpec artifacts.** Inspect the staged diff and keep unrelated existing
+changes out of these commits. Verify the commits were created and report their
+hashes in the final response. If committing fails, report the blocker instead
+of claiming completion. Do not push or merge without separate permission.
 
 For work spanning sessions, keep a short record in
 `docs/workflow-runs/<task-slug>.md` with the plan, approval, current state,
