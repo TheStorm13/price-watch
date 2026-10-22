@@ -136,6 +136,7 @@ input::placeholder { color: #98a2b3; }
 .cards-grid__prices > div { min-width: 0; display: flex; justify-content: space-between; gap: 6px; }
 .cards-grid__prices dt { color: var(--text-muted); }
 .cards-grid__prices dd { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; text-align: right; white-space: nowrap; }
+.cards-grid__prices .deal-savings { font-weight: inherit; }
 .filters__checkbox { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 12px; cursor: pointer; }
 .filters__checkbox input { accent-color: var(--blue); }
 .cards-grid__tracking { min-width: 0; margin: 0 10px; overflow: hidden; font-size: 10px; line-height: 14px; }
@@ -262,5 +263,7 @@ input::placeholder { color: #98a2b3; }
 @layer utilities {
   .cards-grid__item { padding-top: 8px; }
   .cards-table .availability-status, .history-table .availability-status { height: auto; padding-block: 2px; font-size: 13px; line-height: 18px; }
+  .cards-table .price-cell, .cards-table .deal-savings, .cards-table .availability-status { font-size: 14px; font-weight: 650; }
+  .cards-grid .availability-status { font-size: 11px; font-weight: 600; }
   .card-identity .tracking-status { flex: none; height: auto; margin: 0; font-size: 12px; line-height: 18px; }
 }
