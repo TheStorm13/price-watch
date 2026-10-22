@@ -11,7 +11,6 @@ from ..schemas import (
     HistoryPointResponse,
     HistoryResponse,
     ChartResponse,
-    DealResponse,
     StatisticsResponse,
     TransferDocument,
     ImportSummary,
@@ -24,11 +23,6 @@ from ...infrastructure.postgres.repository import CardAlreadyExists, CardInActiv
 router = APIRouter(prefix="/cards", tags=["cards"])
 
 
-@router.get("/deals", response_model=list[DealResponse])
-async def list_deals(repository: RepositoryDep):
-    return [DealResponse.from_domain(deal) for deal in await repository.list_deals()]
-
-
 @router.get("/{card_id}/chart", response_model=ChartResponse)
 async def get_chart(card_id: int, repository: RepositoryDep, days: int = 30):
     if days not in {7, 30, 90}:
@@ -37,19 +31,6 @@ async def get_chart(card_id: int, repository: RepositoryDep, days: int = 30):
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
     return ChartResponse(points=[HistoryPointResponse.from_domain(point)
                                  for point in await repository.get_chart_points(card_id, days)])
-
-
-@router.get("", response_model=list[CardResponse])
-async def list_cards(repository: RepositoryDep):
-    cards = await repository.list_cards()
-    metrics = await repository.list_card_price_metrics()
-    result = []
-    for item in cards:
-        minimum, average = metrics.get(item.card.id, (None, None))
-        result.append(CardResponse.from_overview(
-            item, minimum_price=minimum, average_price=average,
-        ))
-    return result
 
 
 @router.get("/export", response_model=TransferDocument)

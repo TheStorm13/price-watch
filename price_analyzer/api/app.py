@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse
 
 from .errors import ApiProblem, api_problem_handler, validation_error_handler
 from .routes import cards_router, runs_router, groups_router
+from .dependencies import RepositoryDep
+from .schemas import CatalogResponse
 from ..infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceAnalyzerRepository
 
 
@@ -73,6 +75,10 @@ def create_app(
     app.include_router(cards_router, prefix="/api")
     app.include_router(runs_router, prefix="/api")
     app.include_router(groups_router, prefix="/api")
+
+    @app.get("/api/catalog", response_model=CatalogResponse)
+    async def catalog(repository: RepositoryDep):
+        return await repository.get_catalog()
 
     @app.get("/api/health")
     async def health():

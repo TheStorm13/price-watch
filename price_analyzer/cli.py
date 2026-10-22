@@ -15,7 +15,7 @@ from typing import Any, Iterable, Optional, Sequence
 from marketplace_connector import ConnectorRegistry
 from marketplace_connector.connectors.ozon import AsyncOzonClient, OzonConnector
 
-from .application.collection_service import CollectionService
+from .application.run_executor import RunExecutor
 from .infrastructure.postgres import (
     AsyncDatabase,
     Database,
@@ -187,11 +187,10 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
         return 0
 
     if args.command == "collect":
-        cards = await repository.list_collection_cards(args.card_id)
-        connectors = _build_connectors(
-            args, (card.marketplace for card in cards)
-        )
-        summary = await CollectionService(repository, connectors).collect(args.card_id)
+        async def direct_factory(run):
+            cards = await repository.cards_for_run(run.id)
+            return _build_connectors(args, (card.marketplace for card in cards))
+        summary = await RunExecutor(repository, direct_factory).collect(args.card_id)
         _print_json(asdict(summary))
         return 0 if summary.failure_count == 0 else 2
 
@@ -199,7 +198,7 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
         repository = PostgresPriceAnalyzerRepository(database)
 
         async def connector_factory(run):
-            cards = await repository.cards_for_run(run)
+            cards = await repository.cards_for_run(run.id)
             marketplaces = {card.marketplace for card in cards}
             connectors = []
             if "ozon" in marketplaces:
@@ -208,7 +207,7 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
                         AsyncOzonClient(
                             profile_dir=args.profile_dir,
                             challenge_handler=DatabaseChallengeHandler(
-                                repository, run.id
+                                repository, run.lease
                             ),
                             chrome_binary=args.chrome_binary,
                             chrome_platform=args.chrome_platform,

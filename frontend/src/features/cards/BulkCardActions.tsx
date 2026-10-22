@@ -40,11 +40,7 @@ export function BulkCardActions({ selectedIds, cards, groups, onCreateGroup, onP
   const movingCards = selectedCards.some((card) => card.groupId != null && card.groupId !== targetGroup?.id)
 
   async function refreshQueries() {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.cards }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals }),
-    ])
+    await queryClient.invalidateQueries({ queryKey: queryKeys.catalog })
   }
 
   async function addToGroup() {
@@ -52,7 +48,7 @@ export function BulkCardActions({ selectedIds, cards, groups, onCreateGroup, onP
     setBusy(true)
     setMessage(null)
     try {
-      const current = (await api.listGroups()).find((group) => group.id === Number(groupId))
+      const current = (await api.getCatalog()).groups.find((group) => group.id === Number(groupId))
       if (!current) throw new Error('Группа больше не существует')
       await api.updateGroup(current.id, {
         name: current.name,

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import select, text
@@ -12,7 +11,7 @@ from sqlalchemy.orm import aliased
 
 from ...domain.models import CardOverview, MarketplaceCard
 from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
-from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
+from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
 from .repository_common import CardAlreadyExists, CardInActiveRun, _card
 
 
@@ -82,9 +81,9 @@ class CardRepository:
             if record is None:
                 return False
             active = (await session.scalar(
-                select(CollectionRunRecord.id).where(
+                select(CollectionRunRecord.id).join(CollectionRunTargetRecord, CollectionRunTargetRecord.run_id == CollectionRunRecord.id).where(
                     CollectionRunRecord.status.in_(("queued", "running", "waiting_for_user")),
-                    CollectionRunRecord.target_card_ids.any(card_id),
+                    CollectionRunTargetRecord.card_id == card_id,
                 ).limit(1)
             ))
             if active is not None:
@@ -120,12 +119,6 @@ class CardRepository:
             )
             for card, latest in rows
         ]
-
-    async def list_card_price_metrics(self) -> dict[int, tuple[Decimal | None, Decimal | None]]:
-        """All-time minimum and mean of previous daily prices for every card."""
-        async with self._database.session() as session:
-            rows = await self._list_card_price_metric_rows(session)
-        return {row.id: (row.minimum_price, row.average_price) for row in rows}
 
     async def _list_card_price_metric_rows(self, session):
         statement = text("""

@@ -37,14 +37,14 @@ describe('desktop runtime connection', () => {
 
     render(<App />)
     expect(await screen.findByText('Интерфейс готов')).toBeInTheDocument()
-    await api.listCards()
-    expect(fetchMock).toHaveBeenLastCalledWith('http://127.0.0.1:49123/api/cards', expect.objectContaining({
+    await api.getCatalog()
+    expect(fetchMock).toHaveBeenLastCalledWith('http://127.0.0.1:49123/api/catalog', expect.objectContaining({
       headers: expect.objectContaining({ 'X-Price-Watch-Token': 'first' }),
     }))
 
     callbacks.get('services-changed')?.({ payload: { baseUrl: 'http://127.0.0.1:49124', token: 'second' } })
-    await api.listCards()
-    expect(fetchMock).toHaveBeenLastCalledWith('http://127.0.0.1:49124/api/cards', expect.objectContaining({
+    await api.getCatalog()
+    expect(fetchMock).toHaveBeenLastCalledWith('http://127.0.0.1:49124/api/catalog', expect.objectContaining({
       headers: expect.objectContaining({ 'X-Price-Watch-Token': 'second' }),
     }))
   })
@@ -64,8 +64,8 @@ describe('desktop runtime connection', () => {
     window.dispatchEvent(new Event('focus'))
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
     await waitFor(async () => {
-      await api.listCards()
-      expect(fetchMock).toHaveBeenLastCalledWith('http://127.0.0.1:49124/api/cards', expect.objectContaining({
+      await api.getCatalog()
+      expect(fetchMock).toHaveBeenLastCalledWith('http://127.0.0.1:49124/api/catalog', expect.objectContaining({
         headers: expect.objectContaining({ 'X-Price-Watch-Token': 'second' }),
       }))
     })

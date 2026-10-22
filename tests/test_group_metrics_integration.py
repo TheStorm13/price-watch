@@ -47,7 +47,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 availability=availability, observed_at=at, collection_run_id=None, snapshot={}))
 
     async def group(self, repository, group_id):
-        return next(group for group in await repository.list_groups() if group['id'] == group_id)
+        return next(group for group in (await repository.get_catalog())["groups"] if group['id'] == group_id)
 
     async def test_representative_owns_all_metrics_and_member_deal_is_separate(self):
         async with self.fixture() as (database, repository, cards, group_id):
@@ -63,8 +63,8 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(group['is_deal'])
             self.assertIsNone(group['savings'])
             self.assertTrue(group['has_member_deals'])
-            self.assertEqual({deal.card.card.id for deal in await repository.list_deals()} & {a.id, b.id}, {b.id})
-            metrics = await repository.list_card_price_metrics()
+            self.assertEqual({deal["card"]["id"] for deal in (await repository.get_catalog())["deals"]} & {a.id, b.id}, {b.id})
+            metrics = {c["id"]: (c["minimum_price"],c["average_price"]) for c in (await repository.get_catalog())["cards"]}
             self.assertEqual(metrics[a.id], (Decimal('80'), Decimal('80')))
 
             await self.point(database, b, '50', now + timedelta(seconds=1))
@@ -126,9 +126,9 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             app = create_app(repository=repository)
             app.state.repository = repository
             async with AsyncClient(transport=ASGITransport(app=app), base_url='http://testserver') as client:
-                groups = (await client.get('/api/groups')).json()
+                groups = (await client.get('/api/catalog')).json()['groups']
                 group = next(item for item in groups if item['id'] == group_id)
-                card = next(item for item in (await client.get('/api/cards')).json() if item['id'] == a.id)
+                card = next(item for item in (await client.get('/api/catalog')).json()['cards'] if item['id'] == a.id)
                 self.assertEqual(group['representativeCard'], card)
                 self.assertEqual(group['representativeCardId'], a.id)
                 self.assertEqual(group['savings'], 20)
@@ -149,12 +149,13 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 for card in cards:
                     (await session.get(MarketplaceCardRecord, card.id)).updated_at = past
             before = await self.group(repository, group_id)
-            await repository.save_observation(b, None, ProductSnapshot(ref=ProductRef(b.marketplace, b.external_id),
-                title='B', url=None, price=120, availability=Availability.IN_STOCK))
+            await repository.update_card(b.id, title='B', update_title=True)
             after_other = await self.group(repository, group_id)
             self.assertEqual(after_other['representative_card'], before['representative_card'])
-            await repository.save_observation(a, None, ProductSnapshot(ref=ProductRef(a.marketplace, a.external_id),
+            owned = await repository.start_direct_run(a.id)
+            await repository.save_result(owned.lease, a, ProductSnapshot(ref=ProductRef(a.marketplace, a.external_id),
                 title='A', url=None, price=90, availability=Availability.IN_STOCK))
+            await repository.finish_run(owned.lease)
             after = await self.group(repository, group_id)
             self.assertGreater(after['representative_card']['updated_at'], past)
             self.assertEqual(after['representative_card']['last_observed_at'], past)

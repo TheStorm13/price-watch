@@ -88,6 +88,8 @@ export interface CollectionRun {
   finishedAt: string | null
   errors?: RunError[] | null
   retryOfRunId?: number | null
+  retryableCount: number
+  retryScopeIncomplete: boolean
 }
 
 export interface Deal {
@@ -175,4 +177,10 @@ export interface ApiErrorPayload {
     field?: string
     requestId?: string
   }
+}
+
+export interface CatalogSnapshot {
+  cards: MarketplaceCard[]
+  groups: ProductGroup[]
+  deals: Deal[]
 }

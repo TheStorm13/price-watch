@@ -6,6 +6,8 @@
 - [ADR 0001: Фоновый жизненный цикл desktop-приложения](0001-background-desktop-lifecycle.md) — Accepted.
 - [ADR 0002: Desktop как единственный live-интерфейс](0002-desktop-only-live-ui.md) — Accepted.
 
+- [ADR 0004: Владение сбором, результаты целей и снимок каталога](0004-collection-reliability-and-catalog-snapshot.md) — Accepted.
+
 Наблюдаемое устройство системы описано в
 [обзоре архитектуры](../architecture/overview.md); обзор не заменяет запись
 о мотивах выбора и рассмотренных альтернативах.

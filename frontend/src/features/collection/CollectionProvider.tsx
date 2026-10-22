@@ -2,8 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { api, isDesktopMode } from '../../api/client'
-import { queryKeys, useRun } from '../../api/queries'
+import { catalogOptions, queryKeys, useRun } from '../../api/queries'
 import type { CollectionRun } from '../../types/domain'
+import { DealNotifications } from './dealNotifications'
 
 interface CollectionContextValue {
   run: CollectionRun | null
@@ -21,12 +22,11 @@ interface CollectionContextValue {
 
 const CollectionContext = createContext<CollectionContextValue | null>(null)
 const ACTIVE_RUN_KEY = 'price-watch-active-run'
-const NOTIFIED_PRICES_KEY = 'price-watch-notified-prices'
-const NOTIFIED_RUN_KEY = 'price-watch-notified-run'
 
 function initialRunId() {
   const stored = window.localStorage.getItem(ACTIVE_RUN_KEY)
-  return stored ? Number(stored) : null
+  const value = Number(stored)
+  return Number.isSafeInteger(value) && value > 0 ? value : null
 }
 
 export function CollectionProvider({ children }: { children: ReactNode }) {
@@ -90,26 +90,24 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const run = runQuery.data ?? null
   const isTerminal = run ? ['completed', 'completed_with_errors', 'failed'].includes(run.status) : false
 
-  useEffect(() => {
-    if (!isTerminal) return
-    client.invalidateQueries({ queryKey: queryKeys.cards })
-    client.invalidateQueries({ queryKey: queryKeys.groups })
-    client.invalidateQueries({ queryKey: ['recent-runs'] })
-    client.invalidateQueries({ queryKey: queryKeys.deals })
-  }, [client, isTerminal, run?.id])
+  const notifications = useMemo(() => new DealNotifications(window.localStorage, async () => {
+    // A pre-terminal request cannot acknowledge this run's notification work.
+    await client.cancelQueries({ queryKey: queryKeys.catalog })
+    return client.fetchQuery({ ...catalogOptions, staleTime: 0, retry: false })
+  }, setDealNotice), [client])
 
   useEffect(() => {
-    if (!isTerminal || !run || run.status === 'failed' || window.localStorage.getItem(NOTIFIED_RUN_KEY) === String(run.id)) return
-    window.localStorage.setItem(NOTIFIED_RUN_KEY, String(run.id))
-    void api.listDeals().then((deals) => {
-      const previous = JSON.parse(window.localStorage.getItem(NOTIFIED_PRICES_KEY) || '{}') as Record<string, number>
-      const fresh = deals.filter((deal) => deal.lastCollectionRunId === run.id && previous[String(deal.card.id)] !== deal.card.currentPrice)
-      window.localStorage.setItem(NOTIFIED_PRICES_KEY, JSON.stringify(Object.fromEntries(
-        deals.map((deal) => [deal.card.id, deal.card.currentPrice]),
-      )))
-      if (fresh.length) setDealNotice(fresh.length)
-    }).catch(() => { /* The cards page shows deal API errors when its filter is active. */ })
-  }, [isTerminal, run])
+    notifications.start()
+    return () => notifications.stop()
+  }, [notifications])
+
+  useEffect(() => {
+    if (!isTerminal || !run) return
+    void client.invalidateQueries({ queryKey: queryKeys.cardRoot })
+    void client.invalidateQueries({ queryKey: ['recent-runs'] })
+    if (run.status === 'failed') void client.invalidateQueries({ queryKey: queryKeys.catalog })
+    else notifications.enqueue(run.id)
+  }, [client, isTerminal, run?.id, run?.status, notifications])
 
   const dismiss = useCallback(() => {
     if (runId !== null) seenLatestRun.current = Math.max(seenLatestRun.current ?? 0, runId)

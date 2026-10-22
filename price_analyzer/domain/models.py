@@ -51,15 +51,6 @@ class CardOverview:
 
 
 @dataclass(frozen=True)
-class Deal:
-    card: CardOverview
-    average_price: Decimal
-    savings: Decimal
-    baseline_days: int
-    last_collection_run_id: Optional[int]
-
-
-@dataclass(frozen=True)
 class CollectionSummary:
     run_id: int
     status: str
@@ -83,6 +74,24 @@ class CollectionRun:
     challenge_message: Optional[str]
     started_at: datetime
     finished_at: Optional[datetime]
-    target_card_ids: Optional[tuple[int, ...]] = None
     errors: tuple[dict[str, Any], ...] = ()
     retry_of_run_id: Optional[int] = None
+    owner_token: Optional[str] = None
+    targets_complete: bool = True
+    retryable_count: int = 0
+
+    @property
+    def lease(self) -> "RunLease":
+        if self.owner_token is None:
+            raise LeaseLost(f"Запуск {self.id} не принадлежит исполнителю")
+        return RunLease(self.id, self.owner_token)
+
+
+@dataclass(frozen=True)
+class RunLease:
+    run_id: int
+    owner_token: str
+
+
+class LeaseLost(RuntimeError):
+    """The run is no longer active or belongs to another execution attempt."""

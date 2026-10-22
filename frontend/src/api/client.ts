@@ -1,11 +1,11 @@
 import { mockApi } from './mockApi'
 import type {
   ApiErrorPayload,
+  CatalogSnapshot,
   CardHistoryResponse,
   ChartResponse,
   CollectionRun,
   CreateCardInput,
-  Deal,
   MarketplaceCard,
   TransferDocument,
   ImportSummary,
@@ -65,8 +65,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listGroups: (): Promise<ProductGroup[]> =>
-    isE2ETestMode ? mockApi.listGroups() : request('/api/groups'),
+  getCatalog: (signal?: AbortSignal): Promise<CatalogSnapshot> =>
+    isE2ETestMode ? mockApi.getCatalog() : request('/api/catalog', { signal }),
   createGroup: (input: GroupInput): Promise<ProductGroup> =>
     isE2ETestMode ? mockApi.createGroup(input) : request('/api/groups', { method: 'POST', body: JSON.stringify(input) }),
   updateGroup: (id: number, input: GroupInput): Promise<ProductGroup> =>
@@ -85,9 +85,6 @@ export const api = {
     isE2ETestMode ? mockApi.importCards(document) : request('/api/cards/import', {
       method: 'POST', body: JSON.stringify(document),
     }),
-
-  listCards: (): Promise<MarketplaceCard[]> =>
-    isE2ETestMode ? mockApi.listCards() : request('/api/cards'),
 
   getCard: (cardId: number): Promise<MarketplaceCard> =>
     isE2ETestMode ? mockApi.getCard(cardId) : request(`/api/cards/${cardId}`),
@@ -114,9 +111,6 @@ export const api = {
 
   getChart: (cardId: number, days: number): Promise<ChartResponse> =>
     isE2ETestMode ? mockApi.getChart(cardId, days) : request(`/api/cards/${cardId}/chart?days=${days}`),
-
-  listDeals: (): Promise<Deal[]> =>
-    isE2ETestMode ? mockApi.listDeals() : request('/api/cards/deals'),
 
   listRuns: (): Promise<CollectionRun[]> =>
     isE2ETestMode ? mockApi.listRuns() : request('/api/runs?page=1&pageSize=50'),

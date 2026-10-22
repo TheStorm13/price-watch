@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Fragment, useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, FolderPlus, LayoutGrid, List, Pencil, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useCards, useDeals, useDeleteCard, useGroups, useUpdateCard } from '../../api/queries'
+import { useCatalog, useDeleteCard, useUpdateCard } from '../../api/queries'
 import { Button } from '../../components/ui/button'
 import { CardActionsMenu } from '../../components/product/CardActionsMenu'
 import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
@@ -43,10 +43,8 @@ export function CardsPage() {
   const [initialGroupCardIds, setInitialGroupCardIds] = useState<number[]>([])
   const [collapsedGroups, setCollapsedGroups] = useState<number[]>([])
   const [transferStatus, setTransferStatus] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
-  const cardsQuery = useCards()
-  const selection = useCardSelection(cardsQuery.data)
-  const groupsQuery = useGroups()
-  const dealsQuery = useDeals()
+  const catalogQuery = useCatalog()
+  const selection = useCardSelection(catalogQuery.data?.cards)
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
   const collection = useCollection()
@@ -61,9 +59,9 @@ export function CardsPage() {
   const selectedTag = params.get('tag') ?? ''
   const selectedIds = [...selection.selectedIds]
   const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealsOnly || selectedTag)
-  const deals = useMemo(() => new Map((dealsQuery.data ?? []).map((deal) => [deal.card.id, deal])), [dealsQuery.data])
-  const allItems = useMemo(() => catalogItems(cardsQuery.data ?? [], groupsQuery.data ?? [], deals),
-    [cardsQuery.data, groupsQuery.data, deals])
+  const deals = useMemo(() => new Map((catalogQuery.data?.deals ?? []).map((deal) => [deal.card.id, deal])), [catalogQuery.data?.deals])
+  const allItems = useMemo(() => catalogItems(catalogQuery.data?.cards ?? [], catalogQuery.data?.groups ?? [], deals),
+    [catalogQuery.data?.cards, catalogQuery.data?.groups, deals])
   const availableTags = useMemo(() => [...new Set(allItems.flatMap((item) => item.card?.tags ?? []))].sort(collator.compare), [allItems])
 
   function openCreateGroup(ids: number[]) {
@@ -77,7 +75,7 @@ export function CardsPage() {
       if (!value || value === defaultValue) next.delete(name)
       else next.set(name, value)
       return next
-    }, { replace: true })
+    }, { replace: true, flushSync: true })
   }, [setParams])
 
   const orderedItems = useMemo(() => allItems.filter((item) => matchesItem(item, {
@@ -87,7 +85,7 @@ export function CardsPage() {
 
   const groupedCards = useMemo(() => {
     const byGroup = new Map<number, MarketplaceCard[]>()
-    for (const card of cardsQuery.data ?? []) {
+    for (const card of catalogQuery.data?.cards ?? []) {
       if (card.groupId == null) continue
       const members = byGroup.get(card.groupId) ?? []
       members.push(card)
@@ -96,7 +94,7 @@ export function CardsPage() {
     for (const members of byGroup.values()) members.sort((left, right) =>
       compareItems(cardItem(left, deals), cardItem(right, deals), sort))
     return byGroup
-  }, [cardsQuery.data, deals, sort])
+  }, [catalogQuery.data?.cards, deals, sort])
 
   function toggleSort(key: ColumnSortKey) {
     const next = sort?.key === key ? (sort.direction === 'asc' ? `${key}-desc` : '') : `${key}-asc`
@@ -199,7 +197,7 @@ export function CardsPage() {
       {transferStatus ? <Alert variant={transferStatus.kind === 'error' ? 'destructive' : 'default'}
         role={transferStatus.kind === 'error' ? 'alert' : 'status'}><AlertDescription>{transferStatus.message}</AlertDescription></Alert> : null}
       {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
-      {dealsQuery.isError && !dealsOnly ? <Alert variant="destructive"><AlertDescription>Не удалось загрузить данные о выгоде. <Button variant="link" type="button" onClick={() => void dealsQuery.refetch()}>Повторить</Button></AlertDescription></Alert> : null}
+      {catalogQuery.isError && catalogQuery.data ? <Alert variant="destructive"><AlertDescription>Не удалось обновить каталог. <Button variant="link" type="button" onClick={() => void catalogQuery.refetch()}>Повторить</Button></AlertDescription></Alert> : null}
 
       <div className="filters">
         <InputGroup className="max-w-[280px] flex-[1_1_230px]">
@@ -279,12 +277,12 @@ export function CardsPage() {
         </ToggleGroup>
       </div>
 
-      <BulkCardActions selectedIds={selectedIds} cards={cardsQuery.data ?? []} groups={groupsQuery.data ?? []}
+      <BulkCardActions selectedIds={selectedIds} cards={catalogQuery.data?.cards ?? []} groups={catalogQuery.data?.groups ?? []}
         onCreateGroup={() => openCreateGroup(selectedIds)} onProcessed={selection.clearProcessed} onClear={selection.clear} />
 
-      <div className={cn(view === 'list' || cardsQuery.isLoading || groupsQuery.isLoading || cardsQuery.isError || groupsQuery.isError || (orderedItems.length === 0) ? 'table-surface' : '')}>
-        {cardsQuery.isLoading || groupsQuery.isLoading || dealsOnly && dealsQuery.isLoading ? <LoadingRows /> : cardsQuery.isError || groupsQuery.isError || dealsOnly && dealsQuery.isError ? (
-          <Empty><EmptyHeader><EmptyTitle>{dealsOnly && dealsQuery.isError ? 'Не удалось загрузить выгодные предложения' : 'Не удалось загрузить карточки'}</EmptyTitle><EmptyDescription>Проверьте соединение с API и повторите.</EmptyDescription></EmptyHeader><EmptyContent><Button onClick={() => { void cardsQuery.refetch(); void groupsQuery.refetch(); void dealsQuery.refetch() }}>Повторить</Button></EmptyContent></Empty>
+      <div className={cn(view === 'list' || catalogQuery.isLoading || catalogQuery.isError || (orderedItems.length === 0) ? 'table-surface' : '')}>
+        {catalogQuery.isLoading ? <LoadingRows /> : (catalogQuery.isError && !catalogQuery.data) ? (
+          <Empty><EmptyHeader><EmptyTitle>Не удалось загрузить каталог</EmptyTitle><EmptyDescription>Проверьте соединение с API и повторите.</EmptyDescription></EmptyHeader><EmptyContent><Button onClick={() => { void catalogQuery.refetch() }}>Повторить</Button></EmptyContent></Empty>
         ) : orderedItems.length === 0 ? (
           <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</EmptyTitle><EmptyDescription>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</EmptyDescription></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : () => setDrawerOpen(true)}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></EmptyContent></Empty>
         ) : view === 'grid' ? (
@@ -320,7 +318,7 @@ export function CardsPage() {
       </div>
       <AddCardDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       {editingGroup ? <GroupDialog key={editingGroup === 'new' ? 'new' : editingGroup.id} group={editingGroup === 'new' ? null : editingGroup}
-        cards={cardsQuery.data ?? []} initialCardIds={editingGroup === 'new' ? initialGroupCardIds : []}
+        cards={catalogQuery.data?.cards ?? []} initialCardIds={editingGroup === 'new' ? initialGroupCardIds : []}
         onSaved={editingGroup === 'new' ? selection.clearProcessed : undefined} onClose={() => setEditingGroup(null)} /> : null}
     </section>
   )

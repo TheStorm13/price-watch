@@ -16,23 +16,23 @@ from .models import MarketplaceCardRecord, PriceHistoryRecord
 
 
 class HistoryRepository:
-    async def save_observation(self, card: MarketplaceCard, run_id: int, snapshot: ProductSnapshot) -> None:
+    async def save_result(self, lease, card: MarketplaceCard, snapshot: ProductSnapshot) -> None:
         price = (
             Decimal(str(snapshot.price)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if snapshot.price is not None else None
         )
         availability = snapshot.availability.value
         async with self._database.session() as session, session.begin():
-            # All writers for one card serialize here; browser I/O happens before this transaction.
-            card_record = (await session.get(MarketplaceCardRecord, card.id, with_for_update=True))
-            if card_record is None:
+            if not await self._begin_result(session, lease, card.id, 'succeeded'):
+                return
+            if (snapshot.ref.marketplace, snapshot.ref.external_id) != (card.marketplace, card.external_id):
+                raise ValueError("Коннектор вернул другую карточку")
+            # Browser I/O finished before taking run -> target -> card locks.
+            row = (await session.execute(self._overview_statement().where(
+                MarketplaceCardRecord.id == card.id).with_for_update(of=MarketplaceCardRecord))).first()
+            if row is None:
                 raise LookupError(f"Карточка не найдена: {card.id}")
-            latest = (await session.execute(
-                select(PriceHistoryRecord.price, PriceHistoryRecord.availability)
-                .where(PriceHistoryRecord.card_id == card.id)
-                .order_by(PriceHistoryRecord.observed_at.desc(), PriceHistoryRecord.id.desc())
-                .limit(1)
-            )).first()
+            card_record, latest = row
             if not card_record.title or not card_record.title.strip():
                 card_record.title = snapshot.title
             if snapshot.url:
@@ -44,7 +44,7 @@ class HistoryRepository:
             session.add(
                 PriceHistoryRecord(
                     card_id=card.id,
-                    collection_run_id=run_id,
+                    collection_run_id=lease.run_id,
                     price=price,
                     availability=availability,
                     observed_at=snapshot.collected_at,

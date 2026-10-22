@@ -53,7 +53,8 @@ export function ActiveCollectionPanel() {
                 </li>)}</ul>
               </details>
             ) : <p>Подробностей об ошибках нет.</p>}
-            {details.data?.errors?.some((error) => error.cardId !== null) ? <Button variant="outline" onClick={retryErrors} disabled={isRetrying}>{isRetrying ? 'Повторяем…' : 'Повторить ошибки'}</Button> : null}
+            {run.retryScopeIncomplete ? <p>Состав этого запуска известен не полностью. Повтор затронет только известные карточки.</p> : null}
+            {run.retryableCount > 0 ? <Button variant="outline" onClick={retryErrors} disabled={isRetrying}>{isRetrying ? 'Повторяем…' : 'Повторить ошибки и оставшиеся'}</Button> : null}
             {retryError ? <Alert variant="destructive"><AlertDescription>{retryError}</AlertDescription></Alert> : null}
           </> : null}
         </div>

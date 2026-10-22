@@ -111,6 +111,8 @@ let history: PriceHistoryPoint[] = [
 let runs: CollectionRun[] = [
   {
     id: 21,
+    retryableCount: 0,
+    retryScopeIncomplete: false,
     status: 'completed',
     totalCount: 4,
     successCount: 4,
@@ -122,6 +124,8 @@ let runs: CollectionRun[] = [
   },
   {
     id: 20,
+    retryableCount: 1,
+    retryScopeIncomplete: false,
     status: 'completed_with_errors',
     totalCount: 4,
     successCount: 3,
@@ -295,7 +299,11 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
 }
 
 export const mockApi = {
-  async listGroups() { return delay(groups.map(groupView)) },
+  async getCatalog() {
+    return delay({ cards: cards.map(cardView), groups: groups.map(groupView),
+      deals: cards.flatMap((card) => { const deal = cardDeal(card); return deal ? [deal] : [] })
+        .toSorted((a, b) => b.savings - a.savings || a.card.id - b.card.id) })
+  },
   async createGroup(input: GroupInput) {
     const group = { id: nextGroupId++, name: input.name.trim(), tags: input.tags ?? [] }
     if (!group.name) throw new Error('Укажите название группы')
@@ -354,10 +362,6 @@ export const mockApi = {
 
   async importCards(document: TransferDocument): Promise<ImportSummary> {
     return delay(mergeImportedCards(document, true))
-  },
-
-  async listCards() {
-    return delay(cards.map(cardView))
   },
 
   async getCard(cardId: number) {
@@ -457,11 +461,6 @@ export const mockApi = {
     return delay(runs.map((run) => ({ ...run, errors: null })))
   },
 
-  async listDeals(): Promise<Deal[]> {
-    return delay(cards.flatMap((card) => { const deal = cardDeal(card); return deal ? [deal] : [] })
-      .toSorted((a, b) => b.savings - a.savings || a.card.id - b.card.id))
-  },
-
   async retryRun(runId: number): Promise<CollectionRun> {
     const source = runs.find((run) => run.id === runId)
     const targets = source?.errors?.filter((error) => error.cardId !== null) ?? []
@@ -469,7 +468,7 @@ export const mockApi = {
     if (runs.some((run) => run.retryOfRunId === runId)) throw new Error('Повтор уже создан')
     const retry = await this.startRun(targets[0].cardId ?? undefined)
     const next = { ...retry, retryOfRunId: runId, totalCount: targets.length }
-    runs = runs.map((run) => run.id === next.id ? next : run)
+    runs = runs.map((run) => run.id === next.id ? next : run.id === runId ? { ...run, retryableCount: 0 } : run)
     return next
   },
 
@@ -479,6 +478,8 @@ export const mockApi = {
     if (selected.some((card) => card.marketplace !== 'ozon')) throw new Error('Для этого маркетплейса коннектор ещё не подключён')
     const run: CollectionRun = {
       id: nextRunId++,
+      retryableCount: 0,
+      retryScopeIncomplete: false,
       status: 'queued',
       totalCount: selected.length,
       successCount: 0,
@@ -544,6 +545,8 @@ export const mockApi = {
     } else if (elapsed > 900) {
       next = { ...run, status: 'running' }
     }
+    runs[index] = next
+    next = { ...next, retryableCount: ['failed', 'completed_with_errors'].includes(next.status) ? (next.errors?.filter((e) => e.cardId !== null).length ?? 0) : 0 }
     runs[index] = next
     return delay({ ...next, errors: includeErrors ? next.errors ?? [] : null }, 80)
   },

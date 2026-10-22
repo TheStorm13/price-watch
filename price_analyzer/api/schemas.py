@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
-from ..domain.models import CardOverview, CollectionRun, Deal, PriceHistoryPoint, PriceStatistics
+from ..domain.models import CardOverview, CollectionRun, PriceHistoryPoint, PriceStatistics
 
 
 def to_camel(value: str) -> str:
@@ -289,11 +289,12 @@ class DealResponse(ApiModel):
     baseline_days: int
     last_collection_run_id: int | None
 
-    @classmethod
-    def from_domain(cls, deal: Deal) -> "DealResponse":
-        return cls(card=CardResponse.from_overview(deal.card), average_price=deal.average_price,
-                   savings=deal.savings, baseline_days=deal.baseline_days,
-                   last_collection_run_id=deal.last_collection_run_id)
+
+
+class CatalogResponse(ApiModel):
+    cards: list[CardResponse]
+    groups: list[GroupResponse]
+    deals: list[DealResponse]
 
 
 class RunCurrentResponse(ApiModel):
@@ -319,6 +320,8 @@ class RunResponse(ApiModel):
     finished_at: datetime | None
     errors: list[dict] | None = None
     retry_of_run_id: int | None = None
+    retryable_count: int = 0
+    retry_scope_incomplete: bool = False
 
     @classmethod
     def from_domain(cls, run: CollectionRun, include_errors: bool = True) -> "RunResponse":
@@ -344,6 +347,8 @@ class RunResponse(ApiModel):
             finished_at=run.finished_at,
             errors=list(run.errors) if include_errors else None,
             retry_of_run_id=run.retry_of_run_id,
+            retryable_count=run.retryable_count,
+            retry_scope_incomplete=not run.targets_complete,
         )
 
 

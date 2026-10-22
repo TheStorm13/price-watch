@@ -38,16 +38,40 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         self.async_database = await AsyncDatabase(TEST_DATABASE_URL).open()
+        self.fixture_runs = []
 
     async def asyncTearDown(self):
+        async with self.async_database.session() as session, session.begin():
+            await session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id.in_(self.fixture_runs)))
         await self.async_database.close()
+
+    async def fixture_run(self):
+        async with self.async_database.session() as session, session.begin():
+            record = CollectionRunRecord(status="completed", total_count=0, is_full_collection=False)
+            session.add(record)
+            await session.flush()
+            self.fixture_runs.append(record.id)
+            return record.id
+
+    async def observe(self, repository, card, snapshot):
+        run = await repository.start_direct_run(card.id)
+        self.fixture_runs.append(run.id)
+        await repository.save_result(run.lease, card, snapshot)
+        await repository.finish_run(run.lease)
+        return run.id
+
+    async def abandon_queued(self, repository, run):
+        owned = await repository.claim_next_run()
+        self.assertEqual(owned.id, run.id)
+        await repository.fail_run(owned.lease, {"cardId": None, "message": "test complete"})
+
 
     async def test_api_lifespan_opens_async_database(self):
         app = create_app(database_url=TEST_DATABASE_URL)
         async with app.router.lifespan_context(app):
             async with AsyncClient(transport=ASGITransport(app=app),
                                    base_url="http://testserver") as client:
-                response = await client.get("/api/cards")
+                response = await client.get("/api/catalog")
         self.assertEqual(response.status_code, 200)
 
     async def test_group_uses_cheapest_card_with_its_own_historical_minimum(self):
@@ -64,7 +88,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     PriceHistoryRecord(card_id=second.id, collection_run_id=None, price=Decimal("75.00"), availability="in_stock", observed_at=observed - timedelta(days=1), snapshot={}),
                     PriceHistoryRecord(card_id=second.id, collection_run_id=None, price=None, availability="out_of_stock", observed_at=observed, snapshot={}),
                 ])
-            group = next(group for group in await repository.list_groups() if group["id"] == group_id)
+            group = next(group for group in (await repository.get_catalog())["groups"] if group["id"] == group_id)
             self.assertEqual(group["current_price"], Decimal("90.00"))
             self.assertEqual(group["minimum_price"], Decimal("60.00"))
             self.assertEqual(set(group["card_ids"]), {first.id, second.id})
@@ -92,11 +116,11 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaisesRegex(ValueError, "коннектор ещё не подключён"):
                     await repository.create_queued_run(card.id)
             full_run = await repository.create_queued_run()
-            self.assertIn(ozon.id, full_run.target_card_ids)
-            self.assertNotIn(wildberries.id, full_run.target_card_ids)
-            self.assertNotIn(aliexpress.id, full_run.target_card_ids)
-            self.assertNotIn(yandex_market.id, full_run.target_card_ids)
-            await repository.finish_run(full_run.id, "completed", full_run.total_count, 0)
+            self.assertIn(ozon.id, [c.id for c in await repository.cards_for_run(full_run.id)])
+            self.assertNotIn(wildberries.id, [c.id for c in await repository.cards_for_run(full_run.id)])
+            self.assertNotIn(aliexpress.id, [c.id for c in await repository.cards_for_run(full_run.id)])
+            self.assertNotIn(yandex_market.id, [c.id for c in await repository.cards_for_run(full_run.id)])
+            await self.abandon_queued(repository, full_run)
             self.assertNotIn(wildberries.id, [card.id for card in await repository.list_collection_cards()])
             self.assertNotIn(aliexpress.id, [card.id for card in await repository.list_collection_cards()])
             self.assertNotIn(yandex_market.id, [card.id for card in await repository.list_collection_cards()])
@@ -244,7 +268,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             restored = [overview.card for overview in await repository.list_cards()
                         if overview.card.external_id in members]
             restored_card_ids = [card.id for card in restored]
-            restored_group = next(group for group in await repository.list_groups() if group["name"] == group_name)
+            restored_group = next(group for group in (await repository.get_catalog())["groups"] if group["name"] == group_name)
             restored_group_id = restored_group["id"]
             self.assertEqual(restored_group["tags"], ["бутылки"])
             self.assertEqual(set(restored_group["card_ids"]), set(restored_card_ids))
@@ -258,9 +282,9 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             restored_second = (await repository.get_card(next(card.id for card in restored
                                                                 if card.external_id == second_external_id))).card
             self.assertEqual(list(restored_second.tags), ["спорт", "набор"])
-            restored_group = next(group for group in await repository.list_groups() if group["name"] == group_name)
+            restored_group = next(group for group in (await repository.get_catalog())["groups"] if group["name"] == group_name)
             self.assertEqual(restored_group["tags"], ["бутылки", "подарок"])
-            self.assertEqual(len([group for group in await repository.list_groups()
+            self.assertEqual(len([group for group in (await repository.get_catalog())["groups"]
                                   if group["name"] == group_name]), 1)
         finally:
             for card_id in {first.id, second.id, *restored_card_ids}:
@@ -272,7 +296,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         external_id = f"test-{uuid4()}"
         card = await repository.add_card("integration-test", external_id)
-        run_id = await repository.start_run(1)
+        run_id = await self.fixture_run()
         try:
             snapshot = ProductSnapshot(
                 ref=ProductRef("integration-test", external_id),
@@ -284,10 +308,10 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 collected_at=datetime.now(timezone.utc),
             )
 
-            await repository.save_observation(card, run_id, snapshot)
+            await self.observe(repository, card, snapshot)
             self.assertEqual((await repository.get_card(card.id)).card.image_url,
                              "https://img.test/first.jpg")
-            await repository.save_observation(card, run_id, ProductSnapshot(
+            await self.observe(repository, card, ProductSnapshot(
                 ref=snapshot.ref, title=snapshot.title, url=snapshot.url,
                 availability=snapshot.availability, price=snapshot.price,
                 image_url="https://img.test/updated.jpg",
@@ -298,7 +322,6 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(next(item for item in exported["cards"]
                                   if item["external_id"] == external_id)["image_url"],
                              "https://img.test/updated.jpg")
-            await repository.finish_run(run_id, "completed", 1, 0)
 
             history = await repository.get_history(card.id, 1)
             statistics = await repository.get_statistics(card.id, 1)
@@ -324,10 +347,10 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         manual = await repository.add_card("integration-test", f"test-{uuid4()}", title="Моё название")
         automatic = await repository.add_card("integration-test", f"test-{uuid4()}")
-        run_id = await repository.start_run(2)
+        run_id = await self.fixture_run()
         try:
             async def save(card, title, url):
-                await repository.save_observation(card, run_id, ProductSnapshot(
+                await self.observe(repository, card, ProductSnapshot(
                     ref=ProductRef(card.marketplace, card.external_id),
                     title=title, url=url, availability=Availability.IN_STOCK, price=100,
                 ))
@@ -388,11 +411,11 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         external_id = f"test-{uuid4()}"
         card = await repository.add_card("integration-test", external_id)
-        run_id = await repository.start_run(12)
+        run_id = await self.fixture_run()
         start = datetime.now(timezone.utc) - timedelta(hours=1)
 
         async def save(minute, price, availability=Availability.IN_STOCK):
-            await repository.save_observation(card, run_id, ProductSnapshot(
+            await self.observe(repository, card, ProductSnapshot(
                 ref=ProductRef("integration-test", external_id), title="Товар",
                 url="https://example.test/product", availability=availability,
                 price=price, collected_at=start + timedelta(minutes=minute),
@@ -445,18 +468,13 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         run = await repository.create_queued_run(card.id)
-        try:
-            await repository.update_card(card.id, deals_enabled=False)
-            self.assertEqual(run.target_card_ids, (card.id,))
-            self.assertEqual([item.id for item in await repository.cards_for_run(run)], [card.id])
-            with self.assertRaises(CardInActiveRun):
-                await repository.delete_card(card.id)
-            await repository.finish_run(run.id, "failed", 0, 0)
-            self.assertTrue(await repository.delete_card(card.id))
-        finally:
-            with self.database.session() as session, session.begin():
-                session.execute(delete(MarketplaceCardRecord).where(MarketplaceCardRecord.id == card.id))
-                session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
+        self.fixture_runs.append(run.id)
+        await repository.update_card(card.id, deals_enabled=False)
+        self.assertEqual([c.id for c in await repository.cards_for_run(run.id)], [card.id])
+        with self.assertRaises(CardInActiveRun):
+            await repository.delete_card(card.id)
+        await self.abandon_queued(repository, run)
+        self.assertTrue(await repository.delete_card(card.id))
 
     async def test_chart_returns_saved_points_and_unavailable_gap(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
@@ -485,54 +503,39 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_error_is_persisted_with_progress(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
-        run = await repository.create_queued_run(card.id)
-        try:
-            error = {"cardId": card.id, "marketplace": "integration-test",
-                     "externalId": card.external_id, "at": datetime.now(timezone.utc).isoformat(),
-                     "type": "RuntimeError", "message": "failed", "traceback": "full traceback"}
-            await repository.record_run_error(run.id, error, 0, 1)
-            loaded = await repository.get_run(run.id)
-            self.assertEqual(loaded.failure_count, 1)
-            self.assertEqual(loaded.errors[0]["traceback"], "full traceback")
-        finally:
-            await repository.finish_run(run.id, "failed", 0, 1)
-            await repository.delete_card(card.id)
-            with self.database.session() as session, session.begin():
-                session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
+        run = await repository.start_direct_run(card.id)
+        self.fixture_runs.append(run.id)
+        error = {"cardId": card.id, "marketplace": card.marketplace, "externalId": card.external_id,
+                 "message": "failed", "traceback": "full traceback"}
+        await repository.record_card_error(run.lease, card, error)
+        loaded = await repository.get_run(run.id)
+        self.assertEqual(loaded.failure_count, 1)
+        self.assertEqual(loaded.errors[0]["traceback"], "full traceback")
+        await repository.finish_run(run.lease)
+        await repository.delete_card(card.id)
 
     async def test_stale_worker_run_is_failed_with_diagnostic(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
-        run = await repository.create_queued_run(card.id)
-        try:
-            await repository.save_observation(card, run.id, ProductSnapshot(
-                ref=ProductRef("integration-test", card.external_id), title="Товар",
-                url="https://example.test/product", availability=Availability.IN_STOCK,
-                price=123.45,
-            ))
-            old = datetime.now(timezone.utc) - timedelta(minutes=2)
-            with self.database.session() as session, session.begin():
-                record = session.get(CollectionRunRecord, run.id)
-                record.status = "waiting_for_user"
-                record.worker_id = "dead-worker"
-                record.heartbeat_at = old
-            await repository.fail_stale_runs(datetime.now(timezone.utc) - timedelta(seconds=30))
-            loaded = await repository.get_run(run.id)
-            self.assertEqual(loaded.status, "failed")
-            self.assertEqual(loaded.errors[0]["type"], "WorkerStopped")
-            self.assertIsNotNone(loaded.finished_at)
-            self.assertEqual([point.price for point in await repository.get_history(card.id, 1)],
-                             [Decimal("123.45")])
-        finally:
-            await repository.delete_card(card.id)
-            with self.database.session() as session, session.begin():
-                session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
+        run = await repository.start_direct_run(card.id)
+        self.fixture_runs.append(run.id)
+        await repository.save_result(run.lease, card, ProductSnapshot(ref=ProductRef(card.marketplace,card.external_id),
+            title="Item",url="",price=123.45,availability=Availability.IN_STOCK))
+        async with self.async_database.session() as session, session.begin():
+            record = await session.get(CollectionRunRecord, run.id)
+            record.heartbeat_at = datetime.now(timezone.utc)-timedelta(minutes=2)
+        await repository.fail_stale_runs(datetime.now(timezone.utc)-timedelta(seconds=30))
+        loaded = await repository.get_run(run.id)
+        self.assertEqual(loaded.status,"failed")
+        self.assertEqual(loaded.errors[0]["type"],"WorkerStopped")
+        self.assertEqual((await repository.get_history(card.id,1))[0].price,Decimal("123.45"))
+        await repository.delete_card(card.id)
 
     async def test_real_api_chart_uses_full_history_and_run_exposes_errors(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         card = await repository.add_card("ozon", f"{uuid4().int % 10**15:015d}")
         start = datetime.now(timezone.utc) - timedelta(hours=2)
-        run = await repository.create_queued_run(card.id)
+        run = await repository.start_direct_run(card.id)
         try:
             with self.database.session() as session, session.begin():
                 for index in range(60):
@@ -542,12 +545,12 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         availability="in_stock", observed_at=start + timedelta(minutes=index),
                         snapshot={},
                     ))
-            await repository.record_run_error(run.id, {
+            await repository.record_card_error(run.lease, card, {
                 "cardId": card.id, "marketplace": "ozon", "externalId": card.external_id,
                 "at": datetime.now(timezone.utc).isoformat(), "type": "RuntimeError",
                 "message": "network failed", "traceback": "full traceback",
-            }, 0, 1)
-            await repository.finish_run(run.id, "completed_with_errors", 0, 1)
+            })
+            await repository.finish_run(run.lease)
             app = create_app(repository=repository)
             app.state.repository = repository
 
@@ -572,116 +575,61 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_only_full_runs_reset_automatic_collection_clock(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
-        cards = [await repository.add_card("integration-test", f"test-{uuid4()}") for _ in range(2)]
-        await repository.update_card(cards[1].id, deals_enabled=False)
-        future = datetime(2100, 1, 1, tzinfo=timezone.utc)
-        scheduled = single = later = overdue = manual_full = final = None
+        cards = [await repository.add_card("integration-test",f"test-{uuid4()}") for _ in range(2)]
+        future = datetime(2100,1,1,tzinfo=timezone.utc)
         try:
-            # With no previous full run, the first check queues all supported cards.
-            scheduled = await repository.create_due_run(future)
-            self.assertIsNotNone(scheduled)
-            self.assertIn(cards[0].id, scheduled.target_card_ids)
-            self.assertIn(cards[1].id, scheduled.target_card_ids)
-            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=7)))
-            await repository.finish_run(scheduled.id, "completed", 0, 0)
-            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=6, seconds=-1)))
-
-            single = await repository.get_run(await repository.start_run(1, cards[0].id))
-            with self.database.session() as session, session.begin():
-                single_record = session.get(CollectionRunRecord, single.id)
-                self.assertFalse(single_record.is_full_collection)
-                self.assertEqual(single_record.requested_card_id, cards[0].id)
-                single_record.started_at = future + timedelta(hours=5)
-            await repository.finish_run(single.id, "completed", 1, 0)
-            await repository.delete_card(cards[0].id)
-            self.assertIsNone((await repository.get_run(single.id)).requested_card_id)
-
-            # The single-card run does not move the deadline; concurrent checks
-            # at the six-hour boundary create exactly one full run.
-            results = await asyncio.gather(*(
-                repository.create_due_run(future + timedelta(hours=6)) for _ in range(2)
-            ))
-            self.assertEqual(sum(run is not None for run in results), 1)
-            later = next(run for run in results if run is not None)
-            self.assertIsNotNone(later)
-            self.assertEqual(later.started_at, future + timedelta(hours=6))
-            self.assertEqual(later.target_card_ids, (cards[1].id,))
-            await repository.record_run_error(later.id, {
-                "cardId": cards[1].id, "marketplace": "integration-test",
-                "externalId": cards[1].external_id, "message": "collection failed",
-            }, 0, 1)
-            await repository.finish_run(later.id, "failed", 0, 1)
-            self.assertEqual((await repository.get_run(later.id)).errors[0]["message"], "collection failed")
-            self.assertIsNone(await repository.create_due_run(future + timedelta(hours=12, seconds=-1)))
-
-            # Missed intervals are not replayed: one overdue run resets the clock.
-            overdue_at = future + timedelta(days=2)
-            overdue = await repository.create_due_run(overdue_at)
-            self.assertIsNotNone(overdue)
-            self.assertIsNone(await repository.create_due_run(overdue_at))
-            await repository.finish_run(overdue.id, "completed", 1, 0)
-            self.assertIsNone(await repository.create_due_run(overdue_at))
-
-            manual_full = await repository.get_run(await repository.start_run(1))
-            with self.database.session() as session, session.begin():
-                manual_record = session.get(CollectionRunRecord, manual_full.id)
-                self.assertTrue(manual_record.is_full_collection)
-                self.assertIsNone(manual_record.requested_card_id)
-                manual_record.started_at = overdue_at + timedelta(hours=1)
-            await repository.finish_run(manual_full.id, "completed", 1, 0)
-            self.assertIsNone(await repository.create_due_run(overdue_at + timedelta(hours=7, seconds=-1)))
-            final = await repository.create_due_run(overdue_at + timedelta(hours=7))
-            self.assertIsNotNone(final)
+            full = await repository.create_due_run(future)
+            self.fixture_runs.append(full.id)
+            self.assertEqual({c.id for c in await repository.cards_for_run(full.id)}, {c.id for c in cards})
+            self.assertIsNone(await repository.create_due_run(future+timedelta(hours=7)))
+            await self.abandon_queued(repository,full)
+            self.assertIsNone(await repository.create_due_run(future+timedelta(hours=6,seconds=-1)))
+            single = await repository.start_direct_run(cards[0].id)
+            self.fixture_runs.append(single.id)
+            async with self.async_database.session() as session, session.begin():
+                (await session.get(CollectionRunRecord,single.id)).started_at = future+timedelta(hours=5)
+            await repository.fail_run(single.lease,{"cardId":None,"message":"failed"})
+            due = await repository.create_due_run(future+timedelta(hours=6))
+            self.assertIsNotNone(due)
+            self.fixture_runs.append(due.id)
+            await self.abandon_queued(repository,due)
+            self.assertIsNone(await repository.create_due_run(future+timedelta(hours=12,seconds=-1)))
+            overdue = await repository.create_due_run(future+timedelta(days=2))
+            self.fixture_runs.append(overdue.id)
+            self.assertIsNone(await repository.create_due_run(future+timedelta(days=2)))
+            await self.abandon_queued(repository,overdue)
+            manual = await repository.start_direct_run()
+            self.fixture_runs.append(manual.id)
+            async with self.async_database.session() as session, session.begin():
+                (await session.get(CollectionRunRecord,manual.id)).started_at = future+timedelta(days=2,hours=1)
+            await repository.fail_run(manual.lease,{"cardId":None,"message":"failed"})
+            self.assertIsNone(await repository.create_due_run(future+timedelta(days=2,hours=7,seconds=-1)))
+            final = await repository.create_due_run(future+timedelta(days=2,hours=7))
+            self.fixture_runs.append(final.id)
+            await self.abandon_queued(repository,final)
         finally:
-            for run in (scheduled, single, later, overdue, manual_full, final):
-                if run:
-                    await repository.finish_run(run.id, "failed", 0, 0)
-            for card in cards:
-                await repository.delete_card(card.id)
-            with self.database.session() as session, session.begin():
-                for run in (scheduled, single, later, overdue, manual_full, final):
-                    if run:
-                        session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
+            for card in cards: await repository.delete_card(card.id)
 
     async def test_retry_targets_only_failed_cards_and_links_source(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         cards = [await repository.add_card("integration-test", f"test-{uuid4()}") for _ in range(2)]
-        source = await repository.create_queued_run()
-        retry = None
-        try:
-            await repository.record_run_error(source.id, {"cardId": cards[0].id, "marketplace": "integration-test",
-                                                    "externalId": cards[0].external_id, "message": "failed"}, 1, 1)
-            await repository.update_card(cards[0].id, deals_enabled=False)
-            await repository.finish_run(source.id, "completed_with_errors", 1, 1)
-            app = create_app(repository=repository)
-            app.state.repository = repository
-
-            async def create_via_api():
-                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-                    return await client.post(f"/api/runs/{source.id}/retry")
-
-            response = await create_via_api()
-            self.assertEqual(response.status_code, 202)
-            self.assertEqual(response.json()["retryOfRunId"], source.id)
-            retry = await repository.get_run(response.json()["id"])
-            self.assertEqual(retry.target_card_ids, (cards[0].id,))
-            self.assertEqual(retry.retry_of_run_id, source.id)
-            with self.assertRaises(ValueError):
-                await repository.create_retry_run(source.id)
-        finally:
-            if retry:
-                await repository.finish_run(retry.id, "failed", 0, 0)
-            for card in cards:
-                await repository.delete_card(card.id)
-            with self.database.session() as session, session.begin():
-                for run in (retry, source):
-                    if run:
-                        session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
+        run = await repository.start_direct_run()
+        self.fixture_runs.append(run.id)
+        await repository.save_result(run.lease, cards[0], ProductSnapshot(ref=ProductRef(cards[0].marketplace,cards[0].external_id),
+            title="Item",url="",price=100,availability=Availability.IN_STOCK))
+        await repository.record_card_error(run.lease,cards[1],{"cardId":cards[1].id,"message":"failed"})
+        await repository.finish_run(run.lease)
+        retry = await repository.create_retry_run(run.id)
+        self.fixture_runs.append(retry.id)
+        self.assertEqual([c.id for c in await repository.cards_for_run(retry.id)],[cards[1].id])
+        self.assertEqual(retry.retry_of_run_id,run.id)
+        await self.abandon_queued(repository,retry)
+        for card in cards: await repository.delete_card(card.id)
 
     async def test_deal_excludes_current_price_from_daily_average(self):
         repository = PostgresPriceAnalyzerRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
-        run_id = await repository.start_run(1)
+        run_id = await self.fixture_run()
         now = datetime.now(timezone.utc)
         try:
             with self.database.session() as session, session.begin():
@@ -690,25 +638,25 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     session.add(PriceHistoryRecord(card_id=card.id, collection_run_id=run_id,
                         price=Decimal(price), availability="in_stock",
                         observed_at=now - timedelta(days=3 - index), snapshot={}))
-            deal = next(item for item in await repository.list_deals(now) if item.card.card.id == card.id)
-            self.assertEqual(deal.average_price, Decimal("110"))
-            self.assertEqual(deal.savings, Decimal("30"))
-            self.assertEqual(deal.baseline_days, 2)
-            self.assertEqual(deal.last_collection_run_id, run_id)
-            metrics = await repository.list_card_price_metrics()
+            deal = next(item for item in (await repository.get_catalog())["deals"] if item["card"]["id"] == card.id)
+            self.assertEqual(deal["average_price"], Decimal("110"))
+            self.assertEqual(deal["savings"], Decimal("30"))
+            self.assertEqual(deal["baseline_days"], 2)
+            self.assertEqual(deal["last_collection_run_id"], run_id)
+            metrics = {c["id"]: (c["minimum_price"], c["average_price"]) for c in (await repository.get_catalog())["cards"]}
             self.assertEqual(metrics[card.id], (Decimal("80"), Decimal("110")))
             app = create_app(repository=repository)
             app.state.repository = repository
 
             async def check_deal_api():
                 async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-                    response = await client.get("/api/cards/deals")
-                    cards_response = await client.get("/api/cards")
+                    response = await client.get("/api/catalog")
+                    cards_response = await client.get("/api/catalog")
                 self.assertEqual(response.status_code, 200)
-                item = next(item for item in response.json() if item["card"]["id"] == card.id)
+                item = next(item for item in response.json()["deals"] if item["card"]["id"] == card.id)
                 self.assertEqual(item["averagePrice"], 110.0)
                 self.assertEqual(item["lastCollectionRunId"], run_id)
-                card_response = next(entry for entry in cards_response.json() if entry["id"] == card.id)
+                card_response = next(entry for entry in cards_response.json()["cards"] if entry["id"] == card.id)
                 self.assertEqual(card_response["minimumPrice"], 80.0)
                 self.assertEqual(card_response["averagePrice"], 110.0)
 
@@ -716,7 +664,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             with self.database.session() as session, session.begin():
                 session.add(PriceHistoryRecord(card_id=card.id, collection_run_id=run_id,
                     price=Decimal("150"), availability="in_stock", observed_at=now, snapshot={}))
-            self.assertFalse(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+            self.assertFalse(any(item["card"]["id"] == card.id for item in (await repository.get_catalog())["deals"]))
         finally:
             await repository.delete_card(card.id)
             with self.database.session() as session, session.begin():
@@ -735,10 +683,10 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         price=Decimal(price), availability="in_stock",
                         observed_at=now - timedelta(days=days_ago), snapshot={},
                     ))
-            deal = next(item for item in await repository.list_deals(now) if item.card.card.id == card.id)
-            self.assertEqual(deal.average_price, Decimal("100"))
-            self.assertEqual(deal.savings, Decimal("20"))
-            self.assertEqual(deal.baseline_days, 1)
+            deal = next(item for item in (await repository.get_catalog())["deals"] if item["card"]["id"] == card.id)
+            self.assertEqual(deal["average_price"], Decimal("100"))
+            self.assertEqual(deal["savings"], Decimal("20"))
+            self.assertEqual(deal["baseline_days"], 1)
         finally:
             await repository.delete_card(card.id)
 
@@ -753,7 +701,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     price=Decimal("100"), availability="in_stock",
                     observed_at=now - timedelta(minutes=2), snapshot={},
                 ))
-            self.assertFalse(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+            self.assertFalse(any(item["card"]["id"] == card.id for item in (await repository.get_catalog())["deals"]))
 
             async with self.async_database.session() as session, session.begin():
                 session.add(PriceHistoryRecord(
@@ -761,10 +709,10 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     price=Decimal("80"), availability="in_stock",
                     observed_at=now - timedelta(minutes=1), snapshot={},
                 ))
-            deal = next(item for item in await repository.list_deals(now) if item.card.card.id == card.id)
-            self.assertEqual(deal.average_price, Decimal("100"))
-            self.assertEqual(deal.savings, Decimal("20"))
-            self.assertEqual(deal.baseline_days, 1)
+            deal = next(item for item in (await repository.get_catalog())["deals"] if item["card"]["id"] == card.id)
+            self.assertEqual(deal["average_price"], Decimal("100"))
+            self.assertEqual(deal["savings"], Decimal("20"))
+            self.assertEqual(deal["baseline_days"], 1)
         finally:
             await repository.delete_card(card.id)
 
@@ -780,7 +728,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         card_id=card.id, collection_run_id=None, price=Decimal(price),
                         availability="in_stock", observed_at=now - timedelta(days=age), snapshot={},
                     ))
-            self.assertTrue(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+            self.assertTrue(any(item["card"]["id"] == card.id for item in (await repository.get_catalog())["deals"]))
 
             app = create_app(repository=repository)
             app.state.repository = repository
@@ -792,15 +740,15 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 self.assertNotIn("isArchived", response.json())
             self.assertIn(card.id, [item.id for item in await repository.list_collection_cards()])
             run = await repository.create_queued_run(card.id)
-            self.assertEqual(run.target_card_ids, (card.id,))
-            await repository.finish_run(run.id, "completed", 1, 0)
+            self.assertEqual(tuple(c.id for c in await repository.cards_for_run(run.id)), (card.id,))
+            await self.abandon_queued(repository, run)
             full_run = await repository.create_queued_run()
-            self.assertIn(card.id, full_run.target_card_ids)
-            await repository.finish_run(full_run.id, "completed", full_run.total_count, 0)
-            self.assertFalse(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+            self.assertIn(card.id, [c.id for c in await repository.cards_for_run(full_run.id)])
+            await self.abandon_queued(repository, full_run)
+            self.assertFalse(any(item["card"]["id"] == card.id for item in (await repository.get_catalog())["deals"]))
 
             await repository.update_card(card.id, deals_enabled=True)
-            self.assertTrue(any(item.card.card.id == card.id for item in await repository.list_deals(now)))
+            self.assertTrue(any(item["card"]["id"] == card.id for item in (await repository.get_catalog())["deals"]))
         finally:
             await repository.delete_card(card.id)
 

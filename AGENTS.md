@@ -11,14 +11,21 @@ Chrome collection, CLI, and database-free single-product JSON mode.
 - Use `codegraph_explore` first for code navigation and impact. Use Repowise for
   architecture, history, risks, and affected tests. Avoid duplicate queries;
   verify critical findings in current source, especially Tauri `invoke` paths.
-- Keep changes focused and preserve existing behavior and interfaces unless the
-  approved plan changes them. Do not invent contracts or add needless dependencies.
+- Keep changes focused and preserve required product behavior unless the approved
+  plan changes it. Do not invent contracts or add needless dependencies.
 - Use `$vibe-flow` for substantial features, cross-component work, and architecture
   changes. Small isolated fixes can use a direct workflow without OpenSpec. Keep
   human review before implementation and before completion.
 
 ## Architecture and compatibility
 
+- Backward compatibility is not a project goal. When replacing a solution,
+  migrate all affected consumers to the new design and remove the superseded
+  code, interfaces, configuration, tests and documentation. Do not keep legacy
+  branches, compatibility adapters, deprecated endpoints or fallback paths for
+  the old solution. Make the transition complete and permanent; do not retain
+  the old implementation as a rollback option. This does not authorize deleting
+  user data: migrate required persisted data safely under the rules below.
 - Architecture can change. For a significant change, inspect the current design,
   compare options, propose an ADR, obtain approval, then implement through OpenSpec.
   Update relevant architecture documentation afterward; do not rewrite old ADRs.

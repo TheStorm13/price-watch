@@ -6,7 +6,7 @@ describe('mock deal list', () => {
     const card = await mockApi.getCard(1)
     const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse(card.createdAt) + 6 * 86_400_000)
     try {
-      expect((await mockApi.listDeals()).map((deal) => deal.card.id)).toContain(card.id)
+      expect(((await mockApi.getCatalog()).deals).map((deal) => deal.card.id)).toContain(card.id)
     } finally {
       clock.mockRestore()
     }
@@ -25,16 +25,16 @@ it('projects every group field from one cheapest member and switches as prices c
   })
   await api.importCards({ version: 2, cards: [imported('901', 'ozon', [80, 90]), imported('902', 'wildberries', [60, 240, 120])],
     groups: [{ name: 'Fixture', cards: [{ marketplace: 'ozon', externalId: '901' }, { marketplace: 'wildberries', externalId: '902' }] }] })
-  let group = (await api.listGroups())[0]
+  let group = ((await api.getCatalog()).groups)[0]
   expect(group.representativeCard).toMatchObject({ externalId: '901', currentPrice: 90, minimumPrice: 80, averagePrice: 80 })
   expect(group).toMatchObject({ currentPrice: 90, minimumPrice: 80, savings: null, isDeal: false, hasMemberDeals: true, baselineDays: 1 })
-  expect(group.representativeCard).toEqual((await api.listCards()).find((card) => card.externalId === '901'))
+  expect(group.representativeCard).toEqual(((await api.getCatalog()).cards).find((card) => card.externalId === '901'))
   await api.importCards({ version: 2, cards: [imported('902', 'wildberries', [60, 240, 120, 50])] })
-  group = (await api.listGroups())[0]
+  group = ((await api.getCatalog()).groups)[0]
   expect(group.representativeCard).toMatchObject({ externalId: '902', currentPrice: 50, minimumPrice: 50, marketplace: 'wildberries' })
   expect(group).toMatchObject({ isDeal: true, hasMemberDeals: true, savings: 90, baselineDays: 3 })
   await api.updateCard(group.representativeCardId!, { dealsEnabled: false })
-  group = (await api.listGroups())[0]
+  group = ((await api.getCatalog()).groups)[0]
   expect(group).toMatchObject({ isDeal: false, savings: null, hasMemberDeals: false })
   const empty = await api.createGroup({ name: 'Empty', cardIds: [] })
   expect(empty).toMatchObject({ representativeCard: null, currentPrice: null, minimumPrice: null, baselineDays: 0, isDeal: false })

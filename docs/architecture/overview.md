@@ -40,7 +40,9 @@ flowchart LR
     UI[React] -->|POST /api/runs| API[FastAPI]
     API -->|queued| DB[(PostgreSQL)]
     Worker[Python worker] -->|claim / heartbeat| DB
-    Worker --> Service[CollectionService]
+    Worker --> Runner[RunExecutor]
+    CLI[Прямой collect] --> Runner
+    Runner --> Service[CollectionService]
     Service --> Connector[OzonConnector]
     Connector --> Chrome[Chrome + Playwright CDP]
     Chrome --> Ozon[Ozon composer JSON]
@@ -48,7 +50,7 @@ flowchart LR
     UI -->|опрос /api/runs| API
 ```
 
-API фиксирует состав запуска (`target_card_ids`) при постановке в очередь.
+API фиксирует состав запуска в `collection_run_targets` при постановке в очередь.
 Worker атомарно забирает `queued` через `FOR UPDATE SKIP LOCKED`, обновляет
 heartbeat каждые пять секунд и при следующем цикле помечает зависшие
 `running` или `waiting_for_user` как `failed`. При работающем worker раз в
@@ -63,8 +65,14 @@ heartbeat каждые пять секунд и при следующем цик
 БД, результаты сохраняются по мере завершения. `ProductNotFound` превращается
 в успешное наблюдение `out_of_stock`; прочие ошибки карточек записываются в
 запуск с сообщением и traceback, не прерывая остальные карточки. Общая ошибка
-запуска переводит его в `failed`. Прямой CLI использует тот же сервис, но
-создаёт запуск сразу в статусе `running`.
+запуска переводит его в `failed`. Прямой CLI и worker используют один
+`RunExecutor`: токен владельца, heartbeat, создание коннекторов и cleanup.
+CLI создаёт owned запуск сразу в running и восстанавливает устаревшие записи
+до старта. Worker делает то же до проверки расписания, включая ownerless записи.
+Сохранение результата цели, карточки, истории и счётчиков атомарно. Все записи
+исполнителя проверяют lease; потеря владения отменяет запросы и закрывает сеансы.
+Повтор выбирает существующие supported цели failed/pending/unknown, исключая
+succeeded даже без новой точки истории.
 
 Источники: `price_analyzer/api/routes/runs.py`,
 `price_analyzer/infrastructure/postgres/runs_repository.py`,
@@ -73,7 +81,11 @@ heartbeat каждые пять секунд и при следующем цик
 
 ## Контракты и границы
 
-- API содержит маршруты `/api/cards`, `/api/groups`, `/api/runs` и `/api/health`.
+- `GET /api/catalog` возвращает cards/groups/deals из одной read-only
+  транзакции REPEATABLE READ с общими исходными данными. UI обновляет весь снимок
+  вместе и сохраняет прежний снимок при ошибке обновления. Старые GET списков
+  cards/groups/deals удалены; мутации и details/history/chart остаются.
+  Остальные маршруты: `/api/cards`, `/api/groups`, `/api/runs`, `/api/health`.
   Pydantic преобразует имена полей в `camelCase`; TypeScript-типы и вызовы
   находятся в `frontend/src/types/domain.ts` и `frontend/src/api/client.ts`.
 - Коннектор обязан предоставить асинхронные `get_product` и
@@ -94,13 +106,21 @@ heartbeat каждые пять секунд и при следующем цик
 `marketplace_connector/connectors/ozon/async_client.py`,
 `marketplace_connector/connectors/ozon/mapper.py`.
 
+Очередь уведомлений о выгодной цене хранит pending ID, watermark и цены одним
+документом localStorage. Ошибка API оставляет работу для повтора с backoff
+до 30 секунд независимо от закрытия панели. Обработка фиксируется после
+свежего каталога; учитываются актуальные deals с подходящим lastCollectionRunId
+и изменённой ценой. Это не доставка всех исторических скидок.
+
 ## Данные и совместимость
 
 SQLAlchemy-модели отделены от доменных объектов. Основные таблицы:
 `marketplace_cards` (уникальная пара `marketplace, external_id`),
-`product_groups`, `collection_runs` и `price_history`. Группы представляют
-каталог: текущая цена группы — минимум цен доступных участников, исторический
-минимум — минимум их историй; сбор всё равно идёт по карточкам. Флаг
+`product_groups`, `collection_runs`, `collection_run_targets` и `price_history`.
+Группа выбирает представителя по минимальной известной цене, независимо от
+наличия; при равенстве цен или отсутствии цен — меньший ID. Все её товарные
+метрики, в том числе исторический минимум, принадлежат этому представителю;
+сбор всё равно идёт по карточкам. Флаг
 `deals_enabled` влияет на список выгодных предложений, но не исключает
 карточку из сбора.
 
@@ -115,10 +135,14 @@ SQLAlchemy-модели отделены от доменных объектов.
 состояния. Предпросмотр рассчитывает итог без записи. Экспорт содержит карточки,
 группы и сохранённые точки истории, но не JSON-снимки и не запуски.
 
-Миграции Alembic идут от `0001_initial` до `0013_deals_enabled`. Миграция
+Миграции Alembic идут от `0001_initial` до `0014_run_target_results`. Миграция
 `0004` удаляет часть старых наблюдений без возможности восстановить их через
 `downgrade`. API применяет
 их при старте через синхронное подключение, CLI — по команде `db migrate`.
+Ревизия 0014 сохраняет известные цели и данные, обозначает недоказанные
+результаты unknown и неполный состав, затем удаляет старый массив целей.
+Переход forward-only, смешанные версии не поддерживаются: перед обновлением
+остановить старые API/worker/CLI.
 Есть механизм принятия старой схемы без таблицы `alembic_version` за `0001`.
 Перед запуском миграций на существующих данных нужно изучить их конкретные
 ревизии и резервную копию. Подробные маршруты, поля и статистика описаны в

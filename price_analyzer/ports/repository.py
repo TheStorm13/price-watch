@@ -1,54 +1,15 @@
-"""Persistence port used by application services."""
-
-from typing import Iterable, Optional, Protocol
-
+"""Persistence operations used by collection execution."""
+from typing import Protocol
 from marketplace_connector.domain.models import ProductSnapshot
-
-from ..domain.models import CollectionRun, MarketplaceCard
+from ..domain.models import CollectionRun, MarketplaceCard, RunLease
 
 
 class PriceAnalyzerRepository(Protocol):
-    async def delete_card(self, card_id: int) -> bool:
-        ...
-
-    async def list_collection_cards(
-        self, card_id: Optional[int] = None
-    ) -> Iterable[MarketplaceCard]:
-        ...
-
-    async def start_run(self, total_count: int, card_id: Optional[int] = None) -> int:
-        ...
-
-    async def save_observation(
-        self, card: MarketplaceCard, run_id: int, snapshot: ProductSnapshot
-    ) -> None:
-        ...
-
-    async def finish_run(
-        self,
-        run_id: int,
-        status: str,
-        success_count: int,
-        failure_count: int,
-    ) -> None:
-        ...
-
-    async def claim_next_run(self, worker_id: str) -> Optional[CollectionRun]:
-        ...
-
-    async def cards_for_run(self, run: CollectionRun) -> Iterable[MarketplaceCard]:
-        ...
-
-    async def set_run_current(self, run_id: int, card: MarketplaceCard) -> None:
-        ...
-
-    async def update_run_progress(
-        self, run_id: int, success_count: int, failure_count: int
-    ) -> None:
-        ...
-
-    async def record_run_error(
-        self, run_id: int, error: dict, success_count: int | None = None,
-        failure_count: int | None = None,
-    ) -> None:
-        ...
+    async def start_direct_run(self, card_id: int | None = None) -> CollectionRun: ...
+    async def cards_for_run(self, run_id: int) -> list[MarketplaceCard]: ...
+    async def touch_run(self, lease: RunLease) -> bool: ...
+    async def set_run_current(self, lease: RunLease, card: MarketplaceCard) -> None: ...
+    async def save_result(self, lease: RunLease, card: MarketplaceCard, snapshot: ProductSnapshot) -> None: ...
+    async def record_card_error(self, lease: RunLease, card: MarketplaceCard, error: dict) -> None: ...
+    async def finish_run(self, lease: RunLease) -> CollectionRun: ...
+    async def fail_run(self, lease: RunLease, error: dict) -> None: ...

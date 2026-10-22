@@ -86,11 +86,7 @@ export function ImportExportControls({ onStatus }: Props) {
     setError(null)
     try {
       const result = await api.importCards(document)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['cards'] }),
-        queryClient.invalidateQueries({ queryKey: ['groups'] }),
-        queryClient.invalidateQueries({ queryKey: ['deals'] }),
-      ])
+      await queryClient.invalidateQueries({ queryKey: ['catalog'] })
       setOpen(false)
       onStatus(`Импорт завершён. ${summaryText(result)}`, 'success')
       setDocument(null)

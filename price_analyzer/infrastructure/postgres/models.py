@@ -119,8 +119,22 @@ class CollectionRunRecord(Base):
     challenge_message: Mapped[str | None] = mapped_column(Text)
     worker_id: Mapped[str | None] = mapped_column(String(128))
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    target_card_ids: Mapped[list[int] | None] = mapped_column(ARRAY(BigInteger))
+    targets_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     errors: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+
+
+class CollectionRunTargetRecord(Base):
+    __tablename__ = "collection_run_targets"
+    __table_args__ = (
+        CheckConstraint("status in ('pending', 'succeeded', 'failed', 'unknown')", name="run_target_status_check"),
+        UniqueConstraint("run_id", "position", name="run_target_position_unique"),
+        Index("run_targets_card_idx", "card_id", "run_id"),
+    )
+    run_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("collection_runs.id", ondelete="CASCADE"), primary_key=True)
+    # Keep the original target identity after a card is deleted.
+    card_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'pending'"))
 
 
 class PriceHistoryRecord(Base):

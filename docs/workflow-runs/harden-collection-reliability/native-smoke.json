@@ -1,0 +1,9 @@
+{
+  "root": "/tmp/pw-rel-native-n0qg02o2",
+  "pid": 893823,
+  "checks": {
+    "run_level_failure_retry_visible": true,
+    "retry_saved_price_in_real_webview": true,
+    "api_restart_catalog_restored": true
+  }
+}

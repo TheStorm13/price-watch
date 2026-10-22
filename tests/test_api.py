@@ -32,7 +32,7 @@ class FakeRepository:
         self.no_cards = False
         self.groups = {}
 
-    async def list_groups(self):
+    async def group_projection(self):
         return [{"id": group_id, "name": group["name"], "card_ids": group["card_ids"],
                  "tags": group["tags"],
                  "current_price": 999 if group["card_ids"] else None,
@@ -59,11 +59,10 @@ class FakeRepository:
     async def delete_group(self, group_id):
         return self.groups.pop(group_id, None) is not None
 
-    async def list_cards(self):
-        return [CardOverview(self.card, 999, "in_stock", NOW)]
-
-    async def list_card_price_metrics(self):
-        return {1: (800, 1100)}
+    async def get_catalog(self):
+        from price_analyzer.api.schemas import CardResponse
+        card = CardResponse.from_overview(CardOverview(self.card, 999, "in_stock", NOW), minimum_price=800, average_price=1100)
+        return {"cards": [card], "groups": await self.group_projection(), "deals": []}
 
     async def export_cards(self):
         return {"version": 2, "cards": [{
@@ -141,15 +140,23 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.client.aclose()
 
+    async def test_replaced_list_routes_are_removed(self):
+        schema = self.client._transport.app.openapi()
+        self.assertNotIn('get', schema['paths']['/api/cards'])
+        self.assertNotIn('get', schema['paths']['/api/groups'])
+        self.assertNotIn('/api/cards/deals', schema['paths'])
+        for path in ['/api/cards', '/api/groups', '/api/cards/deals']:
+            self.assertNotEqual((await self.client.get(path)).status_code, 200)
+
     async def test_cards_use_camel_case_contract(self):
-        response = await self.client.get("/api/cards")
+        response = await self.client.get("/api/catalog")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()[0]["externalId"], "1604900984")
-        self.assertEqual(response.json()[0]["currentPrice"], 999.0)
-        self.assertEqual(response.json()[0]["minimumPrice"], 800.0)
-        self.assertEqual(response.json()[0]["averagePrice"], 1100.0)
-        self.assertNotIn("external_id", response.json()[0])
+        self.assertEqual(response.json()["cards"][0]["externalId"], "1604900984")
+        self.assertEqual(response.json()["cards"][0]["currentPrice"], 999.0)
+        self.assertEqual(response.json()["cards"][0]["minimumPrice"], 800.0)
+        self.assertEqual(response.json()["cards"][0]["averagePrice"], 1100.0)
+        self.assertNotIn("external_id", response.json()["cards"][0])
 
     async def test_group_contract_and_lifecycle(self):
         created = await self.client.post("/api/groups", json={"name": "Бутылка", "cardIds": [1], "tags": ["кухня"]})
@@ -162,7 +169,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(created.json()["minimumPrice"], 800)
         self.assertEqual(created.json()["cardIds"], [1])
         self.assertEqual(created.json()["tags"], ["кухня"])
-        self.assertEqual(len((await self.client.get("/api/groups")).json()), 1)
+        self.assertEqual(len((await self.client.get("/api/catalog")).json()["groups"]), 1)
         updated = await self.client.put("/api/groups/1", json={"name": "Термос", "cardIds": [], "tags": ["подарок"]})
         self.assertEqual(updated.json()["name"], "Термос")
         self.assertEqual(updated.json()["tags"], ["подарок"])
@@ -172,7 +179,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(updated.json()["isDeal"])
         self.assertEqual(updated.json()["baselineDays"], 0)
         self.assertEqual((await self.client.delete("/api/groups/1")).status_code, 204)
-        self.assertEqual((await self.client.get("/api/groups")).json(), [])
+        self.assertEqual((await self.client.get("/api/catalog")).json()["groups"], [])
 
     async def test_desktop_api_requires_its_session_token(self):
         app = create_app(repository=self.repository, api_token="session-secret")
@@ -180,10 +187,10 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
             self.assertEqual((await client.get("/api/health")).status_code, 401)
             self.assertEqual(
-                (await client.get("/api/cards", headers={"X-Price-Watch-Token": "wrong"})).status_code,
+                (await client.get("/api/catalog", headers={"X-Price-Watch-Token": "wrong"})).status_code,
                 401,
             )
-            response = await client.get("/api/cards", headers={"X-Price-Watch-Token": "session-secret"})
+            response = await client.get("/api/catalog", headers={"X-Price-Watch-Token": "session-secret"})
             self.assertEqual(response.status_code, 200)
             preflight = await client.options("/api/cards", headers={
                 "Origin": "http://tauri.localhost",

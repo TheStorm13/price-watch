@@ -14,7 +14,7 @@ describe('desktop API client', () => {
     vi.stubGlobal('fetch', fetchMock)
     const { api } = await import('./client')
 
-    await expect(api.listCards()).rejects.toThrow('Локальный API ещё не запущен')
+    await expect(api.getCatalog()).rejects.toThrow('Локальный API ещё не запущен')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -25,10 +25,9 @@ describe('desktop API client', () => {
     const { api, configureDesktopApi } = await import('./client')
 
     configureDesktopApi({ baseUrl: 'http://127.0.0.1:49123', token: 'session-token' })
-    await api.listCards()
-
+    await api.getCatalog()
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://127.0.0.1:49123/api/cards',
+      'http://127.0.0.1:49123/api/catalog',
       expect.objectContaining({
         headers: expect.objectContaining({ 'X-Price-Watch-Token': 'session-token' }),
       }),

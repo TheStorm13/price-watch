@@ -14,10 +14,11 @@ async function panelFixture(page: Page) {
     const response = await route.fetch()
     await route.fulfill({ response, body: await response.text() + `
 const layoutMode = new URLSearchParams(location.search).get('layout') || 'running';
-const layoutRun = { id:999, status:layoutMode.startsWith('waiting')?'waiting_for_user':layoutMode==='errors'?'completed_with_errors':layoutMode==='notice'?'completed':'running', totalCount:5, successCount:layoutMode==='notice'?5:1, failureCount:layoutMode==='errors'?4:0, current:{cardId:1,marketplace:'ozon',externalId:'1604900984'}, startedAt:new Date().toISOString(), finishedAt:layoutMode==='errors'||layoutMode==='notice'?new Date().toISOString():null, challenge:layoutMode.startsWith('waiting')?{type:'browser_verification',message:layoutMode==='waiting-long'?'Завершите проверку в открывшемся Chrome. '.repeat(30):'Завершите проверку в Chrome'}:null };
+const layoutRun = { id:999, retryableCount:layoutMode==='errors'?4:0, retryScopeIncomplete:false, status:layoutMode.startsWith('waiting')?'waiting_for_user':layoutMode==='errors'?'completed_with_errors':layoutMode==='notice'?'completed':'running', totalCount:5, successCount:layoutMode==='notice'?5:1, failureCount:layoutMode==='errors'?4:0, current:{cardId:1,marketplace:'ozon',externalId:'1604900984'}, startedAt:new Date().toISOString(), finishedAt:layoutMode==='errors'||layoutMode==='notice'?new Date().toISOString():null, challenge:layoutMode.startsWith('waiting')?{type:'browser_verification',message:layoutMode==='waiting-long'?'Завершите проверку в открывшемся Chrome. '.repeat(30):'Завершите проверку в Chrome'}:null };
 mockApi.getRun = async (_id, includeErrors) => ({...layoutRun,errors:includeErrors?Array.from({length:8},(_,i)=>({cardId:i+1,marketplace:'ozon',externalId:String(i+1),message:'Не удалось получить страницу товара. '.repeat(8),traceback:'Ошибка сбора\\n'.repeat(25)})):null});
 mockApi.listRuns = async () => [];
-if(layoutMode==='notice') mockApi.listDeals=async()=> (await mockApi.listCards()).map(card=>({card:{...card,currentPrice:100},savings:50,lastCollectionRunId:999}));
+const originalCatalog = mockApi.getCatalog.bind(mockApi);
+if(layoutMode==='notice') mockApi.getCatalog=async()=>{const snapshot=await originalCatalog();return {...snapshot,deals:snapshot.cards.map(card=>({card:{...card,currentPrice:100},savings:50,lastCollectionRunId:999}))}};
 ` })
   })
 }
@@ -108,7 +109,7 @@ test('уведомление о пяти предложениях разделя
     await notice.getByRole('link', { name: 'Посмотреть' }).click()
     await expect(page).toHaveURL(/deals=1/)
     await expect(notice).toBeHidden()
-    await page.evaluate(() => { localStorage.removeItem('price-watch-notified-run'); localStorage.removeItem('price-watch-notified-prices') })
+    await page.evaluate(() => localStorage.removeItem('price-watch-deal-notifications'))
   }
   await page.goto('/cards?layout=notice')
   await page.getByRole('button', { name: 'Закрыть уведомление' }).click()
