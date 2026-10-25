@@ -3,7 +3,7 @@ import type { PriceHistoryPoint } from '../../types/domain'
 import { priceDomain, turningPointIndices } from './PriceChart'
 
 const history = (prices: Array<number | null>): PriceHistoryPoint[] => prices.map((price, index) => ({
-  id: index + 1, cardId: 1, collectionRunId: 1, price,
+  id: index + 1, cardId: 1, collectionRunId: 1, price: price === null ? null : price.toFixed(2),
   availability: price === null ? 'out_of_stock' : 'in_stock',
   observedAt: new Date(2026, 0, index + 1).toISOString(),
 }))

@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from ..domain.models import (
     Attribute,
     ProductRef,
-    ProductSnapshot,
+    MarketplaceCard,
     ProductVariant,
     Rating,
     Seller,
@@ -52,14 +52,14 @@ def _variant(value: ProductVariant) -> Dict[str, Any]:
     }
 
 
-def snapshot_to_dict(snapshot: ProductSnapshot) -> Dict[str, Any]:
+def card_to_dict(snapshot: MarketplaceCard) -> Dict[str, Any]:
     return {
-        "schema_version": snapshot.schema_version,
+        "schema_version": "2.0",
         "ref": _ref(snapshot.ref),
         "title": snapshot.title,
         "url": snapshot.url,
         "availability": snapshot.availability.value,
-        "price": snapshot.price,
+        "price": format(snapshot.price, ".2f") if snapshot.price is not None else None,
         "image_url": snapshot.image_url,
         "seller": _seller(snapshot.seller),
         "rating": _rating(snapshot.rating),
@@ -71,5 +71,5 @@ def snapshot_to_dict(snapshot: ProductSnapshot) -> Dict[str, Any]:
     }
 
 
-def snapshot_to_json(snapshot: ProductSnapshot, indent: Optional[int] = 2) -> str:
-    return json.dumps(snapshot_to_dict(snapshot), ensure_ascii=False, indent=indent)
+def card_to_json(snapshot: MarketplaceCard, indent: Optional[int] = 2) -> str:
+    return json.dumps(card_to_dict(snapshot), ensure_ascii=False, indent=indent)

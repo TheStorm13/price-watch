@@ -1,0 +1,82 @@
+{
+  "mode": "after",
+  "environment": {
+    "python": "3.14.8",
+    "platform": "Linux-7.3.0-2-cachyos-x86_64-with-glibc2.44",
+    "transport": "HTTP ASGI (serialization included)"
+  },
+  "results": {
+    "S_idle": {
+      "p50_ms": 15.748411999084055,
+      "p95_ms": 23.523128002125304,
+      "sql_count": 3,
+      "sql_ms_mean": 8.26448176546061,
+      "payload_bytes": 98280,
+      "peak_rss_bytes": 103247872,
+      "write_cards_per_second": null,
+      "rounds": 30,
+      "cards": 100,
+      "history": 10000
+    },
+    "S_writer": {
+      "p50_ms": 18.705984999542125,
+      "p95_ms": 21.565185001236387,
+      "sql_count": 3,
+      "sql_ms_mean": 9.565707633009879,
+      "payload_bytes": 98975,
+      "peak_rss_bytes": 105406464,
+      "write_cards_per_second": 142.4836277259277,
+      "rounds": 30,
+      "cards": 100,
+      "history": 10000
+    },
+    "M_idle": {
+      "p50_ms": 134.74287300050491,
+      "p95_ms": 178.39047399320407,
+      "sql_count": 3,
+      "sql_ms_mean": 88.15036840120835,
+      "payload_bytes": 990290,
+      "peak_rss_bytes": 125526016,
+      "write_cards_per_second": null,
+      "rounds": 30,
+      "cards": 1000,
+      "history": 100000
+    },
+    "M_writer": {
+      "p50_ms": 149.74916500068503,
+      "p95_ms": 197.32514200586593,
+      "sql_count": 3,
+      "sql_ms_mean": 95.58292483343394,
+      "payload_bytes": 995765,
+      "peak_rss_bytes": 128966656,
+      "write_cards_per_second": 163.0268517902707,
+      "rounds": 30,
+      "cards": 1000,
+      "history": 100000
+    },
+    "L_idle": {
+      "p50_ms": 675.716140998702,
+      "p95_ms": 726.365905997227,
+      "sql_count": 3,
+      "sql_ms_mean": 414.24833223427413,
+      "payload_bytes": 4987490,
+      "peak_rss_bytes": 161341440,
+      "write_cards_per_second": null,
+      "rounds": 30,
+      "cards": 5000,
+      "history": 500000
+    },
+    "L_writer": {
+      "p50_ms": 746.7555170005653,
+      "p95_ms": 796.8951139991987,
+      "sql_count": 3,
+      "sql_ms_mean": 460.10076009964297,
+      "payload_bytes": 5008580,
+      "peak_rss_bytes": 182616064,
+      "write_cards_per_second": 152.35505217996456,
+      "rounds": 30,
+      "cards": 5000,
+      "history": 500000
+    }
+  }
+}

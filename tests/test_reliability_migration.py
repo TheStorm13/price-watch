@@ -5,7 +5,7 @@ from uuid import uuid4
 from alembic import command
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
-from price_analyzer.infrastructure.postgres import Database, MigrationRunner
+from price_watch.infrastructure.postgres import Database, MigrationRunner
 
 
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'TEST_DATABASE_URL не задан')

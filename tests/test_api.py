@@ -1,22 +1,22 @@
+from marketplace_connector.domain.models import ProductRef
 import unittest
 from datetime import datetime, timezone
 
 from httpx import ASGITransport, AsyncClient
 
-from price_analyzer.api import create_app
-from price_analyzer.api.schemas import CardResponse
-from price_analyzer.domain.models import CardOverview, CollectionRun, MarketplaceCard
-from price_analyzer.infrastructure.postgres.repository import CardAlreadyExists, NoCards
+from price_watch.api import create_app
+from price_watch.api.schemas import CardResponse
+from price_watch.domain.models import TrackedCardOverview, CollectionRun, TrackedCard
+from price_watch.infrastructure.postgres.repository import CardAlreadyExists, NoCards
 
 
 NOW = datetime(2026, 9, 21, 12, 0, tzinfo=timezone.utc)
 
 
 def make_card(card_id=1, external_id="1604900984"):
-    return MarketplaceCard(
+    return TrackedCard(
         id=card_id,
-        marketplace="ozon",
-        external_id=external_id,
+        ref=ProductRef("ozon", external_id),
         title="Тестовый товар",
         url="https://www.ozon.ru/product/1604900984",
         deals_enabled=True,
@@ -39,7 +39,7 @@ class FakeRepository:
                  "minimum_price": 800 if group["card_ids"] else None,
                  "representative_card_id": self.card.id if group["card_ids"] else None,
                  "representative_card": CardResponse.from_overview(
-                     CardOverview(self.card, 999, "in_stock", NOW), minimum_price=800, average_price=1100
+                     TrackedCardOverview(self.card, 999, "in_stock", NOW), minimum_price=800, average_price=1100
                  ) if group["card_ids"] else None,
                  "savings": 101 if group["card_ids"] else None,
                  "baseline_days": 1 if group["card_ids"] else 0,
@@ -60,8 +60,8 @@ class FakeRepository:
         return self.groups.pop(group_id, None) is not None
 
     async def get_catalog(self):
-        from price_analyzer.api.schemas import CardResponse
-        card = CardResponse.from_overview(CardOverview(self.card, 999, "in_stock", NOW), minimum_price=800, average_price=1100)
+        from price_watch.api.schemas import CardResponse
+        card = CardResponse.from_overview(TrackedCardOverview(self.card, 999, "in_stock", NOW), minimum_price=800, average_price=1100)
         return {"cards": [card], "groups": await self.group_projection(), "deals": []}
 
     async def export_cards(self):
@@ -89,7 +89,7 @@ class FakeRepository:
             raise CardAlreadyExists("Такая карточка уже добавлена")
         self.last_added_marketplace = marketplace
         card = make_card(2, external_id)
-        return MarketplaceCard(**{**card.__dict__, "marketplace": marketplace, "tags": tuple(tags or [])})
+        return TrackedCard(**{**card.__dict__, "ref": ProductRef(marketplace, external_id), "tags": tuple(tags or [])})
 
     async def delete_card(self, card_id):
         if self.card is None or self.card.id != card_id:
@@ -153,20 +153,20 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["cards"][0]["externalId"], "1604900984")
-        self.assertEqual(response.json()["cards"][0]["currentPrice"], 999.0)
-        self.assertEqual(response.json()["cards"][0]["minimumPrice"], 800.0)
-        self.assertEqual(response.json()["cards"][0]["averagePrice"], 1100.0)
+        self.assertEqual(response.json()["cards"][0]["currentPrice"], "999.00")
+        self.assertEqual(response.json()["cards"][0]["minimumPrice"], "800.00")
+        self.assertEqual(response.json()["cards"][0]["averagePrice"], "1100")
         self.assertNotIn("external_id", response.json()["cards"][0])
 
     async def test_group_contract_and_lifecycle(self):
         created = await self.client.post("/api/groups", json={"name": "Бутылка", "cardIds": [1], "tags": ["кухня"]})
         self.assertEqual(created.status_code, 201)
         self.assertEqual(created.json()["representativeCardId"], 1)
-        self.assertEqual(created.json()["representativeCard"]["averagePrice"], 1100)
+        self.assertEqual(created.json()["representativeCard"]["averagePrice"], "1100")
         self.assertEqual(created.json()["representativeCard"]["currentPrice"], created.json()["currentPrice"])
         self.assertTrue(created.json()["isDeal"])
-        self.assertEqual(created.json()["savings"], 101)
-        self.assertEqual(created.json()["minimumPrice"], 800)
+        self.assertEqual(created.json()["savings"], "101")
+        self.assertEqual(created.json()["minimumPrice"], "800.00")
         self.assertEqual(created.json()["cardIds"], [1])
         self.assertEqual(created.json()["tags"], ["кухня"])
         self.assertEqual(len((await self.client.get("/api/catalog")).json()["groups"]), 1)

@@ -8,10 +8,10 @@ from uuid import uuid4
 
 from httpx import ASGITransport, AsyncClient
 
-from marketplace_connector import Availability, ProductRef, ProductSnapshot
-from price_analyzer.api import create_app
-from price_analyzer.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceAnalyzerRepository
-from price_analyzer.infrastructure.postgres.models import MarketplaceCardRecord, PriceHistoryRecord
+from marketplace_connector import Availability, ProductRef, MarketplaceCard
+from price_watch.api import create_app
+from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceWatchRepository
+from price_watch.infrastructure.postgres.models import MarketplaceCardRecord, PriceHistoryRecord
 
 TEST_DATABASE_URL = os.environ.get('TEST_DATABASE_URL')
 
@@ -29,7 +29,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
     @asynccontextmanager
     async def fixture(self):
         database = await AsyncDatabase(TEST_DATABASE_URL).open()
-        repository = PostgresPriceAnalyzerRepository(database)
+        repository = PostgresPriceWatchRepository(database)
         cards = [await repository.add_card(marketplace, f'test-{uuid4()}', title=f'Card {index}', tags=[f'tag{index}'])
                  for index, marketplace in enumerate(('ozon', 'wildberries'))]
         group_id = await repository.create_group('Group', [card.id for card in cards], ['own'])
@@ -131,9 +131,9 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 card = next(item for item in (await client.get('/api/catalog')).json()['cards'] if item['id'] == a.id)
                 self.assertEqual(group['representativeCard'], card)
                 self.assertEqual(group['representativeCardId'], a.id)
-                self.assertEqual(group['savings'], 20)
+                self.assertEqual(group['savings'], '20')
             document = await repository.export_cards()
-            imported_cards = [item for item in document['cards'] if item['external_id'] in {a.external_id, b.external_id}]
+            imported_cards = [item for item in document['cards'] if item['external_id'] in {a.ref.external_id, b.ref.external_id}]
             imported_group = next(item for item in document['groups'] if item['name'] == 'Group')
             await repository.update_group(group_id, 'Group', [])
             await repository.import_cards(imported_cards, groups=[imported_group])
@@ -153,7 +153,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             after_other = await self.group(repository, group_id)
             self.assertEqual(after_other['representative_card'], before['representative_card'])
             owned = await repository.start_direct_run(a.id)
-            await repository.save_result(owned.lease, a, ProductSnapshot(ref=ProductRef(a.marketplace, a.external_id),
+            await repository.save_result(owned.lease, a, MarketplaceCard(ref=ProductRef(a.ref.marketplace, a.ref.external_id),
                 title='A', url=None, price=90, availability=Availability.IN_STOCK))
             await repository.finish_run(owned.lease)
             after = await self.group(repository, group_id)

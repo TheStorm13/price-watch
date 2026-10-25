@@ -4,7 +4,7 @@ from inspect import iscoroutinefunction
 from typing import Dict, Iterable
 
 from ..domain.errors import UnknownMarketplace
-from ..domain.models import ProductSnapshot
+from ..domain.models import MarketplaceCard
 from ..ports.connector import MarketplaceConnector
 
 
@@ -38,5 +38,5 @@ class ProductService:
     def __init__(self, registry: ConnectorRegistry):
         self._registry = registry
 
-    async def get_product(self, marketplace: str, external_id: str) -> ProductSnapshot:
+    async def get_product(self, marketplace: str, external_id: str) -> MarketplaceCard:
         return await self._registry.get(marketplace).get_product(external_id)

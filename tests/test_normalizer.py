@@ -1,15 +1,20 @@
 import json
 import unittest
 
-from ozon_article_json.normalizer import ProductCardNormalizer
+from decimal import Decimal
+from marketplace_connector.connectors.ozon.parser import OzonProductParser
 from marketplace_connector.connectors.ozon.mapper import OzonMapper
 from marketplace_connector.domain.errors import MarketplaceSchemaChanged, ProductNotFound
 from marketplace_connector.domain.models import Availability
-from marketplace_connector.serialization.product_json import snapshot_to_dict
+from marketplace_connector.serialization.product_json import card_to_dict
 
 
 def widget(value):
     return json.dumps(value, ensure_ascii=False)
+
+
+def map_product(raw, **kwargs):
+    return OzonMapper.to_card(OzonProductParser.parse(raw, **kwargs))
 
 
 class NormalizerTests(unittest.TestCase):
@@ -77,47 +82,47 @@ class NormalizerTests(unittest.TestCase):
         }
 
     def test_builds_requested_entity(self):
-        card = ProductCardNormalizer.from_raw(self.payload)
+        card = map_product(self.payload)
 
-        self.assertEqual(card.article, "1604900984")
-        self.assertEqual(card.name, "Название товара")
-        self.assertTrue(card.available)
-        self.assertEqual(card.card_price, 577)
-        self.assertEqual(card.rating, 4.8)
-        self.assertEqual(card.reviews_count, 25443)
-        self.assertEqual(card.seller.id, "2099474")
+        self.assertEqual(card.ref.external_id, "1604900984")
+        self.assertEqual(card.title, "Название товара")
+        self.assertEqual(card.availability, Availability.IN_STOCK)
+        self.assertEqual(card.price, 577)
+        self.assertEqual(card.rating.value, Decimal("4.8"))
+        self.assertEqual(card.rating.reviews_count, 25443)
+        self.assertEqual(card.seller.external_id, "2099474")
         self.assertEqual(card.seller.name, "Leaves")
-        self.assertEqual(card.seller.rating, 4.8)
-        self.assertEqual(card.characteristics, {"Тип": "Чай листовой"})
+        self.assertEqual(card.seller.rating.value, Decimal("4.8"))
+        self.assertEqual({a.name: a.values[0] for a in card.attributes}, {"Тип": "Чай листовой"})
         self.assertEqual(card.description, "Полное описание")
         self.assertEqual(len(card.variants), 1)
-        self.assertEqual(card.variants[0].article, "1604900984")
-        self.assertIs(card.variants[0].available, True)
+        self.assertEqual(card.variants[0].ref.external_id, "1604900984")
+        self.assertIs(card.variants[0].availability, Availability.IN_STOCK)
         self.assertTrue(card.variants[0].selected)
 
-        serialized = card.to_dict()
+        serialized = card_to_dict(card)
         self.assertNotIn("card_price_text", serialized)
         self.assertNotIn("currency", serialized)
         self.assertNotIn("sku", serialized["variants"][0])
         self.assertNotIn("image_url", serialized["variants"][0])
-        self.assertIsInstance(serialized["available"], bool)
-        self.assertIsInstance(serialized["variants"][0]["available"], bool)
+        self.assertEqual(serialized["availability"], "in_stock")
+        self.assertEqual(serialized["variants"][0]["availability"], "in_stock")
 
     def test_string_false_is_not_treated_as_available(self):
         price = json.loads(self.payload["widgetStates"]["webPrice-1"])
         price["isAvailable"] = "false"
         self.payload["widgetStates"]["webPrice-1"] = widget(price)
 
-        card = ProductCardNormalizer.from_raw(self.payload)
+        card = map_product(self.payload)
 
-        self.assertIs(card.available, False)
+        self.assertEqual(card.availability, Availability.OUT_OF_STOCK)
 
     def test_unavailable_snapshot_ignores_card_price(self):
         price = json.loads(self.payload["widgetStates"]["webPrice-1"])
         price["isAvailable"] = False
         self.payload["widgetStates"]["webPrice-1"] = widget(price)
 
-        snapshot = OzonMapper.to_snapshot(self.payload)
+        snapshot = map_product(self.payload)
 
         self.assertEqual(snapshot.availability, Availability.OUT_OF_STOCK)
         self.assertIsNone(snapshot.price)
@@ -125,19 +130,19 @@ class NormalizerTests(unittest.TestCase):
     def test_accepts_prompt_before_json(self):
         raw = "Инструкция пользователю... " + json.dumps(self.payload)
 
-        card = ProductCardNormalizer.from_raw(raw)
+        card = map_product(raw)
 
-        self.assertEqual(card.article, "1604900984")
+        self.assertEqual(card.ref.external_id, "1604900984")
 
     def test_builds_common_connector_contract(self):
-        snapshot = OzonMapper.to_snapshot(self.payload)
-        serialized = snapshot_to_dict(snapshot)
+        snapshot = map_product(self.payload)
+        serialized = card_to_dict(snapshot)
 
         self.assertEqual(snapshot.ref.marketplace, "ozon")
         self.assertEqual(snapshot.ref.external_id, "1604900984")
         self.assertEqual(snapshot.availability, Availability.IN_STOCK)
         self.assertEqual(snapshot.price, 577)
-        self.assertEqual(serialized["price"], 577)
+        self.assertEqual(serialized["price"], "577.00")
         self.assertNotIn("prices", serialized)
         self.assertEqual(serialized["attributes"][0]["values"], ["Чай листовой"])
         self.assertEqual(snapshot.image_url, "https://img.test/1.jpg")
@@ -152,7 +157,7 @@ class NormalizerTests(unittest.TestCase):
                        {"src": "https://img.test/second.jpg"}],
         })
 
-        self.assertEqual(OzonMapper.to_snapshot(self.payload).image_url,
+        self.assertEqual(map_product(self.payload).image_url,
                          "https://img.test/first.jpg")
 
     def test_uses_unknown_when_availability_is_absent(self):
@@ -163,7 +168,7 @@ class NormalizerTests(unittest.TestCase):
         product["offers"].pop("availability")
         self.payload["seo"]["script"][0]["innerHTML"] = json.dumps(product)
 
-        snapshot = OzonMapper.to_snapshot(self.payload)
+        snapshot = map_product(self.payload)
 
         self.assertEqual(snapshot.availability, Availability.UNKNOWN)
 
@@ -173,7 +178,7 @@ class NormalizerTests(unittest.TestCase):
         price["price"] = "650 ₽"
         self.payload["widgetStates"]["webPrice-1"] = widget(price)
 
-        snapshot = OzonMapper.to_snapshot(self.payload)
+        snapshot = map_product(self.payload)
 
         self.assertIsNone(snapshot.price)
 
@@ -184,7 +189,7 @@ class NormalizerTests(unittest.TestCase):
         self.payload["widgetStates"].pop("webStickyProducts-1")
 
         with self.assertRaises(MarketplaceSchemaChanged):
-            OzonMapper.to_snapshot(self.payload)
+            map_product(self.payload)
 
     def test_search_redirect_for_requested_product_means_not_found(self):
         self.payload["pageInfo"] = {
@@ -195,7 +200,7 @@ class NormalizerTests(unittest.TestCase):
         self.payload["seo"]["script"] = []
 
         with self.assertRaises(ProductNotFound):
-            OzonMapper.to_snapshot(self.payload, expected_external_id="1604900984")
+            map_product(self.payload, expected_external_id="1604900984")
 
     def test_ambiguous_search_response_remains_an_error(self):
         self.payload["pageInfo"] = {
@@ -213,7 +218,7 @@ class NormalizerTests(unittest.TestCase):
                 self.payload["pageInfo"]["url"] = page_url
                 self.payload["widgetStates"] = widgets
                 with self.assertRaises(MarketplaceSchemaChanged):
-                    OzonMapper.to_snapshot(self.payload, expected_external_id="1604900984")
+                    map_product(self.payload, expected_external_id="1604900984")
 
 
 if __name__ == "__main__":

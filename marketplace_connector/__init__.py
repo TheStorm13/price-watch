@@ -16,12 +16,12 @@ from .domain.models import (
     Attribute,
     Availability,
     ProductRef,
-    ProductSnapshot,
+    MarketplaceCard,
     ProductVariant,
     Rating,
     Seller,
 )
-from .serialization.product_json import snapshot_to_dict, snapshot_to_json
+from .serialization.product_json import card_to_dict, card_to_json
 
 __all__ = [
     "Attribute",
@@ -36,12 +36,12 @@ __all__ = [
     "ProductNotFound",
     "ProductRef",
     "ProductService",
-    "ProductSnapshot",
+    "MarketplaceCard",
     "ProductVariant",
     "RateLimited",
     "Rating",
     "Seller",
     "UnknownMarketplace",
-    "snapshot_to_dict",
-    "snapshot_to_json",
+    "card_to_dict",
+    "card_to_json",
 ]

@@ -18,7 +18,7 @@ const layoutRun = { id:999, retryableCount:layoutMode==='errors'?4:0, retryScope
 mockApi.getRun = async (_id, includeErrors) => ({...layoutRun,errors:includeErrors?Array.from({length:8},(_,i)=>({cardId:i+1,marketplace:'ozon',externalId:String(i+1),message:'Не удалось получить страницу товара. '.repeat(8),traceback:'Ошибка сбора\\n'.repeat(25)})):null});
 mockApi.listRuns = async () => [];
 const originalCatalog = mockApi.getCatalog.bind(mockApi);
-if(layoutMode==='notice') mockApi.getCatalog=async()=>{const snapshot=await originalCatalog();return {...snapshot,deals:snapshot.cards.map(card=>({card:{...card,currentPrice:100},savings:50,lastCollectionRunId:999}))}};
+if(layoutMode==='notice') mockApi.getCatalog=async()=>{const snapshot=await originalCatalog();return {...snapshot,deals:snapshot.cards.map(card=>({card:{...card,currentPrice:'100.00'},savings:'50',averagePrice:'150',baselineDays:1,lastCollectionRunId:999}))}};
 ` })
   })
 }

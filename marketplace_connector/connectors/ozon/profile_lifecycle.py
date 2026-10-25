@@ -104,7 +104,7 @@ async def _close_from_cli(profile_dir: Path) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Штатно закрыть Chrome с профилем Price Watch")
+    parser = argparse.ArgumentParser(description="Штатно закрыть Chrome с профилем price-watch")
     parser.add_argument("profile_dir", type=Path)
     args = parser.parse_args()
     try:

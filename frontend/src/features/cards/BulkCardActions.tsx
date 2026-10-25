@@ -8,11 +8,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import { queryKeys } from '../../api/queries'
 import { Button } from '../../components/ui/button'
-import type { MarketplaceCard, ProductGroup } from '../../types/domain'
+import type { TrackedCardView, ProductGroup } from '../../types/domain'
 
 interface Props {
   selectedIds: number[]
-  cards: MarketplaceCard[]
+  cards: TrackedCardView[]
   groups: ProductGroup[]
   onCreateGroup: () => void
   onProcessed: (ids: number[]) => void

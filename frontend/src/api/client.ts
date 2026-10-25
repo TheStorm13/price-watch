@@ -6,7 +6,7 @@ import type {
   ChartResponse,
   CollectionRun,
   CreateCardInput,
-  MarketplaceCard,
+  TrackedCardView,
   TransferDocument,
   ImportSummary,
   UpdateCardInput,
@@ -86,15 +86,15 @@ export const api = {
       method: 'POST', body: JSON.stringify(document),
     }),
 
-  getCard: (cardId: number): Promise<MarketplaceCard> =>
+  getCard: (cardId: number): Promise<TrackedCardView> =>
     isE2ETestMode ? mockApi.getCard(cardId) : request(`/api/cards/${cardId}`),
 
-  createCard: (input: CreateCardInput): Promise<MarketplaceCard> =>
+  createCard: (input: CreateCardInput): Promise<TrackedCardView> =>
     isE2ETestMode
       ? mockApi.createCard(input)
       : request('/api/cards', { method: 'POST', body: JSON.stringify(input) }),
 
-  updateCard: (cardId: number, input: UpdateCardInput): Promise<MarketplaceCard> =>
+  updateCard: (cardId: number, input: UpdateCardInput): Promise<TrackedCardView> =>
     isE2ETestMode
       ? mockApi.updateCard(cardId, input)
       : request(`/api/cards/${cardId}`, { method: 'PATCH', body: JSON.stringify(input) }),

@@ -10,12 +10,12 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { Button } from '../../components/ui/button'
-import type { MarketplaceCard, ProductGroup } from '../../types/domain'
+import type { TrackedCardView, ProductGroup } from '../../types/domain'
 import { parseTags } from './tags'
 
 interface Props {
   group: ProductGroup | null
-  cards: MarketplaceCard[]
+  cards: TrackedCardView[]
   initialCardIds?: number[]
   onSaved?: (cardIds: number[]) => void
   onClose: () => void

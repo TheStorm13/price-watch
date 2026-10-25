@@ -1,9 +1,9 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import type { MarketplaceCard } from '../../types/domain'
+import type { TrackedCardView } from '../../types/domain'
 import { ProductImage } from './ProductImage'
 
-const card: MarketplaceCard = {
+const card: TrackedCardView = {
   id: 1, marketplace: 'ozon', externalId: '123', title: 'Товар', url: null,
   imageUrl: 'https://img.test/photo.jpg', dealsEnabled: true,
   currentPrice: null, currentAvailability: null, lastObservedAt: null,

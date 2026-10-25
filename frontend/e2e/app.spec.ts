@@ -272,7 +272,7 @@ test('основной сценарий интерфейса в браузерн
 
   await page.setViewportSize({ width: 1536, height: 1024 })
   await page.goto('/cards')
-  await expect(page).toHaveTitle('Price Watch')
+  await expect(page).toHaveTitle('price-watch')
   await expect(page.getByRole('heading', { name: 'Карточки' })).toBeVisible()
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
   await page.screenshot({ path: '/tmp/price-watch-cards.png' })

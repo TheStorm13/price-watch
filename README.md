@@ -1,4 +1,4 @@
-# Marketplace Price Analyzer
+# price-watch
 
 Приложение хранит карточки маркетплейсов в PostgreSQL, получает актуальное
 состояние через унифицированные коннекторы и накапливает историю цен. Сейчас
@@ -25,6 +25,10 @@ Tauri desktop. Команда `npm --prefix frontend run dev:e2e` запуска
 На странице «Карточки» кнопки «Экспорт» и «Импорт» переносят карточки со всей
 сохранённой историей цен. Перед импортом приложение показывает число новых и
 объединяемых карточек; повторный импорт не дублирует наблюдения.
+
+Имя проекта, desktop-приложения и исполняемого файла — `price-watch`.
+Python-пакет называется `price_watch`; для переопределения каталога проекта
+используется `PRICE_WATCH_PROJECT_DIR`. После обновления пересоберите desktop.
 
 ### Desktop-запуск
 
@@ -57,7 +61,7 @@ npm --prefix frontend ci
 npm --prefix frontend run desktop:build
 ```
 
-Сборка создаёт исполняемый файл Tauri `frontend/src-tauri/target/release/price-watch-desktop`.
+Сборка создаёт исполняемый файл Tauri `frontend/src-tauri/target/release/price-watch`.
 Команда использует `--no-bundle`: AppImage и другие установочные пакеты не собираются.
 Готовый Linux-архив и рецепт пакета `price-watch-bin` описаны в
 [руководстве по упаковке](docs/guide/PACKAGING.md).
@@ -156,8 +160,9 @@ export DATABASE_URL='postgresql://user:password@localhost:5432/price_watch'
 ## История и запуски
 
 В каталоге можно создать группу товаров и выбрать для неё несколько карточек.
-Группа показывает минимальную текущую цену среди доступных товаров и минимальную
-цену за всё время среди историй всех её карточек. Каждая карточка по-прежнему
+Группа выбирает представителя с минимальной известной текущей ценой независимо
+от наличия; при равенстве выбирается меньший ID. Все товарные показатели, включая
+исторический минимум, принадлежат этому представителю. Каждая карточка по-прежнему
 собирается отдельно, включая исключённые из выгодных предложений. Удаление
 группы не удаляет товары. Экспорт и импорт сохраняют состав групп; при импорте
 уже существующие назначения карточек в группы не перезаписываются.
@@ -180,18 +185,24 @@ export DATABASE_URL='postgresql://user:password@localhost:5432/price_watch'
 ## Унифицированный контракт коннектора
 
 Коннектор обязан реализовать асинхронные `get_product` и `collection_session`.
-Каждый вызов возвращает `marketplace_connector.ProductSnapshot`. API, worker
+Каждый вызов возвращает `marketplace_connector.MarketplaceCard`. API, worker
 и PostgreSQL-репозиторий также работают асинхронно.
 
-Пример снимка:
+Путь Ozon: ответ → `OzonProductData` → `OzonMapper` → `MarketplaceCard`.
+Для другой площадки используются её собственные модель и mapper. Локальный
+`TrackedCard` хранит ID базы, группу, теги и настройки отдельно от полученного
+товара. Цены в Python — `Decimal`, в PostgreSQL — `NUMERIC`, в API/CLI JSON —
+десятичные строки. Новые товарные JSON имеют версию `2.0`.
+
+Сокращённый пример товарного JSON:
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "ref": {"marketplace": "ozon", "external_id": "1604900984"},
   "title": "Название товара",
   "availability": "in_stock",
-  "price": 577,
+  "price": "577.00",
   "collected_at": "2026-09-21T12:00:00+00:00"
 }
 ```
@@ -203,6 +214,7 @@ export DATABASE_URL='postgresql://user:password@localhost:5432/price_watch'
 ```python
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
+from marketplace_connector import MarketplaceCard
 
 class MarketplaceConnector(Protocol):
     marketplace: str
@@ -210,13 +222,13 @@ class MarketplaceConnector(Protocol):
     def collection_session(self) -> AbstractAsyncContextManager[None]:
         ...
 
-    async def get_product(self, external_id: str) -> ProductSnapshot:
+    async def get_product(self, external_id: str) -> MarketplaceCard:
         ...
 ```
 
-## Совместимый одиночный запуск Ozon
+## Одиночный запуск Ozon без БД
 
-Старый сценарий без PostgreSQL сохранён:
+Получение одного товара без PostgreSQL:
 
 ```bash
 .venv/bin/python main.py 1604900984

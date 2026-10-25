@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from price_analyzer.domain.history_merge import (
+from price_watch.domain.history_merge import (
     ConflictingObservation,
     HistoryEvent,
     merge_history,

@@ -61,7 +61,7 @@ package_name="price-watch-bin-${version}-1-x86_64.pkg.tar.zst"
 package_binary="$(mktemp)"
 trap 'rm -f -- "$package_binary"' EXIT
 bsdtar -xOf "$package_name" usr/bin/price-watch > "$package_binary"
-source_build_id="$(readelf -n "$project_dir/frontend/src-tauri/target/release/price-watch-desktop" | sed -n 's/.*Build ID: //p' | head -n 1)"
+source_build_id="$(readelf -n "$project_dir/frontend/src-tauri/target/release/price-watch" | sed -n 's/.*Build ID: //p' | head -n 1)"
 package_build_id="$(readelf -n "$package_binary" | sed -n 's/.*Build ID: //p' | head -n 1)"
 if [[ -z "$source_build_id" || "$source_build_id" != "$package_build_id" ]]; then
   echo 'Бинарник в пакете не совпадает с только что собранным Tauri-бинарником' >&2

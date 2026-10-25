@@ -1,10 +1,12 @@
-import { priceMetrics } from './mockPriceMetrics'
+import { compareMoney, priceText } from '../utils/money'
+import { subtractMoney } from './mockMoney'
+import { historyMetrics, priceMetrics } from './mockPriceMetrics'
 import type {
   CardHistoryResponse,
   CollectionRun,
   CreateCardInput,
   Deal,
-  MarketplaceCard,
+  TrackedCardView,
   PriceHistoryPoint,
   TransferDocument,
   ImportSummary,
@@ -16,7 +18,7 @@ import type {
 
 const now = Date.now()
 
-let cards: MarketplaceCard[] = [
+let cards: TrackedCardView[] = [
   {
     id: 1,
     marketplace: 'ozon',
@@ -25,7 +27,7 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1604900984',
     imageUrl: null,
     dealsEnabled: true,
-    currentPrice: 72990,
+    currentPrice: "72990.00",
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 5 * 60_000).toISOString(),
     createdAt: new Date(now - 45 * 86_400_000).toISOString(),
@@ -39,7 +41,7 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1587342210',
     imageUrl: null,
     dealsEnabled: true,
-    currentPrice: 24990,
+    currentPrice: "24990.00",
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 2 * 86_400_000).toISOString(),
     createdAt: new Date(now - 32 * 86_400_000).toISOString(),
@@ -53,7 +55,7 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1620013375',
     imageUrl: null,
     dealsEnabled: true,
-    currentPrice: 12490,
+    currentPrice: "12490.00",
     currentAvailability: 'out_of_stock',
     lastObservedAt: new Date(now - 60 * 60_000).toISOString(),
     createdAt: new Date(now - 18 * 86_400_000).toISOString(),
@@ -81,7 +83,7 @@ let cards: MarketplaceCard[] = [
     url: 'https://www.ozon.ru/product/1579984456',
     imageUrl: null,
     dealsEnabled: false,
-    currentPrice: 34990,
+    currentPrice: "34990.00",
     currentAvailability: 'in_stock',
     lastObservedAt: new Date(now - 26 * 60 * 60_000).toISOString(),
     createdAt: new Date(now - 62 * 86_400_000).toISOString(),
@@ -96,7 +98,7 @@ let history: PriceHistoryPoint[] = [
     id: index + 1,
     cardId: 1,
     collectionRunId: 21 - index,
-    price,
+    price: price.toFixed(2),
     availability: 'in_stock' as const,
     observedAt: new Date(now - (priceSeries.length - 1 - index) * 3 * 86_400_000 - 5 * 60_000).toISOString(),
   })),
@@ -147,11 +149,11 @@ let nextCardId = 6
 let groups: { id: number; name: string; tags: string[] }[] = []
 let nextGroupId = 1
 
-function cardMetrics(card: MarketplaceCard) {
+function cardMetrics(card: TrackedCardView) {
   return priceMetrics(history.filter((point) => point.cardId === card.id))
 }
 
-function cardView(card: MarketplaceCard): MarketplaceCard {
+function cardView(card: TrackedCardView): TrackedCardView {
   const metrics = cardMetrics(card)
   return { ...card, currentPrice: metrics.latest?.price ?? null,
     currentAvailability: metrics.latest?.availability ?? null,
@@ -159,19 +161,19 @@ function cardView(card: MarketplaceCard): MarketplaceCard {
     minimumPrice: metrics.minimumPrice, averagePrice: metrics.averagePrice }
 }
 
-function cardDeal(card: MarketplaceCard): Deal | null {
+function cardDeal(card: TrackedCardView): Deal | null {
   const view = cardView(card)
   const metrics = cardMetrics(card)
   if (!view.dealsEnabled || view.currentAvailability !== 'in_stock' || view.currentPrice === null
-    || metrics.averagePrice === null || view.currentPrice >= metrics.averagePrice) return null
-  return { card: view, averagePrice: metrics.averagePrice, savings: metrics.averagePrice - view.currentPrice,
+    || metrics.averagePrice === null || compareMoney(view.currentPrice, metrics.averagePrice) >= 0) return null
+  return { card: view, averagePrice: metrics.averagePrice, savings: subtractMoney(metrics.averagePrice, view.currentPrice),
     baselineDays: metrics.baselineDays, lastCollectionRunId: metrics.latest?.collectionRunId ?? null }
 }
 
 function groupView(group: { id: number; name: string; tags: string[] }): ProductGroup {
   const members = cards.filter((card) => card.groupId === group.id).map(cardView)
   const representative = members.toSorted((a, b) => Number(a.currentPrice === null) - Number(b.currentPrice === null)
-    || (a.currentPrice ?? 0) - (b.currentPrice ?? 0) || a.id - b.id)[0] ?? null
+    || compareMoney(a.currentPrice ?? '0', b.currentPrice ?? '0') || a.id - b.id)[0] ?? null
   const deal = representative ? cardDeal(representative) : null
   return { ...group, cardIds: members.map((card) => card.id).sort((a, b) => a - b),
     representativeCardId: representative?.id ?? null, representativeCard: representative,
@@ -225,14 +227,14 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     const events = [
       ...local.map((point) => ({ ...point, source: 'local' as const, sourceId: point.id })),
       ...importedCard.history.map((point, sourceId) => ({
-        ...point, price: point.price === null ? null : Number(point.price),
+        ...point, price: point.price === null ? null : priceText(point.price),
         source: 'import' as const, sourceId,
       })),
     ].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt) ||
       Number(a.source === 'import') - Number(b.source === 'import') || a.sourceId - b.sourceId)
     const merged: typeof events = []
     let previousTime: number | null = null
-    let previousTimePrice: number | null = null
+    let previousTimePrice: string | null = null
     for (const event of events) {
       const time = Date.parse(event.observedAt)
       if (time === previousTime) {
@@ -251,7 +253,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     summary.observationsRemoved += local.length - keptLocal.size
     summary.observationsSkipped += importedCard.history.length - added.length
     if (!apply) continue
-    const card: MarketplaceCard = current ?? {
+    const card: TrackedCardView = current ?? {
       id: nextCardId++, marketplace: importedCard.marketplace as Marketplace,
       externalId: importedCard.externalId, title: importedCard.title, url: importedCard.url,
       tags: importedCard.tags ?? [],
@@ -302,7 +304,7 @@ export const mockApi = {
   async getCatalog() {
     return delay({ cards: cards.map(cardView), groups: groups.map(groupView),
       deals: cards.flatMap((card) => { const deal = cardDeal(card); return deal ? [deal] : [] })
-        .toSorted((a, b) => b.savings - a.savings || a.card.id - b.card.id) })
+        .toSorted((a, b) => compareMoney(b.savings, a.savings) || a.card.id - b.card.id) })
   },
   async createGroup(input: GroupInput) {
     const group = { id: nextGroupId++, name: input.name.trim(), tags: input.tags ?? [] }
@@ -348,7 +350,7 @@ export const mockApi = {
         history: history.filter((point) => point.cardId === card.id)
           .sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt))
           .map((point) => ({
-            price: point.price === null ? null : point.price.toFixed(2),
+            price: point.price === null ? null : priceText(point.price),
             availability: point.availability,
             observedAt: point.observedAt,
           })),
@@ -377,7 +379,7 @@ export const mockApi = {
       throw error
     }
     const createdAt = new Date().toISOString()
-    const card: MarketplaceCard = {
+    const card: TrackedCardView = {
       id: nextCardId++,
       marketplace: input.marketplace,
       externalId: input.externalId,
@@ -397,7 +399,7 @@ export const mockApi = {
   },
 
   async updateCard(cardId: number, input: UpdateCardInput) {
-    let updated: MarketplaceCard | undefined
+    let updated: TrackedCardView | undefined
     cards = cards.map((card) => {
       if (card.id !== cardId) return card
       updated = { ...card, ...input, updatedAt: new Date().toISOString() }
@@ -432,17 +434,17 @@ export const mockApi = {
             availability: card.currentAvailability ?? 'unknown',
             observedAt: card.lastObservedAt ?? new Date().toISOString(),
           } satisfies PriceHistoryPoint]
-    const priced = points.flatMap((point) => point.price === null ? [] : [point.price])
+    const metrics = historyMetrics(points)
     return delay({
       card,
       statistics: {
         cardId,
         days,
-        averagePrice: priced.length ? Math.round(priced.reduce((sum, price) => sum + price, 0) / priced.length) : null,
-        minimumPrice: priced.length ? Math.min(...priced) : null,
-        maximumPrice: priced.length ? Math.max(...priced) : null,
-        observationsCount: priced.length,
-        observedDays: priced.length,
+        averagePrice: metrics.averagePrice,
+        minimumPrice: metrics.minimumPrice,
+        maximumPrice: metrics.maximumPrice,
+        observationsCount: metrics.observationsCount,
+        observedDays: metrics.baselineDays,
       },
       history: points.slice((page - 1) * pageSize, page * pageSize).toReversed(),
       page,
@@ -528,7 +530,7 @@ export const mockApi = {
       cards = cards.map((card) => targets.has(card.id) ? {
         ...card,
         currentPrice: card.id === run.current?.cardId && card.currentPrice !== null
-          ? card.currentPrice - 100 : card.currentPrice,
+          ? priceText(subtractMoney(card.currentPrice, '100')) : card.currentPrice,
         lastObservedAt: observedAt, updatedAt: observedAt,
       } : card)
       const first = cards[0]

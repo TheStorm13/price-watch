@@ -4,15 +4,15 @@ from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import datetime, timezone
 import unittest
-from marketplace_connector import Availability, ConnectorRegistry, ProductRef, ProductSnapshot
+from marketplace_connector import Availability, ConnectorRegistry, ProductRef, MarketplaceCard
 from marketplace_connector.domain.errors import ProductNotFound
-from price_analyzer.application.run_executor import RunExecutor
-from price_analyzer.domain.models import CollectionRun, MarketplaceCard, LeaseLost
+from price_watch.application.run_executor import RunExecutor
+from price_watch.domain.models import CollectionRun, TrackedCard, LeaseLost
 
 
 def card(i, deals_enabled=True):
     now = datetime.now(timezone.utc)
-    return MarketplaceCard(i, 'ozon', str(i), f'Card {i}', '', deals_enabled, now, now)
+    return TrackedCard(i, ProductRef('ozon', str(i)), f'Card {i}', '', deals_enabled, now, now)
 
 
 class FakeRepository:
@@ -36,7 +36,7 @@ class FakeRepository:
         if self.lost: raise LeaseLost('lost')
         self.current.append(item.id)
     async def save_result(self, lease, item, snapshot):
-        if snapshot.ref != ProductRef(item.marketplace, item.external_id): raise ValueError('Другая карточка')
+        if snapshot.ref != ProductRef(item.ref.marketplace, item.ref.external_id): raise ValueError('Другая карточка')
         self.saved.append((item, snapshot))
         self.run = replace(self.run, success_count=self.run.success_count+1)
     async def record_card_error(self, lease, item, error):
@@ -67,7 +67,7 @@ class Connector:
             await asyncio.sleep(.001)
             if external_id in self.failed: raise RuntimeError('fetch failed')
             if external_id in self.missing: raise ProductNotFound('missing')
-            return ProductSnapshot(ref=ProductRef('ozon', 'other' if self.mismatch else external_id), title='Fetched',
+            return MarketplaceCard(ref=ProductRef('ozon', 'other' if self.mismatch else external_id), title='Fetched',
                 url='https://example.test/product', price=100, availability=Availability.IN_STOCK)
         finally: self.active -= 1
 
@@ -79,7 +79,7 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_limits_to_five_and_keeps_individual_errors(self):
         repo, connector = FakeRepository([card(i) for i in range(9)]), Connector(failed=['3'])
-        with self.assertLogs('price_analyzer.application.collection_service', level='ERROR'):
+        with self.assertLogs('price_watch.application.collection_service', level='ERROR'):
             result = await self.executor(repo, connector).collect()
         self.assertEqual(connector.peak, 5)
         self.assertEqual((connector.opens, connector.closes), (1,1))
@@ -105,7 +105,7 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_mismatch_is_recorded_and_session_closed(self):
         repo, connector = FakeRepository([card(1)]), Connector(mismatch=True)
-        with self.assertLogs('price_analyzer.application.collection_service', level='ERROR'):
+        with self.assertLogs('price_watch.application.collection_service', level='ERROR'):
             result = await self.executor(repo, connector).collect()
         self.assertEqual(result.failure_count, 1)
         self.assertEqual(connector.closes, 1)

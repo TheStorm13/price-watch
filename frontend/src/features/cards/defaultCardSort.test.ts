@@ -1,10 +1,10 @@
 import { expect, test } from 'vitest'
-import type { MarketplaceCard } from '../../types/domain'
+import type { TrackedCardView } from '../../types/domain'
 import { compareDefaultCards } from './defaultCardSort'
 
-function card(id: number, availability: MarketplaceCard['currentAvailability'], price: number | null):
-  Pick<MarketplaceCard, 'id' | 'currentAvailability' | 'currentPrice'> {
-  return { id, currentAvailability: availability, currentPrice: price }
+function card(id: number, availability: TrackedCardView['currentAvailability'], price: number | null):
+  Pick<TrackedCardView, 'id' | 'currentAvailability' | 'currentPrice'> {
+  return { id, currentAvailability: availability, currentPrice: price === null ? null : price.toFixed(2) }
 }
 
 test('default order prioritizes availability, savings, then lower price', () => {
@@ -18,7 +18,7 @@ test('default order prioritizes availability, savings, then lower price', () => 
     card(7, 'in_stock', 50),
     card(8, 'unknown', 500),
   ]
-  const savings = new Map([[2, 20], [3, 10], [4, 20]])
+  const savings = new Map([[2, '20'], [3, '10'], [4, '20']])
 
   expect(cards.toSorted((left, right) => compareDefaultCards(left, right, savings)).map((item) => item.id))
     .toEqual([4, 2, 3, 7, 1, 8, 5, 6])

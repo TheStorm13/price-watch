@@ -22,18 +22,19 @@ project.mkdir()
 (project/'.venv').symlink_to(repo/'.venv')
 wrapper = '''
 import asyncio,os,sys
+from decimal import Decimal
 from pathlib import Path
 sys.path.insert(0, REPO)
-from price_analyzer import cli
-from price_analyzer.infrastructure.postgres import Database,AsyncDatabase,MigrationRunner,PostgresPriceAnalyzerRepository
-from marketplace_connector import ProductRef,ProductSnapshot,Availability
+from price_watch import cli
+from price_watch.infrastructure.postgres import Database,AsyncDatabase,MigrationRunner,PostgresPriceWatchRepository
+from marketplace_connector import ProductRef,MarketplaceCard,Availability
 from contextlib import asynccontextmanager
 if sys.argv[1]=='api':
     with Database(os.environ['DATABASE_URL']) as db:
         MigrationRunner(db).apply()
     async def seed():
         db=await AsyncDatabase(os.environ['DATABASE_URL']).open()
-        repo=PostgresPriceAnalyzerRepository(db)
+        repo=PostgresPriceWatchRepository(db)
         if not await repo.list_collection_cards():
             await repo.add_card('ozon','123',title='Изолированный тест REL')
         await db.close()
@@ -52,8 +53,8 @@ if sys.argv[1]=='worker':
                 raise RuntimeError('Synthetic browser startup failure')
             yield
         async def get_product(self,external_id):
-            return ProductSnapshot(ref=ProductRef('ozon',external_id),title='Synthetic',url='',
-                price=100,availability=Availability.IN_STOCK)
+            return MarketplaceCard(ref=ProductRef('ozon',external_id),title='Synthetic',url='',
+                price=Decimal('100.10'),availability=Availability.IN_STOCK)
     cli.AsyncOzonClient=FakeClient
     cli.OzonConnector=FakeConnector
 raise SystemExit(cli.main())
@@ -64,10 +65,10 @@ for name, directory in [('XDG_DATA_HOME','data'),('XDG_CONFIG_HOME','config'),('
     path = root/directory
     path.mkdir(mode=0o700)
     env[name] = str(path)
-env.update(PRICE_ANALYZER_PROJECT_DIR=str(project), PRICE_REL_SMOKE_MARKER=str(root/'failed-once'),
+env.update(PRICE_WATCH_PROJECT_DIR=str(project), PRICE_REL_SMOKE_MARKER=str(root/'failed-once'),
            NO_AT_BRIDGE='0', GTK_A11Y='always', WEBKIT_DISABLE_COMPOSITING_MODE='1')
 log = (root/'desktop.log').open('w')
-process = subprocess.Popen([str(repo/'frontend/src-tauri/target/release/price-watch-desktop')],
+process = subprocess.Popen([str(repo/'frontend/src-tauri/target/release/price-watch')],
     env=env, stdout=log, stderr=log, start_new_session=True)
 
 
@@ -121,7 +122,7 @@ def wait_price():
             request=Request('http://127.0.0.1:'+port+'/api/catalog',headers={'X-Price-Watch-Token':api_environment['PRICE_WATCH_API_TOKEN']})
             with urlopen(request,timeout=1) as response:
                 catalog=json.load(response)
-            if catalog['cards'] and float(catalog['cards'][0]['currentPrice'] or 0)==100: return
+            if catalog['cards'] and catalog['cards'][0]['currentPrice']=='100.10': return
         except Exception: pass
         time.sleep(.2)
     raise RuntimeError('Private API price timeout')

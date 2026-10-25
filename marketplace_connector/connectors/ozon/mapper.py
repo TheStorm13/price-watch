@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-import json
 import re
-from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Iterable, Mapping, Optional, Union
-from urllib.parse import parse_qs, urljoin, urlparse
+from typing import Any, Dict, Iterable, Optional
+from urllib.parse import urljoin, urlparse
 
-from ...domain.errors import MarketplaceSchemaChanged, ProductNotFound
+from ...domain.errors import MarketplaceSchemaChanged
+from .models import OzonProductData, OzonPrice
+from ...domain.money import normalize_price
 from ...domain.models import (
     Attribute,
     Availability,
     ProductRef,
-    ProductSnapshot,
+    MarketplaceCard,
     ProductVariant,
     Rating,
     Seller,
@@ -29,32 +29,18 @@ class OzonMapper:
     OZON_URL = "https://www.ozon.ru"
 
     @classmethod
-    def to_snapshot(
+    def to_card(
         cls,
-        raw: Union[str, Mapping[str, Any]],
-        expected_external_id: Optional[str] = None,
-        collected_at: Optional[datetime] = None,
-    ) -> ProductSnapshot:
-        payload = cls._decode_document(raw)
-        widget_states = payload.get("widgetStates")
-        if not isinstance(widget_states, dict):
-            raise MarketplaceSchemaChanged("В ответе Ozon отсутствует widgetStates")
-        if cls._is_unavailable_search(payload, widget_states, expected_external_id):
-            raise ProductNotFound(f"Ozon перенаправил товар {expected_external_id} на поиск")
-
-        heading = cls._widget(widget_states, "webProductHeading-")
-        price = cls._widget(widget_states, "webPrice-")
-        sticky = cls._widget(widget_states, "webStickyProducts-")
-        seller_widget = cls._widget(widget_states, "webCurrentSeller-")
-        review = cls._widget(widget_states, "webReviewProductScore-")
-        characteristics = cls._widget(widget_states, "webShortCharacteristics-")
-        aspects = cls._widget(widget_states, "webAspects-")
-        gallery = cls._widget(widget_states, "webGallery-")
-        ld_product = cls._ld_product(payload)
-
+        data: OzonProductData,
+    ) -> MarketplaceCard:
+        heading, price, sticky = data.heading, data.price, data.sticky
+        seller_widget, review = data.seller, data.review
+        characteristics, aspects, gallery = data.characteristics, data.aspects, data.gallery
+        ld_product = data.seo_product
+        expected_external_id = data.requested_id
         external_id = str(
             cls._first(
-                cls._dig(payload, "pageInfo", "analyticsInfo", "sku"),
+                data.analytics_sku,
                 sticky.get("sku"),
                 ld_product.get("sku"),
                 expected_external_id,
@@ -94,13 +80,13 @@ class OzonMapper:
                 cls._dig(ld_product, "aggregateRating", "reviewCount"),
             )
         ) or 0
-        return ProductSnapshot(
+        return MarketplaceCard(
             ref=ProductRef(cls.marketplace, external_id),
             title=title,
-            url=cls._canonical_url(payload)
+            url=data.canonical_url
             or str(cls._dig(ld_product, "offers", "url") or ""),
             availability=cls._availability(price, ld_product),
-            price=cls._price_number(price.get("cardPrice")),
+            price=cls._price_number(price.card_price),
             image_url=cls._image_url(gallery, ld_product, aspects, external_id),
             seller=(
                 Seller(
@@ -119,88 +105,8 @@ class OzonMapper:
             attributes=tuple(cls._characteristics(characteristics)),
             description=str(ld_product.get("description") or ""),
             variants=tuple(cls._variants(aspects, external_id)),
-            collected_at=collected_at or datetime.now(timezone.utc),
+            collected_at=data.received_at,
         )
-
-    @staticmethod
-    def _decode_document(raw: Union[str, Mapping[str, Any]]) -> JsonObject:
-        if isinstance(raw, Mapping):
-            return dict(raw)
-        if not isinstance(raw, str):
-            raise TypeError("Ожидалась JSON-строка или словарь")
-        start = raw.find("{")
-        if start < 0:
-            raise MarketplaceSchemaChanged("JSON-объект не найден")
-        try:
-            payload, _ = json.JSONDecoder().raw_decode(raw[start:])
-        except json.JSONDecodeError as exc:
-            raise MarketplaceSchemaChanged(f"Некорректный JSON: {exc}") from exc
-        if not isinstance(payload, dict):
-            raise MarketplaceSchemaChanged("Корневое значение JSON должно быть объектом")
-        return payload
-
-    @staticmethod
-    def _widget(widget_states: JsonObject, prefix: str) -> JsonObject:
-        for key, value in widget_states.items():
-            if not key.startswith(prefix):
-                continue
-            if isinstance(value, dict):
-                return value
-            if isinstance(value, str):
-                try:
-                    decoded = json.loads(value)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(decoded, dict):
-                    return decoded
-        return {}
-
-    @staticmethod
-    def _is_unavailable_search(
-        payload: JsonObject, widget_states: JsonObject, expected_external_id: Optional[str]
-    ) -> bool:
-        if not expected_external_id or any(
-            key.startswith(("webProductHeading-", "webPrice-"))
-            for key in widget_states
-        ):
-            return False
-        page_info = payload.get("pageInfo")
-        if not isinstance(page_info, dict) or page_info.get("pageType") != "search":
-            return False
-        page_url = page_info.get("url")
-        if not isinstance(page_url, str):
-            return False
-        parsed = urlparse(page_url)
-        return (
-            parsed.netloc in ("", "ozon.ru", "www.ozon.ru")
-            and parsed.scheme in ("", "https")
-            and parsed.path.rstrip("/") == "/search"
-            and parse_qs(parsed.query).get("product_id") == [expected_external_id]
-        )
-
-    @classmethod
-    def _ld_product(cls, payload: JsonObject) -> JsonObject:
-        scripts = cls._dig(payload, "seo", "script") or []
-        for script in scripts:
-            if not isinstance(script, dict) or script.get("type") != "application/ld+json":
-                continue
-            value = script.get("innerHTML")
-            if not isinstance(value, str):
-                continue
-            try:
-                decoded = json.loads(value)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(decoded, dict) and decoded.get("@type") == "Product":
-                return decoded
-        return {}
-
-    @classmethod
-    def _canonical_url(cls, payload: JsonObject) -> str:
-        for link in cls._dig(payload, "seo", "link") or []:
-            if isinstance(link, dict) and link.get("rel") == "canonical":
-                return str(link.get("href") or "")
-        return ""
 
     @classmethod
     def _image_url(cls, gallery: JsonObject, ld_product: JsonObject,
@@ -258,9 +164,9 @@ class OzonMapper:
         return str(value or "")
 
     @classmethod
-    def _availability(cls, price: JsonObject, ld_product: JsonObject) -> Availability:
-        if "isAvailable" in price:
-            return Availability.IN_STOCK if cls._as_bool(price["isAvailable"]) else Availability.OUT_OF_STOCK
+    def _availability(cls, price: OzonPrice, ld_product: JsonObject) -> Availability:
+        if price.availability_specified:
+            return Availability.IN_STOCK if cls._as_bool(price.is_available) else Availability.OUT_OF_STOCK
         value = cls._dig(ld_product, "offers", "availability")
         if value is None or value == "":
             return Availability.UNKNOWN
@@ -270,7 +176,7 @@ class OzonMapper:
     def _as_bool(value: Any) -> bool:
         if isinstance(value, bool):
             return value
-        if isinstance(value, (int, float)):
+        if isinstance(value, (int, Decimal)):
             return value != 0
         return str(value).strip().lower() in {
             "true", "1", "yes", "in_stock", "instock", "available", "instock",
@@ -348,14 +254,16 @@ class OzonMapper:
         number = OzonMapper._decimal(value)
         return int(number) if number is not None else None
 
-    @staticmethod
-    def _price_number(value: Any):
-        number = OzonMapper._decimal(value)
-        if number is None:
+    @classmethod
+    def _price_number(cls, value):
+        if value is None or value == "":
             return None
-        if number == number.to_integral_value():
-            return int(number)
-        return float(number)
+        if isinstance(value, (bool, float)):
+            raise MarketplaceSchemaChanged("Цена Ozon должна быть точным десятичным значением")
+        number = cls._decimal(value)
+        if number is None:
+            raise MarketplaceSchemaChanged("Некорректная цена Ozon")
+        return normalize_price(number)
 
     @staticmethod
     def _decimal(value: Any) -> Optional[Decimal]:
@@ -363,7 +271,7 @@ class OzonMapper:
             return None
         if isinstance(value, Decimal):
             return value
-        if isinstance(value, (int, float)):
+        if isinstance(value, (int, Decimal)):
             return Decimal(str(value))
         text = str(value).strip().replace("\u00a0", "").replace("\u2009", "").replace(" ", "")
         match = re.search(r"-?\d+(?:[.,]\d+)?", text)

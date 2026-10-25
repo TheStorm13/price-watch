@@ -14,6 +14,7 @@ import subprocess
 import time
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Optional, Union
 
@@ -21,7 +22,7 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Playwright, async_playwright
 
 from ...domain.errors import InvalidProductId, MarketplaceUnavailable
-from ...domain.raw import RawMarketplaceResponse
+from .models import OzonResponse
 from ...ports.challenge import ChallengeHandler, RejectChallengeHandler
 from .profile_lifecycle import close_profile_browser, request_browser_close
 
@@ -180,23 +181,21 @@ class AsyncOzonClient:
                         process.kill()
                         await asyncio.to_thread(process.wait, timeout=5)
 
-    async def fetch_product_async(self, external_id: Union[str, int]) -> RawMarketplaceResponse:
+    async def fetch_product_async(self, external_id: Union[str, int]) -> OzonResponse:
         article = self.normalize_product_id(external_id)
-        raw_text = await self.fetch_raw_text_async(article)
-        payload = json.loads(raw_text)
-        return RawMarketplaceResponse(
-            marketplace=self.marketplace,
+        # The parser validates normalized responses; raw mode validates here instead.
+        raw_text = await self.fetch_raw_text_async(article, validate=False)
+        return OzonResponse(
             external_id=article,
-            payload=payload,
             raw_text=raw_text,
             received_at=datetime.now(timezone.utc),
         )
 
-    async def fetch_raw_text_async(self, external_id: Union[str, int]) -> str:
+    async def fetch_raw_text_async(self, external_id: Union[str, int], *, validate: bool = True) -> str:
         article = self.normalize_product_id(external_id)
         if self._async_context is None:
             async with self.collection_session():
-                return await self.fetch_raw_text_async(article)
+                return await self.fetch_raw_text_async(article, validate=validate)
         page = await self._async_context.new_page()
         try:
             await page.goto(
@@ -212,7 +211,7 @@ class AsyncOzonClient:
             if self._is_antibot_text(raw_text):
                 await self._handle_antibot_async(page, article, check_json=True)
                 raw_text = await self._fetch_json_in_page_async(page, article)
-            return self._validate_json_text(raw_text)
+            return self._validate_json_text(raw_text) if validate else raw_text
         except (PlaywrightError, TimeoutError) as exc:
             raise MarketplaceUnavailable(f"Playwright не смог получить данные Ozon: {exc}") from exc
         finally:
@@ -317,7 +316,7 @@ class AsyncOzonClient:
     @staticmethod
     def _validate_json_text(raw_text: str) -> str:
         try:
-            payload = json.loads(raw_text)
+            payload = json.loads(raw_text, parse_float=Decimal)
         except json.JSONDecodeError as exc:
             raise MarketplaceUnavailable("Ozon вернул HTML вместо JSON") from exc
         if not isinstance(payload, dict) or "widgetStates" not in payload:

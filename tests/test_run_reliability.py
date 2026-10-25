@@ -9,9 +9,9 @@ from uuid import uuid4
 from unittest.mock import patch
 
 from sqlalchemy import delete, func, select, update
-from marketplace_connector import Availability, ConnectorRegistry, ProductRef, ProductSnapshot
-from price_analyzer.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceAnalyzerRepository
-from price_analyzer.infrastructure.postgres.models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord
+from marketplace_connector import Availability, ConnectorRegistry, ProductRef, MarketplaceCard
+from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceWatchRepository
+from price_watch.infrastructure.postgres.models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord
 
 URL = os.environ.get('TEST_DATABASE_URL')
 
@@ -25,7 +25,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         self.db = await AsyncDatabase(URL).open()
-        self.repo = PostgresPriceAnalyzerRepository(self.db)
+        self.repo = PostgresPriceWatchRepository(self.db)
         self.cards = [await self.repo.add_card('ozon', str(uuid4().int), title=f'Card {i}') for i in range(3)]
         self.run_ids = []
 
@@ -41,7 +41,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         return run
 
     def snapshot(self, card, price=100):
-        return ProductSnapshot(ref=ProductRef(card.marketplace, card.external_id), title='Collected',
+        return MarketplaceCard(ref=ProductRef(card.ref.marketplace, card.ref.external_id), title='Collected',
                                url='https://example.test/product', price=price, availability=Availability.IN_STOCK)
 
     async def expire(self, run):
@@ -51,8 +51,8 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         await self.repo.fail_stale_runs(datetime.now(timezone.utc)-timedelta(seconds=30))
 
     async def test_waiting_challenge_keeps_lease_alive_and_resumes(self):
-        from price_analyzer.application.run_executor import RunExecutor
-        from price_analyzer.worker.challenge import DatabaseChallengeHandler
+        from price_watch.application.run_executor import RunExecutor
+        from price_watch.worker.challenge import DatabaseChallengeHandler
         run = await self.owned(self.cards[0])
         waiting, heartbeats = asyncio.Event(), asyncio.Event()
         set_waiting, touch = self.repo.set_run_waiting, self.repo.touch_run
@@ -123,7 +123,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
             await self.repo.create_retry_run(run.id)
 
     async def test_all_executor_writes_are_rejected_after_recovery(self):
-        from price_analyzer.domain.models import LeaseLost, RunLease
+        from price_watch.domain.models import LeaseLost, RunLease
         run = await self.owned(self.cards[0])
         lease = run.lease
         card = self.cards[0]
@@ -166,7 +166,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await self.repo.create_due_run(observation))
 
     async def test_factory_failure_keeps_all_targets_retryable(self):
-        from price_analyzer.application.run_executor import RunExecutor
+        from price_watch.application.run_executor import RunExecutor
         async def factory(run):
             self.run_ids.append(run.id)
             raise RuntimeError('browser startup failed')
@@ -179,7 +179,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_result_rollback_preserves_pending_target(self):
         run = await self.owned(self.cards[0])
-        with patch('price_analyzer.infrastructure.postgres.history_repository.snapshot_to_dict', side_effect=RuntimeError('serialization failed')):
+        with patch('price_watch.infrastructure.postgres.history_repository.card_to_dict', side_effect=RuntimeError('serialization failed')):
             with self.assertRaisesRegex(RuntimeError, 'serialization failed'):
                 await self.repo.save_result(run.lease, self.cards[0], self.snapshot(self.cards[0]))
         loaded = await self.repo.get_run(run.id)
@@ -217,7 +217,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
             try:
                 await asyncio.wait_for(locked.wait(), 3)
                 self.assertEqual(await self.repo.fail_stale_runs(datetime.now(timezone.utc)-timedelta(seconds=30)), 0)
-                from price_analyzer.infrastructure.postgres.repository import CardInActiveRun, ImportDuringRun
+                from price_watch.infrastructure.postgres.repository import CardInActiveRun, ImportDuringRun
                 with self.assertRaises(CardInActiveRun):
                     await self.repo.delete_card(self.cards[0].id)
                 with self.assertRaises(ImportDuringRun):
@@ -229,12 +229,12 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         await self.repo.finish_run(run.lease)
 
     async def test_unknown_and_incomplete_targets_use_the_same_retry_model(self):
-        from price_analyzer.infrastructure.postgres.models import CollectionRunTargetRecord
+        from price_watch.infrastructure.postgres.models import CollectionRunTargetRecord
         run = await self.owned(self.cards[0])
         async with self.db.session() as s, s.begin():
             (await s.get(CollectionRunRecord, run.id)).targets_complete = False
             (await s.get(CollectionRunTargetRecord, (run.id, self.cards[0].id))).status = 'unknown'
-        from price_analyzer.application.run_executor import RunExecutor
+        from price_watch.application.run_executor import RunExecutor
         async def must_not_open_browser(run):
             self.fail('Incomplete run opened a browser')
         with self.assertRaisesRegex(ValueError, 'не полностью'):
@@ -248,7 +248,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([c.id for c in await self.repo.cards_for_run(retry.id)], [self.cards[0].id])
 
     async def test_waiting_continuation_cannot_revive_a_recovered_run(self):
-        from price_analyzer.worker import DatabaseChallengeHandler
+        from price_watch.worker import DatabaseChallengeHandler
         run = await self.owned(self.cards[0])
         await self.repo.set_run_waiting(run.lease, 'browser_verification', 'check')
         self.assertEqual((await self.repo.continue_run(run.id)).status, 'running')
@@ -263,7 +263,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
             await self.expire(run)
         with self.assertRaises(ValueError):
             await continuation[0]
-        from price_analyzer.domain.models import LeaseLost
+        from price_watch.domain.models import LeaseLost
         with self.assertRaises(LeaseLost):
             await self.repo.get_owned_status(run.lease)
 
@@ -299,6 +299,27 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await self.repo.delete_group(group_id)
 
+    async def test_product_conversion_preserves_tracking_and_historical_json(self):
+        card = self.cards[0]
+        old_snapshot = {'schema_version': '1.0', 'price': 99.9, 'title': 'Old JSON'}
+        async with self.db.session() as s, s.begin():
+            s.add(PriceHistoryRecord(card_id=card.id, price=Decimal('99.90'), availability='in_stock',
+                observed_at=datetime.now(timezone.utc)-timedelta(days=1), snapshot=old_snapshot))
+        await self.repo.update_card(card.id, title='User title', update_title=True, tags=['tag'], deals_enabled=False)
+        run = await self.owned(card)
+        await self.repo.save_result(run.lease, card, self.snapshot(card, Decimal('99.995')))
+        await self.repo.finish_run(run.lease)
+        overview = await self.repo.get_card(card.id)
+        self.assertEqual((overview.card.id, overview.card.title, overview.card.tags, overview.card.deals_enabled),
+                         (card.id, 'User title', ('tag',), False))
+        self.assertEqual(overview.current_price, Decimal('100.00'))
+        async with self.db.session() as s:
+            rows = (await s.scalars(select(PriceHistoryRecord).where(PriceHistoryRecord.card_id == card.id)
+                                   .order_by(PriceHistoryRecord.observed_at))).all()
+            self.assertEqual(rows[0].snapshot, old_snapshot)
+            self.assertEqual(rows[1].snapshot['schema_version'], '2.0')
+            self.assertEqual(rows[1].snapshot['price'], '100.00')
+
     async def test_killed_direct_cli_is_recovered_without_losing_saved_history(self):
         import json
         import sys
@@ -311,11 +332,11 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         script = '''
 import asyncio,json,os,sys
 from pathlib import Path
-from price_analyzer.infrastructure.postgres import AsyncDatabase,PostgresPriceAnalyzerRepository
-from price_analyzer.application.run_executor import RunExecutor
+from price_watch.infrastructure.postgres import AsyncDatabase,PostgresPriceWatchRepository
+from price_watch.application.run_executor import RunExecutor
 async def main():
     db=await AsyncDatabase(os.environ['TEST_DATABASE_URL']).open()
-    repo=PostgresPriceAnalyzerRepository(db)
+    repo=PostgresPriceWatchRepository(db)
     async def factory(run):
         Path(sys.argv[2]).write_text(json.dumps({'id':run.id}))
         await asyncio.Event().wait()

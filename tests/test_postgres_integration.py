@@ -9,21 +9,21 @@ from sqlalchemy import delete, func, select
 from datetime import timedelta
 from httpx import ASGITransport, AsyncClient
 
-from marketplace_connector import Availability, ConnectorRegistry, ProductRef, ProductSnapshot
-from price_analyzer.infrastructure.postgres import (
+from marketplace_connector import Availability, ConnectorRegistry, ProductRef, MarketplaceCard
+from price_watch.infrastructure.postgres import (
     AsyncDatabase,
     Database,
     MigrationRunner,
-    PostgresPriceAnalyzerRepository,
+    PostgresPriceWatchRepository,
 )
-from price_analyzer.infrastructure.postgres.models import (
+from price_watch.infrastructure.postgres.models import (
     CollectionRunRecord,
     MarketplaceCardRecord,
     PriceHistoryRecord,
 )
-from price_analyzer.infrastructure.postgres.repository import CardInActiveRun
-from price_analyzer.api import create_app
-from price_analyzer.worker import CollectionWorker
+from price_watch.infrastructure.postgres.repository import CardInActiveRun
+from price_watch.api import create_app
+from price_watch.worker import CollectionWorker
 
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
@@ -75,7 +75,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
 
     async def test_group_uses_cheapest_card_with_its_own_historical_minimum(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         first = await repository.add_card("integration-test", f"test-{uuid4()}")
         second = await repository.add_card("integration-test", f"test-{uuid4()}")
         group_id = await repository.create_group("Группа бутылок", [first.id, second.id])
@@ -100,7 +100,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await repository.delete_card(second.id)
 
     async def test_marketplaces_without_connectors_are_not_queued(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         ozon = await repository.add_card("ozon", f"test-{uuid4()}")
         wildberries = await repository.add_card("wildberries", f"test-{uuid4()}")
         aliexpress = await repository.add_card("aliexpress", f"test-{uuid4()}")
@@ -131,7 +131,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await repository.delete_card(yandex_market.id)
 
     async def test_worker_collects_with_async_connector_and_database(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         external_id = f"test-{uuid4()}"
         card = await repository.add_card("integration-test", external_id)
         run = await repository.create_queued_run(card.id)
@@ -144,7 +144,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 yield
 
             async def get_product(self, article):
-                return ProductSnapshot(
+                return MarketplaceCard(
                     ref=ProductRef(self.marketplace, article), title="Товар",
                     url="https://example.test/product", availability=Availability.IN_STOCK,
                     price=100,
@@ -169,7 +169,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         cls.database.close()
 
     async def test_export_import_merges_complete_history_idempotently(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         external_id = f"test-{uuid4()}"
         new_external_id = f"test-{uuid4()}"
         card = await repository.add_card("integration-test", external_id, "Местное название")
@@ -225,16 +225,16 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await repository.count_history(card.id, 365), 5)
             self.assertEqual((await repository.import_cards(payload))["observations_added"], 0)
             imported = next(overview.card for overview in await repository.list_cards()
-                            if overview.card.external_id == new_external_id)
+                            if overview.card.ref.external_id == new_external_id)
             self.assertFalse(imported.deals_enabled)
             self.assertEqual(await repository.count_history(imported.id, 1), 1)
         finally:
             for overview in await repository.list_cards():
-                if overview.card.external_id in {external_id, new_external_id}:
+                if overview.card.ref.external_id in {external_id, new_external_id}:
                     await repository.delete_card(overview.card.id)
 
     async def test_export_import_restores_groups_membership_and_tags(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         first_external_id = f"test-{uuid4()}"
         second_external_id = f"test-{uuid4()}"
         group_name = f"Бутылки {uuid4()}"
@@ -266,13 +266,13 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await repository.import_cards(cards, groups=groups), preview)
 
             restored = [overview.card for overview in await repository.list_cards()
-                        if overview.card.external_id in members]
+                        if overview.card.ref.external_id in members]
             restored_card_ids = [card.id for card in restored]
             restored_group = next(group for group in (await repository.get_catalog())["groups"] if group["name"] == group_name)
             restored_group_id = restored_group["id"]
             self.assertEqual(restored_group["tags"], ["бутылки"])
             self.assertEqual(set(restored_group["card_ids"]), set(restored_card_ids))
-            self.assertEqual({card.external_id: list(card.tags) for card in restored}, {
+            self.assertEqual({card.ref.external_id: list(card.tags) for card in restored}, {
                 first_external_id: ["кухня", "подарок"], second_external_id: ["спорт"],
             })
             second_export = next(item for item in cards if item["external_id"] == second_external_id)
@@ -280,7 +280,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             groups[0]["tags"] = ["бутылки", "подарок"]
             self.assertEqual((await repository.import_cards(cards, groups=groups))["groups_added"], 0)
             restored_second = (await repository.get_card(next(card.id for card in restored
-                                                                if card.external_id == second_external_id))).card
+                                                                if card.ref.external_id == second_external_id))).card
             self.assertEqual(list(restored_second.tags), ["спорт", "набор"])
             restored_group = next(group for group in (await repository.get_catalog())["groups"] if group["name"] == group_name)
             self.assertEqual(restored_group["tags"], ["бутылки", "подарок"])
@@ -293,17 +293,17 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 await repository.delete_group(current_group_id)
 
     async def test_card_collection_and_history_roundtrip(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         external_id = f"test-{uuid4()}"
         card = await repository.add_card("integration-test", external_id)
         run_id = await self.fixture_run()
         try:
-            snapshot = ProductSnapshot(
+            snapshot = MarketplaceCard(
                 ref=ProductRef("integration-test", external_id),
                 title="Интеграционный товар",
                 url="https://example.test/product",
                 availability=Availability.IN_STOCK,
-                price=123.45,
+                price=Decimal("123.45"),
                 image_url="https://img.test/first.jpg",
                 collected_at=datetime.now(timezone.utc),
             )
@@ -311,7 +311,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await self.observe(repository, card, snapshot)
             self.assertEqual((await repository.get_card(card.id)).card.image_url,
                              "https://img.test/first.jpg")
-            await self.observe(repository, card, ProductSnapshot(
+            await self.observe(repository, card, MarketplaceCard(
                 ref=snapshot.ref, title=snapshot.title, url=snapshot.url,
                 availability=snapshot.availability, price=snapshot.price,
                 image_url="https://img.test/updated.jpg",
@@ -344,14 +344,14 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
 
     async def test_collection_keeps_nonempty_title_and_refreshes_known_url(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         manual = await repository.add_card("integration-test", f"test-{uuid4()}", title="Моё название")
         automatic = await repository.add_card("integration-test", f"test-{uuid4()}")
         run_id = await self.fixture_run()
         try:
             async def save(card, title, url):
-                await self.observe(repository, card, ProductSnapshot(
-                    ref=ProductRef(card.marketplace, card.external_id),
+                await self.observe(repository, card, MarketplaceCard(
+                    ref=ProductRef(card.ref.marketplace, card.ref.external_id),
                     title=title, url=url, availability=Availability.IN_STOCK, price=100,
                 ))
 
@@ -376,7 +376,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
 
     async def test_import_keeps_availability_transitions_at_the_same_price(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         external_id = f"test-{uuid4()}"
         start = datetime.now(timezone.utc) - timedelta(hours=1)
         history = [
@@ -395,7 +395,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             }])
             self.assertEqual(summary["observations_added"], 3)
             card = next(overview.card for overview in await repository.list_cards()
-                        if overview.card.external_id == external_id)
+                        if overview.card.ref.external_id == external_id)
             card_id = card.id
             self.assertEqual(
                 [(point.price, point.availability)
@@ -408,14 +408,14 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 await repository.delete_card(card_id)
 
     async def test_observations_keep_availability_transitions_and_skip_equal_state(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         external_id = f"test-{uuid4()}"
         card = await repository.add_card("integration-test", external_id)
         run_id = await self.fixture_run()
         start = datetime.now(timezone.utc) - timedelta(hours=1)
 
         async def save(minute, price, availability=Availability.IN_STOCK):
-            await self.observe(repository, card, ProductSnapshot(
+            await self.observe(repository, card, MarketplaceCard(
                 ref=ProductRef("integration-test", external_id), title="Товар",
                 url="https://example.test/product", availability=availability,
                 price=price, collected_at=start + timedelta(minutes=minute),
@@ -465,7 +465,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
 
     async def test_queued_target_is_frozen_and_blocks_deletion(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         run = await repository.create_queued_run(card.id)
         self.fixture_runs.append(run.id)
@@ -477,7 +477,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await repository.delete_card(card.id))
 
     async def test_chart_returns_saved_points_and_unavailable_gap(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         start = datetime.now(timezone.utc) - timedelta(hours=1)
         prices = [Decimal("100.00"), Decimal("100.00"), Decimal("100.00"),
@@ -501,11 +501,11 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await repository.delete_card(card.id)
 
     async def test_error_is_persisted_with_progress(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         run = await repository.start_direct_run(card.id)
         self.fixture_runs.append(run.id)
-        error = {"cardId": card.id, "marketplace": card.marketplace, "externalId": card.external_id,
+        error = {"cardId": card.id, "marketplace": card.ref.marketplace, "externalId": card.ref.external_id,
                  "message": "failed", "traceback": "full traceback"}
         await repository.record_card_error(run.lease, card, error)
         loaded = await repository.get_run(run.id)
@@ -515,12 +515,12 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         await repository.delete_card(card.id)
 
     async def test_stale_worker_run_is_failed_with_diagnostic(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         run = await repository.start_direct_run(card.id)
         self.fixture_runs.append(run.id)
-        await repository.save_result(run.lease, card, ProductSnapshot(ref=ProductRef(card.marketplace,card.external_id),
-            title="Item",url="",price=123.45,availability=Availability.IN_STOCK))
+        await repository.save_result(run.lease, card, MarketplaceCard(ref=ProductRef(card.ref.marketplace,card.ref.external_id),
+            title="Item",url="",price=Decimal("123.45"),availability=Availability.IN_STOCK))
         async with self.async_database.session() as session, session.begin():
             record = await session.get(CollectionRunRecord, run.id)
             record.heartbeat_at = datetime.now(timezone.utc)-timedelta(minutes=2)
@@ -532,7 +532,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         await repository.delete_card(card.id)
 
     async def test_real_api_chart_uses_full_history_and_run_exposes_errors(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("ozon", f"{uuid4().int % 10**15:015d}")
         start = datetime.now(timezone.utc) - timedelta(hours=2)
         run = await repository.start_direct_run(card.id)
@@ -546,7 +546,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         snapshot={},
                     ))
             await repository.record_card_error(run.lease, card, {
-                "cardId": card.id, "marketplace": "ozon", "externalId": card.external_id,
+                "cardId": card.id, "marketplace": "ozon", "externalId": card.ref.external_id,
                 "at": datetime.now(timezone.utc).isoformat(), "type": "RuntimeError",
                 "message": "network failed", "traceback": "full traceback",
             })
@@ -563,7 +563,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(history.json()["totalCount"], 60)
                 self.assertEqual(len(history.json()["history"]), 50)
                 self.assertEqual([point["price"] for point in chart.json()["points"]],
-                                 [100.0] * 30 + [90.0] * 30)
+                                 ["100.00"] * 30 + ["90.00"] * 30)
                 self.assertEqual(detail.json()["errors"][0]["traceback"], "full traceback")
                 self.assertIsNone(runs.json()[0]["errors"])
 
@@ -574,7 +574,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run.id))
 
     async def test_only_full_runs_reset_automatic_collection_clock(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         cards = [await repository.add_card("integration-test",f"test-{uuid4()}") for _ in range(2)]
         future = datetime(2100,1,1,tzinfo=timezone.utc)
         try:
@@ -611,11 +611,11 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             for card in cards: await repository.delete_card(card.id)
 
     async def test_retry_targets_only_failed_cards_and_links_source(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         cards = [await repository.add_card("integration-test", f"test-{uuid4()}") for _ in range(2)]
         run = await repository.start_direct_run()
         self.fixture_runs.append(run.id)
-        await repository.save_result(run.lease, cards[0], ProductSnapshot(ref=ProductRef(cards[0].marketplace,cards[0].external_id),
+        await repository.save_result(run.lease, cards[0], MarketplaceCard(ref=ProductRef(cards[0].ref.marketplace,cards[0].ref.external_id),
             title="Item",url="",price=100,availability=Availability.IN_STOCK))
         await repository.record_card_error(run.lease,cards[1],{"cardId":cards[1].id,"message":"failed"})
         await repository.finish_run(run.lease)
@@ -627,7 +627,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         for card in cards: await repository.delete_card(card.id)
 
     async def test_deal_excludes_current_price_from_daily_average(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         run_id = await self.fixture_run()
         now = datetime.now(timezone.utc)
@@ -654,11 +654,11 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     cards_response = await client.get("/api/catalog")
                 self.assertEqual(response.status_code, 200)
                 item = next(item for item in response.json()["deals"] if item["card"]["id"] == card.id)
-                self.assertEqual(item["averagePrice"], 110.0)
+                self.assertEqual(item["averagePrice"], "110")
                 self.assertEqual(item["lastCollectionRunId"], run_id)
                 card_response = next(entry for entry in cards_response.json()["cards"] if entry["id"] == card.id)
-                self.assertEqual(card_response["minimumPrice"], 80.0)
-                self.assertEqual(card_response["averagePrice"], 110.0)
+                self.assertEqual(card_response["minimumPrice"], "80.00")
+                self.assertEqual(card_response["averagePrice"], "110")
 
             await check_deal_api()
             with self.database.session() as session, session.begin():
@@ -671,7 +671,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id == run_id))
 
     async def test_deal_accepts_one_previous_day(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         now = datetime.now(timezone.utc)
         try:
@@ -691,7 +691,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await repository.delete_card(card.id)
 
     async def test_recent_card_qualifies_without_waiting_seven_days(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         now = datetime.now(timezone.utc)
         try:
@@ -717,7 +717,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await repository.delete_card(card.id)
 
     async def test_excluded_card_is_collected_but_not_offered_as_deal(self):
-        repository = PostgresPriceAnalyzerRepository(self.async_database)
+        repository = PostgresPriceWatchRepository(self.async_database)
         card = await repository.add_card("integration-test", f"test-{uuid4()}")
         now = datetime.now(timezone.utc)
         try:

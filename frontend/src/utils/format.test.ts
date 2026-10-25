@@ -7,7 +7,7 @@ describe('formatPrice', () => {
   })
 
   it('форматирует целую цену без копеек', () => {
-    expect(formatPrice(72990)).toMatch(/72\s990\s₽/)
+    expect(formatPrice('72990.00')).toMatch(/72\s990\s₽/)
   })
 })
 

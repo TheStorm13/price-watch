@@ -1,3 +1,4 @@
+import type { DecimalString } from '../utils/money'
 export type Marketplace = 'ozon' | 'wildberries' | 'aliexpress' | 'yandex-market'
 export type Availability = 'in_stock' | 'out_of_stock' | 'unknown'
 export type RunStatus =
@@ -8,7 +9,7 @@ export type RunStatus =
   | 'completed_with_errors'
   | 'failed'
 
-export interface MarketplaceCard {
+export interface TrackedCardView {
   id: number
   marketplace: Marketplace
   externalId: string
@@ -18,9 +19,9 @@ export interface MarketplaceCard {
   dealsEnabled: boolean
   groupId?: number | null
   tags?: string[]
-  currentPrice: number | null
-  minimumPrice?: number | null
-  averagePrice?: number | null
+  currentPrice: DecimalString | null
+  minimumPrice?: DecimalString | null
+  averagePrice?: DecimalString | null
   currentAvailability: Availability | null
   lastObservedAt: string | null
   createdAt: string
@@ -31,7 +32,7 @@ export interface PriceHistoryPoint {
   id: number
   cardId: number
   collectionRunId: number | null
-  price: number | null
+  price: DecimalString | null
   availability: Availability
   observedAt: string
 }
@@ -39,15 +40,15 @@ export interface PriceHistoryPoint {
 export interface PriceStatistics {
   cardId: number
   days: number
-  averagePrice: number | null
-  minimumPrice: number | null
-  maximumPrice: number | null
+  averagePrice: DecimalString | null
+  minimumPrice: DecimalString | null
+  maximumPrice: DecimalString | null
   observationsCount: number
   observedDays: number
 }
 
 export interface CardHistoryResponse {
-  card: MarketplaceCard
+  card: TrackedCardView
   statistics: PriceStatistics
   history: PriceHistoryPoint[]
   page: number
@@ -93,9 +94,9 @@ export interface CollectionRun {
 }
 
 export interface Deal {
-  card: MarketplaceCard
-  averagePrice: number
-  savings: number
+  card: TrackedCardView
+  averagePrice: DecimalString
+  savings: DecimalString
   baselineDays: number
   lastCollectionRunId: number | null
 }
@@ -121,11 +122,11 @@ export interface ProductGroup {
   name: string
   tags?: string[]
   cardIds: number[]
-  currentPrice: number | null
-  minimumPrice: number | null
+  currentPrice: DecimalString | null
+  minimumPrice: DecimalString | null
   representativeCardId: number | null
-  representativeCard: MarketplaceCard | null
-  savings: number | null
+  representativeCard: TrackedCardView | null
+  savings: DecimalString | null
   baselineDays: number
   isDeal: boolean
   hasMemberDeals: boolean
@@ -180,7 +181,7 @@ export interface ApiErrorPayload {
 }
 
 export interface CatalogSnapshot {
-  cards: MarketplaceCard[]
+  cards: TrackedCardView[]
   groups: ProductGroup[]
   deals: Deal[]
 }

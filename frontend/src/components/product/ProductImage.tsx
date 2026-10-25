@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils'
-import type { MarketplaceCard } from '../../types/domain'
+import type { TrackedCardView } from '../../types/domain'
 
 interface Props {
-  card: MarketplaceCard
+  card: TrackedCardView
   large?: boolean
   alt?: string
   eager?: boolean

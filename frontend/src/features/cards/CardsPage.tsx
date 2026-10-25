@@ -20,7 +20,7 @@ import { MarketplaceMark } from '../../components/product/MarketplaceMark'
 import { ProductImage } from '../../components/product/ProductImage'
 import { TagList } from '../../components/product/TagList'
 import { useCollection } from '../collection/CollectionProvider'
-import type { MarketplaceCard, ProductGroup } from '../../types/domain'
+import type { TrackedCardView, ProductGroup } from '../../types/domain'
 import { formatDateTime, formatPrice, formatRelativeTime } from '../../utils/format'
 import { AddCardDrawer } from './AddCardDrawer'
 import { cardItem, catalogItems, columnSortKeys, compareItems, matchesItem, parseSort, type ColumnSortKey } from './catalogItems'
@@ -84,7 +84,7 @@ export function CardsPage() {
   [allItems, deferredQuery, marketplace, status, selectedTag, dealsOnly, sort])
 
   const groupedCards = useMemo(() => {
-    const byGroup = new Map<number, MarketplaceCard[]>()
+    const byGroup = new Map<number, TrackedCardView[]>()
     for (const card of catalogQuery.data?.cards ?? []) {
       if (card.groupId == null) continue
       const members = byGroup.get(card.groupId) ?? []
@@ -120,20 +120,20 @@ export function CardsPage() {
     setParams(view === 'grid' ? { view: 'grid' } : {}, { replace: true, flushSync: true })
   }
 
-  function actions(card: MarketplaceCard) {
+  function actions(card: TrackedCardView) {
     return <CardActionsMenu cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled}
       onRefresh={card.marketplace === 'ozon' ? () => collection.start(card.id) : undefined} refreshDisabled={collection.isStarting}
       onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })}
       onDelete={() => deleteCard.mutateAsync(card.id)} />
   }
 
-  function dealStatus(card: MarketplaceCard) {
+  function dealStatus(card: TrackedCardView) {
     return <>
       {!card.dealsEnabled ? <Badge variant="warning" className="tracking-status" title="Не участвует в выгодных">Не участвует в выгодных</Badge> : null}
     </>
   }
 
-  function saving(card: MarketplaceCard) {
+  function saving(card: TrackedCardView) {
     const deal = deals.get(card.id)
     return deal ? <span className="deal-savings">{formatPrice(deal.savings)}</span> : 'Сейчас не выгодно'
   }
@@ -152,7 +152,7 @@ export function CardsPage() {
     </div>
   }
 
-  function tile(card: MarketplaceCard) {
+  function tile(card: TrackedCardView) {
     return <Card key={card.id} asChild className="grid gap-0 py-0"><li className="cards-grid__item">
       <div className="cards-grid__actions">{actions(card)}</div>
       <CardHeader className="contents"><Link className="cards-grid__link" to={`/cards/${card.id}`}>
@@ -168,7 +168,7 @@ export function CardsPage() {
     </CardFooter></li></Card>
   }
 
-  function row(card: MarketplaceCard, nested = false) {
+  function row(card: TrackedCardView, nested = false) {
     return <TableRow key={card.id} className={cn('cards-table__product', nested && 'cards-table__nested', selection.selectedIds.has(card.id) && 'is-selected')} onClick={() => navigate(`/cards/${card.id}`)}>
       <TableCell className="cards-table__selection py-2"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
         checked={selection.selectedIds.has(card.id)} onClick={(event) => event.stopPropagation()} onCheckedChange={() => selection.toggle(card.id)} /></TableCell>

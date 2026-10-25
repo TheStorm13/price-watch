@@ -11,12 +11,12 @@
 | --- | --- | --- |
 | Запуск desktop | `price-watch`, `frontend/src-tauri/src/lib.rs`, `native_services.rs` | Открыть Tauri, поднять сервисы и локальный worker |
 | Интерфейс | `frontend/src` | Карточки, история, запуски, выгодные предложения и действия пользователя |
-| HTTP API | `price_analyzer/api` | Проверить запросы и передать их репозиторию |
-| Сбор и очередь | `price_analyzer/application`, `price_analyzer/worker` | Выполнить сбор, обновить прогресс и статусы |
-| Хранение | `price_analyzer/infrastructure/postgres` | PostgreSQL, SQLAlchemy и Alembic |
-| Контракт коннектора | `marketplace_connector/domain`, `marketplace_connector/ports` | Общая модель снимка товара |
+| HTTP API | `price_watch/api` | Проверить запросы и передать их репозиторию |
+| Сбор и очередь | `price_watch/application`, `price_watch/worker` | Выполнить сбор, обновить прогресс и статусы |
+| Хранение | `price_watch/infrastructure/postgres` | PostgreSQL, SQLAlchemy и Alembic |
+| Контракт коннектора | `marketplace_connector/domain`, `marketplace_connector/ports` | Общий MarketplaceCard и независимый от площадки порт |
 | Ozon | `marketplace_connector/connectors/ozon` | Chrome, ответ Ozon и нормализация |
-| Старый одиночный CLI | `ozon_article_json`, `main.py` | Получить JSON товара без БД |
+| Одиночный CLI | `marketplace_connector/connectors/ozon/cli.py`, `main.py` | Получить JSON товара без БД |
 
 Рабочий интерфейс запускается только в Tauri. Браузерный `dev:e2e` использует
 mock API для проверки UI и не подключается к живым службам.
@@ -30,6 +30,20 @@ flowchart LR
     Connector --> Chrome[Системный Google Chrome]
     Chrome --> Ozon[Ozon]
 ```
+
+## Модели товара и отслеживания
+
+`marketplace_connector.domain.models.MarketplaceCard` — общий результат любого
+коннектора: ProductRef, данные товара, Decimal-цена, наличие и collected_at.
+`price_watch.domain.models.TrackedCard` — локальная запись отслеживания с ID,
+ref, отображаемыми полями, группой, тегами и настройками. Она использует
+существующую таблицу marketplace_cards; дополнительной таблицы нет.
+`TrackedCardOverview` и frontend `TrackedCardView` — проекции записи и метрик.
+
+У каждой площадки собственные модель входных данных и mapper. Потребители
+общего товара не разбирают Ozon-структуры. Числовой CLI получает товар без БД.
+Деньги передаются в JSON строками; формат описан в [контракте данных](DATA_AND_API.md).
+Мотивы и альтернативы: [ADR 0005](../adr/0005-marketplace-card-and-tracking-record.md).
 
 ## Сбор через интерфейс
 
@@ -47,7 +61,8 @@ flowchart LR
    Сеанс остаётся открытым до конца запуска.
 5. Коннектор открывает до пяти вкладок одновременно, получает JSON Ozon из
    каждой вкладки и закрывает её после обработки.
-   Mapper создаёт общий `ProductSnapshot`; цена берётся только из `cardPrice`.
+   Parser создаёт `OzonProductData`, затем `OzonMapper` преобразует его в общий
+   `MarketplaceCard`; цена берётся только из `cardPrice` и нормализуется как Decimal.
 6. Репозиторий заполняет пустое название карточки и обновляет ссылку, если она
    получена с площадки; снимок в `price_history`
    добавляется при изменении цены или наличия. Ошибки по товарам сохраняются с traceback

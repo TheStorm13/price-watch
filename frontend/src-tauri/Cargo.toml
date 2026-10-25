@@ -1,14 +1,14 @@
 [package]
-name = "price-watch-desktop"
+name = "price-watch"
 version = "0.1.5"
-description = "Desktop shell for Marketplace Price Analyzer"
-authors = ["Price Watch"]
+description = "Desktop shell for price-watch"
+authors = ["price-watch"]
 edition = "2021"
 rust-version = "1.77.2"
-default-run = "price-watch-desktop"
+default-run = "price-watch"
 
 [lib]
-name = "price_watch_desktop_lib"
+name = "price_watch_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

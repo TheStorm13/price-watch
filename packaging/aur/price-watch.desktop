@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Price Watch
+Name=price-watch
 Comment=Отслеживание цен товаров на маркетплейсах
 Exec=price-watch
 Icon=price-watch

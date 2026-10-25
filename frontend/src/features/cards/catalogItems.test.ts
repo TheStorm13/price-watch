@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import type { Deal, MarketplaceCard, ProductGroup } from '../../types/domain'
+import type { Deal, TrackedCardView, ProductGroup } from '../../types/domain'
 import { cardItem, catalogItems, compareItems, matchesItem, parseSort, type DisplayItem, type Sort } from './catalogItems'
 
-function card(id: number, overrides: Partial<MarketplaceCard> = {}): MarketplaceCard {
-  return { id, title: `Card ${id}`, externalId: String(id), marketplace: 'ozon', currentPrice: 90,
-    minimumPrice: 80, averagePrice: 100, dealsEnabled: true, currentAvailability: 'in_stock',
+function card(id: number, overrides: Partial<TrackedCardView> = {}): TrackedCardView {
+  return { id, title: `Card ${id}`, externalId: String(id), marketplace: 'ozon', currentPrice: "90.00",
+    minimumPrice: "80.00", averagePrice: "100.00", dealsEnabled: true, currentAvailability: 'in_stock',
     createdAt: '2026-10-01T12:00:00Z', updatedAt: '2026-10-03T12:00:00Z', lastObservedAt: '2026-10-02T12:00:00Z',
     imageUrl: null, url: null, tags: ['representative'], ...overrides }
 }
-function group(representative: MarketplaceCard | null, overrides: Partial<ProductGroup> = {}): ProductGroup {
+function group(representative: TrackedCardView | null, overrides: Partial<ProductGroup> = {}): ProductGroup {
   return { id: 1, name: 'Group', tags: ['own'], cardIds: representative ? [representative.id, 2] : [],
     currentPrice: representative?.currentPrice ?? null, minimumPrice: representative?.minimumPrice ?? null,
     representativeCard: representative, representativeCardId: representative?.id ?? null,
     savings: null, baselineDays: 1, isDeal: false, hasMemberDeals: false, ...overrides }
 }
 const filters = { query: '', marketplace: 'all', status: 'all', tag: '', dealsOnly: false }
-function groupItem(representative: MarketplaceCard | null, overrides: Partial<ProductGroup> = {}): DisplayItem {
+function groupItem(representative: TrackedCardView | null, overrides: Partial<ProductGroup> = {}): DisplayItem {
   return catalogItems([], [group(representative, overrides)], new Map())[0]
 }
 
@@ -69,13 +69,13 @@ describe('common sort', () => {
   for (const key of keys) for (const direction of ['asc', 'desc'] as const) {
     const sort: Sort = { key, direction }
     it(`${key} ${direction} compares groups and cards by the same values`, () => {
-      const low = card(1, { title: 'A', marketplace: 'aliexpress', currentPrice: 70, minimumPrice: 60,
-        averagePrice: 80, currentAvailability: 'in_stock', updatedAt: '2026-10-01T12:00:00Z' })
-      const high = card(2, { title: 'Z', marketplace: 'ozon', currentPrice: 100, minimumPrice: 90,
-        averagePrice: 110, currentAvailability: 'unknown' })
-      const deals = new Map<number, Deal>([[1, { card: low, averagePrice: 80, savings: 10, baselineDays: 1, lastCollectionRunId: null }],
-        [2, { card: high, averagePrice: 110, savings: 20, baselineDays: 1, lastCollectionRunId: null }]])
-      const left = groupItem(low, { name: 'A', savings: 10, isDeal: true })
+      const low = card(1, { title: 'A', marketplace: 'aliexpress', currentPrice: "70.00", minimumPrice: "60.00",
+        averagePrice: "80.00", currentAvailability: 'in_stock', updatedAt: '2026-10-01T12:00:00Z' })
+      const high = card(2, { title: 'Z', marketplace: 'ozon', currentPrice: "100.00", minimumPrice: "90.00",
+        averagePrice: "110.00", currentAvailability: 'unknown' })
+      const deals = new Map<number, Deal>([[1, { card: low, averagePrice: "80.00", savings: "10.00", baselineDays: 1, lastCollectionRunId: null }],
+        [2, { card: high, averagePrice: "110.00", savings: "20.00", baselineDays: 1, lastCollectionRunId: null }]])
+      const left = groupItem(low, { name: 'A', savings: "10.00", isDeal: true })
       const right = cardItem(high, deals)
       expect(Math.sign(compareItems(left, right, sort))).toBe(direction === 'asc' ? -1 : 1)
       expect(Math.sign(compareItems(left, right, sort))).toBe(Math.sign(compareItems(cardItem(low, deals), right, sort)))
@@ -92,17 +92,17 @@ describe('common sort', () => {
 
   it('keeps deals first for every sort and direction', () => {
     const regular = cardItem(card(1), new Map())
-    const deal = groupItem(card(2), { isDeal: true, savings: 10 })
+    const deal = groupItem(card(2), { isDeal: true, savings: "10.00" })
     for (const key of keys) for (const direction of ['asc', 'desc'] as const) {
       expect(compareItems(deal, regular, { key, direction })).toBeLessThan(0)
     }
   })
 
   it('interleaves types and resolves equal IDs deterministically', () => {
-    const items = [groupItem(card(1, { currentPrice: 90 }), { id: 1 }), cardItem(card(1, { currentPrice: 80 }), new Map()),
-      groupItem(card(3, { currentPrice: 70 }), { id: 2 })]
+    const items = [groupItem(card(1, { currentPrice: "90.00" }), { id: 1 }), cardItem(card(1, { currentPrice: "80.00" }), new Map()),
+      groupItem(card(3, { currentPrice: "70.00" }), { id: 2 })]
     expect(items.toSorted((a, b) => compareItems(a, b, { key: 'price', direction: 'asc' }))
-      .map((item) => [item.kind, item.card?.currentPrice])).toEqual([['group', 70], ['card', 80], ['group', 90]])
+      .map((item) => [item.kind, item.card?.currentPrice])).toEqual([['group', '70.00'], ['card', '80.00'], ['group', '90.00']])
     const left = groupItem(card(1), { name: 'Card 1' })
     const right = cardItem(card(1), new Map())
     expect(compareItems(left, right, null)).not.toBe(0)

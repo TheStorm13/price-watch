@@ -1,3 +1,4 @@
+import { compareMoney, type DecimalString } from '../../utils/money'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { CartesianGrid, LabelList, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { PriceHistoryPoint } from '../../types/domain'
@@ -5,11 +6,11 @@ import { availabilityLabel, formatPrice, formatShortDate } from '../../utils/for
 
 interface Props {
   history: PriceHistoryPoint[]
-  midpoint: number | null
+  midpoint: DecimalString | null
 }
 
 export function priceDomain(history: PriceHistoryPoint[]): [number, number] {
-  const prices = history.flatMap((point) => point.price === null ? [] : [point.price])
+  const prices = history.flatMap((point) => point.price === null ? [] : [Number(point.price)])
   if (prices.length === 0) return [0, 1]
   const minimum = Math.min(...prices)
   const maximum = Math.max(...prices)
@@ -20,13 +21,13 @@ export function priceDomain(history: PriceHistoryPoint[]): [number, number] {
 export function turningPointIndices(history: PriceHistoryPoint[]): Set<number> {
   const priced = history.flatMap((point, index) => point.price === null ? [] : [{ index, price: point.price }])
   if (priced.length < 2 || priced.every((point) => point.price === priced[0].price)) return new Set()
-  const minimum = Math.min(...priced.map((point) => point.price))
-  const maximum = Math.max(...priced.map((point) => point.price))
+  const minimum = priced.map((point) => point.price).sort(compareMoney)[0]
+  const maximum = priced.map((point) => point.price).sort(compareMoney).at(-1)!
   const candidates = priced.filter((point, position) => {
     const previous = priced[position - 1]
     const next = priced[position + 1]
     return point.price === minimum || point.price === maximum ||
-      !!previous && !!next && (point.price > previous.price && point.price > next.price || point.price < previous.price && point.price < next.price)
+      !!previous && !!next && (compareMoney(point.price, previous.price) > 0 && compareMoney(point.price, next.price) > 0 || compareMoney(point.price, previous.price) < 0 && compareMoney(point.price, next.price) < 0)
   })
   const spacing = Math.max(2, Math.ceil(history.length / 7))
   const selected: number[] = []
@@ -42,7 +43,7 @@ export function turningPointIndices(history: PriceHistoryPoint[]): Set<number> {
 }
 
 export function PriceChart({ history, midpoint }: Props) {
-  const data = history.map((point) => ({ ...point, label: formatShortDate(point.observedAt) }))
+  const data = history.map((point) => ({ ...point, plotPrice: point.price === null ? null : Number(point.price), label: formatShortDate(point.observedAt) }))
   const domain = priceDomain(history)
   const labels = turningPointIndices(history)
   if (data.length === 0) return <Empty className="mb-8 h-[250px]"><EmptyHeader><EmptyTitle>Данных за этот период нет</EmptyTitle><EmptyDescription>Запустите обновление цены, чтобы увидеть динамику.</EmptyDescription></EmptyHeader></Empty>
@@ -55,12 +56,12 @@ export function PriceChart({ history, midpoint }: Props) {
           <YAxis domain={domain} tickLine={false} axisLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} tickFormatter={(value: number) => new Intl.NumberFormat('ru-RU', { notation: 'compact' }).format(value)} width={58} />
           <Tooltip
             contentStyle={{ border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 12px 24px rgba(16,24,40,.10)', fontSize: 13 }}
-            formatter={(value) => [formatPrice(Number(value)), 'Цена']}
+            formatter={(_value, _name, item) => [formatPrice(item.payload.price), 'Цена']}
             labelFormatter={(_, payload) => payload[0]?.payload ? `${new Intl.DateTimeFormat('ru-RU', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(payload[0].payload.observedAt))} · ${availabilityLabel[payload[0].payload.availability as keyof typeof availabilityLabel]}` : ''}
           />
-          {midpoint !== null ? <ReferenceLine y={midpoint} stroke="var(--muted-foreground)" strokeDasharray="6 5" /> : null}
-          <Line type="linear" dataKey="price" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--background)', strokeWidth: 2 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive={false}>
-            <LabelList dataKey="price" content={(props) => {
+          {midpoint !== null ? <ReferenceLine y={Number(midpoint)} stroke="var(--muted-foreground)" strokeDasharray="6 5" /> : null}
+          <Line type="linear" dataKey="plotPrice" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--background)', strokeWidth: 2 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive={false}>
+            <LabelList dataKey="plotPrice" content={(props) => {
               const index = Number(props.index)
               if (!labels.has(index) || typeof props.x !== 'number' || typeof props.y !== 'number') return null
               const first = index === 0

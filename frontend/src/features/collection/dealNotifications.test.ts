@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { subtractMoney } from '../../utils/money'
 import { DealNotifications, NOTIFICATIONS_KEY } from './dealNotifications'
 import type { CatalogSnapshot, Deal } from '../../types/domain'
 
-const deal = (runId: number, price = 80): Deal => ({
+const deal = (runId: number, price = '80.00'): Deal => ({
   card: { id: 1, marketplace: 'ozon', externalId: '1', title: 'Item', url: null, imageUrl: null,
     tags: [], dealsEnabled: true, groupId: null, currentPrice: price, currentAvailability: 'in_stock',
-    minimumPrice: price, averagePrice: 100, lastObservedAt: '2026-10-22', createdAt: '2026-10-01', updatedAt: '2026-10-22' },
-  averagePrice: 100, savings: 100-price, baselineDays: 1, lastCollectionRunId: runId,
+    minimumPrice: price, averagePrice: "100.00", lastObservedAt: '2026-10-22', createdAt: '2026-10-01', updatedAt: '2026-10-22' },
+  averagePrice: "100.00", savings: subtractMoney('100', price), baselineDays: 1, lastCollectionRunId: runId,
 })
 const catalog = (runId: number): CatalogSnapshot => ({ cards: [], groups: [], deals: [deal(runId)] })
 const queues: DealNotifications[] = []
@@ -90,4 +91,22 @@ describe('durable deal notification work', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(notify).toHaveBeenCalledTimes(1)
   })
+})
+
+it('migrates v1 pending and watermark without treating price representation as a change', async () => {
+  localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify({ version: 1, pending: [8, 9], processed: 7,
+    prices: { 1: 80, 2: 'broken', 3: null } }))
+  const { queue, notify } = create(vi.fn().mockResolvedValue(catalog(9)))
+  expect(JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY)!)).toEqual({ version: 2, pending: [8, 9], processed: 7,
+    prices: { 1: '80.00', 3: null } })
+  queue.start()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(notify).not.toHaveBeenCalled()
+  expect(JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY)!)).toMatchObject({ version: 2, pending: [], processed: 9 })
+})
+
+it('retains pending work when the old prices document is damaged', () => {
+  localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify({ version: 1, pending: [8, 9], processed: 7, prices: null }))
+  create(vi.fn())
+  expect(JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY)!)).toEqual({ version: 2, pending: [8, 9], processed: 7, prices: {} })
 })

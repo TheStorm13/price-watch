@@ -14,10 +14,10 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event, text
-from marketplace_connector import ConnectorRegistry, ProductRef, ProductSnapshot, Availability
-from price_analyzer.api import create_app
-from price_analyzer.application.run_executor import RunExecutor
-from price_analyzer.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceAnalyzerRepository
+from marketplace_connector import ConnectorRegistry, ProductRef, MarketplaceCard, Availability
+from price_watch.api import create_app
+from price_watch.application.run_executor import RunExecutor
+from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceWatchRepository
 
 queries = ContextVar('benchmark_queries', default=None)
 SIZES = {'S': 100, 'M': 1000, 'L': 5000}
@@ -56,12 +56,12 @@ class SyntheticConnector:
 
     async def get_product(self, external_id):
         await asyncio.sleep(.01)
-        return ProductSnapshot(ref=ProductRef('ozon', external_id), title='Product '+external_id,
+        return MarketplaceCard(ref=ProductRef('ozon', external_id), title='Product '+external_id,
                                url='', price=95, availability=Availability.IN_STOCK)
 
 
 async def measure(db, mode, writing, rounds):
-    repository = PostgresPriceAnalyzerRepository(db)
+    repository = PostgresPriceWatchRepository(db)
     app = create_app(repository=repository, api_token='benchmark')
     app.state.repository = repository
     stop = asyncio.Event()

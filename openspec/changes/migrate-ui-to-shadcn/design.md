@@ -54,7 +54,7 @@ Tailwind 4 через Vite plugin, alias `@/*` согласован в TS и Vit
 [mcp_servers.shadcn]
 command = "npx"
 args = ["-y", "shadcn@latest", "mcp"]
-cwd = "/home/ilya-groza/DevProjects/article_json_parser/frontend"
+cwd = "/home/ilya-groza/DevProjects/price-watch/frontend"
 ```
 
 Это настройка инструментов разработки, не runtime-зависимость. После подключения требуется перезапуск/новая сессия Codex и проверка реального наличия tools. До появления инструментов не заявлять, что shadcn MCP использован. Нынешняя sandbox-защита `.codex` может потребовать отдельного системного разрешения на запись.

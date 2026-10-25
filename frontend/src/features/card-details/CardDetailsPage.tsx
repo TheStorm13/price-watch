@@ -1,3 +1,4 @@
+import { midpointMoney, subtractMoney } from '../../utils/money'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -76,9 +77,9 @@ export function CardDetailsPage() {
   const history = historyQuery.data?.history ?? []
   const chart = chartQuery.data?.points ?? []
   const midpoint = statistics?.minimumPrice != null && statistics.maximumPrice != null
-    ? (statistics.minimumPrice + statistics.maximumPrice) / 2 : null
+    ? midpointMoney(statistics.minimumPrice, statistics.maximumPrice) : null
   const priceGap = statistics?.minimumPrice != null && statistics.maximumPrice != null
-    ? statistics.maximumPrice - statistics.minimumPrice : null
+    ? subtractMoney(statistics.maximumPrice, statistics.minimumPrice) : null
 
   async function openProduct(event: MouseEvent<HTMLAnchorElement>) {
     if (!isDesktopMode || !card?.url) return

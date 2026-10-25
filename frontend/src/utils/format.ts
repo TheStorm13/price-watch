@@ -1,9 +1,6 @@
 import type { Availability, Marketplace, RunStatus } from '../types/domain'
 
-export const formatPrice = (price: number | null | undefined) =>
-  price === null || price === undefined
-    ? '—'
-    : new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: Number.isInteger(price) ? 0 : 2 }).format(price)
+export { formatMoney as formatPrice } from './money'
 
 export const formatDateTime = (value: string | null | undefined) =>
   value ? new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—'

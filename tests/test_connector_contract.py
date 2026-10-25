@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 import asyncio
 import unittest
@@ -10,9 +11,9 @@ from marketplace_connector.domain.models import (
     Attribute,
     Availability,
     ProductRef,
-    ProductSnapshot,
+    MarketplaceCard,
 )
-from marketplace_connector.serialization.product_json import snapshot_to_json
+from marketplace_connector.serialization.product_json import card_to_json
 
 
 class FakeConnector:
@@ -23,12 +24,12 @@ class FakeConnector:
         yield
 
     async def get_product(self, external_id):
-        return ProductSnapshot(
+        return MarketplaceCard(
             ref=ProductRef(self.marketplace, external_id),
             title="Тестовый товар",
             url="https://example.test/product/1",
             availability=Availability.IN_STOCK,
-            price=199.9,
+            price=Decimal("199.9"),
             attributes=(Attribute("Цвет", ("зелёный",)),),
             collected_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
         )
@@ -41,20 +42,20 @@ class ConnectorContractTests(unittest.TestCase):
         snapshot = asyncio.run(service.get_product("DEMO", "product-1"))
 
         self.assertEqual(snapshot.ref, ProductRef("demo", "product-1"))
-        self.assertEqual(snapshot.price, 199.9)
+        self.assertEqual(snapshot.price, Decimal("199.90"))
 
     def test_serializes_stable_json_contract(self):
         snapshot = asyncio.run(FakeConnector().get_product("product-1"))
 
-        payload = json.loads(snapshot_to_json(snapshot))
+        payload = json.loads(card_to_json(snapshot))
 
-        self.assertEqual(payload["schema_version"], "1.0")
+        self.assertEqual(payload["schema_version"], "2.0")
         self.assertEqual(
             payload["ref"],
             {"marketplace": "demo", "external_id": "product-1"},
         )
         self.assertEqual(payload["availability"], "in_stock")
-        self.assertEqual(payload["price"], 199.9)
+        self.assertEqual(payload["price"], "199.90")
         self.assertNotIn("prices", payload)
         self.assertEqual(payload["attributes"][0]["values"], ["зелёный"])
         self.assertEqual(payload["collected_at"], "2026-01-02T03:04:05+00:00")
@@ -79,7 +80,7 @@ class ConnectorContractTests(unittest.TestCase):
 
     def test_rejects_negative_price(self):
         with self.assertRaises(ValueError):
-            ProductSnapshot(
+            MarketplaceCard(
                 ref=ProductRef("demo", "1"),
                 title="Товар",
                 url="https://example.test/1",
@@ -88,14 +89,14 @@ class ConnectorContractTests(unittest.TestCase):
             )
 
     def test_unavailable_product_has_no_current_price(self):
-        snapshot = ProductSnapshot(
+        snapshot = MarketplaceCard(
             ref=ProductRef("demo", "1"), title="Товар",
             url="https://example.test/1", availability=Availability.OUT_OF_STOCK,
-            price=199.9,
+            price=Decimal("199.9"),
         )
 
         self.assertIsNone(snapshot.price)
-        self.assertIsNone(json.loads(snapshot_to_json(snapshot))["price"])
+        self.assertIsNone(json.loads(card_to_json(snapshot))["price"])
 
 
 if __name__ == "__main__":

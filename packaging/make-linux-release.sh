@@ -27,9 +27,9 @@ staging="$(mktemp -d)"
 trap 'rm -rf -- "$staging"' EXIT
 mkdir -p "$staging/$archive_name" release
 git archive HEAD -- main.py alembic.ini requirements.in requirements.txt marketplace_connector \
-  ozon_article_json price_analyzer | tar -xf - -C "$staging/$archive_name"
-install -m755 frontend/src-tauri/target/release/price-watch-desktop \
-  "$staging/$archive_name/price-watch-desktop"
+  price_watch | tar -xf - -C "$staging/$archive_name"
+install -m755 frontend/src-tauri/target/release/price-watch \
+  "$staging/$archive_name/price-watch"
 install -m644 packaging/aur/price-watch.desktop \
   "$staging/$archive_name/price-watch.desktop"
 install -m644 frontend/src-tauri/icons/icon.png \

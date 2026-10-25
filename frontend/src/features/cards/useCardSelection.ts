@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { MarketplaceCard } from '../../types/domain'
+import type { TrackedCardView } from '../../types/domain'
 
-export function useCardSelection(cards: MarketplaceCard[] | undefined) {
+export function useCardSelection(cards: TrackedCardView[] | undefined) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
 
   useEffect(() => {

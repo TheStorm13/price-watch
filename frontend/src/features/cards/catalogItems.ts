@@ -1,25 +1,26 @@
-import type { Deal, MarketplaceCard, ProductGroup } from '../../types/domain'
+import { compareMoney, type DecimalString } from '../../utils/money'
+import type { Deal, TrackedCardView, ProductGroup } from '../../types/domain'
 import { availabilityLabel, marketplaceLabel } from '../../utils/format'
 
 export const columnSortKeys = ['title', 'marketplace', 'price', 'minimum', 'average', 'savings', 'availability'] as const
 export type ColumnSortKey = typeof columnSortKeys[number]
 export type Sort = { key: ColumnSortKey | 'updated'; direction: 'asc' | 'desc' } | null
 export type DisplayItem = {
-  kind: 'card'; id: number; title: string; card: MarketplaceCard; savings: number | null; priority: boolean
+  kind: 'card'; id: number; title: string; card: TrackedCardView; savings: DecimalString | null; priority: boolean
 } | {
-  kind: 'group'; id: number; title: string; card: MarketplaceCard | null; group: ProductGroup
-  savings: number | null; priority: boolean
+  kind: 'group'; id: number; title: string; card: TrackedCardView | null; group: ProductGroup
+  savings: DecimalString | null; priority: boolean
 }
 const availabilityRanks = { in_stock: 0, out_of_stock: 1, unknown: 2 }
 const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
 
-export function cardItem(card: MarketplaceCard, deals: Map<number, Deal>): DisplayItem {
+export function cardItem(card: TrackedCardView, deals: Map<number, Deal>): DisplayItem {
   const deal = deals.get(card.id)
   return { kind: 'card', id: card.id, title: card.title ?? card.externalId, card,
     savings: deal?.savings ?? null, priority: !!deal }
 }
 
-export function catalogItems(cards: MarketplaceCard[], groups: ProductGroup[], deals: Map<number, Deal>): DisplayItem[] {
+export function catalogItems(cards: TrackedCardView[], groups: ProductGroup[], deals: Map<number, Deal>): DisplayItem[] {
   const groupIds = new Set(groups.map((group) => group.id))
   return [
     ...groups.map((group): DisplayItem => ({ kind: 'group', id: group.id, title: group.name, group,
@@ -77,14 +78,25 @@ function compareValue(first: string | number | null, second: string | number | n
 export function compareItems(left: DisplayItem, right: DisplayItem, sort: Sort): number {
   if (left.priority !== right.priority) return left.priority ? -1 : 1
   let order = 0
-  if (sort) order = compareValue(sortValue(left, sort.key), sortValue(right, sort.key), sort.direction)
+  if (sort) {
+    const first = sortValue(left, sort.key), second = sortValue(right, sort.key)
+    const money = ['price', 'minimum', 'average', 'savings'].includes(sort.key)
+    order = money && first !== null && second !== null
+      ? compareMoney(String(first), String(second)) * (sort.direction === 'asc' ? 1 : -1)
+      : compareValue(first, second, sort.direction)
+  }
   else {
     const availability = (item: DisplayItem) => item.card?.currentAvailability
       ? availabilityRanks[item.card.currentAvailability] : 3
     order = Number(right.card?.dealsEnabled ?? false) - Number(left.card?.dealsEnabled ?? false)
       || availability(left) - availability(right)
-      || compareValue(left.savings, right.savings, 'desc')
-      || compareValue(left.card?.currentPrice ?? null, right.card?.currentPrice ?? null, 'asc')
+      || compareNullableMoney(left.savings, right.savings, 'desc')
+      || compareNullableMoney(left.card?.currentPrice ?? null, right.card?.currentPrice ?? null, 'asc')
   }
   return order || collator.compare(left.kind, right.kind) || left.id - right.id
+}
+
+function compareNullableMoney(a: string | null, b: string | null, direction: 'asc' | 'desc') {
+  if (a === null || b === null) return a === null ? (b === null ? 0 : 1) : -1
+  return compareMoney(a, b) * (direction === 'asc' ? 1 : -1)
 }

@@ -31,15 +31,14 @@ sha256sums=('4b257e5b651459d290f679d93dec120d659a8b03c7c8d028e8f385a43b15fa6b')
 
 package() {
   local appdir="${srcdir}/price-watch-${pkgver}-linux-x86_64"
-  install -Dm755 "${appdir}/price-watch-desktop" "${pkgdir}/usr/bin/price-watch"
+  install -Dm755 "${appdir}/price-watch" "${pkgdir}/usr/bin/price-watch"
   install -Dm644 "${appdir}/price-watch.desktop" \
     "${pkgdir}/usr/share/applications/price-watch.desktop"
   install -Dm644 "${appdir}/price-watch.png" \
     "${pkgdir}/usr/share/icons/hicolor/512x512/apps/price-watch.png"
   install -d "${pkgdir}/usr/lib/price-watch"
   cp -a "${appdir}/main.py" "${appdir}/alembic.ini" "${appdir}/requirements.txt" \
-    "${appdir}/marketplace_connector" "${appdir}/ozon_article_json" \
-    "${appdir}/price_analyzer" "${pkgdir}/usr/lib/price-watch/"
+    "${appdir}/marketplace_connector" "${appdir}/price_watch" "${pkgdir}/usr/lib/price-watch/"
   if [[ -f "${appdir}/requirements.in" ]]; then
     install -m644 "${appdir}/requirements.in" "${pkgdir}/usr/lib/price-watch/requirements.in"
   fi

@@ -8,6 +8,8 @@
 
 - [ADR 0004: Владение сбором, результаты целей и снимок каталога](0004-collection-reliability-and-catalog-snapshot.md) — Accepted.
 
+- [ADR 0005: Общий товар, запись отслеживания и точные цены](0005-marketplace-card-and-tracking-record.md) — Accepted.
+
 Наблюдаемое устройство системы описано в
 [обзоре архитектуры](../architecture/overview.md); обзор не заменяет запись
 о мотивах выбора и рассмотренных альтернативах.

@@ -720,7 +720,7 @@ mod path_tests {
             .unwrap()
             .as_nanos();
         let profile = std::env::temp_dir().join(format!(
-            "price-watch-desktop-chrome-test-{}-{unique}",
+            "price-watch-chrome-test-{}-{unique}",
             std::process::id()
         ));
         fs::create_dir_all(&profile).unwrap();
@@ -849,7 +849,7 @@ fn active_debug_port(profile: &Path) -> Option<u16> {
 }
 
 fn project_root() -> PathBuf {
-    env::var_os("PRICE_ANALYZER_PROJECT_DIR")
+    env::var_os("PRICE_WATCH_PROJECT_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             let installed = PathBuf::from("/usr/lib/price-watch");
@@ -906,7 +906,7 @@ fn install_tray(app: &mut tauri::App) -> tauri::Result<()> {
         tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     };
 
-    let open = MenuItemBuilder::with_id("open", "Открыть Price Watch").build(app)?;
+    let open = MenuItemBuilder::with_id("open", "Открыть price-watch").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Выход").build(app)?;
     let menu = MenuBuilder::new(app).items(&[&open, &quit]).build()?;
     let mut tray = TrayIconBuilder::new()

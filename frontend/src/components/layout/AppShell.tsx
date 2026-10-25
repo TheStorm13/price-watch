@@ -32,7 +32,7 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <Link className="brand" to="/cards"><BarChart3 aria-hidden="true" /><span>Price Watch</span></Link>
+        <Link className="brand" to="/cards"><BarChart3 aria-hidden="true" /><span>price-watch</span></Link>
         <div className="app-header__actions">
           <span className="app-header__mode">{apiModeLabel}</span>
           {isDesktopMode ? <BackgroundSettings /> : null}

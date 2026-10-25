@@ -7,7 +7,7 @@
 `./price-watch` запускает уже собранный Tauri бинарник из дерева репозитория.
 Сам бинарник ищет корневой `.env`, `.venv/bin/python` и `main.py`
 рядом с исходниками. Путь можно переопределить переменной
-`PRICE_ANALYZER_PROJECT_DIR`. При установке `price-watch-bin` код размещается
+`PRICE_WATCH_PROJECT_DIR`. При установке `price-watch-bin` код размещается
 в `/usr/lib/price-watch`; AppImage не собирается.
 Работа локальных служб описана [отдельно](NATIVE_DESKTOP.md).
 

@@ -1,4 +1,4 @@
-# Архитектура Marketplace Price Analyzer
+# Архитектура price-watch
 
 Этот обзор описывает поведение, подтверждённое исходным кодом. Он не подтверждает
 успешный запуск приложения, работу текущего ответа Ozon или состояние пользовательской
@@ -31,7 +31,7 @@
 
 Источники: `frontend/src/app/App.tsx`, `frontend/src/api/client.ts`,
 `frontend/src-tauri/src/lib.rs`, `frontend/src-tauri/src/native_services.rs`,
-`price_analyzer/api/app.py`, `main.py`.
+`price_watch/api/app.py`, `main.py`.
 
 ## Путь сбора
 
@@ -74,10 +74,10 @@ CLI создаёт owned запуск сразу в running и восстана�
 Повтор выбирает существующие supported цели failed/pending/unknown, исключая
 succeeded даже без новой точки истории.
 
-Источники: `price_analyzer/api/routes/runs.py`,
-`price_analyzer/infrastructure/postgres/runs_repository.py`,
-`price_analyzer/worker/worker.py`, `price_analyzer/application/collection_service.py`,
-`price_analyzer/cli.py`.
+Источники: `price_watch/api/routes/runs.py`,
+`price_watch/infrastructure/postgres/runs_repository.py`,
+`price_watch/worker/worker.py`, `price_watch/application/collection_service.py`,
+`price_watch/cli.py`.
 
 ## Контракты и границы
 
@@ -89,7 +89,7 @@ succeeded даже без новой точки истории.
   Pydantic преобразует имена полей в `camelCase`; TypeScript-типы и вызовы
   находятся в `frontend/src/types/domain.ts` и `frontend/src/api/client.ts`.
 - Коннектор обязан предоставить асинхронные `get_product` и
-  `collection_session`. Он возвращает общий `ProductSnapshot`; JSON-схема
+  `collection_session`. Он возвращает общий `MarketplaceCard`; JSON-схема
   снимка — `marketplace_connector/serialization/product.schema.json`.
   Реальный коннектор сейчас есть только для Ozon.
 - Ozon-клиент использует системный Chrome с постоянным профилем и Playwright
@@ -101,7 +101,7 @@ succeeded даже без новой точки истории.
 - Карточки Wildberries, AliExpress и Яндекс Маркета можно добавить через API/UI,
   но они исключаются из запусков сбора до появления коннекторов.
 
-Источники: `price_analyzer/api/schemas.py`, `price_analyzer/domain/marketplaces.py`,
+Источники: `price_watch/api/schemas.py`, `price_watch/domain/marketplaces.py`,
 `marketplace_connector/application/product_service.py`,
 `marketplace_connector/connectors/ozon/async_client.py`,
 `marketplace_connector/connectors/ozon/mapper.py`.
@@ -113,6 +113,20 @@ succeeded даже без новой точки истории.
 и изменённой ценой. Это не доставка всех исторических скидок.
 
 ## Данные и совместимость
+
+Общий `MarketplaceCard` описывает полученный товар любой площадки без локального
+ID и настроек. Ozon-ответ разбирается в `OzonProductData`, затем mapper создаёт
+общую модель. `TrackedCard` описывает существующую строку `marketplace_cards`;
+её `ProductRef` отображается на прежние marketplace/external_id. Проекции
+каталога не требуют чтения полного JSONB-снимка для каждой карточки.
+
+Цены проходят через `Decimal` и `NUMERIC(14,2)` без промежуточного float.
+API и CLI передают деньги десятичными строками: цена `"199.90"`, отсутствие —
+null; средние и выгода сохраняют точность расчёта. Товарный JSON версии 2.0
+заменяет прежний числовой формат цены. Старые JSONB остаются историческими
+документами своей версии без переписи, таблицы и ревизии Alembic не менялись.
+Решение: [ADR 0005](../adr/0005-marketplace-card-and-tracking-record.md).
+
 
 SQLAlchemy-модели отделены от доменных объектов. Основные таблицы:
 `marketplace_cards` (уникальная пара `marketplace, external_id`),
@@ -148,9 +162,9 @@ SQLAlchemy-модели отделены от доменных объектов.
 ревизии и резервную копию. Подробные маршруты, поля и статистика описаны в
 [данных и API](../guide/DATA_AND_API.md).
 
-Источники: `price_analyzer/infrastructure/postgres/models.py`,
+Источники: `price_watch/infrastructure/postgres/models.py`,
 `history_repository.py`, `groups_repository.py`, `transfer_repository.py`,
-`migrations.py` в том же каталоге, а также `price_analyzer/domain/history_merge.py`.
+`migrations.py` в том же каталоге, а также `price_watch/domain/history_merge.py`.
 
 ## Проверка изменений
 

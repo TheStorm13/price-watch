@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from .async_client import AsyncOzonClient
 from .mapper import OzonMapper
-from ...domain.models import ProductSnapshot
+from .parser import OzonProductParser
+from ...domain.models import MarketplaceCard
 
 
 class OzonConnector:
@@ -17,10 +18,10 @@ class OzonConnector:
     def collection_session(self):
         return self._client.collection_session()
 
-    async def get_product(self, external_id: str) -> ProductSnapshot:
+    async def get_product(self, external_id: str) -> MarketplaceCard:
         response = await self._client.fetch_product_async(external_id)
-        return self._mapper.to_snapshot(
-            response.payload,
+        return self._mapper.to_card(OzonProductParser.parse(
+            response.raw_text,
             expected_external_id=response.external_id,
             collected_at=response.received_at,
-        )
+        ))

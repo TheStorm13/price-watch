@@ -20,7 +20,7 @@ npm --prefix frontend run desktop:build
 ```
 
 `./price-watch` запускает готовый Tauri бинарник из
-`frontend/src-tauri/target/release/price-watch-desktop`. После изменения Rust
+`frontend/src-tauri/target/release/price-watch`. После изменения Rust
 или интерфейса повторите `desktop:build`; после изменения Python перезапустите
 приложение. AppImage не создаётся. При установке готового пакета из релиза
 сборка из исходников не требуется.
@@ -73,5 +73,10 @@ export DATABASE_URL='postgresql://user:password@localhost:5432/price_watch'
 ```bash
 .venv/bin/python main.py 4465694803
 ```
+
+Одиночный CLI находится в `marketplace_connector/connectors/ozon/cli.py`.
+Нормализованный JSON имеет schema_version 2.0 и строковые цены; `--raw`
+сохраняет исходный ответ, `--output PATH` также записывает результат в файл.
+Командам `card list` и `history` теперь соответствуют строковые денежные поля.
 
 Доступность демонстрационных артикулов на Ozon может измениться.

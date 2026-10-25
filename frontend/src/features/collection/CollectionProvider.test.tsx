@@ -23,9 +23,9 @@ it('loads fresh catalog after terminal state and retries after panel dismissal',
     retryableCount: 0, retryScopeIncomplete: false }
   const catalog: CatalogSnapshot = { cards: [], groups: [], deals: [{
     card: { id: 1, marketplace: 'ozon', externalId: '1', title: 'Item', url: null, imageUrl: null,
-      tags: [], dealsEnabled: true, currentPrice: 80, currentAvailability: 'in_stock',
-      minimumPrice: 80, averagePrice: 100, lastObservedAt: '2026-10-22', createdAt: '2026-10-01', updatedAt: '2026-10-22' },
-    averagePrice: 100, savings: 20, baselineDays: 1, lastCollectionRunId: 99 }] }
+      tags: [], dealsEnabled: true, currentPrice: "80.00", currentAvailability: 'in_stock',
+      minimumPrice: "80.00", averagePrice: "100.00", lastObservedAt: '2026-10-22', createdAt: '2026-10-01', updatedAt: '2026-10-22' },
+    averagePrice: "100.00", savings: "20.00", baselineDays: 1, lastCollectionRunId: 99 }] }
   vi.mocked(api.getRun).mockResolvedValue(run)
   vi.mocked(api.listRuns).mockResolvedValue([run])
   vi.mocked(api.getCatalog).mockRejectedValueOnce(new Error('offline')).mockRejectedValueOnce(new Error('offline')).mockResolvedValue(catalog)

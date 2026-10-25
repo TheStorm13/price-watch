@@ -1,4 +1,4 @@
-"""Marketplace-independent product snapshot entities."""
+"""Marketplace-independent product entities, separate from local tracking."""
 
 from __future__ import annotations
 
@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Mapping, Optional, Tuple, Union
+from typing import Any, Mapping, Optional, Tuple
+
+from .money import normalize_price
 
 
 class Availability(str, Enum):
@@ -82,12 +84,12 @@ class ProductVariant:
 
 
 @dataclass(frozen=True)
-class ProductSnapshot:
+class MarketplaceCard:
     ref: ProductRef
     title: str
     url: str
     availability: Availability
-    price: Optional[Union[int, float]] = None
+    price: Optional[Decimal] = None
     image_url: Optional[str] = None
     seller: Optional[Seller] = None
     rating: Optional[Rating] = None
@@ -96,17 +98,13 @@ class ProductSnapshot:
     variants: Tuple[ProductVariant, ...] = ()
     collected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     extensions: Mapping[str, Any] = field(default_factory=dict)
-    schema_version: str = "1.0"
 
     def __post_init__(self) -> None:
         if not self.title.strip():
             raise ValueError("Название продукта не должно быть пустым")
         if self.collected_at.tzinfo is None:
             raise ValueError("collected_at должен содержать часовой пояс")
-        if isinstance(self.price, bool) or (
-            self.price is not None and self.price < 0
-        ):
-            raise ValueError("Цена должна быть неотрицательным числом или null")
+        object.__setattr__(self, "price", normalize_price(self.price))
         if self.availability == Availability.OUT_OF_STOCK:
             object.__setattr__(self, "price", None)
         variants = tuple(self.variants)

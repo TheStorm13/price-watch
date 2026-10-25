@@ -6,17 +6,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from marketplace_connector.connectors.ozon import AsyncOzonClient
 from marketplace_connector.domain.errors import MarketplaceUnavailable
-from ozon_article_json.parser import OzonRawCardParser
+
 
 
 class ParserTests(unittest.TestCase):
     def test_normalizes_numeric_article(self):
-        self.assertEqual(OzonRawCardParser.normalize_article(" 1604900984 "), "1604900984")
+        self.assertEqual(AsyncOzonClient.normalize_product_id(" 1604900984 "), "1604900984")
 
     def test_rejects_invalid_article(self):
         for article in ("", "12-34", "товар", True, None):
             with self.subTest(article=article), self.assertRaises(ValueError):
-                OzonRawCardParser.normalize_article(article)
+                AsyncOzonClient.normalize_product_id(article)
 
     def test_chrome_channel_never_falls_back_to_chromium(self):
         with TemporaryDirectory() as directory:
@@ -43,18 +43,3 @@ class ParserTests(unittest.TestCase):
             with self.assertRaisesRegex(MarketplaceUnavailable, "уже используется"):
                 AsyncOzonClient(profile)._cleanup_stale_profile_locks()
             self.assertTrue(lock.is_symlink())
-
-
-class ParserAsyncTests(unittest.IsolatedAsyncioTestCase):
-    async def test_legacy_parser_facade_fetches_asynchronously(self):
-        with TemporaryDirectory() as directory:
-            parser = OzonRawCardParser(directory)
-            with patch.object(parser, "fetch_raw_text_async", new_callable=AsyncMock,
-                              return_value='{"widgetStates":{}}') as fetch:
-                result = await parser.fetch("100")
-            self.assertEqual(result, '{"widgetStates":{}}')
-            fetch.assert_awaited_once_with("100")
-
-
-if __name__ == "__main__":
-    unittest.main()

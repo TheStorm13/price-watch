@@ -28,7 +28,7 @@ test('группа фильтруется по представителю и ч�
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
   await page.setViewportSize({ width: 1536, height: 1000 })
   await page.goto('/cards')
-  await expect(page).toHaveTitle('Price Watch')
+  await expect(page).toHaveTitle('price-watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 2, cards: [fixtureCard('901', 'ozon', [60, 70], 'cheap'),
@@ -82,7 +82,7 @@ test('группа фильтруется по представителю и ч�
 
 test('выгодный участник даёт приоритет без подмены полей и фильтра выгодности группы', async ({ page }) => {
   await page.goto('/cards')
-  await expect(page).toHaveTitle('Price Watch')
+  await expect(page).toHaveTitle('price-watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 2,
@@ -101,7 +101,7 @@ test('выгодный участник даёт приоритет без по�
 
 test('изменение участия и удаление представителя сразу обновляют поля группы', async ({ page }) => {
   await page.goto('/cards')
-  await expect(page).toHaveTitle('Price Watch')
+  await expect(page).toHaveTitle('price-watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 2,
@@ -124,4 +124,38 @@ test('изменение участия и удаление представит
   await expect(group.locator('td').nth(6)).toHaveText('90 ₽')
   await expect(group.locator('td').nth(2)).toContainText('Wildberries')
   await expect(group).not.toContainText('Не участвует в выгодных')
+})
+
+test('десятичные цены сортируются численно и сохраняют копейки в списке и плитке', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
+  await page.goto('/cards')
+  await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
+  const createdAt = new Date().toISOString()
+  await importFixture(page, { version: 2, groups: [], cards: [
+    { marketplace: 'ozon', externalId: '9901', title: 'Decimal A', url: null, dealsEnabled: true, createdAt,
+      history: [{ price: '9.90', availability: 'in_stock', observedAt: createdAt }] },
+    { marketplace: 'wildberries', externalId: '9902', title: 'Decimal B', url: null, dealsEnabled: true, createdAt,
+      history: [{ price: '10.00', availability: 'in_stock', observedAt: createdAt }] },
+  ] })
+  await page.getByLabel('Поиск карточек').fill('Decimal')
+  await choose(page, 'Сортировка', 'Сначала дешевле')
+  const rows = page.locator('.cards-table__product:not(.cards-table__nested)')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.nth(0)).toContainText('Decimal A')
+  await expect(rows.nth(0)).toContainText('9,90 ₽')
+  await expect(rows.nth(1)).toContainText('Decimal B')
+  await page.getByRole('radio', { name: 'Сетка' }).click()
+  const tiles = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' }).locator(':scope > li')
+  await expect(tiles.nth(0)).toContainText('Decimal A')
+  await expect(tiles.nth(0)).toContainText('9,90 ₽')
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+  await page.screenshot({ path: '/tmp/price-watch-model-decimal-grid.png', fullPage: true })
+  await tiles.nth(0).getByRole('link').click()
+  await expect(page.getByRole('heading', { name: 'Decimal A', exact: true })).toBeVisible()
+  await page.locator('.recharts-line-dots .recharts-dot').first().hover()
+  await expect(page.locator('.recharts-tooltip-wrapper')).toContainText('9,90 ₽')
+  await page.screenshot({ path: '/tmp/price-watch-model-decimal-chart.png', fullPage: true })
+  expect(errors).toEqual([])
 })
