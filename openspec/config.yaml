@@ -1,7 +1,7 @@
 schema: spec-driven
 
 context: |
-  Marketplace Price Analyzer: React/Tauri desktop UI, FastAPI, Python worker,
+  price-watch: React/Tauri desktop UI, FastAPI, Python worker,
   PostgreSQL/Alembic, Chrome collection, CLI, and database-free JSON mode.
   Inspect affected code and tests; read only relevant docs, ADRs, and specs.
   Preserve existing behavior unless the approved change says otherwise.

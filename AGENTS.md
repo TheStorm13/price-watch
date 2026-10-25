@@ -1,4 +1,4 @@
-# Marketplace Price Analyzer — Agent Instructions
+# price-watch — Agent Instructions
 
 Desktop price tracker: React/Tauri, FastAPI, Python worker, PostgreSQL/Alembic,
 Chrome collection, CLI, and database-free single-product JSON mode.

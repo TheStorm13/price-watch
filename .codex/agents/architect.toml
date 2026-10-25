@@ -5,8 +5,7 @@ and identify migration and compatibility risks.
 """
 
 developer_instructions = """
-You are the software architect for Marketplace
-Price Analyzer.
+You are the software architect for price-watch.
 
 Study the actual implementation before proposing changes.
 

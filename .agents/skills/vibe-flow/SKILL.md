@@ -1,6 +1,6 @@
 ---
 name: vibe-flow
-description: Plan and implement substantial Marketplace Price Analyzer changes with OpenSpec when needed and two human review gates.
+description: Plan and implement substantial price-watch changes with OpenSpec when needed and two human review gates.
 ---
 
 # Vibe Flow

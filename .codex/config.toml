@@ -4,15 +4,15 @@ multi_agent = false
 [mcp_servers.codegraph]
 command = "codegraph"
 args = ["serve", "--mcp"]
-cwd = "/home/ilya-groza/DevProjects/article_json_parser"
+cwd = "/home/ilya-groza/DevProjects/price-watch"
 
 [mcp_servers.repowise]
 command = "repowise"
 args = ["mcp", "--tools", "get_overview,get_context,get_risk,get_change_risk,get_why,get_dead_code,get_health"]
-cwd = "/home/ilya-groza/DevProjects/article_json_parser"
+cwd = "/home/ilya-groza/DevProjects/price-watch"
 startup_timeout_sec = 20
 
 [mcp_servers.shadcn]
 command = "npx"
 args = ["-y", "shadcn@latest", "mcp"]
-cwd = "/home/ilya-groza/DevProjects/article_json_parser/frontend"
+cwd = "/home/ilya-groza/DevProjects/price-watch/frontend"
