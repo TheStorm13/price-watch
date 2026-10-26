@@ -36,3 +36,17 @@ describe('AddCardDrawer', () => {
     expect(screen.getByPlaceholderText('https://market.yandex.ru/product/...')).toBeInTheDocument()
   })
 })
+
+it('заполняет точный SKU из ссылки AliExpress и отклоняет несовпадение', async () => {
+  const user = userEvent.setup()
+  render(<QueryClientProvider client={new QueryClient()}><AddCardDrawer open onClose={vi.fn()} /></QueryClientProvider>)
+  await user.click(screen.getByRole('radio', { name: /AliExpress/ }))
+  expect(screen.getByRole('button', { name: 'Добавить' })).toBeDisabled()
+  await user.type(screen.getByLabelText('URL'), 'https://aliexpress.ru/item/1005009868651525.html?sku_id=12000061135122688')
+  expect(screen.getByLabelText('ID товара')).toHaveValue('1005009868651525')
+  expect(screen.getByLabelText('SKU варианта')).toHaveValue('12000061135122688')
+  await user.clear(screen.getByLabelText('SKU варианта'))
+  await user.type(screen.getByLabelText('SKU варианта'), '12000061135122692')
+  await user.click(screen.getByRole('button', { name: 'Добавить' }))
+  expect(screen.getByText('Ссылка не соответствует ID товара и SKU')).toBeInTheDocument()
+})

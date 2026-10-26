@@ -1,0 +1,169 @@
+{
+  "data": {
+    "id": "1005009868651525",
+    "name": "Смартфон OnePlus 16, 12/256ГБ, 12/512ГБ, 16/512ГБ, 16ГБ/1ТБ, china",
+    "activeSkuId": "12000061135122688",
+    "skuInfo": {
+      "propertyList": [
+        {
+          "name": "Цвет",
+          "values": [
+            {
+              "name": "Красный",
+              "displayName": "Black",
+              "imagePreviewUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S932f8c494eae4bcd98f0113a4ed2c834i.png_120x120.jpg",
+              "imageMainUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S932f8c494eae4bcd98f0113a4ed2c834i.png_640x640.jpg",
+              "colorValue": null,
+              "disabled": false,
+              "skuPropertySendGoodsCountryCode": null,
+              "id": "337903",
+              "order": 0
+            },
+            {
+              "name": "Серый",
+              "displayName": "Silver Gray",
+              "imagePreviewUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S587f11c6789a419dbf7d5ab1a1847d43L.png_120x120.jpg",
+              "imageMainUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S587f11c6789a419dbf7d5ab1a1847d43L.png_640x640.jpg",
+              "colorValue": "#808080",
+              "disabled": false,
+              "skuPropertySendGoodsCountryCode": null,
+              "id": "337947",
+              "order": 0
+            }
+          ],
+          "id": "4",
+          "order": 1,
+          "hasSizeInfo": false,
+          "showPrice": null
+        },
+        {
+          "name": "Комплект",
+          "values": [
+            {
+              "name": "Комплект 1",
+              "displayName": "12GB 256GB",
+              "imagePreviewUrl": null,
+              "imageMainUrl": null,
+              "colorValue": null,
+              "disabled": false,
+              "skuPropertySendGoodsCountryCode": null,
+              "id": "357418",
+              "order": 0
+            }
+          ],
+          "id": "205",
+          "order": 2,
+          "hasSizeInfo": false,
+          "showPrice": null
+        }
+      ],
+      "priceList": [
+        {
+          "skuPropIds": "337903,357418",
+          "activityAmount": {
+            "value": 79316,
+            "currency": "RUB",
+            "formatted": "79 316 ₽",
+            "cents": "7931600"
+          },
+          "amount": {
+            "value": 122312,
+            "currency": "RUB",
+            "formatted": "122 312 ₽",
+            "cents": "12231200"
+          },
+          "availQuantity": 1,
+          "skuId": "12000061135122688",
+          "priceWithCoupon": {
+            "amount": {
+              "value": 77648,
+              "currency": "RUB",
+              "formatted": "77 648 ₽",
+              "cents": "7764800"
+            },
+            "isCouponAssigned": false
+          }
+        },
+        {
+          "skuPropIds": "337947,357418",
+          "activityAmount": {
+            "value": 79316,
+            "currency": "RUB",
+            "formatted": "79 316 ₽",
+            "cents": "7931600"
+          },
+          "amount": {
+            "value": 122312,
+            "currency": "RUB",
+            "formatted": "122 312 ₽",
+            "cents": "12231200"
+          },
+          "availQuantity": 1,
+          "skuId": "12000061135122692",
+          "priceWithCoupon": {
+            "amount": {
+              "value": 77648,
+              "currency": "RUB",
+              "formatted": "77 648 ₽",
+              "cents": "7764800"
+            },
+            "isCouponAssigned": false
+          }
+        }
+      ],
+      "sizeData": null,
+      "subsidiary": {
+        "text": "Низкая цена",
+        "theme": "default",
+        "medusaKey": "Низкая цена",
+        "param": null,
+        "hint": {
+          "title": "Снижаем цены",
+          "description": "Мы дополнительно снизили цену этого товара. Возможно дешевле не найдете скорее добавляйте в корзину"
+        }
+      },
+      "freightExt": "{\"p1\":\"1003.34\",\"p3\":\"USD\",\"p4\":\"400000010950023\",\"p5\":\"50177992342\"}"
+    },
+    "gallery": [
+      {
+        "imageUrl": "https://ae-pic-a1.aliexpress-media.com/kf/Sd1f0a132f92e4c6d8822fa80193cfedd0.png",
+        "previewUrl": "https://ae-pic-a1.aliexpress-media.com/kf/Sd1f0a132f92e4c6d8822fa80193cfedd0.png_50x50.jpg",
+        "videoUrl": null
+      },
+      {
+        "imageUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S83d334d977dd4ff89eb2dab5e2089291V.png",
+        "previewUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S83d334d977dd4ff89eb2dab5e2089291V.png_50x50.jpg",
+        "videoUrl": null
+      },
+      {
+        "imageUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S872f84bcdea24672885b576387f26d8db.png",
+        "previewUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S872f84bcdea24672885b576387f26d8db.png_50x50.jpg",
+        "videoUrl": null
+      },
+      {
+        "imageUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S3af06bafbe1a4120b7545feab0f683e7u.png",
+        "previewUrl": "https://ae-pic-a1.aliexpress-media.com/kf/S3af06bafbe1a4120b7545feab0f683e7u.png_50x50.jpg",
+        "videoUrl": null
+      },
+      {
+        "imageUrl": "https://ae-pic-a1.aliexpress-media.com/kf/Sa75b7fe0c3b24df8b1e02dc05fe14effD.png",
+        "previewUrl": "https://ae-pic-a1.aliexpress-media.com/kf/Sa75b7fe0c3b24df8b1e02dc05fe14effD.png_50x50.jpg",
+        "videoUrl": null
+      },
+      {
+        "imageUrl": "https://ae-pic-a1.aliexpress-media.com/kf/Sa5baae1faa1d4c7db0803228e3506299Y.png",
+        "previewUrl": "https://ae-pic-a1.aliexpress-media.com/kf/Sa5baae1faa1d4c7db0803228e3506299Y.png_50x50.jpg",
+        "videoUrl": null
+      }
+    ],
+    "rating": {
+      "middle": 4.8,
+      "stars": [],
+      "middleFormatted": "4,8",
+      "countShort": ""
+    },
+    "reviews": "22",
+    "characteristics": [],
+    "description": "Смартфон OnePlus 16, 12/256ГБ, 12/512ГБ, 16/512ГБ, 16ГБ/1ТБ, china, Наслаждайся ✓Бесплатная доставка по всему миру! ✓Предложение ограничено по времени! ✓Удобный возврат!"
+  }
+}

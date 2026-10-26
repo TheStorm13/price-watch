@@ -376,9 +376,9 @@ class ClientSessionTests(unittest.IsolatedAsyncioTestCase):
                 yield MagicMock()
             async def launch(pw):
                 launches.append(pw)
-                client._async_context = context
-            with (patch('marketplace_connector.connectors.ozon.async_client.async_playwright', playwright),
-                  patch.object(client, '_launch_async_context', side_effect=launch),
+                client.session._async_context = context
+            with (patch('marketplace_connector.browser.session.async_playwright', playwright),
+                  patch.object(client.session, '_launch_async_context', side_effect=launch),
                   patch.object(client, '_is_antibot_page_async', AsyncMock(return_value=False))):
                 tasks = [asyncio.create_task(client.fetch_raw_text_async(str(i), validate=False)) for i in range(5)]
                 await asyncio.wait_for(entered.wait(), 1)

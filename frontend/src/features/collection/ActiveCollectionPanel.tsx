@@ -32,7 +32,7 @@ export function ActiveCollectionPanel() {
       <CardContent className="min-h-0 overflow-y-auto px-0">{waiting ? (
         <div className="collection-panel__challenge">
           <div>
-            <strong>Требуется проверка Ozon</strong>
+            <strong>Требуется проверка в Chrome</strong>
             <p>{run.challenge?.message ?? 'Завершите проверку в открывшемся Chrome, затем продолжите'}</p>
           </div>
           <div className="collection-panel__challenge-actions">

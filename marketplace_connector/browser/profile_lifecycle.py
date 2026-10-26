@@ -13,7 +13,7 @@ from pathlib import Path
 
 from playwright.async_api import Browser, Error as PlaywrightError, Playwright, async_playwright
 
-from ...domain.errors import MarketplaceUnavailable
+from ..domain.errors import MarketplaceUnavailable
 
 
 logger = logging.getLogger(__name__)

@@ -21,9 +21,9 @@ class ParserTests(unittest.TestCase):
     def test_chrome_channel_never_falls_back_to_chromium(self):
         with TemporaryDirectory() as directory:
             client = AsyncOzonClient(directory)
-            with patch("marketplace_connector.connectors.ozon.async_client.shutil.which", return_value=None):
+            with patch("marketplace_connector.browser.session.shutil.which", return_value=None):
                 with self.assertRaisesRegex(MarketplaceUnavailable, "Google Chrome"):
-                    client._find_chrome_executable(MagicMock())
+                    client.session._find_chrome_executable(MagicMock())
 
     def test_removes_only_stale_profile_locks(self):
         with TemporaryDirectory() as directory:
@@ -31,7 +31,7 @@ class ParserTests(unittest.TestCase):
             (profile / "SingletonLock").symlink_to("host-99999999")
             (profile / "SingletonCookie").symlink_to("cookie")
             (profile / "SingletonSocket").symlink_to("/tmp/missing-socket")
-            AsyncOzonClient(profile)._cleanup_stale_profile_locks()
+            AsyncOzonClient(profile).session._cleanup_stale_profile_locks()
             for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
                 self.assertFalse((profile / name).is_symlink())
 
@@ -41,5 +41,5 @@ class ParserTests(unittest.TestCase):
             lock = profile / "SingletonLock"
             lock.symlink_to(f"host-{os.getpid()}")
             with self.assertRaisesRegex(MarketplaceUnavailable, "уже используется"):
-                AsyncOzonClient(profile)._cleanup_stale_profile_locks()
+                AsyncOzonClient(profile).session._cleanup_stale_profile_locks()
             self.assertTrue(lock.is_symlink())

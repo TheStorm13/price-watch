@@ -434,7 +434,7 @@ impl RuntimeState {
         let mut closer = Command::new(self.python_executable())
             .args([
                 "-c",
-                "from marketplace_connector.connectors.ozon.profile_lifecycle import main; raise SystemExit(main())",
+                "from marketplace_connector.browser.profile_lifecycle import main; raise SystemExit(main())",
             ])
             .arg(&self.profile_dir)
             .current_dir(&self.project_root)

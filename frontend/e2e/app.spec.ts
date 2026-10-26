@@ -319,7 +319,6 @@ test('карточки площадок без коннектора добавл
   await page.goto('/cards')
   for (const [marketplace, title, id] of [
     ['Wildberries', 'Бутылка WB', '123456789'],
-    ['AliExpress', 'Бутылка Ali', '987654321'],
     ['Яндекс Маркет', 'Бутылка Яндекс', '246813579'],
   ]) {
     await page.getByRole('button', { name: 'Добавить карточку' }).click()
@@ -736,7 +735,7 @@ test('запуск доходит до проверки и продолжает�
   await page.getByRole('button', { name: 'Обновить цены' }).click()
   await expect(page.getByLabel('Состояние обновления цен')).toBeVisible()
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('0 из 5')
-  await expect(page.getByText('Требуется проверка Ozon')).toBeVisible({ timeout: 8_000 })
+  await expect(page.getByText('Требуется проверка в Chrome')).toBeVisible({ timeout: 8_000 })
   await page.getByRole('button', { name: 'Проверка пройдена' }).click()
   await expect(page.getByText('Цены обновлены')).toBeVisible({ timeout: 8_000 })
   await expect(page.getByRole('status').filter({ hasText: 'Найдено выгодных предложений: 1' })).toBeVisible({ timeout: 5_000 })

@@ -267,7 +267,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(duplicate.status_code, 422)
 
     async def test_cards_can_be_added_for_marketplaces_without_connectors(self):
-        for marketplace in ("wildberries", "aliexpress", "yandex-market"):
+        for marketplace in ("wildberries", "yandex-market"):
             with self.subTest(marketplace=marketplace):
                 response = await self.client.post("/api/cards", json={
                     "marketplace": marketplace, "externalId": "123456",
@@ -276,6 +276,13 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(response.status_code, 201)
                 self.assertEqual(response.json()["marketplace"], marketplace)
                 self.assertEqual(self.repository.last_added_marketplace, marketplace)
+
+    async def test_aliexpress_requires_exact_sku(self):
+        invalid = await self.client.post("/api/cards", json={"marketplace":"aliexpress", "externalId":"123456"})
+        self.assertEqual(invalid.status_code, 422)
+        response = await self.client.post("/api/cards", json={"marketplace":"aliexpress", "externalId":"123456:98765432101234567"})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["externalId"], "123456:98765432101234567")
 
     async def test_import_rejects_invalid_history_before_writing(self):
         document = (await self.client.get("/api/cards/export")).json()

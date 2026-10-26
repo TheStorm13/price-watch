@@ -38,6 +38,8 @@ if sys.argv[1]=='api':
         repo=create_postgres_stores(db)
         if not await repo.cards.list_collection_cards():
             await repo.cards.add_card('ozon','123',title='Изолированный тест REL')
+            if os.environ.get('PRICE_SMOKE_ALI'):
+                await repo.cards.add_card('aliexpress','1005009868651525:12000061135122688',title='Изолированный Ali SKU')
         await db.close()
     asyncio.run(seed())
 if sys.argv[1]=='worker':
@@ -54,10 +56,15 @@ if sys.argv[1]=='worker':
                 raise RuntimeError('Synthetic browser startup failure')
             yield
         async def get_product(self,external_id):
-            return MarketplaceCard(ref=ProductRef('ozon',external_id),title='Synthetic',url='',
-                price=Decimal('100.10'),availability=Availability.IN_STOCK)
-    cli.AsyncOzonClient=FakeClient
-    cli.OzonConnector=FakeConnector
+            return MarketplaceCard(ref=ProductRef(self.marketplace,external_id),title='Synthetic',url='',
+                price=Decimal('77648.00' if self.marketplace=='aliexpress' else '100.10'),availability=Availability.IN_STOCK)
+    from marketplace_connector.connectors import builder
+    builder.AsyncOzonClient=FakeClient
+    builder.OzonConnector=FakeConnector
+    class FakeAliConnector(FakeConnector):
+        marketplace='aliexpress'
+    builder.AsyncAliExpressClient=FakeClient
+    builder.AliExpressConnector=FakeAliConnector
 raise SystemExit(cli.main())
 '''.replace('REPO', repr(str(repo)))
 (project/'main.py').write_text(wrapper)
@@ -123,7 +130,8 @@ def wait_price():
             request=Request('http://127.0.0.1:'+port+'/api/catalog',headers={'X-Price-Watch-Token':api_environment['PRICE_WATCH_API_TOKEN']})
             with urlopen(request,timeout=1) as response:
                 catalog=json.load(response)
-            if catalog['cards'] and catalog['cards'][0]['currentPrice']=='100.10': return
+            prices={card['marketplace']:card['currentPrice'] for card in catalog['cards']}
+            if prices.get('ozon')=='100.10' and (not os.environ.get('PRICE_SMOKE_ALI') or prices.get('aliexpress')=='77648.00'): return
         except Exception: pass
         time.sleep(.2)
     raise RuntimeError('Private API price timeout')

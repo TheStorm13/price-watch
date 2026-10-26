@@ -13,7 +13,7 @@ import sys
 from typing import Any, Iterable, Optional, Sequence
 
 from marketplace_connector import ConnectorRegistry
-from marketplace_connector.connectors.ozon import AsyncOzonClient, OzonConnector
+from marketplace_connector.connectors.builder import build_connectors
 
 from .application.run_executor import RunExecutor
 from .infrastructure.postgres import (
@@ -153,18 +153,11 @@ def configure_logging(level: str) -> None:
 def _build_connectors(
     args: argparse.Namespace, marketplaces: Iterable[str]
 ) -> ConnectorRegistry:
-    connectors = []
-    if "ozon" in set(marketplaces):
-        client = AsyncOzonClient(
-            profile_dir=args.profile_dir,
-            challenge_handler=TerminalChallengeHandler(),
-            chrome_binary=args.chrome_binary,
-            chrome_platform=args.chrome_platform,
-            browser_channel=args.browser_channel,
-            headless=args.headless,
-        )
-        connectors.append(OzonConnector(client))
-    return ConnectorRegistry(connectors)
+    return build_connectors(
+        marketplaces, profile_dir=args.profile_dir, challenge_handler=TerminalChallengeHandler(),
+        chrome_binary=args.chrome_binary, chrome_platform=args.chrome_platform,
+        browser_channel=args.browser_channel, headless=args.headless,
+    )
 
 
 async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
@@ -202,24 +195,13 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
         async def connector_factory(run):
             cards = await stores.runs.cards_for_run(run.id)
             marketplaces = {card.ref.marketplace for card in cards}
-            connectors = []
-            if "ozon" in marketplaces:
-                connectors.append(
-                    OzonConnector(
-                        AsyncOzonClient(
-                            profile_dir=args.profile_dir,
-                            challenge_handler=DatabaseChallengeHandler(
-                                stores.runs, run.lease
-                            ),
-                            chrome_binary=args.chrome_binary,
-                            chrome_platform=args.chrome_platform,
-                            browser_channel=args.browser_channel,
-                            headless=args.headless,
-                            virtual_display=args.virtual_display,
-                        )
-                    )
-                )
-            return ConnectorRegistry(connectors)
+            return build_connectors(
+                marketplaces, profile_dir=args.profile_dir,
+                challenge_handler=DatabaseChallengeHandler(stores.runs, run.lease),
+                chrome_binary=args.chrome_binary, chrome_platform=args.chrome_platform,
+                browser_channel=args.browser_channel, headless=args.headless,
+                virtual_display=args.virtual_display,
+            )
 
         worker = CollectionWorker(stores.runs, connector_factory, execution=stores.runs)
         if args.once:

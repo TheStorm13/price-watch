@@ -1,5 +1,7 @@
 from typing import Annotated
 
+from marketplace_connector.domain.errors import InvalidProductId
+
 from fastapi import APIRouter, Query, Response, status
 
 from ..dependencies import CardDep, HistoryDep, TransferDep
@@ -13,6 +15,7 @@ from ..schemas import (
     ChartResponse,
     StatisticsResponse,
     TransferDocument,
+    ImportDocument,
     ImportSummary,
 )
 from ...domain.models import TrackedCardOverview
@@ -38,7 +41,7 @@ async def export_cards(transfer: TransferDep):
     return await transfer.export_cards()
 
 
-async def _import_cards(payload: TransferDocument, transfer: TransferDep, preview: bool):
+async def _import_cards(payload: ImportDocument, transfer: TransferDep, preview: bool):
     try:
         data = payload.model_dump()
         if payload.groups:
@@ -51,12 +54,12 @@ async def _import_cards(payload: TransferDocument, transfer: TransferDep, previe
 
 
 @router.post("/import/preview", response_model=ImportSummary)
-async def preview_import(payload: TransferDocument, transfer: TransferDep):
+async def preview_import(payload: ImportDocument, transfer: TransferDep):
     return await _import_cards(payload, transfer, preview=True)
 
 
 @router.post("/import", response_model=ImportSummary)
-async def import_cards(payload: TransferDocument, transfer: TransferDep):
+async def import_cards(payload: ImportDocument, transfer: TransferDep):
     return await _import_cards(payload, transfer, preview=False)
 
 
@@ -98,6 +101,8 @@ async def update_card(card_id: int, payload: CardUpdate, cards: CardDep):
             update_group="group_id" in fields,
             tags=payload.tags,
         )
+    except InvalidProductId as exc:
+        raise ApiProblem(422, "invalid_card_url", str(exc), "url") from exc
     except ValueError as exc:
         raise ApiProblem(422, "invalid_group", str(exc), "groupId") from exc
     if card is None:

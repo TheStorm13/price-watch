@@ -3,13 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import http.client
 import logging
-import os
-import shutil
-import socket
-import subprocess
-import time
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,13 +11,12 @@ from typing import Optional, Union
 from urllib.parse import urlparse
 
 from playwright.async_api import Error as PlaywrightError
-from playwright.async_api import Playwright, async_playwright
 
 from ...domain.errors import InvalidProductId, MarketplaceUnavailable
 from .json_transport import HOME_URL, OzonJsonTransport
 from .models import OzonResponse
 from ...ports.challenge import ChallengeHandler, RejectChallengeHandler
-from .profile_lifecycle import close_profile_browser, request_browser_close
+from ...browser.session import ChromeSession
 
 
 logger = logging.getLogger(__name__)
@@ -46,29 +39,24 @@ class AsyncOzonClient:
         headless: bool = False,
         virtual_display: bool = False,
         *,
+        session: ChromeSession | None = None,
         concurrency: int = 5,
         starts_per_second: float = 5,
         request_timeout: float = 30,
         max_attempts: int = 3,
         max_retry_wait: float = 30,
     ):
-        self.profile_dir = Path(profile_dir).expanduser().resolve()
+        self.session = session or ChromeSession(
+            profile_dir, chrome_binary=chrome_binary, chrome_platform=chrome_platform,
+            browser_channel=browser_channel, headless=headless, virtual_display=virtual_display,
+        )
         self.challenge_handler = challenge_handler or RejectChallengeHandler()
-        self.chrome_binary = self._resolve_chrome_binary(chrome_binary)
         if json_wait_seconds <= 0:
             raise ValueError("json_wait_seconds должен быть положительным")
-        if chrome_platform not in {"auto", "x11", "wayland"}:
-            raise ValueError("chrome_platform должен быть auto, x11 или wayland")
         self.json_wait_seconds = json_wait_seconds
-        self.chrome_platform = chrome_platform
-        self.browser_channel = browser_channel
-        self.headless = headless
-        self.virtual_display = virtual_display
-        self._async_context = None
-        self._async_browser = None
-        self._async_process = None
-        self._async_playwright = None
-        self._challenge_lock = None
+        self.headless = self.session.headless
+        self.virtual_display = self.session.virtual_display
+        self._challenge_lock = self.session.challenge_lock
         self._transport_options = dict(concurrency=concurrency, starts_per_second=starts_per_second,
                                        request_timeout=request_timeout, max_attempts=max_attempts,
                                        max_retry_wait=max_retry_wait)
@@ -86,27 +74,14 @@ class AsyncOzonClient:
             raise RuntimeError("Сеанс Ozon уже открыт")
         self._session_open = True
         try:
-            self.profile_dir.mkdir(parents=True, exist_ok=True)
-            async with async_playwright() as playwright:
-                self._async_playwright = playwright
-                self._challenge_lock = asyncio.Lock()
+            async with self.session.collection_session() as context:
                 try:
-                    await self._launch_async_context(playwright)
-                    self._transport = OzonJsonTransport(
-                        self._async_context, self._prepare_storefront, **self._transport_options,
-                    )
+                    self._transport = OzonJsonTransport(context, self._prepare_storefront, **self._transport_options)
                     yield
                 finally:
-                    try:
-                        if self._transport is not None:
-                            await self._transport.close()
-                    finally:
-                        self._transport = None
-                        try:
-                            await self._close_async_context()
-                        finally:
-                            self._async_playwright = None
-                            self._challenge_lock = None
+                    if self._transport is not None:
+                        await self._transport.close()
+                    self._transport = None
         finally:
             self._session_open = False
 
@@ -152,99 +127,6 @@ class AsyncOzonClient:
                 or response is not None and response.status >= 400):
             raise MarketplaceUnavailable("Не удалось открыть главную страницу Ozon")
 
-    async def _launch_async_context(self, playwright: Playwright) -> None:
-        if self.virtual_display:
-            await self._close_open_profile_browser(playwright)
-        self._cleanup_stale_profile_locks()
-        executable = self._find_chrome_executable(playwright)
-        port = self._reserve_debug_port()
-        chrome_env = os.environ.copy()
-        if self.virtual_display:
-            self._check_virtual_display(chrome_env.get("DISPLAY", ""))
-        args = [
-            str(executable),
-            f"--remote-debugging-port={port}",
-            "--remote-debugging-address=127.0.0.1",
-            f"--user-data-dir={self.profile_dir}",
-            "--no-first-run",
-            "--no-default-browser-check",
-            "--start-maximized",
-        ]
-        if self.chrome_platform != "auto":
-            args.append(f"--ozone-platform={self.chrome_platform}")
-        if self.headless:
-            args.append("--headless=new")
-        args.append("about:blank")
-        logger.info("Запуск Chrome для асинхронного сбора Ozon")
-        with (self.profile_dir / "chrome.log").open("ab") as log_file:
-            self._async_process = subprocess.Popen(
-                args,
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-                start_new_session=True,
-                env=chrome_env,
-            )
-        try:
-            await asyncio.to_thread(self._wait_for_debug_port, self._async_process, port)
-            self._async_browser = await playwright.chromium.connect_over_cdp(
-                f"http://127.0.0.1:{port}",
-                timeout=10_000,
-                is_local=True,
-                no_defaults=True,
-            )
-            if not self._async_browser.contexts:
-                raise MarketplaceUnavailable("Chrome не создал основной профиль")
-            self._async_context = self._async_browser.contexts[0]
-        except BaseException:
-            await self._close_async_context()
-            raise
-
-    async def _close_open_profile_browser(self, playwright: Playwright) -> None:
-        """Close the app's visible Chrome before a desktop worker reuses its profile."""
-        if await close_profile_browser(self.profile_dir, playwright):
-            self._cleanup_stale_profile_locks()
-
-    @staticmethod
-    def _check_virtual_display(display: str) -> None:
-        if not display.startswith(":") or not display[1:].isdigit():
-            raise MarketplaceUnavailable("Не задан скрытый дисплей Chrome")
-        path = f"/tmp/.X11-unix/X{display[1:]}"
-        try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-                connection.settimeout(1)
-                connection.connect(path)
-        except OSError as exc:
-            raise MarketplaceUnavailable(f"Скрытый дисплей Chrome недоступен: {path}") from exc
-
-    async def _close_async_context(self) -> None:
-        browser = self._async_browser
-        process = self._async_process
-        self._async_context = None
-        self._async_browser = None
-        self._async_process = None
-        try:
-            if browser is not None:
-                try:
-                    await request_browser_close(browser)
-                except PlaywrightError as exc:
-                    logger.warning("Не удалось штатно закрыть Chrome сбора: %s", exc)
-                with suppress(PlaywrightError):
-                    await browser.close()
-        finally:
-            if process is not None and process.poll() is None:
-                try:
-                    await asyncio.to_thread(process.wait, timeout=5)
-                except subprocess.TimeoutExpired:
-                    logger.warning("Chrome сбора не завершился штатно; посылаю SIGTERM")
-                    with suppress(ProcessLookupError):
-                        process.terminate()
-                    try:
-                        await asyncio.to_thread(process.wait, timeout=3)
-                    except subprocess.TimeoutExpired:
-                        logger.error("Chrome сбора завис; посылаю SIGKILL")
-                        process.kill()
-                        await asyncio.to_thread(process.wait, timeout=5)
-
     async def fetch_product_async(self, external_id: Union[str, int]) -> OzonResponse:
         article = self.normalize_product_id(external_id)
         raw_text = await self.fetch_raw_text_async(article, validate=False)
@@ -282,7 +164,7 @@ class AsyncOzonClient:
             if not force and not await self._is_antibot_page_async(page):
                 return
             logger.warning("Ozon запросил проверку для артикула %s", article)
-            if (self.headless or self.virtual_display) and self._async_process is not None:
+            if (self.headless or self.virtual_display) and self.session._async_process is not None:
                 raise MarketplaceUnavailable(
                     "Ozon запросил ручную проверку. Откройте Chrome кнопкой в приложении, "
                     "пройдите проверку на Ozon и повторите сбор."
@@ -299,40 +181,6 @@ class AsyncOzonClient:
                     "Ozon не пропустил проверку после подтверждения пользователя"
                 )
 
-    def _find_chrome_executable(self, playwright: Playwright) -> Path:
-        if self.chrome_binary is not None:
-            return self.chrome_binary
-        if self.browser_channel == "chromium":
-            return Path(playwright.chromium.executable_path)
-        for name in ("google-chrome-stable", "google-chrome"):
-            path = shutil.which(name)
-            if path:
-                return Path(path)
-        raise MarketplaceUnavailable("Не найден установленный Google Chrome")
-
-    @staticmethod
-    def _reserve_debug_port() -> int:
-        with socket.socket() as listener:
-            listener.bind(("127.0.0.1", 0))
-            return int(listener.getsockname()[1])
-
-    @staticmethod
-    def _wait_for_debug_port(process: subprocess.Popen, port: int) -> None:
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                raise MarketplaceUnavailable(f"Chrome завершился с кодом {process.returncode}")
-            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=0.5)
-            try:
-                connection.request("GET", "/json/version")
-                if connection.getresponse().status == 200:
-                    return
-            except OSError:
-                time.sleep(0.1)
-            finally:
-                connection.close()
-        raise MarketplaceUnavailable("Chrome не открыл порт управления за 10 секунд")
-
     @classmethod
     def _is_antibot_text(cls, text: str) -> bool:
         lowered = text.lower()
@@ -346,33 +194,3 @@ class AsyncOzonClient:
         if not normalized or not normalized.isascii() or not normalized.isdigit():
             raise InvalidProductId("Идентификатор товара должен состоять из цифр")
         return normalized
-
-    def _cleanup_stale_profile_locks(self) -> None:
-        lock_path = self.profile_dir / "SingletonLock"
-        if not lock_path.is_symlink():
-            return
-        target = os.readlink(lock_path)
-        _, separator, pid_text = target.rpartition("-")
-        if not separator or not pid_text.isdigit():
-            raise MarketplaceUnavailable(
-                f"Профиль Chrome заблокирован: {lock_path} -> {target}"
-            )
-        pid = int(pid_text)
-        if Path(f"/proc/{pid}").exists():
-            raise MarketplaceUnavailable(f"Профиль Chrome уже используется процессом {pid}")
-        logger.warning("Удаляю устаревшую блокировку профиля Chrome: pid=%s", pid)
-        for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
-            path = self.profile_dir / name
-            try:
-                path.unlink()
-            except FileNotFoundError:
-                pass
-
-    @staticmethod
-    def _resolve_chrome_binary(configured: Optional[Union[str, Path]]) -> Optional[Path]:
-        if configured is None:
-            return None
-        binary = Path(configured).expanduser().resolve()
-        if not binary.is_file():
-            raise FileNotFoundError(f"Chrome не найден: {binary}")
-        return binary

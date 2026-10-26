@@ -2,6 +2,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
+from marketplace_connector.connectors.aliexpress.identity import validate_card_identity
+
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, field_serializer, model_validator
 
 from ..domain.models import TrackedCardOverview, CollectionRun, PriceHistoryPoint, PriceStatistics
@@ -51,13 +53,14 @@ class CardCreate(ApiModel):
             raise ValueError("Неизвестный маркетплейс")
         return normalized
 
-    @field_validator("external_id")
-    @classmethod
-    def validate_external_id(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized.isascii() or not normalized.isdigit():
+    @model_validator(mode="after")
+    def validate_ref(self):
+        if self.marketplace != "aliexpress" and (not self.external_id.strip().isascii() or not self.external_id.strip().isdigit()):
             raise ValueError("ID карточки должен состоять из цифр")
-        return normalized
+        self.external_id, url = validate_card_identity(self.marketplace, self.external_id, str(self.url) if self.url else None)
+        if url:
+            self.url = HttpUrl(url)
+        return self
 
 
 class CardUpdate(ApiModel):
@@ -189,6 +192,17 @@ class TransferDocument(ApiModel):
                     raise ValueError("Карточка указана в нескольких группах")
                 assigned.add(key)
         return self
+
+
+class ImportDocument(TransferDocument):
+    """New imports require concrete SKUs; exports preserve stored historical refs."""
+
+    @field_validator("cards")
+    @classmethod
+    def validate_skus(cls, cards: list[TransferCard]) -> list[TransferCard]:
+        for card in cards:
+            card.external_id, card.url = validate_card_identity(card.marketplace, card.external_id, card.url)
+        return cards
 
 
 class ImportSummary(ApiModel):

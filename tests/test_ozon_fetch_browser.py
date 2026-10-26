@@ -20,7 +20,7 @@ class FetchBrowserTests(unittest.IsolatedAsyncioTestCase):
         with TemporaryDirectory(prefix='price-watch-fetch-test-') as directory:
             client = AsyncOzonClient(directory, headless=True, request_timeout=3, max_attempts=1)
             async with client.collection_session():
-                context = client._async_context
+                context = client.session._async_context
                 await context.add_cookies([{'name': 'synthetic_session', 'value': 'test-only', 'url': HOME_URL}])
                 entered = asyncio.Event()
                 release = asyncio.Event()

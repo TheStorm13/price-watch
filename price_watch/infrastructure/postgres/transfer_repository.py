@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from marketplace_connector.connectors.aliexpress.identity import validate_card_identity
+
 from .database import AsyncDatabase
 
 from sqlalchemy import select, text, tuple_
@@ -10,6 +12,14 @@ from ...domain.history_merge import HistoryEvent, merge_history
 from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
 from ...domain.errors import ImportDuringRun
 from .repository_common import _RUN_CREATION_LOCK
+
+
+def _validated_import_cards(cards):
+    normalized = []
+    for card in cards:
+        external_id, url = validate_card_identity(card["marketplace"], card["external_id"], card.get("url"))
+        normalized.append(dict(card, external_id=external_id, url=url))
+    return normalized
 
 
 class TransferRepository:
@@ -59,6 +69,7 @@ class TransferRepository:
             "cards_added": 0, "cards_merged": 0, "observations_added": 0,
             "observations_removed": 0, "observations_skipped": 0, "groups_added": 0,
         }
+        cards = _validated_import_cards(cards)
         keys = [(card["marketplace"].lower(), card["external_id"]) for card in cards]
         async with self._database.session() as session, session.begin():
             await session.execute(_RUN_CREATION_LOCK)

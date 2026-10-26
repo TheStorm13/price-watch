@@ -475,9 +475,9 @@ export const mockApi = {
   },
 
   async startRun(cardId?: number) {
-    const selected = cardId ? cards.filter((card) => card.id === cardId) : cards.filter((card) => card.marketplace === 'ozon')
+    const selected = cardId ? cards.filter((card) => card.id === cardId) : cards.filter((card) => ['ozon', 'aliexpress'].includes(card.marketplace))
     if (!selected.length) throw new Error(cardId ? 'Карточка не найдена' : 'Нет карточек для сбора')
-    if (selected.some((card) => card.marketplace !== 'ozon')) throw new Error('Для этого маркетплейса коннектор ещё не подключён')
+    if (selected.some((card) => !['ozon', 'aliexpress'].includes(card.marketplace))) throw new Error('Для этого маркетплейса коннектор ещё не подключён')
     const run: CollectionRun = {
       id: nextRunId++,
       retryableCount: 0,

@@ -20,3 +20,14 @@ it('offers retry for pending targets despite only a run-level error', () => {
   view.rerender(<ActiveCollectionPanel />)
   expect(screen.queryByRole('button', { name: 'Повторить ошибки и оставшиеся' })).not.toBeInTheDocument()
 })
+
+it('показывает ручную проверку AliExpress с нейтральным заголовком', () => {
+  const run: CollectionRun = { id: 2, status: 'waiting_for_user', totalCount: 2, successCount: 0, failureCount: 0,
+    current: null, challenge: { type: 'browser_verification', message: 'AliExpress: пройдите проверку в Chrome' },
+    startedAt: '2026-10-26', finishedAt: null, retryableCount: 0, retryScopeIncomplete: false }
+  vi.mocked(useCollection).mockReturnValue({ ...useCollection(), run })
+  render(<ActiveCollectionPanel />)
+  expect(screen.getByText('Требуется проверка в Chrome')).toBeVisible()
+  expect(screen.getByText('AliExpress: пройдите проверку в Chrome')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Проверка пройдена' })).toBeEnabled()
+})

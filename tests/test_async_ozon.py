@@ -37,8 +37,9 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
                 yield MagicMock()
 
             async def fake_launch(_playwright):
-                client._async_browser = browser
-                client._async_process = process
+                client.session._async_context = MagicMock()
+                client.session._async_browser = browser
+                client.session._async_process = process
 
             async def collect_until_cancelled():
                 async with client.collection_session():
@@ -49,10 +50,10 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
                 return function(*args, **kwargs)
 
             with (
-                patch("marketplace_connector.connectors.ozon.async_client.async_playwright", fake_playwright),
-                patch.object(client, "_launch_async_context", side_effect=fake_launch),
-                patch("marketplace_connector.connectors.ozon.async_client.asyncio.to_thread", immediate_to_thread),
-                patch("marketplace_connector.connectors.ozon.async_client.request_browser_close", new_callable=AsyncMock) as close_browser,
+                patch("marketplace_connector.browser.session.async_playwright", fake_playwright),
+                patch.object(client.session, "_launch_async_context", side_effect=fake_launch),
+                patch("marketplace_connector.browser.session.asyncio.to_thread", immediate_to_thread),
+                patch("marketplace_connector.browser.session.request_browser_close", new_callable=AsyncMock) as close_browser,
             ):
                 task = asyncio.create_task(collect_until_cancelled())
                 await entered.wait()
@@ -65,8 +66,8 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
             process.terminate.assert_not_called()
             process.wait.assert_called_once_with(timeout=5)
             process.kill.assert_not_called()
-            self.assertIsNone(client._async_process)
-            self.assertIsNone(client._async_playwright)
+            self.assertIsNone(client.session._async_process)
+            self.assertIsNone(client.session._async_playwright)
 
     async def test_browser_cleanup_kills_process_that_ignores_terminate(self):
         with TemporaryDirectory() as directory:
@@ -74,18 +75,18 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
             process = MagicMock()
             process.poll.return_value = None
             process.wait.side_effect = [subprocess.TimeoutExpired("chrome", 5), subprocess.TimeoutExpired("chrome", 3), 0]
-            client._async_process = process
+            client.session._async_process = process
 
             async def immediate_to_thread(function, *args, **kwargs):
                 return function(*args, **kwargs)
 
-            with patch("marketplace_connector.connectors.ozon.async_client.asyncio.to_thread", immediate_to_thread):
-                await client._close_async_context()
+            with patch("marketplace_connector.browser.session.asyncio.to_thread", immediate_to_thread):
+                await client.session._close_async_context()
 
             process.terminate.assert_called_once()
             process.kill.assert_called_once()
             self.assertEqual(process.wait.call_count, 3)
-            self.assertIsNone(client._async_process)
+            self.assertIsNone(client.session._async_process)
 
     async def test_background_collection_closes_open_profile_browser(self):
         with TemporaryDirectory() as directory:
@@ -124,12 +125,12 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
             playwright.chromium.connect_over_cdp = AsyncMock(return_value=browser)
             async def immediate_to_thread(function, *args, **kwargs):
                 return function(*args, **kwargs)
-            with patch("marketplace_connector.connectors.ozon.profile_lifecycle.http.client.HTTPConnection",
+            with patch("marketplace_connector.browser.profile_lifecycle.http.client.HTTPConnection",
                        return_value=Connection()), patch(
-                           "marketplace_connector.connectors.ozon.profile_lifecycle.asyncio.to_thread",
+                           "marketplace_connector.browser.profile_lifecycle.asyncio.to_thread",
                            immediate_to_thread,
                        ):
-                await client._close_open_profile_browser(playwright)
+                await client.session._close_open_profile_browser(playwright)
 
             session.send.assert_awaited_once_with("Browser.close")
             browser.close.assert_awaited_once()
@@ -148,12 +149,12 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
             playwright = MagicMock()
             async def immediate_to_thread(function, *args, **kwargs):
                 return function(*args, **kwargs)
-            with patch("marketplace_connector.connectors.ozon.profile_lifecycle.http.client.HTTPConnection",
+            with patch("marketplace_connector.browser.profile_lifecycle.http.client.HTTPConnection",
                        return_value=connection), patch(
-                           "marketplace_connector.connectors.ozon.profile_lifecycle.asyncio.to_thread",
+                           "marketplace_connector.browser.profile_lifecycle.asyncio.to_thread",
                            immediate_to_thread,
                        ):
-                await AsyncOzonClient(directory, virtual_display=True)._close_open_profile_browser(playwright)
+                await AsyncOzonClient(directory, virtual_display=True).session._close_open_profile_browser(playwright)
             playwright.chromium.connect_over_cdp.assert_not_called()
 
     async def test_challenges_are_presented_one_at_a_time(self):
@@ -197,7 +198,7 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
             handler.handle_async = AsyncMock()
             client = AsyncOzonClient(directory, challenge_handler=handler, headless=True)
             client._challenge_lock = asyncio.Lock()
-            client._async_process = MagicMock()
+            client.session._async_process = MagicMock()
             with patch.object(client, "_is_antibot_page_async", new_callable=AsyncMock, return_value=True):
                 with self.assertRaisesRegex(MarketplaceUnavailable, "Откройте Chrome"):
                     await client._handle_antibot_async(MagicMock(), "100")

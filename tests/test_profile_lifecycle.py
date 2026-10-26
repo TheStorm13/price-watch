@@ -14,7 +14,7 @@ from tempfile import TemporaryDirectory
 from playwright.async_api import async_playwright
 
 from marketplace_connector.connectors.ozon import AsyncOzonClient
-from marketplace_connector.connectors.ozon.profile_lifecycle import _profile_lock_is_live
+from marketplace_connector.browser.profile_lifecycle import _profile_lock_is_live
 
 
 CHROME = shutil.which("google-chrome-stable") or shutil.which("google-chrome")
@@ -38,7 +38,7 @@ class ProfileLifecycleTests(unittest.IsolatedAsyncioTestCase):
             profile = Path(directory)
             client = AsyncOzonClient(profile, headless=True)
             async with client.collection_session():
-                self.assertIsNotNone(client._async_context)
+                self.assertIsNotNone(client.session._async_context)
             preferences = json.loads((profile / "Default/Preferences").read_text())
             self.assertEqual(preferences["profile"]["exit_type"], "Normal")
 
@@ -103,7 +103,7 @@ class ProfileLifecycleTests(unittest.IsolatedAsyncioTestCase):
                     [
                         sys.executable,
                         "-c",
-                        "from marketplace_connector.connectors.ozon.profile_lifecycle import main; raise SystemExit(main())",
+                        "from marketplace_connector.browser.profile_lifecycle import main; raise SystemExit(main())",
                         str(profile),
                     ],
                     capture_output=True,
