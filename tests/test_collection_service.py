@@ -5,7 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 import unittest
 from marketplace_connector import Availability, ConnectorRegistry, ProductRef, MarketplaceCard
-from marketplace_connector.domain.errors import ProductNotFound
+from marketplace_connector.domain.errors import ProductNotFound, MarketplaceUnavailable, MarketplaceSchemaChanged, RateLimited
 from price_watch.application.run_executor import RunExecutor
 from price_watch.domain.models import CollectionRun, TrackedCard, LeaseLost
 
@@ -102,6 +102,19 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(snapshot.availability, Availability.OUT_OF_STOCK)
         self.assertEqual(snapshot.title, 'Card 1')
         self.assertIsNone(snapshot.price)
+
+    async def test_transport_errors_do_not_write_successful_price_or_out_of_stock(self):
+        for error in (MarketplaceUnavailable('HTTP 403'), MarketplaceSchemaChanged('JSON'), RateLimited('429')):
+            with self.subTest(error=type(error).__name__):
+                class Rejected(Connector):
+                    async def get_product(self, external_id):
+                        raise error
+                repo, connector = FakeRepository([card(1)]), Rejected()
+                with self.assertLogs('price_watch.application.collection_service', level='ERROR'):
+                    result = await self.executor(repo, connector).collect()
+                self.assertEqual((result.success_count, result.failure_count), (0, 1))
+                self.assertFalse(repo.saved)
+                self.assertEqual(connector.closes, 1)
 
     async def test_mismatch_is_recorded_and_session_closed(self):
         repo, connector = FakeRepository([card(1)]), Connector(mismatch=True)

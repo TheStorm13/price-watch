@@ -12,6 +12,17 @@ from marketplace_connector.domain.errors import MarketplaceUnavailable
 
 
 class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_bootstrap_accepts_an_automatically_resolved_challenge(self):
+        with TemporaryDirectory() as directory:
+            client = AsyncOzonClient(directory)
+            page = MagicMock(url='https://www.ozon.ru/')
+            page.goto = AsyncMock(return_value=MagicMock(status=403))
+            with (patch.object(client, '_is_antibot_page_async', AsyncMock(return_value=True)),
+                  patch.object(client, '_wait_for_antibot_async', AsyncMock(return_value=True)),
+                  patch.object(client, '_handle_antibot_async', AsyncMock()) as handle):
+                await client._prepare_storefront(page)
+            handle.assert_not_awaited()
+
     async def test_cancelled_collection_closes_browser_and_profile_process(self):
         with TemporaryDirectory() as directory:
             client = AsyncOzonClient(directory, virtual_display=True)
@@ -144,31 +155,6 @@ class AsyncOzonClientTests(unittest.IsolatedAsyncioTestCase):
                        ):
                 await AsyncOzonClient(directory, virtual_display=True)._close_open_profile_browser(playwright)
             playwright.chromium.connect_over_cdp.assert_not_called()
-
-    async def test_concurrent_products_use_separate_pages_in_one_context(self):
-        with TemporaryDirectory() as directory:
-            client = AsyncOzonClient(directory)
-            context = MagicMock()
-            pages = [MagicMock(), MagicMock()]
-            for page in pages:
-                page.goto = AsyncMock()
-                page.close = AsyncMock()
-            context.new_page = AsyncMock(side_effect=pages)
-            client._async_context = context
-            with (
-                patch.object(client, "_is_antibot_page_async", new_callable=AsyncMock, return_value=False),
-                patch.object(client, "_fetch_json_in_page_async", new_callable=AsyncMock, return_value='{"widgetStates":{}}'),
-            ):
-                results = await asyncio.gather(
-                    client.fetch_raw_text_async("100"),
-                    client.fetch_raw_text_async("200"),
-                )
-
-            self.assertEqual(results, ['{"widgetStates":{}}'] * 2)
-            self.assertEqual(context.new_page.await_count, 2)
-            for page in pages:
-                page.goto.assert_awaited_once()
-                page.close.assert_awaited_once()
 
     async def test_challenges_are_presented_one_at_a_time(self):
         class Handler:

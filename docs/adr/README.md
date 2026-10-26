@@ -10,6 +10,8 @@
 
 - [ADR 0005: Общий товар, запись отслеживания и точные цены](0005-marketplace-card-and-tracking-record.md) — Accepted.
 
+- [ADR 0006: Ozon JSON через общую страницу браузерной сессии](0006-ozon-session-json-transport.md) — Accepted.
+
 Наблюдаемое устройство системы описано в
 [обзоре архитектуры](../architecture/overview.md); обзор не заменяет запись
 о мотивах выбора и рассмотренных альтернативах.
