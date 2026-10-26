@@ -32,6 +32,21 @@ flowchart LR
     Chrome --> Ozon[Ozon]
 ```
 
+## UI-слой
+
+Интерфейс использует shadcn/ui из официального `@shadcn`, Radix, Tailwind 4
+и Lucide. Локальные примитивы находятся в `frontend/src/components/ui`,
+предметные композиции — в `frontend/src/components/product`, логика экранов —
+в feature-компонентах и hooks. Recharts отвечает за графики истории цен.
+Тема задана в `src/styles/tokens.css`, семантические Tailwind mappings и
+порядок CSS layers — в `src/styles/global.css` относительно `frontend/`.
+
+Меню, панели и подтверждения используют DropdownMenu, Sheet, Dialog и
+AlertDialog; выпадающие списки — Select с общей темой. При изменениях
+сохраняются клавиатурная навигация и восстановление фокуса.
+Правила сопровождения: `frontend/AGENTS.md`; решение и альтернативы:
+[ADR 0003](../adr/0003-shadcn-ui-primitives.md).
+
 ## Модели товара и отслеживания
 
 `marketplace_connector.domain.models.MarketplaceCard` — общий результат любого

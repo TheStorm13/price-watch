@@ -25,6 +25,3 @@ Radix primitives (`asChild`), Lucide, and the official `@shadcn` registry.
   states, and focus restoration, including transitions between overlays.
 - Verify with lint, unit, mock E2E, and desktop builds. Mock E2E does not verify
   live API, worker, database, or Tauri WebView. Use isolated data for desktop QA.
-
-This file is prepared for review as part of `migrate-ui-to-shadcn`;
-implementation acceptance and ADR finalization are tracked in its workflow run.
