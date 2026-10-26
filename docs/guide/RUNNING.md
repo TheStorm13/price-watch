@@ -67,7 +67,9 @@ export DATABASE_URL='postgresql://user:password@localhost:5432/price_watch'
 ```
 
 Число после `--card-id` — внутренний ID карточки из `card list`.
-Команда `collect` ждёт завершения сбора и подтверждения проверки Ozon в
+AliExpress принимает `--marketplace aliexpress --external-id productId:skuId`;
+правила ввода и миграции: [AliExpress.ru](ALIEXPRESS.md).
+Команда `collect` ждёт завершения сбора и подтверждения проверки площадки в
 терминале. Одиночный вызов без PostgreSQL:
 
 ```bash

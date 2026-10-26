@@ -1,0 +1,105 @@
+{
+  "observed_on": "2026-10-26",
+  "stage": "research, not implemented connector",
+  "request": {
+    "method": "GET",
+    "url": "https://aliexpress.ru/aer-jsonapi/v1/bx/pdp/web/productData?productId=1005009868651525&sourceId=0&sku_id=12000061135122688",
+    "session": "Chrome price-watch after manual CAPTCHA"
+  },
+  "response": {
+    "status": 200,
+    "content_type": "application/json",
+    "text_length": 23257
+  },
+  "product": {
+    "id": "1005009868651525",
+    "title": "Смартфон OnePlus 16, 12/256ГБ, 12/512ГБ, 16/512ГБ, 16ГБ/1ТБ, china",
+    "active_sku_id": "12000061135122688",
+    "seller": {
+      "id": "250824946",
+      "name": "OP Pioneer Store",
+      "url": "https://aliexpress.ru/store/911718182",
+      "source": "name/url from page bootstrap; id also in productData"
+    },
+    "rating": {
+      "middle": 4.8,
+      "stars": [],
+      "middleFormatted": "4,8",
+      "countShort": ""
+    },
+    "reviews": "22",
+    "characteristics": [],
+    "image_count": 6,
+    "description": "Смартфон OnePlus 16, 12/256ГБ, 12/512ГБ, 16/512ГБ, 16ГБ/1ТБ, china, Наслаждайся ✓Бесплатная доставка по всему миру! ✓Предложение ограничено по времени! ✓Удобный возврат!",
+    "variants": [
+      {
+        "sku_id": "12000061135122688",
+        "selected": true,
+        "options": {
+          "Цвет": "Black",
+          "Комплект": "12GB 256GB"
+        },
+        "available_quantity": 1,
+        "activity_price": {
+          "value": 79316,
+          "currency": "RUB",
+          "formatted": "79 316 ₽",
+          "cents": "7931600"
+        },
+        "original_price": {
+          "value": 122312,
+          "currency": "RUB",
+          "formatted": "122 312 ₽",
+          "cents": "12231200"
+        },
+        "coupon_price": {
+          "value": 77648,
+          "currency": "RUB",
+          "formatted": "77 648 ₽",
+          "cents": "7764800"
+        },
+        "coupon_assigned": false,
+        "customs_fee_text": "Таможенная пошлина ≈8 041 ₽"
+      },
+      {
+        "sku_id": "12000061135122692",
+        "selected": false,
+        "options": {
+          "Цвет": "Silver Gray",
+          "Комплект": "12GB 256GB"
+        },
+        "available_quantity": 1,
+        "activity_price": {
+          "value": 79316,
+          "currency": "RUB",
+          "formatted": "79 316 ₽",
+          "cents": "7931600"
+        },
+        "original_price": {
+          "value": 122312,
+          "currency": "RUB",
+          "formatted": "122 312 ₽",
+          "cents": "12231200"
+        },
+        "coupon_price": {
+          "value": 77648,
+          "currency": "RUB",
+          "formatted": "77 648 ₽",
+          "cents": "7764800"
+        },
+        "coupon_assigned": false,
+        "customs_fee_text": "Таможенная пошлина ≈8 041 ₽"
+      }
+    ]
+  },
+  "replay": {
+    "origin": "https://aliexpress.ru/",
+    "successful_api_requests": 3,
+    "product_navigations": 0,
+    "sku_cases": [
+      "12000061135122688",
+      "12000061135122692",
+      null
+    ]
+  }
+}

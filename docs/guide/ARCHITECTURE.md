@@ -16,7 +16,9 @@
 | Сбор и очередь | `price_watch/application`, `price_watch/worker` | Выполнить сбор, обновить прогресс и статусы |
 | Хранение | `price_watch/infrastructure/postgres` | PostgreSQL, SQLAlchemy и Alembic |
 | Контракт коннектора | `marketplace_connector/domain`, `marketplace_connector/ports` | Общий MarketplaceCard и независимый от площадки порт |
-| Ozon | `marketplace_connector/connectors/ozon` | Chrome, ответ Ozon и нормализация |
+| Chrome | `marketplace_connector/browser` | Процесс, профиль, CDP, acquire/release и согласование ручных проверок |
+| Ozon | `marketplace_connector/connectors/ozon` | Composer JSON и нормализация |
+| AliExpress | `marketplace_connector/connectors/aliexpress` | SKU identity, productData и нормализация одной цены |
 | Одиночный CLI | `marketplace_connector/connectors/ozon/cli.py`, `main.py` | Получить JSON товара без БД |
 
 Рабочий интерфейс запускается только в Tauri. Браузерный `dev:e2e` использует
@@ -27,9 +29,10 @@ flowchart LR
     UI[React в Tauri] --> API[FastAPI]
     API --> DB[(PostgreSQL)]
     Worker[Локальный Python worker] --> DB
-    Worker --> Connector[Коннектор Ozon]
+    Worker --> Connector[Коннекторы Ozon и AliExpress]
     Connector --> Chrome[Системный Google Chrome]
     Chrome --> Ozon[Ozon]
+    Chrome --> Ali[AliExpress.ru]
 ```
 
 ## UI-слой
@@ -74,7 +77,9 @@ ref, отображаемыми полями, группой, тегами и н
    создаёт полный запуск без дублирования активной очереди.
 4. Общий `RunExecutor` запускает heartbeat и создаёт коннекторы внутри lifecycle. Worker открывает системный Chrome с профилем из
    пользовательского каталога данных на скрытом дисплее и подключается через локальный CDP.
-   Сеанс остаётся открытым до конца запуска.
+   Builder передаёт обоим клиентам один `ChromeSession` с acquire/release;
+   последний потребитель штатно закрывает браузер. Старый Ozon lifecycle удалён.
+   Каждая площадка владеет своим транспортом и страницей.
 5. Коннектор открывает одну страницу `https://www.ozon.ru/` на сеанс и выполняет
    до пяти параллельных `fetch` к `/api/composer-api.bx/page/json/v2` с
    `url=<закодированный /product/{sku}/>` и `credentials: "include"`.
@@ -89,13 +94,18 @@ ref, отображаемыми полями, группой, тегами и н
    Повторный отказ доступа блокирует новые отправки в этом сеансе.
    Parser создаёт `OzonProductData`, затем `OzonMapper` преобразует его в общий
    `MarketplaceCard`; цена берётся только из `cardPrice` и нормализуется как Decimal.
+   AliExpress открывает `https://aliexpress.ru/` и вызывает
+   `/aer-jsonapi/v1/bx/pdp/web/productData` с productId/sourceId=0/sku_id.
+   Parser проверяет точную пару и выбранную строку SKU, mapper возвращает одну
+   Decimal-цену coupon → activity → regular. Политика ограничений такая же,
+   transports независимы; общий challenge lock согласует только ручное участие.
 6. `RunRepository.save_result` заполняет пустое название карточки и обновляет ссылку, если она
    получена с площадки; снимок в `price_history`
    добавляется при изменении цены или наличия. Ошибки по товарам сохраняются с traceback
    в запуске. Интерфейс опрашивает запуск примерно раз в секунду и обновляет
    карточки после завершения.
 
-Сетевые вызовы Ozon выполняются параллельно вне транзакции БД. Результаты
+Сетевые вызовы площадок выполняются параллельно вне транзакции БД. Результаты
 сохраняются в PostgreSQL по одному по мере завершения запросов. Карточка,
 история, результат цели и счётчики фиксируются атомарно под проверкой lease.
 Повтор результата не дублирует историю или прогресс. Потеря владения отменяет
@@ -128,9 +138,9 @@ CLI перед запуском и worker до проверки расписан
 Ограничения частоты — локальная политика приложения. Мотивы выбора транспорта:
 [ADR 0006](../adr/0006-ozon-session-json-transport.md).
 
-## Проверка Ozon
+## Ручная проверка площадки
 
-В desktop режиме worker использует скрытый дисплей. Если Ozon требует ручную
+В desktop режиме worker использует скрытый дисплей. Если площадка требует ручную
 проверку, запуск завершается с ошибкой; пользователь может открыть Chrome
 кнопкой, пройти проверку и повторить сбор. При прямом CLI сборе подтверждение
 принимается в терминале.
@@ -143,5 +153,8 @@ CLI перед запуском и worker до проверки расписан
 - `main.py <артикул>` получает один нормализованный JSON без PostgreSQL.
 
 Общий формат снимка описан в
-`marketplace_connector/serialization/product.schema.json`. Сейчас реальный
-коннектор реализован только для Ozon.
+`marketplace_connector/serialization/product.schema.json`. Реальные
+коннекторы реализованы для Ozon и AliExpress. Числовой одиночный CLI остаётся
+режимом Ozon; AliExpress доступен без БД через ProductService. Идентичность SKU,
+цена и миграция: [ADR 0008](../adr/0008-aliexpress-sku-and-shared-browser.md)
+и [руководство AliExpress](ALIEXPRESS.md).

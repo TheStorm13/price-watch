@@ -35,10 +35,10 @@ TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test' \
 рабочую базу приложения. Браузерные E2E тесты сами запускают Vite в тестовом режиме
 с mock API; они проверяют интерфейс, но не живые desktop-службы и Ozon.
 
-## Проверки JSON-транспорта Ozon
+## Проверки JSON-транспорта Ozon и AliExpress
 
 ```bash
-.venv/bin/python -m unittest tests.test_ozon_json_transport tests.test_ozon_fetch_browser tests.test_async_ozon tests.test_profile_lifecycle -v
+.venv/bin/python -m unittest tests.test_ozon_json_transport tests.test_ozon_fetch_browser tests.test_async_ozon tests.test_profile_lifecycle tests.test_aliexpress_parser tests.test_aliexpress_transport tests.test_shared_browser -v
 ```
 
 Детерминированные тесты проверяют пять одновременных запросов, общий cooldown,
@@ -62,7 +62,8 @@ TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test' \
 | API не отвечает | Открыть `api.log`; проверить ошибки миграций и запуска Python |
 | Нет Chrome | Проверить `google-chrome-stable --version` |
 | Скрытый дисплей недоступен | Открыть `xvfb.log`; проверить установку `Xvfb` и `xauth` |
-| Ozon запросил проверку при фоновом сборе | После завершения запуска открыть Chrome кнопкой, пройти проверку и повторить сбор |
+| Ozon или AliExpress запросил проверку при фоновом сборе | После завершения запуска открыть Chrome кнопкой, пройти проверку и повторить сбор |
+| AliExpress: «Не указан SKU» | Старая карточка сохранена без изменений; для нового отслеживания добавьте конкретный SKU по полной ссылке |
 | Карточка Ozon не обновилась | Открыть `desktop-worker.log`; исчезнувший товар может вести на страницу предложений |
 
 ## Проверка надёжности и каталога
@@ -99,3 +100,9 @@ dbus-run-session -- xvfb-run -a -s '-screen 0 1440x1000x24' \
 временные XDG/БД/профили, нажимает повтор через настоящий WebView и перезапускает
 только свой дочерний API. Он не проверяет текущий Ozon или реальную CAPTCHA.
 Результаты принятого REL-блока: [отчёт и снимки](../workflow-runs/harden-collection-reliability/verification.md).
+
+Для смешанного native smoke с синтетическими Ozon/Ali карточками задайте
+`PRICE_SMOKE_ALI=1` перед той же командой. `tests.test_aliexpress_migration`
+и `tests.test_aliexpress_integration` требуют disposable TEST_DATABASE_URL;
+создают и удаляют только свои приватные схемы. Полная проверка Ali, native и
+отдельный live результат: [отчёт](../workflow-runs/add-aliexpress-connector/verification.md).

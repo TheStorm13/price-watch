@@ -43,9 +43,10 @@ flowchart LR
     Worker --> Runner[RunExecutor]
     CLI[Прямой collect] --> Runner
     Runner --> Service[CollectionService]
-    Service --> Connector[OzonConnector]
+    Service --> Connector[OzonConnector и AliExpressConnector]
     Connector --> Chrome[Chrome + Playwright CDP]
     Chrome --> Ozon[Ozon composer JSON]
+    Chrome --> Ali[AliExpress productData]
     Service -->|снимок и результат| DB
     UI -->|опрос /api/runs| API
 ```
@@ -61,7 +62,10 @@ heartbeat каждые пять секунд и при следующем цик
 ярлыка показывает существующее окно; полный выход останавливает службы.
 
 `CollectionService` открывает один сеанс коннектора на маркетплейс и выполняет
-до пяти запросов карточек одновременно. Ozon использует одну общую страницу
+до пяти запросов карточек одновременно. Builder создаёт общий ChromeSession
+для Ozon и AliExpress; последний release закрывает процесс. У каждой площадки
+свои страница и JSON transport, общий lock ручных проверок. Ozon использует
+одну общую страницу
 в постоянном профиле Chrome и параллельные JSON-запросы через браузерный `fetch`
 без переходов на карточки. Транспорт ограничивает частоту, повторы и таймауты,
 согласует `Retry-After` и одно восстановление после завершения активных запросов;
@@ -99,7 +103,7 @@ succeeded даже без новой точки истории.
 - Коннектор обязан предоставить асинхронные `get_product` и
   `collection_session`. Он возвращает общий `MarketplaceCard`; JSON-схема
   снимка — `marketplace_connector/serialization/product.schema.json`.
-  Реальный коннектор сейчас есть только для Ozon.
+  Реальные коннекторы есть для Ozon и AliExpress.ru.
 - Ozon-клиент использует системный Chrome с постоянным профилем и Playwright
   по локальному CDP. Он открывает одну общую страницу Ozon на сеанс, запрашивает
   composer JSON через параллельные fetch без навигации на товар, проверяет ответ
@@ -107,13 +111,20 @@ succeeded даже без новой точки истории.
   `cardPrice`; внешний ID нормализуется как строка цифр. В desktop worker
   работает на скрытом дисплее: требующая участия пользователя антибот-проверка
   завершает карточку ошибкой. В видимом CLI подтверждение возможно в терминале.
-- Карточки Wildberries, AliExpress и Яндекс Маркета можно добавить через API/UI,
+- AliExpress использует productData с главной страницы и идентичность
+  productId:skuId. Одна цена выбранного SKU: coupon → activity → regular.
+  Старые карточки без SKU получают ошибку без изменения полей или истории.
+  [ADR 0008](../adr/0008-aliexpress-sku-and-shared-browser.md).
+- Карточки Wildberries и Яндекс Маркета можно добавить через API/UI,
   но они исключаются из запусков сбора до появления коннекторов.
 
 Источники: `price_watch/api/schemas.py`, `price_watch/domain/marketplaces.py`,
 `marketplace_connector/application/product_service.py`,
 `marketplace_connector/connectors/ozon/async_client.py`,
-`marketplace_connector/connectors/ozon/mapper.py`.
+`marketplace_connector/connectors/ozon/mapper.py`,
+`marketplace_connector/browser/session.py`,
+`marketplace_connector/connectors/aliexpress/`,
+`marketplace_connector/connectors/builder.py`.
 
 Правила выгодности и выбора представителя определены в
 `price_watch/domain/catalog_rules.py`; политика шестичасового срока и устаревания —

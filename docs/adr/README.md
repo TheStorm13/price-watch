@@ -14,6 +14,8 @@
 
 - [ADR 0007: Правила приложения и явные границы хранения](0007-application-rules-and-persistence-boundaries.md) — Accepted.
 
+- [ADR 0008: AliExpress SKU и общий Chrome-сеанс](0008-aliexpress-sku-and-shared-browser.md) — Accepted.
+
 Наблюдаемое устройство системы описано в
 [обзоре архитектуры](../architecture/overview.md); обзор не заменяет запись
 о мотивах выбора и рассмотренных альтернативах.
