@@ -5,17 +5,22 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import aliased
 
 from ...domain.models import TrackedCardOverview, TrackedCard
 from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
-from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
-from .repository_common import CardAlreadyExists, CardInActiveRun, _tracked_card
+from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, ProductGroupRecord
+from ...domain.errors import CardAlreadyExists, CardInActiveRun
+from .repository_common import _tracked_card
+from .queries import overview_statement
+from .database import AsyncDatabase
 
 
 class CardRepository:
+    def __init__(self, database: AsyncDatabase):
+        self._database = database
+
     async def add_card(
         self,
         marketplace: str,
@@ -91,23 +96,11 @@ class CardRepository:
             await session.delete(record)
         return True
 
-    def _overview_statement(self):
-        latest_id = (
-            select(PriceHistoryRecord.id)
-            .where(PriceHistoryRecord.card_id == MarketplaceCardRecord.id)
-            .order_by(PriceHistoryRecord.observed_at.desc(), PriceHistoryRecord.id.desc())
-            .limit(1)
-            .correlate(MarketplaceCardRecord)
-            .scalar_subquery()
-        )
-        latest = aliased(PriceHistoryRecord)
-        return select(MarketplaceCardRecord, latest).outerjoin(latest, latest.id == latest_id)
-
     async def list_cards(self, *, session=None) -> List[TrackedCardOverview]:
         if session is None:
             async with self._database.session() as session:
                 return await self.list_cards(session=session)
-        statement = self._overview_statement()
+        statement = overview_statement()
         statement = statement.order_by(MarketplaceCardRecord.deals_enabled.desc(), MarketplaceCardRecord.id)
         rows = (await session.execute(statement)).all()
         return [
@@ -120,37 +113,10 @@ class CardRepository:
             for card, latest in rows
         ]
 
-    async def _list_card_price_metric_rows(self, session):
-        statement = text("""
-            WITH latest AS (
-                SELECT DISTINCT ON (card_id) card_id, id
-                FROM price_history ORDER BY card_id, observed_at DESC, id DESC
-            ), daily AS (
-                SELECT h.card_id, date_trunc('day', h.observed_at) AS day,
-                       avg(h.price) AS daily_average
-                FROM price_history h JOIN latest l ON l.card_id = h.card_id
-                WHERE h.id <> l.id AND h.availability = 'in_stock' AND h.price IS NOT NULL
-                GROUP BY h.card_id, date_trunc('day', h.observed_at)
-            ), averages AS (
-                SELECT card_id, avg(daily_average) AS average_price, count(*) AS baseline_days
-                FROM daily GROUP BY card_id
-            ), minimums AS (
-                SELECT card_id, min(price) AS minimum_price
-                FROM price_history
-                WHERE availability = 'in_stock' AND price IS NOT NULL
-                GROUP BY card_id
-            )
-            SELECT c.id, m.minimum_price, a.average_price, coalesce(a.baseline_days, 0) AS baseline_days
-            FROM marketplace_cards c
-            LEFT JOIN minimums m ON m.card_id = c.id
-            LEFT JOIN averages a ON a.card_id = c.id
-        """)
-        return (await session.execute(statement)).all()
-
     async def get_card(self, card_id: int) -> Optional[TrackedCardOverview]:
         async with self._database.session() as session:
             row = (await session.execute(
-                self._overview_statement().where(MarketplaceCardRecord.id == card_id)
+                overview_statement().where(MarketplaceCardRecord.id == card_id)
             )).first()
         if row is None:
             return None

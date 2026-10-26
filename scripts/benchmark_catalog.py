@@ -17,7 +17,8 @@ from sqlalchemy import event, text
 from marketplace_connector import ConnectorRegistry, ProductRef, MarketplaceCard, Availability
 from price_watch.api import create_app
 from price_watch.application.run_executor import RunExecutor
-from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceWatchRepository
+from price_watch.bootstrap import create_postgres_stores
+from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner
 
 queries = ContextVar('benchmark_queries', default=None)
 SIZES = {'S': 100, 'M': 1000, 'L': 5000}
@@ -61,9 +62,9 @@ class SyntheticConnector:
 
 
 async def measure(db, mode, writing, rounds):
-    repository = PostgresPriceWatchRepository(db)
-    app = create_app(repository=repository, api_token='benchmark')
-    app.state.repository = repository
+    repository = create_postgres_stores(db)
+    app = create_app(services=repository.api, api_token='benchmark')
+
     stop = asyncio.Event()
     writes = 0
     write_seconds = 0
@@ -74,7 +75,7 @@ async def measure(db, mode, writing, rounds):
             started = time.perf_counter()
             async def factory(run):
                 return ConnectorRegistry([SyntheticConnector()])
-            summary = await RunExecutor(repository, factory).collect()
+            summary = await RunExecutor(repository.runs, factory).collect()
             writes += summary.success_count
             write_seconds += time.perf_counter() - started
 

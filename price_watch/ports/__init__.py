@@ -1,3 +1,1 @@
-from .repository import PriceWatchRepository
-
-__all__ = ["PriceWatchRepository"]
+"""Consumer-specific contracts; import the port needed by the caller."""

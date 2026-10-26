@@ -7,14 +7,14 @@ from datetime import datetime, timezone
 from marketplace_connector.domain.errors import ProductNotFound
 from marketplace_connector.domain.models import Availability, ProductRef, MarketplaceCard
 from ..domain.models import LeaseLost
-from ..ports.repository import PriceWatchRepository
+from ..ports.runs import RunExecutionStore
 
 logger = logging.getLogger(__name__)
 MAX_CONCURRENT_CARDS = 5
 
 
 class CollectionService:
-    def __init__(self, repository: PriceWatchRepository, connectors):
+    def __init__(self, repository: RunExecutionStore, connectors):
         self._repository = repository
         self._connectors = connectors
 

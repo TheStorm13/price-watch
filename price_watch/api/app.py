@@ -10,21 +10,23 @@ from fastapi.responses import JSONResponse
 
 from .errors import ApiProblem, api_problem_handler, validation_error_handler
 from .routes import cards_router, runs_router, groups_router
-from .dependencies import RepositoryDep
+from .dependencies import CatalogDep
 from .schemas import CatalogResponse
-from ..infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceWatchRepository
+from ..infrastructure.postgres import AsyncDatabase, Database, MigrationRunner
+from ..bootstrap import create_postgres_stores
+from ..application.services import ApiServices
 
 
 def create_app(
     database_url: str | None = None,
-    repository: PostgresPriceWatchRepository | None = None,
+    services: ApiServices | None = None,
     api_token: str | None = None,
 ) -> FastAPI:
     expected_token = api_token if api_token is not None else os.environ.get("PRICE_WATCH_API_TOKEN")
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        if repository is not None:
-            app.state.repository = repository
+        if services is not None:
+            app.state.services = services
             yield
             return
         url = database_url or os.environ.get("DATABASE_URL")
@@ -36,8 +38,8 @@ def create_app(
 
         await asyncio.to_thread(migrate)
         database = await AsyncDatabase(url).open()
-        app.state.repository = PostgresPriceWatchRepository(database)
         try:
+            app.state.services = create_postgres_stores(database).api
             yield
         finally:
             await database.close()
@@ -47,6 +49,9 @@ def create_app(
         version="0.1.0",
         lifespan=lifespan,
     )
+    if services is not None:
+        app.state.services = services
+
     @app.middleware("http")
     async def require_desktop_token(request: Request, call_next):
         if expected_token and request.method != "OPTIONS":
@@ -77,8 +82,8 @@ def create_app(
     app.include_router(groups_router, prefix="/api")
 
     @app.get("/api/catalog", response_model=CatalogResponse)
-    async def catalog(repository: RepositoryDep):
-        return await repository.get_catalog()
+    async def catalog(catalog: CatalogDep):
+        return await catalog.get_catalog()
 
     @app.get("/api/health")
     async def health():

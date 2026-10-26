@@ -75,7 +75,8 @@ class CliCollectionIntegrationTests(unittest.IsolatedAsyncioTestCase):
         from httpx import ASGITransport, AsyncClient
         from marketplace_connector import Availability, ConnectorRegistry, MarketplaceCard, ProductRef
         from price_watch.api import create_app
-        from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceWatchRepository
+        from price_watch.bootstrap import create_postgres_stores
+        from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner
         from price_watch.worker import CollectionWorker
         from sqlalchemy import delete
         from price_watch.infrastructure.postgres.models import CollectionRunRecord
@@ -93,7 +94,7 @@ class CliCollectionIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('ref', card_data)
         card_id = card_data['id']
         database = await AsyncDatabase(url).open()
-        repo = PostgresPriceWatchRepository(database)
+        repo = create_postgres_stores(database)
         runs = []
         try:
             script = '''
@@ -118,9 +119,9 @@ with patch('price_watch.cli._build_connectors', return_value=ConnectorRegistry([
             summary = json.loads(direct.stdout)
             runs.append(summary['run_id'])
             self.assertEqual((summary['success_count'], summary['failure_count']), (1, 0))
-            self.assertEqual((await repo.get_card(card_id)).current_price, Decimal('12.35'))
-            app = create_app(repository=repo)
-            app.state.repository = repo
+            self.assertEqual((await repo.cards.get_card(card_id)).current_price, Decimal('12.35'))
+            app = create_app(services=repo.api)
+
             async with AsyncClient(transport=ASGITransport(app=app), base_url='http://isolated') as client:
                 response = await client.post('/api/runs', json={'cardId': card_id})
                 self.assertEqual(response.status_code, 202)
@@ -133,15 +134,15 @@ with patch('price_watch.cli._build_connectors', return_value=ConnectorRegistry([
                         return MarketplaceCard(ProductRef('ozon', external_id), 'Changed marketplace title', '',
                                                Availability.IN_STOCK, price=Decimal('12.345'))
                 async def factory(run): return ConnectorRegistry([Connector()])
-                self.assertTrue(await CollectionWorker(repo, factory).run_once())
+                self.assertTrue(await CollectionWorker(repo.runs, factory, execution=repo.runs).run_once())
                 card = (await client.get(f'/api/cards/{card_id}')).json()
                 self.assertEqual(card['currentPrice'], '12.35')
                 self.assertEqual(card['title'], 'Local title')
-                self.assertEqual(await repo.count_history(card_id, 30), 1)
+                self.assertEqual(await repo.history.count_history(card_id, 30), 1)
         finally:
             async with database.session() as session, session.begin():
                 await session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id.in_(runs)))
-            await repo.delete_card(card_id)
+            await repo.cards.delete_card(card_id)
             await database.close()
 
 

@@ -48,23 +48,3 @@ def _run(record: CollectionRunRecord) -> CollectionRun:
         owner_token=record.worker_id,
         targets_complete=record.targets_complete,
     )
-
-
-class CardAlreadyExists(ValueError):
-    pass
-
-
-class CardInActiveRun(ValueError):
-    pass
-
-
-class NoCards(ValueError):
-    pass
-
-
-class ConnectorNotAvailable(ValueError):
-    pass
-
-
-class ImportDuringRun(ValueError):
-    pass

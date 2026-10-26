@@ -5,12 +5,13 @@ import traceback
 from datetime import datetime, timezone
 from ..domain.models import LeaseLost, CollectionSummary
 from .collection_service import CollectionService
+from ..ports.runs import RunExecutionStore
 
 logger = logging.getLogger(__name__)
 
 
 class RunExecutor:
-    def __init__(self, repository, connector_factory, heartbeat_interval=5):
+    def __init__(self, repository: RunExecutionStore, connector_factory, heartbeat_interval=5):
         self.repository = repository
         self.connector_factory = connector_factory
         self.heartbeat_interval = heartbeat_interval

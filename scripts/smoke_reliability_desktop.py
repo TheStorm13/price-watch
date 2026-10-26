@@ -26,7 +26,8 @@ from decimal import Decimal
 from pathlib import Path
 sys.path.insert(0, REPO)
 from price_watch import cli
-from price_watch.infrastructure.postgres import Database,AsyncDatabase,MigrationRunner,PostgresPriceWatchRepository
+from price_watch.bootstrap import create_postgres_stores
+from price_watch.infrastructure.postgres import Database,AsyncDatabase,MigrationRunner
 from marketplace_connector import ProductRef,MarketplaceCard,Availability
 from contextlib import asynccontextmanager
 if sys.argv[1]=='api':
@@ -34,9 +35,9 @@ if sys.argv[1]=='api':
         MigrationRunner(db).apply()
     async def seed():
         db=await AsyncDatabase(os.environ['DATABASE_URL']).open()
-        repo=PostgresPriceWatchRepository(db)
-        if not await repo.list_collection_cards():
-            await repo.add_card('ozon','123',title='Изолированный тест REL')
+        repo=create_postgres_stores(db)
+        if not await repo.cards.list_collection_cards():
+            await repo.cards.add_card('ozon','123',title='Изолированный тест REL')
         await db.close()
     asyncio.run(seed())
 if sys.argv[1]=='worker':

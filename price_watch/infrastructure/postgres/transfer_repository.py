@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+from .database import AsyncDatabase
+
 from sqlalchemy import select, text, tuple_
 
 from ...domain.history_merge import HistoryEvent, merge_history
 from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
-from .repository_common import ImportDuringRun, _RUN_CREATION_LOCK
+from ...domain.errors import ImportDuringRun
+from .repository_common import _RUN_CREATION_LOCK
 
 
 class TransferRepository:
+    def __init__(self, database: AsyncDatabase):
+        self._database = database
+
     async def export_cards(self) -> dict:
         """Export every card and saved price change from one consistent DB snapshot."""
         async with self._database.session() as session, session.begin():

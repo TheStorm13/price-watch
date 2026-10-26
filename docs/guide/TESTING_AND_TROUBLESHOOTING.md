@@ -67,6 +67,16 @@ TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test' \
 
 ## Проверка надёжности и каталога
 
+Чистые правила выгодности, выбора представителя и расписания, сборка каталога
+из материализованных входов и границы импортов проверяются без БД:
+
+```bash
+.venv/bin/python -m unittest tests.test_application_rules tests.test_catalog_service tests.test_dependency_boundaries -v
+```
+
+Результаты ARCH-03, сравнение с исходным HTTP-каталогом и baseline/after:
+[отчёт проверки](../workflow-runs/separate-business-rules-from-postgres/verification.md).
+
 `tests.test_run_reliability`, `tests.test_reliability_migration` и
 `tests.test_group_metrics_integration` тоже требуют отдельной disposable
 `TEST_DATABASE_URL`. Миграционный тест создаёт частную схему и удаляет только

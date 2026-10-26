@@ -2,13 +2,13 @@
 
 import asyncio
 
-from ..infrastructure.postgres.repository import PostgresPriceWatchRepository
+from ..ports.runs import RunChallengeStore
 
 
 class DatabaseChallengeHandler:
     def __init__(
         self,
-        repository: PostgresPriceWatchRepository,
+        repository: RunChallengeStore,
         lease,
         poll_interval: float = 0.5,
     ):

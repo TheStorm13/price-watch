@@ -1,11 +1,16 @@
 """Product groups are display aggregates; collection still targets individual cards."""
 
+from .database import AsyncDatabase
+
 from sqlalchemy import select, update
 
 from .models import MarketplaceCardRecord, ProductGroupRecord
 
 
 class GroupRepository:
+    def __init__(self, database: AsyncDatabase):
+        self._database = database
+
     async def create_group(self, name: str, card_ids: list[int], tags: list[str] | None = None) -> int:
         async with self._database.session() as session, session.begin():
             await self._validate_cards(session, card_ids)

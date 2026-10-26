@@ -7,46 +7,14 @@ from typing import List
 
 from sqlalchemy import func, literal_column, select
 
-from marketplace_connector.domain.models import MarketplaceCard
-from marketplace_connector.serialization.product_json import card_to_dict
-
-from ...domain.models import TrackedCard, PriceHistoryPoint, PriceStatistics
-from .models import MarketplaceCardRecord, PriceHistoryRecord
+from ...domain.models import PriceHistoryPoint, PriceStatistics
+from .models import PriceHistoryRecord
+from .database import AsyncDatabase
 
 
 class HistoryRepository:
-    async def save_result(self, lease, card: TrackedCard, snapshot: MarketplaceCard) -> None:
-        price = snapshot.price
-        availability = snapshot.availability.value
-        async with self._database.session() as session, session.begin():
-            if not await self._begin_result(session, lease, card.id, 'succeeded'):
-                return
-            if (snapshot.ref.marketplace, snapshot.ref.external_id) != (card.ref.marketplace, card.ref.external_id):
-                raise ValueError("Коннектор вернул другую карточку")
-            # Browser I/O finished before taking run -> target -> card locks.
-            row = (await session.execute(self._overview_statement().where(
-                MarketplaceCardRecord.id == card.id).with_for_update(of=MarketplaceCardRecord))).first()
-            if row is None:
-                raise LookupError(f"Карточка не найдена: {card.id}")
-            card_record, latest = row
-            if not card_record.title or not card_record.title.strip():
-                card_record.title = snapshot.title
-            if snapshot.url:
-                card_record.url = snapshot.url
-            card_record.image_url = snapshot.image_url or card_record.image_url
-            card_record.updated_at = datetime.now(timezone.utc)
-            if latest is not None and (latest.price, latest.availability) == (price, availability):
-                return
-            session.add(
-                PriceHistoryRecord(
-                    card_id=card.id,
-                    collection_run_id=lease.run_id,
-                    price=price,
-                    availability=availability,
-                    observed_at=snapshot.collected_at,
-                    snapshot=card_to_dict(snapshot),
-                )
-            )
+    def __init__(self, database: AsyncDatabase):
+        self._database = database
 
     @staticmethod
     def _cutoff(days: int) -> datetime:

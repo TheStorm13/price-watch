@@ -10,7 +10,8 @@ from httpx import ASGITransport, AsyncClient
 
 from marketplace_connector import Availability, ProductRef, MarketplaceCard
 from price_watch.api import create_app
-from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner, PostgresPriceWatchRepository
+from price_watch.bootstrap import create_postgres_stores
+from price_watch.infrastructure.postgres import AsyncDatabase, Database, MigrationRunner
 from price_watch.infrastructure.postgres.models import MarketplaceCardRecord, PriceHistoryRecord
 
 TEST_DATABASE_URL = os.environ.get('TEST_DATABASE_URL')
@@ -29,16 +30,16 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
     @asynccontextmanager
     async def fixture(self):
         database = await AsyncDatabase(TEST_DATABASE_URL).open()
-        repository = PostgresPriceWatchRepository(database)
-        cards = [await repository.add_card(marketplace, f'test-{uuid4()}', title=f'Card {index}', tags=[f'tag{index}'])
+        repository = create_postgres_stores(database)
+        cards = [await repository.cards.add_card(marketplace, f'test-{uuid4()}', title=f'Card {index}', tags=[f'tag{index}'])
                  for index, marketplace in enumerate(('ozon', 'wildberries'))]
-        group_id = await repository.create_group('Group', [card.id for card in cards], ['own'])
+        group_id = await repository.groups.create_group('Group', [card.id for card in cards], ['own'])
         try:
             yield database, repository, cards, group_id
         finally:
-            await repository.delete_group(group_id)
+            await repository.groups.delete_group(group_id)
             for card in cards:
-                await repository.delete_card(card.id)
+                await repository.cards.delete_card(card.id)
             await database.close()
 
     async def point(self, database, card, price, at, availability='in_stock'):
@@ -47,7 +48,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 availability=availability, observed_at=at, collection_run_id=None, snapshot={}))
 
     async def group(self, repository, group_id):
-        return next(group for group in (await repository.get_catalog())["groups"] if group['id'] == group_id)
+        return next(group for group in (await repository.catalog.get_catalog())["groups"] if group['id'] == group_id)
 
     async def test_representative_owns_all_metrics_and_member_deal_is_separate(self):
         async with self.fixture() as (database, repository, cards, group_id):
@@ -63,8 +64,8 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(group['is_deal'])
             self.assertIsNone(group['savings'])
             self.assertTrue(group['has_member_deals'])
-            self.assertEqual({deal["card"]["id"] for deal in (await repository.get_catalog())["deals"]} & {a.id, b.id}, {b.id})
-            metrics = {c["id"]: (c["minimum_price"],c["average_price"]) for c in (await repository.get_catalog())["cards"]}
+            self.assertEqual({deal["card"]["id"] for deal in (await repository.catalog.get_catalog())["deals"]} & {a.id, b.id}, {b.id})
+            metrics = {c["id"]: (c["minimum_price"],c["average_price"]) for c in (await repository.catalog.get_catalog())["cards"]}
             self.assertEqual(metrics[a.id], (Decimal('80'), Decimal('80')))
 
             await self.point(database, b, '50', now + timedelta(seconds=1))
@@ -76,17 +77,17 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(tuple(group['representative_card']['tags']), ('tag1',))
             self.assertTrue(group['is_deal'])
             self.assertEqual(group['savings'], group['representative_card']['average_price'] - Decimal('50'))
-            await repository.update_card(b.id, deals_enabled=False)
+            await repository.cards.update_card(b.id, deals_enabled=False)
             group = await self.group(repository, group_id)
             self.assertEqual(group['representative_card_id'], b.id)
             self.assertFalse(group['representative_card']['deals_enabled'])
             self.assertFalse(group['is_deal'])
             self.assertIsNone(group['savings'])
 
-            await repository.update_group(group_id, 'Group', [a.id])
+            await repository.groups.update_group(group_id, 'Group', [a.id])
             self.assertEqual((await self.group(repository, group_id))['representative_card_id'], a.id)
-            await repository.update_group(group_id, 'Group', [a.id, b.id])
-            await repository.delete_card(b.id)
+            await repository.groups.update_group(group_id, 'Group', [a.id, b.id])
+            await repository.cards.delete_card(b.id)
             self.assertEqual((await self.group(repository, group_id))['representative_card_id'], a.id)
 
     async def test_ties_unknown_availability_null_and_empty(self):
@@ -109,7 +110,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(group['is_deal'])
             await self.point(database, b, None, now + timedelta(seconds=1), 'out_of_stock')
             self.assertEqual((await self.group(repository, group_id))['representative_card_id'], a.id)
-            await repository.update_group(group_id, 'Empty', [])
+            await repository.groups.update_group(group_id, 'Empty', [])
             group = await self.group(repository, group_id)
             for key in ('representative_card', 'representative_card_id', 'current_price', 'minimum_price', 'savings'):
                 self.assertIsNone(group[key])
@@ -123,8 +124,8 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             now = datetime.now(timezone.utc)
             await self.point(database, a, '100', now - timedelta(days=1))
             await self.point(database, a, '80', now)
-            app = create_app(repository=repository)
-            app.state.repository = repository
+            app = create_app(services=repository.api)
+
             async with AsyncClient(transport=ASGITransport(app=app), base_url='http://testserver') as client:
                 groups = (await client.get('/api/catalog')).json()['groups']
                 group = next(item for item in groups if item['id'] == group_id)
@@ -132,11 +133,11 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(group['representativeCard'], card)
                 self.assertEqual(group['representativeCardId'], a.id)
                 self.assertEqual(group['savings'], '20')
-            document = await repository.export_cards()
+            document = await repository.transfer.export_cards()
             imported_cards = [item for item in document['cards'] if item['external_id'] in {a.ref.external_id, b.ref.external_id}]
             imported_group = next(item for item in document['groups'] if item['name'] == 'Group')
-            await repository.update_group(group_id, 'Group', [])
-            await repository.import_cards(imported_cards, groups=[imported_group])
+            await repository.groups.update_group(group_id, 'Group', [])
+            await repository.transfer.import_cards(imported_cards, groups=[imported_group])
             self.assertEqual((await self.group(repository, group_id))['representative_card_id'], a.id)
 
     async def test_dates_follow_only_representative_and_deduplicated_collection(self):
@@ -149,15 +150,15 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 for card in cards:
                     (await session.get(MarketplaceCardRecord, card.id)).updated_at = past
             before = await self.group(repository, group_id)
-            await repository.update_card(b.id, title='B', update_title=True)
+            await repository.cards.update_card(b.id, title='B', update_title=True)
             after_other = await self.group(repository, group_id)
             self.assertEqual(after_other['representative_card'], before['representative_card'])
-            owned = await repository.start_direct_run(a.id)
-            await repository.save_result(owned.lease, a, MarketplaceCard(ref=ProductRef(a.ref.marketplace, a.ref.external_id),
+            owned = await repository.runs.start_direct_run(a.id)
+            await repository.runs.save_result(owned.lease, a, MarketplaceCard(ref=ProductRef(a.ref.marketplace, a.ref.external_id),
                 title='A', url=None, price=90, availability=Availability.IN_STOCK))
-            await repository.finish_run(owned.lease)
+            await repository.runs.finish_run(owned.lease)
             after = await self.group(repository, group_id)
             self.assertGreater(after['representative_card']['updated_at'], past)
             self.assertEqual(after['representative_card']['last_observed_at'], past)
             self.assertEqual(after['baseline_days'], before['baseline_days'])
-            self.assertEqual(await repository.count_history(a.id, 30), 1)
+            self.assertEqual(await repository.history.count_history(a.id, 30), 1)

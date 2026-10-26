@@ -12,6 +12,8 @@
 
 - [ADR 0006: Ozon JSON через общую страницу браузерной сессии](0006-ozon-session-json-transport.md) — Accepted.
 
+- [ADR 0007: Правила приложения и явные границы хранения](0007-application-rules-and-persistence-boundaries.md) — Accepted.
+
 Наблюдаемое устройство системы описано в
 [обзоре архитектуры](../architecture/overview.md); обзор не заменяет запись
 о мотивах выбора и рассмотренных альтернативах.

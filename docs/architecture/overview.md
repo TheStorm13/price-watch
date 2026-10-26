@@ -88,7 +88,9 @@ succeeded даже без новой точки истории.
 ## Контракты и границы
 
 - `GET /api/catalog` возвращает cards/groups/deals из одной read-only
-  транзакции REPEATABLE READ с общими исходными данными. UI обновляет весь снимок
+  транзакции REPEATABLE READ с общими исходными данными. `PostgresCatalogReader`
+  материализует типизированные входы за три SQL-запроса; `CatalogService`
+  строит проекции после закрытия транзакции без дополнительных запросов. UI обновляет весь снимок
   вместе и сохраняет прежний снимок при ошибке обновления. Старые GET списков
   cards/groups/deals удалены; мутации и details/history/chart остаются.
   Остальные маршруты: `/api/cards`, `/api/groups`, `/api/runs`, `/api/health`.
@@ -99,8 +101,9 @@ succeeded даже без новой точки истории.
   снимка — `marketplace_connector/serialization/product.schema.json`.
   Реальный коннектор сейчас есть только для Ozon.
 - Ozon-клиент использует системный Chrome с постоянным профилем и Playwright
-  по локальному CDP. Он открывает страницу товара, запрашивает composer JSON
-  из неё, проверяет ответ и передаёт его mapper’у. Цена берётся из
+  по локальному CDP. Он открывает одну общую страницу Ozon на сеанс, запрашивает
+  composer JSON через параллельные fetch без навигации на товар, проверяет ответ
+  и передаёт его parser/mapper. Цена берётся из
   `cardPrice`; внешний ID нормализуется как строка цифр. В desktop worker
   работает на скрытом дисплее: требующая участия пользователя антибот-проверка
   завершает карточку ошибкой. В видимом CLI подтверждение возможно в терминале.
@@ -111,6 +114,22 @@ succeeded даже без новой точки истории.
 `marketplace_connector/application/product_service.py`,
 `marketplace_connector/connectors/ozon/async_client.py`,
 `marketplace_connector/connectors/ozon/mapper.py`.
+
+Правила выгодности и выбора представителя определены в
+`price_watch/domain/catalog_rules.py`; политика шестичасового срока и устаревания —
+в `domain/collection_policy.py`. SQL готовит прежние Decimal-агрегаты,
+а чистые правила принимают готовые значения. API routes, application и worker
+зависят от портов из `price_watch/ports`; `bootstrap.py` создаёт конкретные
+адаптеры, clock и политику. Общие ошибки находятся в `domain/errors.py`.
+
+Самостоятельные PostgreSQL-адаптеры собраны композицией. `RunRepository`
+реализует порты исполнения, очереди и ручной проверки и владеет целой
+транзакцией `save_result`. `HistoryRepository` читает историю и статистику;
+общие statement builders находятся в `infrastructure/postgres/queries.py`.
+Политика расписания вызывается под прежней advisory lock, поэтому выделение
+правила не разделяет конкурентно защищённое чтение и создание запуска.
+Внутренний Python-фасад и общий repository Protocol удалены; HTTP/JSON,
+схема и данные сохранены. Решение и проверка: [ADR 0007](../adr/0007-application-rules-and-persistence-boundaries.md).
 
 Очередь уведомлений о выгодной цене хранит pending ID, watermark и цены одним
 документом localStorage. Ошибка API оставляет работу для повтора с backoff

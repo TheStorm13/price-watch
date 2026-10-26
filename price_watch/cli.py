@@ -20,8 +20,8 @@ from .infrastructure.postgres import (
     AsyncDatabase,
     Database,
     MigrationRunner,
-    PostgresPriceWatchRepository,
 )
+from .bootstrap import create_postgres_stores
 from .worker import CollectionWorker, DatabaseChallengeHandler
 
 
@@ -168,10 +168,10 @@ def _build_connectors(
 
 
 async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
-    repository = PostgresPriceWatchRepository(database)
+    stores = create_postgres_stores(database)
 
     if args.command == "card" and args.card_command == "add":
-        card = await repository.add_card(
+        card = await stores.cards.add_card(
             args.marketplace, args.external_id, args.title, args.url
         )
         _print_json(_tracked_card_dict(card))
@@ -185,24 +185,22 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
                 "current_availability": item.current_availability,
                 "last_observed_at": item.last_observed_at,
             }
-            for item in await repository.list_cards()
+            for item in await stores.cards.list_cards()
         ]
         _print_json(cards)
         return 0
 
     if args.command == "collect":
         async def direct_factory(run):
-            cards = await repository.cards_for_run(run.id)
+            cards = await stores.runs.cards_for_run(run.id)
             return _build_connectors(args, (card.ref.marketplace for card in cards))
-        summary = await RunExecutor(repository, direct_factory).collect(args.card_id)
+        summary = await RunExecutor(stores.runs, direct_factory).collect(args.card_id)
         _print_json(asdict(summary))
         return 0 if summary.failure_count == 0 else 2
 
     if args.command == "worker":
-        repository = PostgresPriceWatchRepository(database)
-
         async def connector_factory(run):
-            cards = await repository.cards_for_run(run.id)
+            cards = await stores.runs.cards_for_run(run.id)
             marketplaces = {card.ref.marketplace for card in cards}
             connectors = []
             if "ozon" in marketplaces:
@@ -211,7 +209,7 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
                         AsyncOzonClient(
                             profile_dir=args.profile_dir,
                             challenge_handler=DatabaseChallengeHandler(
-                                repository, run.lease
+                                stores.runs, run.lease
                             ),
                             chrome_binary=args.chrome_binary,
                             chrome_platform=args.chrome_platform,
@@ -223,7 +221,7 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
                 )
             return ConnectorRegistry(connectors)
 
-        worker = CollectionWorker(repository, connector_factory)
+        worker = CollectionWorker(stores.runs, connector_factory, execution=stores.runs)
         if args.once:
             await worker.run_once()
         else:
@@ -231,13 +229,13 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
         return 0
 
     if args.command == "history":
-        history = [asdict(item) for item in await repository.get_history(args.card_id, args.days)]
-        statistics = asdict(await repository.get_statistics(args.card_id, args.days))
+        history = [asdict(item) for item in await stores.history.get_history(args.card_id, args.days)]
+        statistics = asdict(await stores.history.get_statistics(args.card_id, args.days))
         _print_json({"statistics": statistics, "history": history})
         return 0
 
     if args.command == "run" and args.run_command == "last":
-        _print_json(await repository.get_last_run())
+        _print_json(await stores.runs.get_last_run())
         return 0
 
     raise RuntimeError("Неизвестная команда")

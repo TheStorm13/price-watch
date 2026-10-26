@@ -7,7 +7,12 @@ from httpx import ASGITransport, AsyncClient
 from price_watch.api import create_app
 from price_watch.api.schemas import CardResponse
 from price_watch.domain.models import TrackedCardOverview, CollectionRun, TrackedCard
-from price_watch.infrastructure.postgres.repository import CardAlreadyExists, NoCards
+from price_watch.domain.errors import CardAlreadyExists, NoCards
+from price_watch.application.services import ApiServices
+from price_watch.application.catalog_service import CatalogService
+from price_watch.application.catalog_models import CatalogInputs, CatalogCardInput, CardMetrics, GroupMetadata
+from dataclasses import replace
+from decimal import Decimal
 
 
 NOW = datetime(2026, 9, 21, 12, 0, tzinfo=timezone.utc)
@@ -32,20 +37,6 @@ class FakeRepository:
         self.no_cards = False
         self.groups = {}
 
-    async def group_projection(self):
-        return [{"id": group_id, "name": group["name"], "card_ids": group["card_ids"],
-                 "tags": group["tags"],
-                 "current_price": 999 if group["card_ids"] else None,
-                 "minimum_price": 800 if group["card_ids"] else None,
-                 "representative_card_id": self.card.id if group["card_ids"] else None,
-                 "representative_card": CardResponse.from_overview(
-                     TrackedCardOverview(self.card, 999, "in_stock", NOW), minimum_price=800, average_price=1100
-                 ) if group["card_ids"] else None,
-                 "savings": 101 if group["card_ids"] else None,
-                 "baseline_days": 1 if group["card_ids"] else 0,
-                 "is_deal": bool(group["card_ids"]), "has_member_deals": bool(group["card_ids"])}
-                for group_id, group in self.groups.items()]
-
     async def create_group(self, name, card_ids, tags=None):
         self.groups[1] = {"name": name, "card_ids": card_ids, "tags": tags or []}
         return 1
@@ -59,10 +50,15 @@ class FakeRepository:
     async def delete_group(self, group_id):
         return self.groups.pop(group_id, None) is not None
 
-    async def get_catalog(self):
-        from price_watch.api.schemas import CardResponse
-        card = CardResponse.from_overview(TrackedCardOverview(self.card, 999, "in_stock", NOW), minimum_price=800, average_price=1100)
-        return {"cards": [card], "groups": await self.group_projection(), "deals": []}
+    async def read_catalog(self):
+        local = replace(self.card, group_id=next((key for key, group in self.groups.items()
+                                                if self.card.id in group['card_ids']), None))
+        return CatalogInputs(
+            (CatalogCardInput(TrackedCardOverview(local, Decimal('999'), 'in_stock', NOW),
+                              CardMetrics(Decimal('800'), Decimal('1100'), 1), None),),
+            tuple(GroupMetadata(key, group['name'], tuple(group['tags']))
+                  for key, group in self.groups.items()),
+        )
 
     async def export_cards(self):
         return {"version": 2, "cards": [{
@@ -128,10 +124,22 @@ class FakeRepository:
 
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
+    async def test_startup_closes_database_when_service_configuration_fails(self):
+        from unittest.mock import AsyncMock, patch
+        database = AsyncMock()
+        with (patch('price_watch.api.app.Database'), patch('price_watch.api.app.MigrationRunner'),
+              patch('price_watch.api.app.AsyncDatabase') as factory,
+              patch('price_watch.api.app.create_postgres_stores', side_effect=ValueError('invalid configuration'))):
+            factory.return_value.open = AsyncMock(return_value=database)
+            app = create_app(database_url='synthetic')
+            with self.assertRaisesRegex(ValueError, 'invalid configuration'):
+                async with app.router.lifespan_context(app):
+                    self.fail('Startup should fail')
+        database.close.assert_awaited_once_with()
+
     async def asyncSetUp(self):
         self.repository = FakeRepository()
-        app = create_app(repository=self.repository)
-        app.state.repository = self.repository
+        app = create_app(services=ApiServices(self.repository, self.repository, self.repository, self.repository, self.repository, self.repository, CatalogService(self.repository)))
         self.client = AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://testserver",
@@ -182,8 +190,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.get("/api/catalog")).json()["groups"], [])
 
     async def test_desktop_api_requires_its_session_token(self):
-        app = create_app(repository=self.repository, api_token="session-secret")
-        app.state.repository = self.repository
+        app = create_app(services=ApiServices(self.repository, self.repository, self.repository, self.repository, self.repository, self.repository, CatalogService(self.repository)), api_token="session-secret")
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
             self.assertEqual((await client.get("/api/health")).status_code, 401)
             self.assertEqual(

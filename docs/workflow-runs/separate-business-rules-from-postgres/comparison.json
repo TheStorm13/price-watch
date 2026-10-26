@@ -1,0 +1,80 @@
+{
+  "S_idle": {
+    "p95_before_ms": 18.831078999937745,
+    "p95_after_ms": 16.5253240011225,
+    "p95_change_pct": -12.244412541750094,
+    "rss_change_pct": 0.30873970867637546,
+    "throughput_change_pct": null,
+    "checks": {
+      "latency": true,
+      "memory": true,
+      "sql": true,
+      "throughput": true
+    }
+  },
+  "S_writer": {
+    "p95_before_ms": 22.640164999756962,
+    "p95_after_ms": 23.71646400024474,
+    "p95_change_pct": 4.753936203642217,
+    "rss_change_pct": 0.14331641941356388,
+    "throughput_change_pct": 6.091193596621736,
+    "checks": {
+      "latency": true,
+      "memory": true,
+      "sql": true,
+      "throughput": true
+    }
+  },
+  "M_idle": {
+    "p95_before_ms": 172.68982600035088,
+    "p95_after_ms": 155.71256699877267,
+    "p95_change_pct": -9.83107076704317,
+    "rss_change_pct": -2.909019914096056,
+    "throughput_change_pct": null,
+    "checks": {
+      "latency": true,
+      "memory": true,
+      "sql": true,
+      "throughput": true
+    }
+  },
+  "M_writer": {
+    "p95_before_ms": 189.28806199983228,
+    "p95_after_ms": 175.97140500038222,
+    "p95_change_pct": -7.035127761761261,
+    "rss_change_pct": -1.1498960367966715,
+    "throughput_change_pct": 7.218536751264559,
+    "checks": {
+      "latency": true,
+      "memory": true,
+      "sql": true,
+      "throughput": true
+    }
+  },
+  "L_idle": {
+    "p95_before_ms": 746.0149850012385,
+    "p95_after_ms": 661.6982979994646,
+    "p95_change_pct": -11.30227792966303,
+    "rss_change_pct": -5.218499171869029,
+    "throughput_change_pct": null,
+    "checks": {
+      "latency": true,
+      "memory": true,
+      "sql": true,
+      "throughput": true
+    }
+  },
+  "L_writer": {
+    "p95_before_ms": 824.3643069999962,
+    "p95_after_ms": 737.4951419988065,
+    "p95_change_pct": -10.537715457055818,
+    "rss_change_pct": 3.9524523841992787,
+    "throughput_change_pct": 13.070884967261765,
+    "checks": {
+      "latency": true,
+      "memory": true,
+      "sql": true,
+      "throughput": true
+    }
+  }
+}

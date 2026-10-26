@@ -1,31 +1,71 @@
 """Durable targets, owned execution, recovery and retries."""
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
-import os
+from datetime import datetime
 import json
 from uuid import uuid4
 
 from sqlalchemy import func, select, text
 
-from ...domain.models import RunLease, LeaseLost
+from ...domain.models import RunLease, LeaseLost, TrackedCard
+from ...domain.collection_policy import CollectionPolicy
+from ...domain.errors import ConnectorNotAvailable, NoCards
+from ...ports.runs import Clock
+from marketplace_connector.domain.models import MarketplaceCard
+from marketplace_connector.serialization.product_json import card_to_dict
+from .database import AsyncDatabase
+from .queries import overview_statement
 from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
-from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord
-from .repository_common import ConnectorNotAvailable, NoCards, _RUN_CREATION_LOCK, _tracked_card, _run
+from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, PriceHistoryRecord
+from .repository_common import _RUN_CREATION_LOCK, _tracked_card, _run
 
 ACTIVE = ('running', 'waiting_for_user')
 RETRY_STATUSES = ('failed', 'pending', 'unknown')
 
 
-def stale_cutoff():
-    return datetime.now(timezone.utc) - timedelta(seconds=max(15, float(os.environ.get('RUN_STALE_SECONDS', '30'))))
-
-
 class RunRepository:
+    def __init__(self, database: AsyncDatabase, policy: CollectionPolicy, clock: Clock):
+        self._database = database
+        self._policy = policy
+        self._clock = clock
+
+    async def save_result(self, lease, card: TrackedCard, snapshot: MarketplaceCard) -> None:
+        price = snapshot.price
+        availability = snapshot.availability.value
+        async with self._database.session() as session, session.begin():
+            if not await self._begin_result(session, lease, card.id, 'succeeded'):
+                return
+            if (snapshot.ref.marketplace, snapshot.ref.external_id) != (card.ref.marketplace, card.ref.external_id):
+                raise ValueError("Коннектор вернул другую карточку")
+            # Browser I/O finished before taking run -> target -> card locks.
+            row = (await session.execute(overview_statement().where(
+                MarketplaceCardRecord.id == card.id).with_for_update(of=MarketplaceCardRecord))).first()
+            if row is None:
+                raise LookupError(f"Карточка не найдена: {card.id}")
+            card_record, latest = row
+            if not card_record.title or not card_record.title.strip():
+                card_record.title = snapshot.title
+            if snapshot.url:
+                card_record.url = snapshot.url
+            card_record.image_url = snapshot.image_url or card_record.image_url
+            card_record.updated_at = self._clock()
+            if latest is not None and (latest.price, latest.availability) == (price, availability):
+                return
+            session.add(
+                PriceHistoryRecord(
+                    card_id=card.id,
+                    collection_run_id=lease.run_id,
+                    price=price,
+                    availability=availability,
+                    observed_at=snapshot.collected_at,
+                    snapshot=card_to_dict(snapshot),
+                )
+            )
+
     async def _create_run(self, session, cards, *, card_id=None, full=False, owner=None, retry_of=None, now=None):
         record = CollectionRunRecord(status='running' if owner else 'queued', total_count=len(cards),
             requested_card_id=card_id, is_full_collection=full, retry_of_run_id=retry_of,
-            worker_id=owner, heartbeat_at=datetime.now(timezone.utc) if owner else None,
-            targets_complete=True, started_at=now or datetime.now(timezone.utc))
+            worker_id=owner, heartbeat_at=self._clock() if owner else None,
+            targets_complete=True, started_at=now or self._clock())
         session.add(record)
         await session.flush()
         session.add_all([CollectionRunTargetRecord(run_id=record.id, card_id=c.id, position=i)
@@ -55,22 +95,22 @@ class RunRepository:
             return await self._create_run(s, await self._select_targets(s, card_id), card_id=card_id, full=card_id is None)
 
     async def start_direct_run(self, card_id=None):
-        await self.fail_stale_runs(stale_cutoff())
+        await self.fail_stale_runs()
         async with self._database.session() as s, s.begin():
             await s.execute(_RUN_CREATION_LOCK)
             return await self._create_run(s, await self._select_targets(s, card_id), card_id=card_id,
                                           full=card_id is None, owner=uuid4().hex)
 
     async def create_due_run(self, now=None):
-        now = now or datetime.now(timezone.utc)
         async with self._database.session() as s, s.begin():
             await s.execute(_RUN_CREATION_LOCK)
+            now = now or self._clock()
             if await s.scalar(select(CollectionRunRecord.id).where(
                 CollectionRunRecord.status.in_(('queued', *ACTIVE))).limit(1)) is not None:
                 return None
             last = await s.scalar(select(func.max(CollectionRunRecord.started_at)).where(
                 CollectionRunRecord.is_full_collection.is_(True)))
-            if last is not None and now-last < timedelta(hours=6):
+            if not self._policy.full_collection_due(now=now, last_started_at=last, has_active=False):
                 return None
             try:
                 cards = await self._select_targets(s)
@@ -118,7 +158,7 @@ class RunRepository:
                 return None
             record.status = 'running'
             record.worker_id = uuid4().hex
-            record.heartbeat_at = datetime.now(timezone.utc)
+            record.heartbeat_at = self._clock()
             await s.flush()
             return _run(record)
 
@@ -126,7 +166,7 @@ class RunRepository:
         record = await session.get(CollectionRunRecord, lease.run_id, with_for_update=True)
         if record is None or record.status not in ACTIVE or record.worker_id != lease.owner_token:
             raise LeaseLost(f'Владение запуском {lease.run_id} потеряно')
-        record.heartbeat_at = datetime.now(timezone.utc)
+        record.heartbeat_at = self._clock()
         return record
 
     async def set_run_current(self, lease, card):
@@ -179,22 +219,22 @@ class RunRepository:
         except LeaseLost:
             return False
 
-    @staticmethod
-    def _finish(record, status):
+    def _finish(self, record, status):
         record.status = status
-        record.finished_at = datetime.now(timezone.utc)
+        record.finished_at = self._clock()
         record.current_card_id = record.current_marketplace = record.current_external_id = None
         record.challenge_type = record.challenge_message = None
         record.worker_id = record.heartbeat_at = None
 
-    async def fail_stale_runs(self, older_than):
+    async def fail_stale_runs(self, older_than: datetime | None = None):
+        older_than = older_than if older_than is not None else self._policy.stale_cutoff(self._clock())
         async with self._database.session() as s, s.begin():
             rows = (await s.scalars(select(CollectionRunRecord).where(CollectionRunRecord.status.in_(ACTIVE),
                 func.coalesce(CollectionRunRecord.heartbeat_at, CollectionRunRecord.started_at) < older_than)
                 .with_for_update(skip_locked=True))).all()
             for record in rows:
                 record.errors = [*(record.errors or []), {'cardId': None, 'marketplace': None, 'externalId': None,
-                    'at': datetime.now(timezone.utc).isoformat(), 'type': 'WorkerStopped',
+                    'at': self._clock().isoformat(), 'type': 'WorkerStopped',
                     'message': 'Исполнитель перестал отвечать', 'traceback': ''}]
                 self._finish(record, 'failed')
             return len(rows)
@@ -210,7 +250,8 @@ class RunRepository:
             if record is None:
                 return None
             if (record.status != 'waiting_for_user' or not record.worker_id or
-                not record.heartbeat_at or record.heartbeat_at < stale_cutoff()):
+                not record.heartbeat_at or self._policy.is_stale(now=self._clock(),
+                    heartbeat_at=record.heartbeat_at, started_at=record.started_at)):
                 raise ValueError('Запуск не ожидает действий действующего исполнителя')
             record.status, record.challenge_type, record.challenge_message = 'running', None, None
             return _run(record)
