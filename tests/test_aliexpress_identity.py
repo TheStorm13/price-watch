@@ -1,5 +1,6 @@
 import unittest
-from marketplace_connector.connectors.aliexpress.identity import AliExpressRef, validate_card_identity
+from marketplace_connector.connectors.aliexpress.identity import AliExpressRef
+from marketplace_connector.application.card_identity import validate_card_identity
 from marketplace_connector.domain.errors import InvalidProductId
 from price_watch.api.schemas import CardCreate
 

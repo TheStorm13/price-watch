@@ -1,0 +1,1 @@
+"""Wildberries size-specific collection."""

@@ -318,7 +318,6 @@ test('из каталога запускается сбор только выб�
 test('карточки площадок без коннектора добавляются без запуска сбора', async ({ page }) => {
   await page.goto('/cards')
   for (const [marketplace, title, id] of [
-    ['Wildberries', 'Бутылка WB', '123456789'],
     ['Яндекс Маркет', 'Бутылка Яндекс', '246813579'],
   ]) {
     await page.getByRole('button', { name: 'Добавить карточку' }).click()

@@ -11,6 +11,7 @@ import type { Marketplace } from '../../types/domain'
 import { marketplaceLabel } from '../../utils/format'
 import { parseTags } from './tags'
 import { parseAliExpressUrl } from './aliexpressIdentity'
+import { isWildberriesId, parseWildberriesUrl } from './wildberriesIdentity'
 
 interface Props {
   open: boolean
@@ -20,6 +21,7 @@ interface Props {
 interface Errors {
   externalId?: string
   skuId?: string
+  optionId?: string
   url?: string
   tags?: string
 }
@@ -28,6 +30,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
   const [marketplace, setMarketplace] = useState<Marketplace>('ozon')
   const [externalId, setExternalId] = useState('')
   const [skuId, setSkuId] = useState('')
+  const [optionId, setOptionId] = useState('')
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
   const [tags, setTags] = useState('')
@@ -41,10 +44,18 @@ export function AddCardDrawer({ open, onClose }: Props) {
     const next: Errors = {}
     if (!/^\d+$/.test(externalId.trim())) next.externalId = `Введите числовой ID карточки ${marketplaceLabel[marketplace]}`
     if (marketplace === 'aliexpress' && !/^[0-9]+$/.test(skuId.trim())) next.skuId = 'Введите числовой SKU выбранного варианта'
+    if (marketplace === 'wildberries') {
+      if (!isWildberriesId(externalId.trim())) next.externalId = 'Введите положительный артикул WB в безопасном диапазоне'
+      if (!isWildberriesId(optionId.trim())) next.optionId = 'Введите код выбранного размера WB'
+    }
     if (url.trim()) {
       try {
         const parsed = new URL(url)
         if (!['http:', 'https:'].includes(parsed.protocol)) next.url = 'Используйте абсолютный HTTP(S) URL'
+        if (marketplace === 'wildberries') {
+          const ref = parseWildberriesUrl(url.trim())
+          if (ref.nmId !== externalId.trim() || ref.optionId !== optionId.trim()) next.url = 'Ссылка не соответствует артикулу и размеру WB'
+        }
         if (marketplace === 'aliexpress') {
           const ref = parseAliExpressUrl(url.trim())
           if (ref.productId !== externalId.trim() || ref.skuId !== skuId.trim()) next.url = 'Ссылка не соответствует ID товара и SKU'
@@ -66,12 +77,13 @@ export function AddCardDrawer({ open, onClose }: Props) {
       return
     }
     mutation.mutate(
-      { marketplace, externalId: marketplace === 'aliexpress' ? `${externalId.trim()}:${skuId.trim()}` : externalId.trim(), title: title.trim() || undefined, url: url.trim() || undefined, tags: parsedTags },
+      { marketplace, externalId: marketplace === 'aliexpress' ? `${externalId.trim()}:${skuId.trim()}` : marketplace === 'wildberries' ? `${externalId.trim()}:${optionId.trim()}` : externalId.trim(), title: title.trim() || undefined, url: url.trim() || undefined, tags: parsedTags },
       {
         onSuccess: () => {
           setMarketplace('ozon')
           setExternalId('')
           setSkuId('')
+          setOptionId('')
           setTitle('')
           setUrl('')
           setTags('')
@@ -106,14 +118,14 @@ export function AddCardDrawer({ open, onClose }: Props) {
                   <Field key={value} orientation="horizontal">
                     <RadioGroupItem id={`marketplace-${value}`} value={value} />
                     <FieldLabel htmlFor={`marketplace-${value}`}>
-                      <span><MarketplaceMark marketplace={value} />{!['ozon', 'aliexpress'].includes(value) ? <FieldDescription>Сбор цен пока недоступен</FieldDescription> : null}</span>
+                      <span><MarketplaceMark marketplace={value} />{!['ozon', 'aliexpress', 'wildberries'].includes(value) ? <FieldDescription>Сбор цен пока недоступен</FieldDescription> : null}</span>
                     </FieldLabel>
                   </Field>
                 ))}
               </RadioGroup>
             </FieldSet>
             <Field data-invalid={Boolean(errors.externalId)}>
-              <FieldLabel htmlFor="external-id">{marketplace === 'aliexpress' ? 'ID товара' : 'ID карточки'}</FieldLabel>
+              <FieldLabel htmlFor="external-id">{marketplace === 'aliexpress' ? 'ID товара' : marketplace === 'wildberries' ? 'Артикул WB' : 'ID карточки'}</FieldLabel>
               <Input id="external-id" ref={idInputRef} value={externalId} onChange={(event) => setExternalId(event.target.value)} inputMode="numeric"
                 placeholder={marketplace === 'ozon' ? '1604900984' : 'Введите ID товара'} aria-invalid={Boolean(errors.externalId)} aria-describedby="external-id-hint" />
               {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">Введите числовой ID карточки товара</FieldDescription>}
@@ -123,16 +135,29 @@ export function AddCardDrawer({ open, onClose }: Props) {
               <Input id="sku-id" value={skuId} onChange={(event) => setSkuId(event.target.value)} inputMode="numeric" aria-invalid={Boolean(errors.skuId)} aria-describedby="sku-id-hint" />
               {errors.skuId ? <FieldError id="sku-id-hint">{errors.skuId}</FieldError> : <FieldDescription id="sku-id-hint">SKU выбранного варианта из параметра sku_id в ссылке</FieldDescription>}
             </Field> : null}
+            {marketplace === 'wildberries' ? <Field data-invalid={Boolean(errors.optionId)}>
+              <FieldLabel htmlFor="option-id">Код размера WB</FieldLabel>
+              <Input id="option-id" value={optionId} onChange={(event) => setOptionId(event.target.value)} inputMode="numeric" aria-invalid={Boolean(errors.optionId)} aria-describedby="option-id-hint" />
+              {errors.optionId ? <FieldError id="option-id-hint">{errors.optionId}</FieldError> : <FieldDescription id="option-id-hint">Вставьте ссылку с параметром size выбранного размера или укажите его код. Каждый размер отслеживается отдельно.</FieldDescription>}
+            </Field> : null}
             <Field>
               <FieldLabel htmlFor="card-title">Название</FieldLabel>
               <Input id="card-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Например, смартфон Samsung" />
-              <FieldDescription>{['ozon', 'aliexpress'].includes(marketplace) ? 'Можно оставить пустым — название обновится при сборе' : 'Укажите название: автоматический сбор пока недоступен'}</FieldDescription>
+              <FieldDescription>{['ozon', 'aliexpress', 'wildberries'].includes(marketplace) ? 'Можно оставить пустым — название обновится при сборе' : 'Укажите название: автоматический сбор пока недоступен'}</FieldDescription>
             </Field>
             <Field data-invalid={Boolean(errors.url)}>
               <FieldLabel htmlFor="card-url">URL</FieldLabel>
               <Input id="card-url" value={url} onChange={(event) => {
                 const value = event.target.value
                 setUrl(value)
+                if (marketplace === 'wildberries') {
+                  try {
+                    const ref = parseWildberriesUrl(value.trim())
+                    setExternalId(ref.nmId)
+                    setOptionId(ref.optionId)
+                    setErrors({})
+                  } catch { /* Validate incomplete links on submit. */ }
+                }
                 if (marketplace === 'aliexpress') {
                   try {
                     const ref = parseAliExpressUrl(value.trim())
@@ -154,7 +179,7 @@ export function AddCardDrawer({ open, onClose }: Props) {
           </FieldGroup>
           <SheetFooter className="flex-row justify-end">
             <Button variant="outline" type="button" onClick={onClose}>Отмена</Button>
-            <Button type="submit" disabled={mutation.isPending || !externalId.trim() || (marketplace === 'aliexpress' && !skuId.trim())}>{mutation.isPending ? 'Добавление…' : 'Добавить'}</Button>
+            <Button type="submit" disabled={mutation.isPending || !externalId.trim() || (marketplace === 'aliexpress' && !skuId.trim()) || (marketplace === 'wildberries' && !optionId.trim())}>{mutation.isPending ? 'Добавление…' : 'Добавить'}</Button>
           </SheetFooter>
         </form>
       </SheetContent>

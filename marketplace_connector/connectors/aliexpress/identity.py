@@ -43,15 +43,3 @@ class AliExpressRef:
         if len(skus) != 1 or not _DIGITS.fullmatch(skus[0]):
             raise InvalidProductId("Ссылка должна содержать единственный числовой sku_id")
         return cls(match[1], skus[0])
-
-
-def validate_card_identity(marketplace: str, external_id: str, url: str | None = None) -> tuple[str, str | None]:
-    external_id = external_id.strip()
-    if marketplace.strip().lower() == "aliexpress":
-        ref = AliExpressRef.parse(external_id)
-        if url and AliExpressRef.from_url(url) != ref:
-            raise InvalidProductId("Ссылка AliExpress не соответствует productId и SKU карточки")
-        return ref.external_id, url or ref.url
-    if not external_id:
-        raise InvalidProductId("ID карточки обязателен")
-    return external_id, url

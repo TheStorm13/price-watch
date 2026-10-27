@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from marketplace_connector.connectors.aliexpress.identity import validate_card_identity
+from marketplace_connector.application.card_identity import validate_card_identity
 
 from .database import AsyncDatabase
 

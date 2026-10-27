@@ -1,0 +1,76 @@
+{
+  "globals": [
+    "displayModeSettings",
+    "xnm",
+    "priceHelper",
+    "user"
+  ],
+  "helperMethods": [
+    "isWalletDiscountRounderForNNSZEnabled",
+    "isEnableWalletDiscountRounder",
+    "canShowWalletDiscount",
+    "calcWalletDiscount",
+    "calcVtbDiscount",
+    "calculateFractionalInteresetDiscount",
+    "calculateDiscountWithRounding",
+    "calculateDiscount",
+    "calculateAdjustedDiscount",
+    "isEnableWalletDiscountRounderCache"
+  ],
+  "discount": {
+    "value": 3,
+    "fresh": true
+  },
+  "discountAmount": 32,
+  "normalizedProduct": {
+    "id": 179224846,
+    "price": {
+      "basic": 710000,
+      "product": 105600,
+      "logistics": 0,
+      "return": 0,
+      "cashback": 0,
+      "wallet": 0,
+      "total": 105600,
+      "priceForBasket": 105600,
+      "premiumSaleAmount": 0,
+      "logisticsToShow": 0,
+      "paymentDiscountAmount": 32,
+      "vtbDiscountAmount": 0,
+      "sale": 85,
+      "priceToShow": 105600,
+      "productToShow": 105600,
+      "basicToShow": 710000
+    },
+    "sizes": [
+      {
+        "optionId": 296499716,
+        "name": "58-60",
+        "price": {
+          "basic": 710000,
+          "product": 105600,
+          "logistics": 0,
+          "return": 0,
+          "cashback": 0,
+          "wallet": 0,
+          "total": 105600,
+          "priceForBasket": 105600,
+          "premiumSaleAmount": 0,
+          "logisticsToShow": 0,
+          "paymentDiscountAmount": 32,
+          "vtbDiscountAmount": 0,
+          "sale": 85,
+          "priceToShow": 105600,
+          "productToShow": 105600,
+          "basicToShow": 710000
+        }
+      }
+    ]
+  },
+  "ordinaryDiscount": 32,
+  "walletBlocked": 0,
+  "walletLimitExceeded": 0,
+  "requests": [],
+  "probe_mode": "homepage-only, unauth conditions explicitly initialized, detail-mode runtime with AbortSignal",
+  "final_price_rub": "1024.00"
+}

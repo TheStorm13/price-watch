@@ -19,7 +19,7 @@ describe('AddCardDrawer', () => {
     expect(screen.getByText('Введите числовой ID карточки Ozon')).toBeInTheDocument()
   })
 
-  it('позволяет выбрать площадку без коннектора', async () => {
+  it('показывает доступность сбора для выбранной площадки', async () => {
     const user = userEvent.setup()
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -28,7 +28,7 @@ describe('AddCardDrawer', () => {
     )
     await user.click(screen.getByRole('radio', { name: /Wildberries/ }))
     expect(screen.getByRole('radio', { name: /Wildberries/ })).toBeChecked()
-    expect(screen.getByText('Укажите название: автоматический сбор пока недоступен')).toBeInTheDocument()
+    expect(screen.getByLabelText('Код размера WB')).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /AliExpress/ }))
     expect(screen.getByRole('radio', { name: /AliExpress/ })).toBeChecked()
     await user.click(screen.getByRole('radio', { name: /Яндекс Маркет/ }))
@@ -49,4 +49,18 @@ it('заполняет точный SKU из ссылки AliExpress и откл
   await user.type(screen.getByLabelText('SKU варианта'), '12000061135122692')
   await user.click(screen.getByRole('button', { name: 'Добавить' }))
   expect(screen.getByText('Ссылка не соответствует ID товара и SKU')).toBeInTheDocument()
+})
+
+it('заполняет артикул и размер WB из ссылки и отклоняет несовпадение', async () => {
+  const user = userEvent.setup()
+  render(<QueryClientProvider client={new QueryClient()}><AddCardDrawer open onClose={vi.fn()} /></QueryClientProvider>)
+  await user.click(screen.getByRole('radio', { name: /Wildberries/ }))
+  expect(screen.getByRole('button', { name: 'Добавить' })).toBeDisabled()
+  await user.type(screen.getByLabelText('URL'), 'https://www.wildberries.ru/catalog/179224846/detail.aspx?size=296499716')
+  expect(screen.getByLabelText('Артикул WB')).toHaveValue('179224846')
+  expect(screen.getByLabelText('Код размера WB')).toHaveValue('296499716')
+  await user.clear(screen.getByLabelText('Код размера WB'))
+  await user.type(screen.getByLabelText('Код размера WB'), '296499717')
+  await user.click(screen.getByRole('button', { name: 'Добавить' }))
+  expect(screen.getByText('Ссылка не соответствует артикулу и размеру WB')).toBeInTheDocument()
 })

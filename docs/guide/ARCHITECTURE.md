@@ -19,6 +19,7 @@
 | Chrome | `marketplace_connector/browser` | Процесс, профиль, CDP, acquire/release и согласование ручных проверок |
 | Ozon | `marketplace_connector/connectors/ozon` | Composer JSON и нормализация |
 | AliExpress | `marketplace_connector/connectors/aliexpress` | SKU identity, productData и нормализация одной цены |
+| Wildberries | `marketplace_connector/connectors/wildberries` | nmId:optionId, runtime витрины и одна цена с приоритетом WB Кошелька |
 | Одиночный CLI | `marketplace_connector/connectors/ozon/cli.py`, `main.py` | Получить JSON товара без БД |
 
 Рабочий интерфейс запускается только в Tauri. Браузерный `dev:e2e` использует
@@ -29,10 +30,11 @@ flowchart LR
     UI[React в Tauri] --> API[FastAPI]
     API --> DB[(PostgreSQL)]
     Worker[Локальный Python worker] --> DB
-    Worker --> Connector[Коннекторы Ozon и AliExpress]
+    Worker --> Connector[Коннекторы Ozon, AliExpress и WB]
     Connector --> Chrome[Системный Google Chrome]
     Chrome --> Ozon[Ozon]
     Chrome --> Ali[AliExpress.ru]
+    Chrome --> WB[Wildberries]
 ```
 
 ## UI-слой
@@ -77,7 +79,7 @@ ref, отображаемыми полями, группой, тегами и н
    создаёт полный запуск без дублирования активной очереди.
 4. Общий `RunExecutor` запускает heartbeat и создаёт коннекторы внутри lifecycle. Worker открывает системный Chrome с профилем из
    пользовательского каталога данных на скрытом дисплее и подключается через локальный CDP.
-   Builder передаёт обоим клиентам один `ChromeSession` с acquire/release;
+   Builder передаёт трём клиентам один `ChromeSession` с acquire/release;
    последний потребитель штатно закрывает браузер. Старый Ozon lifecycle удалён.
    Каждая площадка владеет своим транспортом и страницей.
 5. Коннектор открывает одну страницу `https://www.ozon.ru/` на сеанс и выполняет
@@ -99,6 +101,11 @@ ref, отображаемыми полями, группой, тегами и н
    Parser проверяет точную пару и выбранную строку SKU, mapper возвращает одну
    Decimal-цену coupon → activity → regular. Политика ограничений такая же,
    transports независимы; общий challenge lock согласует только ручное участие.
+   WB готовит контекст профиля и условия кошелька, затем получает detail JSON
+   через runtime на главной. Проверяются точные nmId/optionId; возвращается одна
+   Decimal-цена с приоритетом WB Кошелька. Повторы витрины ограничены транспортом.
+   Общий validator идентичностей находится в application/card_identity.py.
+   Подробности и перенос данных — [Wildberries](WILDBERRIES.md), [ADR 0009](../adr/0009-wildberries-size-and-wallet-price.md).
 6. `RunRepository.save_result` заполняет пустое название карточки и обновляет ссылку, если она
    получена с площадки; снимок в `price_history`
    добавляется при изменении цены или наличия. Ошибки по товарам сохраняются с traceback

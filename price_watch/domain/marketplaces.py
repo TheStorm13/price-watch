@@ -1,3 +1,3 @@
 """Marketplaces whose cards can be stored before their connectors are ready."""
 
-PENDING_CONNECTOR_MARKETPLACES = frozenset({"wildberries", "yandex-market"})
+PENDING_CONNECTOR_MARKETPLACES = frozenset({"yandex-market"})

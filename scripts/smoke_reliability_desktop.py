@@ -37,7 +37,10 @@ if sys.argv[1]=='api':
         db=await AsyncDatabase(os.environ['DATABASE_URL']).open()
         repo=create_postgres_stores(db)
         if not await repo.cards.list_collection_cards():
-            await repo.cards.add_card('ozon','123',title='Изолированный тест REL')
+            if not os.environ.get('PRICE_SMOKE_ONLY_WB'):
+                await repo.cards.add_card('ozon','123',title='Изолированный тест REL')
+            if os.environ.get('PRICE_SMOKE_WB'):
+                await repo.cards.add_card('wildberries','179224846:296499716',title='Изолированный WB размер')
             if os.environ.get('PRICE_SMOKE_ALI'):
                 await repo.cards.add_card('aliexpress','1005009868651525:12000061135122688',title='Изолированный Ali SKU')
         await db.close()
@@ -57,7 +60,7 @@ if sys.argv[1]=='worker':
             yield
         async def get_product(self,external_id):
             return MarketplaceCard(ref=ProductRef(self.marketplace,external_id),title='Synthetic',url='',
-                price=Decimal('77648.00' if self.marketplace=='aliexpress' else '100.10'),availability=Availability.IN_STOCK)
+                price=Decimal('1024.00' if self.marketplace=='wildberries' else '77648.00' if self.marketplace=='aliexpress' else '100.10'),availability=Availability.IN_STOCK)
     from marketplace_connector.connectors import builder
     builder.AsyncOzonClient=FakeClient
     builder.OzonConnector=FakeConnector
@@ -65,6 +68,10 @@ if sys.argv[1]=='worker':
         marketplace='aliexpress'
     builder.AsyncAliExpressClient=FakeClient
     builder.AliExpressConnector=FakeAliConnector
+    class FakeWbConnector(FakeConnector):
+        marketplace='wildberries'
+    builder.AsyncWildberriesClient=FakeClient
+    builder.WildberriesConnector=FakeWbConnector
 raise SystemExit(cli.main())
 '''.replace('REPO', repr(str(repo)))
 (project/'main.py').write_text(wrapper)
@@ -131,7 +138,7 @@ def wait_price():
             with urlopen(request,timeout=1) as response:
                 catalog=json.load(response)
             prices={card['marketplace']:card['currentPrice'] for card in catalog['cards']}
-            if prices.get('ozon')=='100.10' and (not os.environ.get('PRICE_SMOKE_ALI') or prices.get('aliexpress')=='77648.00'): return
+            if (os.environ.get('PRICE_SMOKE_ONLY_WB') or prices.get('ozon')=='100.10') and (not os.environ.get('PRICE_SMOKE_ALI') or prices.get('aliexpress')=='77648.00') and (not os.environ.get('PRICE_SMOKE_WB') or prices.get('wildberries')=='1024.00'): return
         except Exception: pass
         time.sleep(.2)
     raise RuntimeError('Private API price timeout')

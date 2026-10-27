@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from marketplace_connector.connectors.aliexpress.identity import validate_card_identity
+from marketplace_connector.application.card_identity import validate_card_identity
 
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -68,7 +68,7 @@ class CardRepository:
             record = (await session.get(MarketplaceCardRecord, card_id))
             if record is None:
                 return None
-            if update_url and record.marketplace == "aliexpress":
+            if update_url and record.marketplace in ("aliexpress", "wildberries"):
                 _, url = validate_card_identity(record.marketplace, record.external_id, url)
             if update_title:
                 record.title = title

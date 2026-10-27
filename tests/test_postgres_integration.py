@@ -102,26 +102,26 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_marketplaces_without_connectors_are_not_queued(self):
         repository = create_postgres_stores(self.async_database)
         ozon = await repository.cards.add_card("ozon", f"test-{uuid4()}")
-        wildberries = await repository.cards.add_card("wildberries", f"test-{uuid4()}")
+        wildberries = await repository.cards.add_card("wildberries", f"{uuid4().int % 1000000000 + 1}:2")
         aliexpress = await repository.cards.add_card("aliexpress", f"{uuid4().int}:2")
         yandex_market = await repository.cards.add_card("yandex-market", f"test-{uuid4()}")
         try:
             app = create_app(services=repository.api)
 
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-                response = await client.post("/api/runs", json={"cardId": wildberries.id})
+                response = await client.post("/api/runs", json={"cardId": yandex_market.id})
                 self.assertEqual(response.status_code, 409)
                 self.assertEqual(response.json()["error"]["code"], "connector_not_available")
-            for card in (wildberries, yandex_market):
+            for card in (yandex_market,):
                 with self.assertRaisesRegex(ValueError, "коннектор ещё не подключён"):
                     await repository.runs.create_queued_run(card.id)
             full_run = await repository.runs.create_queued_run()
             self.assertIn(ozon.id, [c.id for c in await repository.runs.cards_for_run(full_run.id)])
-            self.assertNotIn(wildberries.id, [c.id for c in await repository.runs.cards_for_run(full_run.id)])
+            self.assertIn(wildberries.id, [c.id for c in await repository.runs.cards_for_run(full_run.id)])
             self.assertIn(aliexpress.id, [c.id for c in await repository.runs.cards_for_run(full_run.id)])
             self.assertNotIn(yandex_market.id, [c.id for c in await repository.runs.cards_for_run(full_run.id)])
             await self.abandon_queued(repository, full_run)
-            self.assertNotIn(wildberries.id, [card.id for card in await repository.cards.list_collection_cards()])
+            self.assertIn(wildberries.id, [card.id for card in await repository.cards.list_collection_cards()])
             self.assertIn(aliexpress.id, [card.id for card in await repository.cards.list_collection_cards()])
             self.assertNotIn(yandex_market.id, [card.id for card in await repository.cards.list_collection_cards()])
         finally:

@@ -143,3 +143,11 @@ class SharedBrowserTests(unittest.IsolatedAsyncioTestCase):
             async with session.collection_session():
                 cookies=await session.context.cookies(HOME_URL)
                 self.assertTrue(any(c['name']=='synthetic_session' for c in cookies))
+
+class ThreeMarketplaceOwnershipTests(unittest.IsolatedAsyncioTestCase):
+    async def test_builder_gives_three_adapters_one_owner(self):
+        from marketplace_connector.connectors.builder import build_connectors
+        registry = build_connectors(['ozon','aliexpress','wildberries'], profile_dir='/tmp/unused-three-owner')
+        clients = [registry.get(name)._client for name in ['ozon','aliexpress','wildberries']]
+        self.assertTrue(all(client.session is clients[0].session for client in clients))
+        self.assertTrue(all(client.session.challenge_lock is clients[0].session.challenge_lock for client in clients))

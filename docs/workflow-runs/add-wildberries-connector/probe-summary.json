@@ -1,0 +1,226 @@
+{
+  "product_url": "https://www.wildberries.ru/catalog/179224846/detail.aspx?targetUrl=SN",
+  "transport": {
+    "implementation": "existing ChromeSession, system Chrome, desktop profile",
+    "path": "/__internal/u-card/cards/v4/detail",
+    "observed_query": {
+      "appType": "1",
+      "curr": "rub",
+      "dest": "1259570991",
+      "spp": "30",
+      "lang": "ru",
+      "nm": "179224846"
+    },
+    "observed_query_keys": [
+      "appType",
+      "curr",
+      "dest",
+      "spp",
+      "hide_vflags",
+      "mtype",
+      "lang",
+      "ab_testing",
+      "nm"
+    ],
+    "replayed_header_names": [
+      "accept",
+      "accept-language",
+      "deviceid",
+      "x-requested-with",
+      "x-spa-version"
+    ],
+    "homepage_repeats": [
+      200,
+      200
+    ],
+    "plain_fetch_status": 403
+  },
+  "product": {
+    "id": 179224846,
+    "root": 207853989,
+    "name": "Шапка зимняя бини с отворотом двойная",
+    "brand": "ALDINI",
+    "colors": [
+      {
+        "name": "серый",
+        "id": 8421504
+      }
+    ],
+    "supplier": "ALDINI",
+    "supplierId": 44721,
+    "supplierRating": 4.8,
+    "reviewRating": 4.8,
+    "feedbacks": 6472,
+    "pics": 16,
+    "totalQuantity": 6
+  },
+  "sizes": [
+    {
+      "name": "58-60",
+      "origName": "универсальный",
+      "optionId": 296499716,
+      "stocks": [
+        {
+          "wh": 6233702440,
+          "dtype": 6614249635848,
+          "ndtype": 197124,
+          "dist": 118,
+          "qty": 6,
+          "priority": 67711,
+          "time1": 2,
+          "time2": 49
+        }
+      ],
+      "price": {
+        "basic": 710000,
+        "product": 105600,
+        "logistics": 0,
+        "return": 0,
+        "cashback": 0,
+        "wallet": 0
+      }
+    }
+  ],
+  "card": {
+    "nm_id": 179224846,
+    "imt_id": 207853989,
+    "imt_name": "Шапка зимняя бини с отворотом двойная",
+    "description": "Шапка с отворотом мужская зимняя — это не просто головной убор, а стильный и функциональный аксессуар, который защитит голову от холода и добавит образу современности и уюта. Модная и теплая, она подойдет как взрослому мужчине, так и подростку, школьнику или парню. Мужская демисезонная шапка с подворотом выполнена из натуральной овечьей шерсти с добавлением шерсти альпаки. Двойное шерстяное полотно, делает шапку чулок непродуваемной для холодного ветра. Вязаные модели с крупной вязкой или с подворотом идеально подходят для весна-осень и легко сочетаются с пальто, курткой или костюмом. Шапка-бини подчеркивает молодежный и спортивный стиль и подойдет под любую верхнюю одежду. близкого человека. В ассортименте нашего магазина вы найдете недорогие, дешевые и качественные головные уборы, которые не подведут даже в самые морозные дни. Шапка мужская осенняя от российского бренда — это сочетание стиля, тепла и доступной цены. Тактическая, спортивная, подростковая, бини или классическая — выбирайте модель, которая подойдет именно вам.",
+    "options": [
+      {
+        "name": "Состав",
+        "value": "60% шерсть; 20% акрил; 20% Полиамид",
+        "charc_type": 1
+      },
+      {
+        "name": "Цвет",
+        "value": "графит; темно-серый",
+        "charc_type": 1,
+        "is_variable": true,
+        "variable_values": [
+          "графит",
+          "темно-серый"
+        ],
+        "variable_value_IDs": [
+          20214819,
+          20214496
+        ]
+      },
+      {
+        "name": "Сезон",
+        "value": "Зима",
+        "charc_type": 1
+      },
+      {
+        "name": "Материал подкладки",
+        "value": "шерсть",
+        "charc_type": 1
+      },
+      {
+        "name": "Тип комплекта",
+        "value": "шапка мужская без комплекта",
+        "charc_type": 1
+      },
+      {
+        "name": "Утеплитель",
+        "value": "шерсть",
+        "charc_type": 1
+      },
+      {
+        "name": "Температурный режим",
+        "value": "от +5 °C до -10 °C",
+        "charc_type": 1
+      },
+      {
+        "name": "Фактура материала",
+        "value": "вязаный",
+        "charc_type": 1
+      },
+      {
+        "name": "Вид застежки",
+        "value": "без застежки",
+        "charc_type": 1
+      },
+      {
+        "name": "Материал помпона",
+        "value": "без помпона",
+        "charc_type": 1
+      },
+      {
+        "name": "Декоративные элементы",
+        "value": "логотип",
+        "charc_type": 1
+      },
+      {
+        "name": "Особенности модели",
+        "value": "дышащий материал; эластичный материал; тактическая",
+        "charc_type": 1
+      },
+      {
+        "name": "Уход за вещами",
+        "value": "стирка при t не более 30°C",
+        "charc_type": 1
+      },
+      {
+        "name": "Комплектация",
+        "value": "шапка - 1 шт.",
+        "charc_type": 1
+      },
+      {
+        "name": "Страна производства",
+        "value": "Россия",
+        "charc_type": 1
+      }
+    ],
+    "colors": [
+      1249219814,
+      246172228,
+      179226025,
+      125811010,
+      232630135,
+      10274402,
+      234094892,
+      234094891,
+      232630133,
+      10533879,
+      232630132,
+      36560724,
+      179224846,
+      231122743,
+      231125330,
+      1249219813,
+      185131490
+    ],
+    "selling": {
+      "brand_name": "ALDINI",
+      "brand_hash": "28E0B4BD0EA237F3",
+      "supplier_id": 44721
+    },
+    "media": {
+      "photo_count": 16
+    }
+  },
+  "ui_prices_rub": [
+    "1024",
+    "1056",
+    "7100"
+  ],
+  "price_policy_approved": true,
+  "limitations": [
+    "Only one product and one size verified",
+    "Region behavior not agreed",
+    "Unavailable and multiple-size product behavior not verified",
+    "Homepage runtime bootstrap verified only with explicit unauth grade initialization; production must respect current auth state"
+  ],
+  "wallet_price_evidence": {
+    "source": "Live product page priceBlockWalletPrice button opens price details dialog",
+    "dialog_text": "Детализация цены. Цены указаны с учётом вашей скидки. 1 024 ₽ с WB Кошельком. 1 056 ₽, 7 100 ₽ без WB Кошелька.",
+    "with_wb_wallet_rub": "1024",
+    "without_wb_wallet_rub": "1056",
+    "calculation_source_verified": true,
+    "observed_percent": 3,
+    "rounded_discount_rub": "32"
+  },
+  "approved_price_policy": "WB wallet price, otherwise ordinary price only when wallet price is confirmed unavailable; one public price",
+  "approved_size_policy": "specific optionId per tracked card"
+}

@@ -35,10 +35,10 @@ TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test' \
 рабочую базу приложения. Браузерные E2E тесты сами запускают Vite в тестовом режиме
 с mock API; они проверяют интерфейс, но не живые desktop-службы и Ozon.
 
-## Проверки JSON-транспорта Ozon и AliExpress
+## Проверки JSON-транспорта Ozon, AliExpress и WB
 
 ```bash
-.venv/bin/python -m unittest tests.test_ozon_json_transport tests.test_ozon_fetch_browser tests.test_async_ozon tests.test_profile_lifecycle tests.test_aliexpress_parser tests.test_aliexpress_transport tests.test_shared_browser -v
+.venv/bin/python -m unittest tests.test_ozon_json_transport tests.test_ozon_fetch_browser tests.test_async_ozon tests.test_profile_lifecycle tests.test_aliexpress_parser tests.test_aliexpress_transport tests.test_shared_browser tests.test_wildberries_identity tests.test_wildberries_mapper tests.test_wildberries_transport tests.test_wildberries_browser -v
 ```
 
 Детерминированные тесты проверяют пять одновременных запросов, общий cooldown,
@@ -63,6 +63,7 @@ TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test' \
 | Нет Chrome | Проверить `google-chrome-stable --version` |
 | Скрытый дисплей недоступен | Открыть `xvfb.log`; проверить установку `Xvfb` и `xauth` |
 | Ozon или AliExpress запросил проверку при фоновом сборе | После завершения запуска открыть Chrome кнопкой, пройти проверку и повторить сбор |
+| WB: «Не указан размер WB» | Старая карточка сохранена; добавьте конкретный вариант по полной ссылке с size |
 | AliExpress: «Не указан SKU» | Старая карточка сохранена без изменений; для нового отслеживания добавьте конкретный SKU по полной ссылке |
 | Карточка Ozon не обновилась | Открыть `desktop-worker.log`; исчезнувший товар может вести на страницу предложений |
 
@@ -106,3 +107,9 @@ dbus-run-session -- xvfb-run -a -s '-screen 0 1440x1000x24' \
 и `tests.test_aliexpress_integration` требуют disposable TEST_DATABASE_URL;
 создают и удаляют только свои приватные схемы. Полная проверка Ali, native и
 отдельный live результат: [отчёт](../workflow-runs/add-aliexpress-connector/verification.md).
+
+Для WB PostgreSQL-проверок используйте `tests.test_wildberries_migration` и
+`tests.test_wildberries_integration` с disposable TEST_DATABASE_URL. Native
+smoke только WB: `PRICE_SMOKE_WB=1 PRICE_SMOKE_ONLY_WB=1`; смешанный Ozon/Ali/WB:
+`PRICE_SMOKE_WB=1 PRICE_SMOKE_ALI=1` перед той же командой desktop smoke.
+[Отчёт WB](../workflow-runs/add-wildberries-connector/verification.md).

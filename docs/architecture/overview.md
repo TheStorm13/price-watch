@@ -43,10 +43,11 @@ flowchart LR
     Worker --> Runner[RunExecutor]
     CLI[Прямой collect] --> Runner
     Runner --> Service[CollectionService]
-    Service --> Connector[OzonConnector и AliExpressConnector]
+    Service --> Connector[OzonConnector, AliExpressConnector и WildberriesConnector]
     Connector --> Chrome[Chrome + Playwright CDP]
     Chrome --> Ozon[Ozon composer JSON]
     Chrome --> Ali[AliExpress productData]
+    Chrome --> WB[Wildberries runtime detail]
     Service -->|снимок и результат| DB
     UI -->|опрос /api/runs| API
 ```
@@ -63,7 +64,7 @@ heartbeat каждые пять секунд и при следующем цик
 
 `CollectionService` открывает один сеанс коннектора на маркетплейс и выполняет
 до пяти запросов карточек одновременно. Builder создаёт общий ChromeSession
-для Ozon и AliExpress; последний release закрывает процесс. У каждой площадки
+для Ozon, AliExpress и WB; последний release закрывает процесс. У каждой площадки
 свои страница и JSON transport, общий lock ручных проверок. Ozon использует
 одну общую страницу
 в постоянном профиле Chrome и параллельные JSON-запросы через браузерный `fetch`
@@ -103,7 +104,7 @@ succeeded даже без новой точки истории.
 - Коннектор обязан предоставить асинхронные `get_product` и
   `collection_session`. Он возвращает общий `MarketplaceCard`; JSON-схема
   снимка — `marketplace_connector/serialization/product.schema.json`.
-  Реальные коннекторы есть для Ozon и AliExpress.ru.
+  Реальные коннекторы есть для Ozon, AliExpress.ru и Wildberries.
 - Ozon-клиент использует системный Chrome с постоянным профилем и Playwright
   по локальному CDP. Он открывает одну общую страницу Ozon на сеанс, запрашивает
   composer JSON через параллельные fetch без навигации на товар, проверяет ответ
@@ -115,8 +116,12 @@ succeeded даже без новой точки истории.
   productId:skuId. Одна цена выбранного SKU: coupon → activity → regular.
   Старые карточки без SKU получают ошибку без изменения полей или истории.
   [ADR 0008](../adr/0008-aliexpress-sku-and-shared-browser.md).
-- Карточки Wildberries и Яндекс Маркета можно добавить через API/UI,
-  но они исключаются из запусков сбора до появления коннекторов.
+- Wildberries отслеживает вариант товара по nmId:optionId; общая страница
+  готовит контекст профиля/кошелька и получает detail через runtime витрины.
+  Одна цена: WB Кошелёк → обычная при подтверждённой неприменимости.
+  [ADR 0009](../adr/0009-wildberries-size-and-wallet-price.md).
+- Карточки Яндекс Маркета можно добавить через API/UI,
+  но они исключаются из запусков сбора до появления коннектора.
 
 Источники: `price_watch/api/schemas.py`, `price_watch/domain/marketplaces.py`,
 `marketplace_connector/application/product_service.py`,
