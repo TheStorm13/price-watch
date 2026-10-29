@@ -12,5 +12,7 @@ test('AliExpress: ссылка заполняет точный SKU и созда
   await page.screenshot({ path: '/tmp/price-watch-ali-add-card.png', fullPage: false })
   await page.getByRole('button', { name: 'Добавить', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByText('1005009868651525:12000061135122688', { exact: false })).toBeVisible()
+  await expect(page.locator('.cards-table')).not.toContainText('1005009868651525:12000061135122688')
+  await page.getByRole('link', { name: 'Ali SKU smoke', exact: true }).click()
+  await expect(page.getByText('ID 1005009868651525:12000061135122688', { exact: true })).toBeVisible()
 })

@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InputGroup, InputGroupInput, InputGroupAddon } from '@/components/ui/input-group'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -10,7 +10,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCap
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Fragment, useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, FolderPlus, LayoutGrid, List, Pencil, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCatalog, useDeleteCard, useUpdateCard } from '../../api/queries'
 import { Button } from '../../components/ui/button'
 import { CardActionsMenu } from '../../components/product/CardActionsMenu'
@@ -37,6 +37,8 @@ const columnLabels: Record<ColumnSortKey, string> = {
 
 export function CardsPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const cardLocationState = { returnTo: location.pathname + location.search }
   const [params, setParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<ProductGroup | 'new' | null>(null)
@@ -153,12 +155,12 @@ export function CardsPage() {
   }
 
   function tile(card: TrackedCardView) {
-    return <Card key={card.id} asChild className="grid gap-0 py-0"><li className="cards-grid__item">
+    return <Card key={card.id} asChild className="grid gap-0 py-0"><li className={cn("cards-grid__item", selection.selectedIds.has(card.id) && "is-selected")}>
+      <div className="cards-grid__selection"><Checkbox aria-label={`Выбрать карточку ${card.title ?? 'Без названия'}`} checked={selection.selectedIds.has(card.id)} onCheckedChange={() => selection.toggle(card.id)} /></div>
       <div className="cards-grid__actions">{actions(card)}</div>
-      <CardHeader className="contents"><Link className="cards-grid__link" to={`/cards/${card.id}`}>
+      <CardHeader className="contents"><Link className="cards-grid__link" to={`/cards/${card.id}`} state={cardLocationState}>
         <span className="cards-grid__media"><ProductImage card={card} large /></span>
         <CardTitle className="contents"><span className="cards-grid__title" title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</span></CardTitle>
-        <CardDescription className="contents"><span className="cards-grid__id">ID: {card.externalId}</span></CardDescription>
       </Link></CardHeader>
       <CardContent className="contents"><div className="cards-grid__tags" title={card.tags?.join(', ')}><TagList tags={card.tags} /></div>
       <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
@@ -169,10 +171,10 @@ export function CardsPage() {
   }
 
   function row(card: TrackedCardView, nested = false) {
-    return <TableRow key={card.id} className={cn('cards-table__product', nested && 'cards-table__nested', selection.selectedIds.has(card.id) && 'is-selected')} onClick={() => navigate(`/cards/${card.id}`)}>
+    return <TableRow key={card.id} className={cn('cards-table__product', nested && 'cards-table__nested', selection.selectedIds.has(card.id) && 'is-selected')} onClick={(event) => { if (!(event.target as HTMLElement).closest('a, button, input, [role="checkbox"]')) navigate(`/cards/${card.id}`, { state: cardLocationState }) }}>
       <TableCell className="cards-table__selection py-2"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
         checked={selection.selectedIds.has(card.id)} onClick={(event) => event.stopPropagation()} onCheckedChange={() => selection.toggle(card.id)} /></TableCell>
-      <TableCell className="py-2"><div className="card-identity"><ProductImage card={card} /><span><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong><small>ID: {card.externalId}</small><TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
+      <TableCell className="py-2"><div className="card-identity"><ProductImage card={card} /><span><Link to={`/cards/${card.id}`} state={cardLocationState} className="card-identity__link"><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong></Link><TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
       <TableCell className="py-2"><MarketplaceMark marketplace={card.marketplace} /></TableCell>
       <TableCell className="price-cell py-2">{formatPrice(card.currentPrice)}</TableCell>
       <TableCell className="price-cell py-2">{formatPrice(card.minimumPrice)}</TableCell>
@@ -200,7 +202,7 @@ export function CardsPage() {
       {catalogQuery.isError && catalogQuery.data ? <Alert variant="destructive"><AlertDescription>Не удалось обновить каталог. <Button variant="link" type="button" onClick={() => void catalogQuery.refetch()}>Повторить</Button></AlertDescription></Alert> : null}
 
       <div className="filters">
-        <InputGroup className="max-w-[280px] flex-[1_1_230px]">
+        <InputGroup className="filters__search">
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
           <InputGroupInput value={query} onChange={(event) => setParam('q', event.target.value, '')} placeholder="Название или ID" aria-label="Поиск карточек" />
         </InputGroup>

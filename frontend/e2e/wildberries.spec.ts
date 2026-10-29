@@ -12,7 +12,10 @@ test('WB: выбранный размер создаётся отдельно и
     await page.getByLabel('Название', { exact: true }).fill(`WB размер ${size}`)
     await page.getByRole('button', { name: 'Добавить', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect(page.getByText(`179224846:${size}`, { exact: false })).toBeVisible()
+    await expect(page.locator('.cards-table')).not.toContainText(`179224846:${size}`)
+    await page.getByRole('link', { name: `WB размер ${size}`, exact: true }).click()
+    await expect(page.getByText(`ID 179224846:${size}`, { exact: true })).toBeVisible()
+    await page.getByRole('link', { name: 'К карточкам' }).click()
   }
   await page.getByText('WB размер 296499716', { exact: true }).click()
   await expect(page.getByRole('button', { name: /Обновить/ }).first()).toBeEnabled()

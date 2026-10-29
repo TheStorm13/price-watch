@@ -10,7 +10,7 @@ import { Field, FieldLabel, FieldDescription, FieldGroup } from '@/components/ui
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { ArrowLeft, ExternalLink, RefreshCw } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, isDesktopMode } from '../../api/client'
 import { useCard, useCardChart, useCardHistory, useDeleteCard, useUpdateCard } from '../../api/queries'
 import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
@@ -60,6 +60,10 @@ function CardTagsEditor({ card }: { card: NonNullable<ReturnType<typeof useCard>
 
 export function CardDetailsPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const requestedReturn: unknown = location.state?.returnTo
+  const returnTo = typeof requestedReturn === 'string' && /^\/cards(?:\?[^#]*)?$/.test(requestedReturn) ? requestedReturn : '/cards'
+  const searchOptions = { state: location.state }
   const cardId = Number(useParams().cardId)
   const [params, setParams] = useSearchParams()
   const [openError, setOpenError] = useState<string | null>(null)
@@ -73,7 +77,7 @@ export function CardDetailsPage() {
   const deleteCard = useDeleteCard()
   const collection = useCollection()
   const card = cardQuery.data ?? historyQuery.data?.card
-  const statistics = historyQuery.data?.statistics
+  const statistics = historyQuery.isError ? undefined : historyQuery.data?.statistics
   const history = historyQuery.data?.history ?? []
   const chart = chartQuery.data?.points ?? []
   const midpoint = statistics?.minimumPrice != null && statistics.maximumPrice != null
@@ -92,16 +96,16 @@ export function CardDetailsPage() {
     }
   }
 
-  if (cardQuery.isLoading || historyQuery.isLoading || chartQuery.isLoading) return <section className="page detail-page"><Skeleton className="min-h-[560px]" aria-label="Загрузка карточки" /></section>
+  if (cardQuery.isLoading && !card) return <section className="page detail-page"><Skeleton className="min-h-[560px]" aria-label="Загрузка карточки" /></section>
   if (cardQuery.error instanceof ApiError && cardQuery.error.code === 'card_not_found') {
-    return <section className="page"><Empty><EmptyHeader><EmptyTitle>Карточка не найдена</EmptyTitle></EmptyHeader><EmptyContent><Link className="text-link" to="/cards">Вернуться к карточкам</Link></EmptyContent></Empty></section>
+    return <section className="page"><Empty><EmptyHeader><EmptyTitle>Карточка не найдена</EmptyTitle></EmptyHeader><EmptyContent><Link className="text-link" to={returnTo}>Вернуться к карточкам</Link></EmptyContent></Empty></section>
   }
-  if (!card || cardQuery.isError || historyQuery.isError || chartQuery.isError) {
+  if (!card) {
     return (
       <section className="page">
         <Empty><EmptyHeader><EmptyTitle>Не удалось загрузить данные карточки</EmptyTitle><EmptyDescription>Сервис временно не смог получить карточку или историю её цены.</EmptyDescription></EmptyHeader><EmptyContent>
           <Button variant="outline" onClick={() => void Promise.all([cardQuery.refetch(), historyQuery.refetch(), chartQuery.refetch()])}>Повторить</Button>
-          <Link className="text-link" to="/cards">Вернуться к карточкам</Link></EmptyContent>
+          <Link className="text-link" to={returnTo}>Вернуться к карточкам</Link></EmptyContent>
         </Empty>
       </section>
     )
@@ -109,7 +113,7 @@ export function CardDetailsPage() {
 
   return (
     <section className="page detail-page">
-      <Link className="back-link" to="/cards"><ArrowLeft />К карточкам</Link>
+      <Link className="back-link" to={returnTo}><ArrowLeft />К карточкам</Link>
       <header className="detail-header">
         <div className="detail-header__product">
           <ProductImage card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager />
@@ -120,11 +124,12 @@ export function CardDetailsPage() {
           {['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace)
             ? <Button variant="outline" onClick={() => collection.start(card.id)} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить эту карточку</Button>
             : <Badge variant="warning" className="tracking-status">Сбор цен пока недоступен: коннектор не подключён</Badge>}
-          <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate('/cards', { replace: true }) }} />
+          <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate(returnTo, { replace: true }) }} />
         </div>
       </header>
       {openError ? <Alert variant="destructive"><AlertDescription>{openError}</AlertDescription></Alert> : null}
       {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
+      {cardQuery.isError ? <SectionError message="Не удалось обновить карточку" retry={() => void cardQuery.refetch()} /> : null}
       <TagList tags={card.tags} />
       <CardTagsEditor key={card.id} card={card} />
 
@@ -142,30 +147,34 @@ export function CardDetailsPage() {
 
       <div className="chart-heading">
         <h2>История цены</h2>
-        <ToggleGroup type="single" value={String(days)} onValueChange={(value) => { if (value) setParams({ days: value }) }} variant="outline" spacing={0} aria-label="Период истории">
+        <ToggleGroup type="single" value={String(days)} onValueChange={(value) => { if (value) setParams({ days: value }, searchOptions) }} variant="outline" spacing={0} aria-label="Период истории">
           {periods.map((period) => <ToggleGroupItem key={period} value={String(period)}>{period} дней</ToggleGroupItem>)}
         </ToggleGroup>
       </div>
-      <PriceChart history={chart} midpoint={midpoint} />
+      <section aria-label="История цены">{chartQuery.isLoading ? <Skeleton className="price-chart" aria-label="Загрузка графика" /> : chartQuery.isError ? <SectionError message="Не удалось загрузить график" retry={() => void chartQuery.refetch()} /> : <PriceChart history={chart} midpoint={midpoint} />}</section>
 
       <section className="measurements">
         <h2>Измерения</h2>
-        <div className="table-surface">
+        {historyQuery.isLoading ? <Skeleton className="h-[240px]" aria-label="Загрузка измерений" /> : historyQuery.isError ? <SectionError message="Не удалось загрузить измерения" retry={() => void historyQuery.refetch()} /> : <div className="table-surface">
           <Table className="history-table">
             <TableCaption className="sr-only">История измерений цены</TableCaption>
             <TableHeader><TableRow><TableHead>Дата и время</TableHead><TableHead>Цена</TableHead><TableHead>Наличие</TableHead></TableRow></TableHeader>
             <TableBody>{history.map((point) => <TableRow key={point.id}><TableCell>{formatDateTime(point.observedAt)}</TableCell><TableCell className="price-cell">{formatPrice(point.price)}</TableCell><TableCell><AvailabilityStatus value={point.availability} /></TableCell></TableRow>)}</TableBody>
           </Table>
           {history.length === 0 ? <Empty><EmptyHeader><EmptyTitle>Измерений за выбранный период нет</EmptyTitle></EmptyHeader></Empty> : null}
-        </div>
-        {historyQuery.data && historyQuery.data.totalCount > historyQuery.data.pageSize ? (
+        </div>}
+        {!historyQuery.isError && historyQuery.data && historyQuery.data.totalCount > historyQuery.data.pageSize ? (
           <div className="history-pagination">
-            <Button disabled={page <= 1} onClick={() => setParams({ days: String(days), page: String(page - 1) })}>Назад</Button>
+            <Button disabled={page <= 1} onClick={() => setParams({ days: String(days), page: String(page - 1) }, searchOptions)}>Назад</Button>
             <span>Страница {page} из {Math.ceil(historyQuery.data.totalCount / historyQuery.data.pageSize)} · {historyQuery.data.totalCount} измерений</span>
-            <Button disabled={page * historyQuery.data.pageSize >= historyQuery.data.totalCount} onClick={() => setParams({ days: String(days), page: String(page + 1) })}>Далее</Button>
+            <Button disabled={page * historyQuery.data.pageSize >= historyQuery.data.totalCount} onClick={() => setParams({ days: String(days), page: String(page + 1) }, searchOptions)}>Далее</Button>
           </div>
         ) : null}
       </section>
     </section>
   )
+}
+
+function SectionError({ message, retry }: { message: string; retry: () => void }) {
+  return <Alert variant="destructive" className="section-error"><AlertDescription>{message}<Button variant="outline" onClick={retry}>Повторить</Button></AlertDescription></Alert>
 }

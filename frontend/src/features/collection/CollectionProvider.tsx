@@ -11,6 +11,8 @@ interface CollectionContextValue {
   isStarting: boolean
   startError: string | null
   start: (cardId?: number) => void
+  isContinuing: boolean
+  continueError: string | null
   continueRun: () => void
   retryErrors: () => void
   isRetrying: boolean
@@ -130,7 +132,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     isStarting: startMutation.isPending,
     startError: startMutation.isError ? startMutation.error.message : null,
     start,
-    continueRun: () => runId !== null && continueMutation.mutate(runId),
+    continueRun: () => { if (runId !== null && !continueMutation.isPending) continueMutation.mutate(runId) },
+    isContinuing: continueMutation.isPending && continueMutation.variables === runId,
+    continueError: continueMutation.isError && continueMutation.variables === runId ? continueMutation.error.message : null,
     retryErrors: () => runId !== null && retryMutation.mutate(runId),
     isRetrying: retryMutation.isPending,
     retryError: retryMutation.isError && retryMutation.variables === runId ? retryMutation.error.message : null,

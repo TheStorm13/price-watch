@@ -44,3 +44,34 @@ it('loads fresh catalog after terminal state and retries after panel dismissal',
   expect(api.getCatalog).toHaveBeenCalledTimes(3)
   cleanup(); client.clear()
 })
+
+it('exposes continuation failure, disables duplicate requests, and clears failure on retry', async () => {
+  const { fireEvent, waitFor } = await import('@testing-library/react')
+  const run: CollectionRun = { id: 99, status: 'waiting_for_user', totalCount: 5, successCount: 1, failureCount: 0,
+    current: null, challenge: null, startedAt: new Date().toISOString(), finishedAt: null,
+    retryableCount: 0, retryScopeIncomplete: false }
+  localStorage.setItem('price-watch-active-run', '99')
+  vi.mocked(api.getRun).mockResolvedValue(run)
+  vi.mocked(api.listRuns).mockResolvedValue([run])
+  let resume!: (value: CollectionRun) => void
+  vi.mocked(api.continueRun).mockRejectedValueOnce(new Error('Продолжение недоступно'))
+    .mockImplementationOnce(() => new Promise((resolve) => { resume = resolve }))
+  function Controls() {
+    const state = useCollection()
+    return <><button disabled={state.isContinuing} onClick={state.continueRun}>Продолжить</button><span role="status">{state.continueError}</span></>
+  }
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(<QueryClientProvider client={client}><CollectionProvider><Controls /></CollectionProvider></QueryClientProvider>)
+  await waitFor(() => expect(api.getRun).toHaveBeenCalled())
+  fireEvent.click(screen.getByRole('button', { name: 'Продолжить' }))
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Продолжение недоступно'))
+  fireEvent.click(screen.getByRole('button', { name: 'Продолжить' }))
+  await waitFor(() => expect(screen.getByRole('button')).toBeDisabled())
+  fireEvent.click(screen.getByRole('button'))
+  expect(api.continueRun).toHaveBeenCalledTimes(2)
+  expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  await act(async () => resume({ ...run, status: 'running' }))
+  await waitFor(() => expect(screen.getByRole('button')).toBeEnabled())
+  expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  cleanup(); client.clear()
+})

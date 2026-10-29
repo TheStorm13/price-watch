@@ -26,7 +26,7 @@ if(layoutMode==='notice') mockApi.getCatalog=async()=>{const snapshot=await orig
 test('панель обновления растёт с сообщением и сохраняет доступными ошибки и действия', async ({ page }) => {
   await panelFixture(page)
   for (const width of [1024, 1440]) {
-    await page.setViewportSize({ width, height: width === 1024 ? 768 : 900 })
+    await page.setViewportSize({ width, height: width === 1024 ? 700 : 900 })
     const heights: number[] = []
     for (const mode of ['running', 'waiting', 'waiting-long', 'errors']) {
       await page.goto(`/cards?layout=${mode}`)
@@ -40,7 +40,7 @@ test('панель обновления растёт с сообщением и 
       const box = (await panel.boundingBox())!
       heights.push(box.height)
       expect(box.y).toBeGreaterThanOrEqual(0)
-      expect(box.y + box.height).toBeLessThanOrEqual(width === 1024 ? 768 : 900)
+      expect(box.y + box.height).toBeLessThanOrEqual(width === 1024 ? 700 : 900)
       const progress = panel.getByLabel('Прогресс обновления цен')
       await expect(progress).toBeVisible()
       const progressBox = (await progress.boundingBox())!

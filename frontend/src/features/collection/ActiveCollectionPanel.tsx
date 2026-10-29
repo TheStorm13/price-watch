@@ -8,14 +8,14 @@ import { useRun } from '../../api/queries'
 import { useCollection } from './CollectionProvider'
 
 export function ActiveCollectionPanel() {
-  const { run, continueRun, dismiss, retryErrors, isRetrying, retryError } = useCollection()
+  const { run, continueRun, isContinuing, continueError, dismiss, retryErrors, isRetrying, retryError } = useCollection()
   const hasErrors = run?.status === 'completed_with_errors' || run?.status === 'failed'
   const details = useRun(hasErrors ? run.id : null, true)
   if (!run) return null
 
   const waiting = run.status === 'waiting_for_user'
   const complete = ['completed', 'completed_with_errors', 'failed'].includes(run.status)
-  const progress = run.totalCount ? Math.round(((run.successCount + run.failureCount) / run.totalCount) * 100) : 0
+  const progress = run.totalCount ? Math.round(((run.successCount + run.failureCount) / run.totalCount) * 100) : null
   const title = complete
     ? run.status === 'completed' ? 'Цены обновлены' : 'Обновление завершено с ошибками'
     : 'Обновление цен'
@@ -36,8 +36,9 @@ export function ActiveCollectionPanel() {
             <p>{run.challenge?.message ?? 'Завершите проверку в открывшемся Chrome, затем продолжите'}</p>
           </div>
           <div className="collection-panel__challenge-actions">
-            <Button variant="default" onClick={continueRun}>Проверка пройдена</Button>
+            <Button variant="default" onClick={continueRun} disabled={isContinuing}>{isContinuing ? 'Продолжаем…' : 'Проверка пройдена'}</Button>
           </div>
+          {continueError ? <Alert variant="destructive"><AlertDescription>{continueError}</AlertDescription></Alert> : null}
         </div>
       ) : complete ? (
         <div className="collection-panel__result">
@@ -66,8 +67,8 @@ export function ActiveCollectionPanel() {
         </p>
       )}
       </CardContent><CardFooter className="shrink-0 px-0 pt-3 pb-0"><div className="collection-panel__progress-row">
-        <Progress value={waiting ? Math.max(progress, 34) : progress} aria-label="Прогресс обновления цен" className="flex-1" />
-        <span className="shrink-0 whitespace-nowrap">{run.successCount + run.failureCount} из {run.totalCount}</span>
+        <Progress value={progress} aria-label="Прогресс обновления цен" className="flex-1" />
+        <span className="shrink-0 whitespace-nowrap">{run.totalCount ? `${run.successCount + run.failureCount} из ${run.totalCount}` : 'Подготовка…'}</span>
       </div>
     </CardFooter></aside></Card>
   )

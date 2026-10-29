@@ -370,7 +370,7 @@ test('фильтры не сдвигаются при сбросе, а сетк�
     expect(after[index]?.y).toBeCloseTo(before[index]?.y ?? 0, 0)
   }
   const reset = await page.getByRole('button', { name: 'Сбросить' }).boundingBox()
-  expect(reset?.y).toBeGreaterThan((after[1]?.y ?? 0) + (after[1]?.height ?? 0))
+  expect(reset?.y).toBeGreaterThanOrEqual(after[1]?.y ?? 0)
   await expect(status).toHaveText('Не участвует в выгодных')
   await page.screenshot({ path: '/tmp/price-watch-filters.png' })
   await page.setViewportSize({ width: 1024, height: 768 })
@@ -559,7 +559,7 @@ test('плитки одинаковы при разных фото, а мета�
     expect(imageBoxes[1]?.height).toBe(190)
     const positions = await Promise.all([portraitTile, landscapeTile, grid.locator('.cards-grid__item').first()].map((tile) => tile.evaluate((element) => {
       const top = element.getBoundingClientRect().top
-      return ['.cards-grid__media', '.cards-grid__title', '.cards-grid__id', '.cards-grid__prices', 'time']
+      return ['.cards-grid__media', '.cards-grid__title', '.cards-grid__tags', '.cards-grid__prices', 'time']
         .map((selector) => element.querySelector(selector)!.getBoundingClientRect().top - top)
     })))
     for (let index = 0; index < positions[0].length; index += 1) {
@@ -567,7 +567,7 @@ test('плитки одинаковы при разных фото, а мета�
       expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThan(1)
     }
     const badgeBox = await portraitTile.locator('.tracking-status').boundingBox()
-    expect(badgeBox?.height).toBeLessThanOrEqual(14)
+    expect(badgeBox?.height).toBeGreaterThanOrEqual(18)
   }
   for (const [tile, naturalWidth, naturalHeight] of [[portraitTile, 200, 400], [landscapeTile, 400, 200]] as const) {
     const image = tile.locator('img')
