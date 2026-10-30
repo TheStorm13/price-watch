@@ -1,8 +1,12 @@
+import { memo, useMemo } from 'react'
 import { compareMoney, type DecimalString } from '../../utils/money'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { CartesianGrid, LabelList, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { PriceHistoryPoint } from '../../types/domain'
 import { availabilityLabel, formatPrice, formatShortDate } from '../../utils/format'
+
+const compactPrice = new Intl.NumberFormat('ru-RU', { notation: 'compact' })
+const tooltipDate = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'long', timeStyle: 'short' })
 
 interface Props {
   history: PriceHistoryPoint[]
@@ -12,8 +16,8 @@ interface Props {
 export function priceDomain(history: PriceHistoryPoint[]): [number, number] {
   const prices = history.flatMap((point) => point.price === null ? [] : [Number(point.price)])
   if (prices.length === 0) return [0, 1]
-  const minimum = Math.min(...prices)
-  const maximum = Math.max(...prices)
+  let minimum = Infinity, maximum = -Infinity
+  for (const price of prices) { minimum = Math.min(minimum, price); maximum = Math.max(maximum, price) }
   const padding = maximum === minimum ? Math.max(maximum * 0.1, 1) : (maximum - minimum) * 0.1
   return [Math.max(0, minimum - padding), maximum + padding]
 }
@@ -21,8 +25,11 @@ export function priceDomain(history: PriceHistoryPoint[]): [number, number] {
 export function turningPointIndices(history: PriceHistoryPoint[]): Set<number> {
   const priced = history.flatMap((point, index) => point.price === null ? [] : [{ index, price: point.price }])
   if (priced.length < 2 || priced.every((point) => point.price === priced[0].price)) return new Set()
-  const minimum = priced.map((point) => point.price).sort(compareMoney)[0]
-  const maximum = priced.map((point) => point.price).sort(compareMoney).at(-1)!
+  let minimum = priced[0].price, maximum = priced[0].price
+  for (const point of priced) {
+    if (compareMoney(point.price, minimum) < 0) minimum = point.price
+    if (compareMoney(point.price, maximum) >= 0) maximum = point.price
+  }
   const candidates = priced.filter((point, position) => {
     const previous = priced[position - 1]
     const next = priced[position + 1]
@@ -42,10 +49,10 @@ export function turningPointIndices(history: PriceHistoryPoint[]): Set<number> {
   return new Set(selected)
 }
 
-export function PriceChart({ history, midpoint }: Props) {
-  const data = history.map((point) => ({ ...point, plotPrice: point.price === null ? null : Number(point.price), label: formatShortDate(point.observedAt) }))
-  const domain = priceDomain(history)
-  const labels = turningPointIndices(history)
+export const PriceChart = memo(function PriceChart({ history, midpoint }: Props) {
+  const data = useMemo(() => history.map((point) => ({ ...point, plotPrice: point.price === null ? null : Number(point.price), label: formatShortDate(point.observedAt) })), [history])
+  const domain = useMemo(() => priceDomain(history), [history])
+  const labels = useMemo(() => turningPointIndices(history), [history])
   if (data.length === 0) return <Empty className="mb-8 h-[250px]"><EmptyHeader><EmptyTitle>Данных за этот период нет</EmptyTitle><EmptyDescription>Запустите обновление цены, чтобы увидеть динамику.</EmptyDescription></EmptyHeader></Empty>
   return (
     <div className="price-chart" aria-label="График истории цены">
@@ -53,11 +60,11 @@ export function PriceChart({ history, midpoint }: Props) {
         <LineChart data={data} margin={{ top: 30, right: 36, bottom: 14, left: 8 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: 'var(--input)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} minTickGap={36} />
-          <YAxis domain={domain} tickLine={false} axisLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} tickFormatter={(value: number) => new Intl.NumberFormat('ru-RU', { notation: 'compact' }).format(value)} width={58} />
+          <YAxis domain={domain} tickLine={false} axisLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} tickFormatter={(value: number) => compactPrice.format(value)} width={58} />
           <Tooltip
             contentStyle={{ border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 12px 24px rgba(16,24,40,.10)', fontSize: 13 }}
             formatter={(_value, _name, item) => [formatPrice(item.payload.price), 'Цена']}
-            labelFormatter={(_, payload) => payload[0]?.payload ? `${new Intl.DateTimeFormat('ru-RU', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(payload[0].payload.observedAt))} · ${availabilityLabel[payload[0].payload.availability as keyof typeof availabilityLabel]}` : ''}
+            labelFormatter={(_, payload) => payload[0]?.payload ? `${tooltipDate.format(new Date(payload[0].payload.observedAt))} · ${availabilityLabel[payload[0].payload.availability as keyof typeof availabilityLabel]}` : ''}
           />
           {midpoint !== null ? <ReferenceLine y={Number(midpoint)} stroke="var(--muted-foreground)" strokeDasharray="6 5" /> : null}
           <Line type="linear" dataKey="plotPrice" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--background)', strokeWidth: 2 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive={false}>
@@ -73,4 +80,4 @@ export function PriceChart({ history, midpoint }: Props) {
       </ResponsiveContainer>
     </div>
   )
-}
+})

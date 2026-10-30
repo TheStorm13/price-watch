@@ -1,14 +1,13 @@
+import { GroupCandidates } from './GroupCandidates'
 import { restoreFocus } from '@/lib/focus'
-import { useRef, useState, type FormEvent } from 'react'
+import { useCallback, useDeferredValue, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useDeleteGroup, useSaveGroup } from '../../api/queries'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogHeader, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
-import { Field, FieldLabel, FieldGroup, FieldDescription, FieldSet, FieldLegend } from '@/components/ui/field'
+import { Field, FieldLabel, FieldGroup, FieldDescription } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { Button } from '../../components/ui/button'
 import type { TrackedCardView, ProductGroup } from '../../types/domain'
 import { parseTags } from './tags'
@@ -26,7 +25,7 @@ const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
 export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClose }: Props) {
   const [name, setName] = useState(group?.name ?? '')
   const [tags, setTags] = useState((group?.tags ?? []).join(', '))
-  const [selected, setSelected] = useState<number[]>(group?.cardIds ?? initialCardIds)
+  const [selected, setSelected] = useState<Set<number>>(() => new Set(group?.cardIds ?? initialCardIds))
   const [search, setSearch] = useState('')
   const [direction, setDirection] = useState<'asc' | 'desc'>('asc')
   const [error, setError] = useState<string | null>(null)
@@ -34,12 +33,19 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
   const save = useSaveGroup()
   const remove = useDeleteGroup()
   const busy = save.isPending || remove.isPending
-  const filteredCards = cards.filter((card) => `${card.title ?? ''} ${card.externalId}`.toLowerCase().includes(search.trim().toLowerCase()))
+  const deferredSearch = useDeferredValue(search.trim().toLowerCase())
+  const filteredCards = useMemo(() => cards.filter((card) => `${card.title ?? ''} ${card.externalId}`.toLowerCase().includes(deferredSearch))
     .toSorted((left, right) => {
       const order = collator.compare(left.title ?? left.externalId, right.title ?? right.externalId)
       return (direction === 'asc' ? order : -order) || left.id - right.id
-    })
-  const movingCards = cards.some((card) => selected.includes(card.id) && card.groupId != null && card.groupId !== group?.id)
+    }), [cards, deferredSearch, direction])
+  const movingCards = cards.some((card) => selected.has(card.id) && card.groupId != null && card.groupId !== group?.id)
+
+  const toggleSelected = useCallback((id:number,checked:boolean) => setSelected(previous=>{
+    const next=new Set(previous)
+    if(checked) next.add(id); else next.delete(id)
+    return next
+  }), [])
 
   const deleteTriggerRef = useRef<HTMLButtonElement>(null)
   const returnFocusRef = useRef(document.activeElement as HTMLElement | null)
@@ -51,8 +57,8 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
     try { parsedTags = parseTags(tags) } catch (caught) { setError((caught as Error).message); return }
     setError(null)
     try {
-      await save.mutateAsync({ id: group?.id, input: { name: name.trim(), cardIds: selected, tags: parsedTags } })
-      onSaved?.(selected)
+      await save.mutateAsync({ id: group?.id, input: { name: name.trim(), cardIds: [...selected], tags: parsedTags } })
+      onSaved?.([...selected])
       onClose()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Не удалось сохранить группу')
@@ -96,18 +102,9 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
               </Select>
             </Field>
           </div>
-          <p role="status">Выбрано карточек: {selected.length}</p>
+          <p role="status">Выбрано карточек: {selected.size}</p>
           {movingCards ? <Alert><AlertDescription>Выбранные карточки из других групп перейдут в эту группу. Их история цен сохранится.</AlertDescription></Alert> : null}
-          <FieldSet className="max-h-[260px] overflow-y-auto">
-            <FieldLegend className="sr-only">Товары группы</FieldLegend>
-            <FieldGroup className="gap-0">
-              {filteredCards.map((card) => <Field key={card.id} orientation="horizontal" className="group-dialog__card">
-                <Checkbox id={`group-card-${card.id}`} checked={selected.includes(card.id)} onCheckedChange={(checked) => setSelected((previous) => checked === true ? [...previous, card.id] : previous.filter((id) => id !== card.id))} />
-                <FieldLabel htmlFor={`group-card-${card.id}`}><span><strong>{card.title ?? card.externalId}</strong><FieldDescription>{card.marketplace} · ID: {card.externalId}</FieldDescription></span></FieldLabel>
-              </Field>)}
-            </FieldGroup>
-            {filteredCards.length === 0 ? <Empty><EmptyHeader><EmptyTitle>Карточки не найдены</EmptyTitle><EmptyDescription>Измените или очистите запрос.</EmptyDescription></EmptyHeader></Empty> : null}
-          </FieldSet>
+          <GroupCandidates cards={filteredCards} selected={selected} onToggle={toggleSelected} />
         </FieldGroup>
         {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
         <DialogFooter className="shrink-0">

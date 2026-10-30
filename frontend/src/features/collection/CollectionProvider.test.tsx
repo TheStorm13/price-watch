@@ -2,7 +2,7 @@ import { act, render, screen, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { CollectionRun, CatalogSnapshot } from '../../types/domain'
-import { CollectionProvider, useCollection } from './CollectionProvider'
+import { CollectionProvider, useCollection, useCollectionCommands } from './CollectionProvider'
 import { api } from '../../api/client'
 import { queryKeys } from '../../api/queries'
 import { NOTIFICATIONS_KEY } from './dealNotifications'
@@ -15,12 +15,33 @@ function Observer() {
   return <><span data-testid="run">{state.run?.id ?? 'closed'}</span><span data-testid="notice">{state.dealNotice ?? 'none'}</span></>
 }
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.resetAllMocks(); localStorage.clear() })
+it('does not render command consumers for thirty progress updates', async () => {
+  vi.useFakeTimers()
+  localStorage.setItem('price-watch-active-run', '99')
+  const run: CollectionRun = {id:99,status:'running',totalCount:100,successCount:0,failureCount:0,
+    current:null,challenge:null,startedAt:new Date().toISOString(),finishedAt:null,
+    retryableCount:0,retryScopeIncomplete:false,diagnosticsStatus:'complete'}
+  vi.mocked(api.getRun).mockResolvedValue(run)
+  vi.mocked(api.listRuns).mockResolvedValue([run])
+  let renders=0
+  function Commands() { const commands=useCollectionCommands(); renders++; return <button onClick={()=>commands.start()}>Start</button> }
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}})
+  render(<QueryClientProvider client={client}><CollectionProvider><Commands /><Observer /></CollectionProvider></QueryClientProvider>)
+  await act(async()=>{await vi.advanceTimersByTimeAsync(20)})
+  const before=renders
+  for(let i=1;i<=30;i++) await act(async()=>{
+    client.setQueryData(queryKeys.run(99),{...run,successCount:i})
+    await vi.advanceTimersByTimeAsync(2)
+  })
+  expect(renders).toBe(before)
+  cleanup();client.clear()
+})
 it('loads fresh catalog after terminal state and retries after panel dismissal', async () => {
   vi.useFakeTimers()
   localStorage.setItem('price-watch-active-run', '99')
   const run: CollectionRun = { id: 99, status: 'completed', totalCount: 1, successCount: 1, failureCount: 0,
     current: null, challenge: null, startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
-    retryableCount: 0, retryScopeIncomplete: false }
+    retryableCount: 0, diagnosticsStatus: 'complete', retryScopeIncomplete: false }
   const catalog: CatalogSnapshot = { cards: [], groups: [], deals: [{
     card: { id: 1, marketplace: 'ozon', externalId: '1', title: 'Item', url: null, imageUrl: null,
       tags: [], dealsEnabled: true, currentPrice: "80.00", currentAvailability: 'in_stock',
@@ -49,7 +70,7 @@ it('exposes continuation failure, disables duplicate requests, and clears failur
   const { fireEvent, waitFor } = await import('@testing-library/react')
   const run: CollectionRun = { id: 99, status: 'waiting_for_user', totalCount: 5, successCount: 1, failureCount: 0,
     current: null, challenge: null, startedAt: new Date().toISOString(), finishedAt: null,
-    retryableCount: 0, retryScopeIncomplete: false }
+    retryableCount: 0, diagnosticsStatus: 'complete', retryScopeIncomplete: false }
   localStorage.setItem('price-watch-active-run', '99')
   vi.mocked(api.getRun).mockResolvedValue(run)
   vi.mocked(api.listRuns).mockResolvedValue([run])

@@ -102,8 +102,8 @@ input::placeholder { color: #98a2b3; }
 .cards-table th.cards-table__selection, .cards-table td.cards-table__selection { width: 42px; padding-inline: 8px 4px; text-align: center; }
 .cards-table__selection input { width: 18px; height: 18px; accent-color: var(--blue); cursor: pointer; }
 .cards-table__product.is-selected { --row-surface: var(--blue-soft); background: var(--row-surface); }
-.cards-table tr:not(.cards-table__group-gap) > :nth-last-child(2) { position: sticky; right: 48px; width: 156px; z-index: 1; }
-.cards-table tr:not(.cards-table__group-gap) > :last-child { position: sticky; right: 0; z-index: 1; }
+.cards-table tr:not(.virtual-spacer) > :nth-last-child(2) { position: sticky; right: 48px; width: 156px; z-index: 1; }
+.cards-table tr:not(.virtual-spacer) > :last-child { position: sticky; right: 0; z-index: 1; }
 .cards-table td:nth-last-child(-n+2) { background: var(--row-surface, var(--surface)); }
 .cards-table th:nth-last-child(-n+2) { background: var(--surface-subtle); }
 .cards-table__product { height: 84px; }
@@ -177,9 +177,6 @@ input::placeholder { color: #98a2b3; }
 .cards-table__group .product-group__toggle svg { color: var(--muted-foreground); }
 .cards-table .cards-table__nested { --row-surface: color-mix(in srgb, var(--muted) 60%, var(--surface)); background: color-mix(in srgb, var(--muted) 60%, var(--surface)); }
 .cards-table__nested td:nth-child(2) { padding-left: 42px; }
-.cards-table .cards-table__group-gap { height: 8px; pointer-events: none; }
-.cards-table .cards-table__group-gap td { height: 8px; min-height: 0; padding: 0; border: 0; background: var(--surface); }
-.cards-table__group-gap + .cards-table__product td { border-top: 0; }
 .product-group__edit { width: 32px; height: 32px; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; }
 .product-group__edit:hover { color: var(--blue); background: var(--blue-soft); }
 .product-group__edit svg { width: 16px; height: 16px; }
@@ -295,3 +292,9 @@ input::placeholder { color: #98a2b3; }
   .cards-table__group .tag-list { display: flex; width: 100%; max-width: 100%; min-width: 0; flex-wrap: nowrap; }
   .card-identity .tracking-status { flex: none; height: auto; margin: 0; font-size: 12px; line-height: 18px; }
 }
+
+.virtual-grid { list-style: none; margin: 0; padding: 0; }
+.virtual-grid-row { padding-bottom: 16px; }
+.virtual-grid-row > .cards-grid { margin: 0; }
+.cards-table .virtual-spacer, .cards-table .virtual-spacer:hover { border: 0; pointer-events: none; background: transparent; }
+.cards-table .virtual-spacer > td { padding: 0; border: 0; position: static; }

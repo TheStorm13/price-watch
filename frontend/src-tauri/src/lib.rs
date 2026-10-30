@@ -18,6 +18,7 @@ use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
 
 mod native_services;
+mod process_log;
 use native_services::NativeServices;
 
 #[derive(Clone, Serialize)]
@@ -54,6 +55,7 @@ struct RuntimeState {
     native: Mutex<Option<NativeServices>>,
     worker: Mutex<Option<WorkerProcess>>,
     manual_browser: Mutex<Option<Child>>,
+    manual_browser_log: Mutex<Option<process_log::LogDrain>>,
     startup: Mutex<()>,
     last_config: Mutex<Option<ApiConfig>>,
     service_error: Mutex<Option<String>>,
@@ -201,14 +203,6 @@ impl RuntimeState {
         let python = self.python_executable();
 
         let log_path = self.state_dir.join("desktop-worker.log");
-        let stdout = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&log_path)
-            .map_err(|error| format!("Не удалось открыть {}: {error}", log_path.display()))?;
-        let stderr = stdout
-            .try_clone()
-            .map_err(|error| format!("Не удалось открыть stderr worker: {error}"))?;
         let project_root = self.project_root.clone();
         let profile_dir = self.profile_dir.clone();
         let display = format!(":{display_number}");
@@ -231,9 +225,7 @@ impl RuntimeState {
                 ])
                 .current_dir(project_root)
                 .env("DATABASE_URL", database_url)
-                .env("DISPLAY", display)
-                .stdout(Stdio::from(stdout))
-                .stderr(Stdio::from(stderr));
+                .env("DISPLAY", display);
             if let Some(auth) = xauthority {
                 command.env("XAUTHORITY", auth);
             }
@@ -254,6 +246,13 @@ impl RuntimeState {
                 }
             }
 
+            let _log = match process_log::LogDrain::attach(&mut command, &log_path) {
+                Ok(log) => log,
+                Err(error) => {
+                    let _ = startup_tx.send(Err(error));
+                    return;
+                }
+            };
             let mut child = match command.spawn() {
                 Ok(child) => child,
                 Err(error) => {
@@ -361,6 +360,10 @@ impl RuntimeState {
         }
         if !running {
             *browser = None;
+            *self
+                .manual_browser_log
+                .lock()
+                .map_err(|_| "Ошибка журнала Chrome")? = None;
         }
 
         let executable = env::var_os("CHROME_BINARY")
@@ -376,15 +379,8 @@ impl RuntimeState {
             })
             .ok_or("Не найден установленный Google Chrome")?;
         let log_path = profile.join("chrome.log");
-        let stdout = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&log_path)
-            .map_err(|error| format!("Не удалось открыть лог Chrome: {error}"))?;
-        let stderr = stdout
-            .try_clone()
-            .map_err(|error| format!("Не удалось открыть лог Chrome: {error}"))?;
-        let mut child = Command::new(executable)
+        let mut command = Command::new(executable);
+        command
             .arg("--remote-debugging-port=0")
             .arg("--remote-debugging-address=127.0.0.1")
             .arg(format!("--user-data-dir={}", profile.display()))
@@ -394,9 +390,16 @@ impl RuntimeState {
                 "--start-maximized",
                 "--ozone-platform=x11",
             ])
-            .args(store_urls)
-            .stdout(Stdio::from(stdout))
-            .stderr(Stdio::from(stderr))
+            .args(store_urls);
+        // A second Chrome launcher only sends URLs to the existing owned
+        // process; it must not reset or become another writer of that log.
+        let log = if existing_port.is_none() {
+            Some(process_log::LogDrain::attach(&mut command, &log_path)?)
+        } else {
+            command.stdout(Stdio::null()).stderr(Stdio::null());
+            None
+        };
+        let mut child = command
             .spawn()
             .map_err(|error| format!("Не удалось открыть Chrome: {error}"))?;
         if existing_port.is_none() {
@@ -422,6 +425,10 @@ impl RuntimeState {
                 thread::sleep(Duration::from_millis(100));
             }
             *browser = Some(child);
+            *self
+                .manual_browser_log
+                .lock()
+                .map_err(|_| "Ошибка журнала Chrome")? = log;
         } else {
             thread::spawn(move || {
                 let _ = child.wait();
@@ -461,6 +468,11 @@ impl RuntimeState {
     }
 
     fn stop_manual_browser(&self) -> Result<(), String> {
+        let _log = self
+            .manual_browser_log
+            .lock()
+            .map_err(|_| "Ошибка журнала Chrome")?
+            .take();
         let mut browser = self
             .manual_browser
             .lock()
@@ -644,6 +656,7 @@ mod path_tests {
             native: Mutex::new(None),
             worker: Mutex::new(None),
             manual_browser: Mutex::new(None),
+            manual_browser_log: Mutex::new(None),
             startup: Mutex::new(()),
             last_config: Mutex::new(None),
             service_error: Mutex::new(None),
@@ -750,6 +763,7 @@ mod path_tests {
             native: Mutex::new(None),
             worker: Mutex::new(None),
             manual_browser: Mutex::new(Some(child)),
+            manual_browser_log: Mutex::new(None),
             startup: Mutex::new(()),
             last_config: Mutex::new(None),
             service_error: Mutex::new(None),
@@ -778,6 +792,7 @@ mod path_tests {
             native: Mutex::new(None),
             worker: Mutex::new(None),
             manual_browser: Mutex::new(None),
+            manual_browser_log: Mutex::new(None),
             startup: Mutex::new(()),
             last_config: Mutex::new(None),
             service_error: Mutex::new(None),
@@ -1060,6 +1075,7 @@ pub fn run() {
         native: Mutex::new(None),
         worker: Mutex::new(None),
         manual_browser: Mutex::new(None),
+        manual_browser_log: Mutex::new(None),
         startup: Mutex::new(()),
         last_config: Mutex::new(None),
         service_error: Mutex::new(None),

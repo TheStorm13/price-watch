@@ -114,7 +114,7 @@ let runs: CollectionRun[] = [
   {
     id: 21,
     retryableCount: 0,
-    retryScopeIncomplete: false,
+    diagnosticsStatus: 'complete', retryScopeIncomplete: false,
     status: 'completed',
     totalCount: 4,
     successCount: 4,
@@ -127,7 +127,7 @@ let runs: CollectionRun[] = [
   {
     id: 20,
     retryableCount: 1,
-    retryScopeIncomplete: false,
+    diagnosticsStatus: 'complete', retryScopeIncomplete: false,
     status: 'completed_with_errors',
     totalCount: 4,
     successCount: 3,
@@ -192,6 +192,9 @@ function assignGroup(groupId: number, cardIds: number[]) {
 let nextRunId = 22
 let nextHistoryId = Math.max(0, ...history.map((point) => point.id)) + 1
 const runCreatedAt = new Map<number, number>()
+runs[0] = {...runs[0],status:'completed_with_errors',successCount:3,failureCount:1,retryableCount:1,errors:runs[1].errors}
+const retryTargetIds = new Map(runs.map(run => [run.id, (run.errors ?? []).flatMap(error => error.cardId === null ? [] : [error.cardId])]))
+runs = runs.map((run,index) => index===0 ? run : {...run,errors:[],diagnosticsStatus:'expired'})
 const runTargetIds = new Map<number, number[]>()
 const continuedRuns = new Set<number>()
 
@@ -465,10 +468,10 @@ export const mockApi = {
 
   async retryRun(runId: number): Promise<CollectionRun> {
     const source = runs.find((run) => run.id === runId)
-    const targets = source?.errors?.filter((error) => error.cardId !== null) ?? []
+    const targets = retryTargetIds.get(runId) ?? []
     if (!source || targets.length === 0) throw new Error('Нет карточек для повтора')
     if (runs.some((run) => run.retryOfRunId === runId)) throw new Error('Повтор уже создан')
-    const retry = await this.startRun(targets[0].cardId ?? undefined)
+    const retry = await this.startRun(targets[0])
     const next = { ...retry, retryOfRunId: runId, totalCount: targets.length }
     runs = runs.map((run) => run.id === next.id ? next : run.id === runId ? { ...run, retryableCount: 0 } : run)
     return next
@@ -481,7 +484,7 @@ export const mockApi = {
     const run: CollectionRun = {
       id: nextRunId++,
       retryableCount: 0,
-      retryScopeIncomplete: false,
+      diagnosticsStatus: 'complete', retryScopeIncomplete: false,
       status: 'queued',
       totalCount: selected.length,
       successCount: 0,
@@ -493,7 +496,7 @@ export const mockApi = {
       startedAt: new Date().toISOString(),
       finishedAt: null,
     }
-    runs = [run, ...runs]
+    runs = [run, ...runs.map(previous => ({...previous, errors: [], diagnosticsStatus: 'expired' as const}))]
     runCreatedAt.set(run.id, Date.now())
     runTargetIds.set(run.id, selected.map((card) => card.id))
     return delay(run)
@@ -548,7 +551,7 @@ export const mockApi = {
       next = { ...run, status: 'running' }
     }
     runs[index] = next
-    next = { ...next, retryableCount: ['failed', 'completed_with_errors'].includes(next.status) ? (next.errors?.filter((e) => e.cardId !== null).length ?? 0) : 0 }
+    next = { ...next, retryableCount: ['failed', 'completed_with_errors'].includes(next.status) ? (retryTargetIds.get(next.id)?.length ?? 0) : 0 }
     runs[index] = next
     return delay({ ...next, errors: includeErrors ? next.errors ?? [] : null }, 80)
   },

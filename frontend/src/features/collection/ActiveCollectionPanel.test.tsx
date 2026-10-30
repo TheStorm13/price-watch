@@ -5,12 +5,13 @@ import { useCollection } from './CollectionProvider'
 import type { CollectionRun } from '../../types/domain'
 
 vi.mock('./CollectionProvider', () => ({ useCollection: vi.fn() }))
-vi.mock('../../api/queries', () => ({ useRun: () => ({ data: { errors: [{ cardId: null, message: 'Browser startup failed' }] } }) }))
-afterEach(cleanup)
+const diagnostics = vi.hoisted(() => ({ status: 'complete', errors: [{ cardId: null, message: 'Browser startup failed' }] }))
+vi.mock('../../api/queries', () => ({ useRun: () => ({ data: { errors: diagnostics.errors, diagnosticsStatus: diagnostics.status } }) }))
+afterEach(() => { cleanup(); diagnostics.status = 'complete'; diagnostics.errors = [{ cardId: null, message: 'Browser startup failed' }] })
 it('offers retry for pending targets despite only a run-level error', () => {
   const run: CollectionRun = { id: 1, status: 'failed', totalCount: 5, successCount: 0, failureCount: 0,
     current: null, challenge: null, startedAt: '2026-10-22', finishedAt: '2026-10-22',
-    retryableCount: 5, retryScopeIncomplete: true }
+    retryableCount: 5, diagnosticsStatus: 'complete', retryScopeIncomplete: true }
   vi.mocked(useCollection).mockReturnValue({ run, continueRun: vi.fn(), dismiss: vi.fn(), retryErrors: vi.fn(),
     isContinuing: false, continueError: null, isRetrying: false, retryError: null, isStarting: false, startError: null, start: vi.fn(), dealNotice: null, dismissDealNotice: vi.fn() })
   const view = render(<ActiveCollectionPanel />)
@@ -21,10 +22,29 @@ it('offers retry for pending targets despite only a run-level error', () => {
   expect(screen.queryByRole('button', { name: 'Повторить ошибки и оставшиеся' })).not.toBeInTheDocument()
 })
 
+it('explains limited and expired diagnostics without changing counts or retry', () => {
+  const run: CollectionRun = { id: 4, status: 'completed_with_errors', totalCount: 5000, successCount: 0, failureCount: 5000,
+    current: null, challenge: null, startedAt: '2026-10-30', finishedAt: '2026-10-30',
+    retryableCount: 5000, diagnosticsStatus: 'limited', retryScopeIncomplete: false }
+  vi.mocked(useCollection).mockReturnValue({ ...useCollection(), run })
+  diagnostics.status = 'limited'
+  const view = render(<ActiveCollectionPanel />)
+  expect(screen.getByText(/Сохранены только примеры ошибок/)).toBeVisible()
+  expect(screen.getByText(/Ошибок: 5000/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Повторить ошибки и оставшиеся' })).toBeEnabled()
+  diagnostics.status = 'expired'
+  diagnostics.errors = []
+  view.rerender(<ActiveCollectionPanel />)
+  expect(screen.getByText(/Подробности очищены/)).toBeVisible()
+  expect(screen.queryByText('Подробностей об ошибках нет.')).not.toBeInTheDocument()
+  expect(screen.getByText(/Ошибок: 5000/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Повторить ошибки и оставшиеся' })).toBeEnabled()
+})
+
 it('показывает ручную проверку AliExpress с нейтральным заголовком', () => {
   const run: CollectionRun = { id: 2, status: 'waiting_for_user', totalCount: 2, successCount: 0, failureCount: 0,
     current: null, challenge: { type: 'browser_verification', message: 'AliExpress: пройдите проверку в Chrome' },
-    startedAt: '2026-10-26', finishedAt: null, retryableCount: 0, retryScopeIncomplete: false }
+    startedAt: '2026-10-26', finishedAt: null, retryableCount: 0, diagnosticsStatus: 'complete', retryScopeIncomplete: false }
   vi.mocked(useCollection).mockReturnValue({ ...useCollection(), run })
   render(<ActiveCollectionPanel />)
   expect(screen.getByText('Требуется проверка в Chrome')).toBeVisible()
@@ -34,7 +54,7 @@ it('показывает ручную проверку AliExpress с нейтр�
 
 it('reports actual progress, pending continuation, error and indeterminate preparation', () => {
   const run: CollectionRun = { id: 3, status: 'waiting_for_user', totalCount: 5, successCount: 1, failureCount: 0,
-    current: null, challenge: null, startedAt: '2026-10-29', finishedAt: null, retryableCount: 0, retryScopeIncomplete: false }
+    current: null, challenge: null, startedAt: '2026-10-29', finishedAt: null, retryableCount: 0, diagnosticsStatus: 'complete', retryScopeIncomplete: false }
   vi.mocked(useCollection).mockReturnValue({ ...useCollection(), run, isContinuing: true, continueError: null })
   const view = render(<ActiveCollectionPanel />)
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '20')

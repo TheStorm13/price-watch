@@ -33,7 +33,8 @@ class TransferRepository:
             cards = (await session.scalars(select(MarketplaceCardRecord).order_by(
                 MarketplaceCardRecord.marketplace, MarketplaceCardRecord.external_id,
             ))).all()
-            histories = (await session.scalars(select(PriceHistoryRecord).order_by(
+            histories = (await session.execute(select(PriceHistoryRecord.card_id, PriceHistoryRecord.price,
+                PriceHistoryRecord.availability, PriceHistoryRecord.observed_at).order_by(
                 PriceHistoryRecord.card_id, PriceHistoryRecord.observed_at, PriceHistoryRecord.id,
             ))).all()
             groups = (await session.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
@@ -55,11 +56,14 @@ class TransferRepository:
                     "availability": point.availability,
                     "observed_at": point.observed_at,
                 })
+            members = {}
+            for card in cards:
+                members.setdefault(card.group_id, []).append(card)
             group_data = [{
                 "name": group.name,
                 "tags": group.tags,
                 "cards": [{"marketplace": card.marketplace, "external_id": card.external_id}
-                          for card in cards if card.group_id == group.id],
+                          for card in members.get(group.id, ())],
             } for group in groups]
         return {"version": 2, "cards": result, "groups": group_data}
 

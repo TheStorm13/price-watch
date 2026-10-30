@@ -20,4 +20,17 @@ describe('price chart scale and labels', () => {
     expect([...turningPointIndices(history([100, 80, 110, 90, 120]))]).toEqual([1, 4])
     expect(turningPointIndices(history([100, 100, 100])).size).toBe(0)
   })
+
+  it('compares Decimal extrema beyond floating point precision', () => {
+    const points = history([0, 0, 0, 0, 0])
+    for (const [index, cents] of ['01', '00', '03', '02', '04'].entries()) {
+      points[index].price = `9007199254740992.${cents}`
+    }
+    expect([...turningPointIndices(points)]).toEqual([1, 4])
+  })
+
+  it('handles long histories without a spread argument limit', () => {
+    const point = history([100])[0]
+    expect(priceDomain(Array.from({ length: 150000 }, () => point))).toEqual([90, 110])
+  })
 })

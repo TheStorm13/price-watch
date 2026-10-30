@@ -37,19 +37,27 @@ impl Drop for NativeServices {
     }
 }
 
-struct ManagedChild(Child);
+struct ManagedChild {
+    child: Child,
+    _log: crate::process_log::LogDrain,
+}
 
 impl Drop for ManagedChild {
     fn drop(&mut self) {
-        unsafe { libc::kill(self.0.id() as i32, libc::SIGTERM) };
+        // Readiness/recovery may already have reaped this owned child. Never
+        // signal its stale PID after the kernel can reuse it.
+        if !matches!(self.child.try_wait(), Ok(None)) {
+            return;
+        }
+        unsafe { libc::kill(self.child.id() as i32, libc::SIGTERM) };
         let deadline = Instant::now() + Duration::from_secs(5);
-        while matches!(self.0.try_wait(), Ok(None)) && Instant::now() < deadline {
+        while matches!(self.child.try_wait(), Ok(None)) && Instant::now() < deadline {
             thread::sleep(Duration::from_millis(100));
         }
-        if matches!(self.0.try_wait(), Ok(None)) {
-            let _ = self.0.kill();
+        if matches!(self.child.try_wait(), Ok(None)) {
+            let _ = self.child.kill();
         }
-        let _ = self.0.wait();
+        let _ = self.child.wait();
     }
 }
 
@@ -76,16 +84,6 @@ fn free_port() -> Result<u16, String> {
         .map_err(|error| format!("Не удалось выбрать локальный порт: {error}"))
 }
 
-fn log_file(state_dir: &Path, name: &str) -> Result<Stdio, String> {
-    let path = state_dir.join(name);
-    OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&path)
-        .map(Stdio::from)
-        .map_err(|error| format!("Не удалось открыть {}: {error}", path.display()))
-}
-
 fn spawn_logged(
     command: &mut Command,
     state_dir: &Path,
@@ -94,11 +92,10 @@ fn spawn_logged(
     // These processes are started by a short-lived spawn_blocking thread.
     // PR_SET_PDEATHSIG would terminate them when that thread finishes, even
     // while the Tauri process and its native services are still running.
+    let log = crate::process_log::LogDrain::attach(command, &state_dir.join(name))?;
     command
-        .stdout(log_file(state_dir, name)?)
-        .stderr(log_file(state_dir, name)?)
         .spawn()
-        .map(ManagedChild)
+        .map(|child| ManagedChild { child, _log: log })
         .map_err(|error| {
             format!(
                 "Не удалось запустить {}: {error}",
@@ -135,7 +132,7 @@ where
         if ready() {
             return Ok(());
         }
-        if let Ok(Some(status)) = child.0.try_wait() {
+        if let Ok(Some(status)) = child.child.try_wait() {
             return Err(format!(
                 "Служба завершилась с кодом {status}. Проверьте {}",
                 log.display()
@@ -417,15 +414,18 @@ impl NativeServices {
     }
 
     pub fn is_ready(&mut self) -> bool {
-        self.api.0.try_wait().is_ok_and(|status| status.is_none())
+        self.api
+            .child
+            .try_wait()
+            .is_ok_and(|status| status.is_none())
             && self
                 .postgres
-                .0
+                .child
                 .try_wait()
                 .is_ok_and(|status| status.is_none())
             && self
                 .display
-                .0
+                .child
                 .try_wait()
                 .is_ok_and(|status| status.is_none())
             && api_ready(self.api_port, &self.api_token)
@@ -434,9 +434,9 @@ impl NativeServices {
     #[cfg(test)]
     pub fn stop_service_for_test(&mut self, service: &str) {
         let child = match service {
-            "api" => &mut self.api.0,
-            "postgres" => &mut self.postgres.0,
-            "display" => &mut self.display.0,
+            "api" => &mut self.api.child,
+            "postgres" => &mut self.postgres.child,
+            "display" => &mut self.display.child,
             _ => panic!("unknown service: {service}"),
         };
         child.kill().unwrap();
@@ -545,7 +545,7 @@ mod tests {
         .unwrap()
         .unwrap();
         let mut child = child;
-        assert!(child.0.try_wait().unwrap().is_none());
+        assert!(child.child.try_wait().unwrap().is_none());
         drop(child);
         std::fs::remove_dir_all(state).unwrap();
     }

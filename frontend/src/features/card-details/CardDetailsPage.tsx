@@ -20,7 +20,7 @@ import { MarketplaceMark } from '../../components/product/MarketplaceMark'
 import { ProductImage } from '../../components/product/ProductImage'
 import { TagList } from '../../components/product/TagList'
 import { formatDateTime, formatPrice, marketplaceLabel } from '../../utils/format'
-import { useCollection } from '../collection/CollectionProvider'
+import { useCollectionCommands } from '../collection/CollectionProvider'
 import { PriceChart } from './PriceChart'
 import { parseTags } from '../cards/tags'
 
@@ -75,7 +75,7 @@ export function CardDetailsPage() {
   const chartQuery = useCardChart(cardId, days)
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
-  const collection = useCollection()
+  const collection = useCollectionCommands()
   const card = cardQuery.data ?? historyQuery.data?.card
   const statistics = historyQuery.isError ? undefined : historyQuery.data?.statistics
   const history = historyQuery.data?.history ?? []

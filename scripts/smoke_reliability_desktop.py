@@ -6,6 +6,7 @@ import signal
 import subprocess
 import tempfile
 import time
+import ctypes
 bus_lines=subprocess.check_output(['dbus-daemon','--config-file=/usr/share/defaults/at-spi2/accessibility.conf','--fork','--print-address=1','--print-pid=1'],text=True).splitlines()
 os.environ['AT_SPI_BUS_ADDRESS']=bus_lines[0]
 os.environ['DBUS_SESSION_BUS_ADDRESS']=bus_lines[0]
@@ -43,6 +44,14 @@ if sys.argv[1]=='api':
                 await repo.cards.add_card('wildberries','179224846:296499716',title='Изолированный WB размер')
             if os.environ.get('PRICE_SMOKE_ALI'):
                 await repo.cards.add_card('aliexpress','1005009868651525:12000061135122688',title='Изолированный Ali SKU')
+            count=int(os.environ.get('PRICE_SMOKE_CATALOG_SIZE','0'))
+            if count:
+                if count not in (1000,5000): raise ValueError('Unsupported smoke catalog size')
+                from sqlalchemy import text
+                async with db.session() as session,session.begin():
+                    await session.execute(text("""INSERT INTO marketplace_cards(marketplace,external_id,title)
+                        SELECT 'yandex-market',i::text,'Нативный товар '||lpad(i::text,5,'0')
+                        FROM generate_series(1,:count) i"""),{'count':count})
         await db.close()
     asyncio.run(seed())
 if sys.argv[1]=='worker':
@@ -112,6 +121,38 @@ def wait_for(predicate, timeout=50):
     raise RuntimeError('UI timeout: '+repr([name for name,_ in nodes()])[-5000:]+' log='+str(root/'desktop.log'))
 
 
+def native_keys(keysyms, target):
+    # WebKit exposes focus but not EditableText. XTest targets only this
+    # script's private Xvfb display; AT-SPI string synthesis is not available
+    # in every installed registry build.
+    x11=ctypes.CDLL('libX11.so.6')
+    xtest=ctypes.CDLL('libXtst.so.6')
+    x11.XOpenDisplay.argtypes=[ctypes.c_char_p]
+    x11.XOpenDisplay.restype=ctypes.c_void_p
+    x11.XKeysymToKeycode.argtypes=[ctypes.c_void_p,ctypes.c_ulong]
+    x11.XKeysymToKeycode.restype=ctypes.c_ubyte
+    x11.XFlush.argtypes=[ctypes.c_void_p]
+    x11.XCloseDisplay.argtypes=[ctypes.c_void_p]
+    xtest.XTestFakeKeyEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
+    xtest.XTestFakeMotionEvent.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_int,ctypes.c_ulong]
+    xtest.XTestFakeButtonEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
+    display=x11.XOpenDisplay(os.environ['DISPLAY'].encode())
+    if not display: raise RuntimeError('Private Xvfb display unavailable')
+    try:
+        rect=target.get_component_iface().get_extents(Atspi.CoordType.SCREEN)
+        xtest.XTestFakeMotionEvent(display,-1,rect.x+rect.width//2,rect.y+rect.height//2,0)
+        xtest.XTestFakeButtonEvent(display,1,1,0)
+        xtest.XTestFakeButtonEvent(display,1,0,0)
+        for symbol in keysyms:
+            key=x11.XKeysymToKeycode(display,symbol)
+            if not key: raise RuntimeError('Native test key is absent from keymap')
+            xtest.XTestFakeKeyEvent(display,key,1,0)
+            xtest.XTestFakeKeyEvent(display,key,0,0)
+        x11.XFlush(display)
+    finally:
+        x11.XCloseDisplay(display)
+
+
 def api_process():
     for path in Path('/proc').iterdir():
         if not path.name.isdigit(): continue
@@ -165,8 +206,34 @@ try:
     wait_price()
     wait_for(lambda items: items and not any('Не удалось обновить каталог' in name for name,_ in items))
     report['checks']['api_restart_catalog_restored']=True
+    count=int(os.environ.get('PRICE_SMOKE_CATALOG_SIZE','0'))
+    if count:
+        initial=nodes()
+        checkboxes=[name for name,_ in initial if name.startswith('Выбрать карточку ')]
+        if not 1 < len(checkboxes) < 80: raise RuntimeError('Native catalog is not bounded: '+str(len(checkboxes)))
+        search=next(node for name,node in initial if name=='Поиск карточек')
+        last=f'Нативный товар {count:05d}'
+        query=f'{count:05d}'
+        if not search.get_component_iface().grab_focus(): raise RuntimeError('Native search focus failed')
+        native_keys(map(ord,query),search)
+        wait_for(lambda items:any(name=='Выбрать карточку '+last for name,_ in items))
+        grid=wait_for(lambda items:next((node for name,node in items if name=='Сетка'),None))
+        if not grid.get_action_iface().do_action(0): raise RuntimeError('Native grid action failed')
+        wait_for(lambda items:any(name=='Сетка' and node.get_state_set().contains(Atspi.StateType.CHECKED) for name,node in items))
+        wait_for(lambda items:any(name==last for name,_ in items))
+        search=wait_for(lambda items:next((node for name,node in items if name=='Поиск карточек'),None))
+        search.get_component_iface().grab_focus()
+        native_keys([0xff08]*len(query),search)
+        wait_for(lambda items:sum(name.startswith('Выбрать карточку ') for name,_ in items)>1)
+        report['checks']['large_catalog_last_search_and_grid']=True
+        report['catalog']={'syntheticCards':count,'initialAccessibleCardCheckboxes':len(checkboxes)}
     subprocess.run(['import','-window','root','/tmp/price-watch-rel-native-after.png'],check=True)
     report['names']=[name for name,_ in nodes()]
+    files=list((root/'state').rglob('*.log'))
+    report['logs']={str(path.relative_to(root/'state')):path.stat().st_size for path in files}
+    if any(size>10*1024*1024 for size in report['logs'].values()): raise RuntimeError('Unbounded native process log')
+    if any(path.name.endswith(('.log.1','.log.2','.log.old')) for path in (root/'state').rglob('*')):
+        raise RuntimeError('Unexpected native log archive')
     print(json.dumps(report,ensure_ascii=False),flush=True)
 finally:
     try: os.killpg(process.pid,signal.SIGTERM)

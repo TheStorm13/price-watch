@@ -40,6 +40,7 @@ test('выбор в списке сохраняется при поиске и �
   await expect(dialog).toContainText('Карточки не найдены')
   await expect(dialog).toContainText('Выбрано карточек: 3')
   await dialog.getByRole('textbox', { name: 'Поиск карточек' }).fill('')
+  await expect(dialog.locator('.group-dialog__card')).toHaveCount(5)
   const ascending = await dialog.locator('.group-dialog__card strong').allTextContents()
   await chooseOption(dialog.getByRole('combobox', { name: 'Сортировка карточек' }), 'По названию: Я–А')
   const descending = await dialog.locator('.group-dialog__card strong').allTextContents()
@@ -193,14 +194,14 @@ test('группа объединяет товары и сохраняет ин�
   await group.locator('.product-group__toggle').click()
   await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
-  await expect(grid.locator('.cards-grid__group .cards-grid__item')).toHaveCount(2)
+  await expect(grid.locator('.cards-grid--nested .cards-grid__item')).toHaveCount(2)
   await chooseOption(page.getByRole('combobox', { name: 'Сортировка' }), 'Сначала дороже')
   await expect(grid.locator(':scope > li').first()).toHaveClass(/cards-grid__group/)
   for (const width of [1024, 1536]) {
     await page.setViewportSize({ width, height: 900 })
     const tileWidths = await grid.evaluate((element) => ({
-      grouped: element.querySelector('.cards-grid__group .cards-grid__item')?.getBoundingClientRect().width ?? 0,
-      standalone: element.querySelector(':scope > .cards-grid__item')?.getBoundingClientRect().width ?? 0,
+      grouped: element.querySelector('.cards-grid--nested .cards-grid__item')?.getBoundingClientRect().width ?? 0,
+      standalone: element.querySelector('.virtual-grid-row:not([data-group-member]) .cards-grid__item')?.getBoundingClientRect().width ?? 0,
     }))
     expect(tileWidths.grouped).toBeGreaterThan(0)
     expect(Math.abs(tileWidths.grouped - tileWidths.standalone)).toBeLessThan(16)
@@ -382,9 +383,9 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   await expect(status).toHaveText('Все состояния')
   await expect(page.getByRole('button', { name: 'Сбросить' })).toHaveCount(0)
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
-  await expect(grid.locator(':scope > .cards-grid__item')).toHaveCount(5)
+  await expect(grid.locator('.virtual-grid-row:not([data-group-member]) .cards-grid__item')).toHaveCount(5)
   const width = await grid.evaluate((element) => {
-    const tiles = Array.from(element.querySelectorAll(':scope > .cards-grid__item'))
+    const tiles = Array.from(element.querySelectorAll('.virtual-grid-row:not([data-group-member]) .cards-grid__item'))
     const right = Math.max(...tiles.map((tile) => tile.getBoundingClientRect().right))
     return { gridRight: element.getBoundingClientRect().right, tileRight: right }
   })
@@ -392,12 +393,12 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   await expect(grid.locator('.cards-grid__item').filter({ hasText: 'Наушники Apple AirPods Pro 2' })).toContainText('Сейчас не выгодно')
   await page.screenshot({ path: '/tmp/price-watch-grid-filled.png' })
   await chooseOption(status, 'Не участвует в выгодных')
-  await expect(grid.locator(':scope > .cards-grid__item')).toHaveCount(1)
+  await expect(grid.locator('.virtual-grid-row:not([data-group-member]) .cards-grid__item')).toHaveCount(1)
   await page.getByRole('button', { name: 'Сбросить' }).click()
   await expect(page.getByRole('radio', { name: 'Сетка' })).toBeChecked()
   await expect(page).toHaveURL(/\/cards\?view=grid$/)
   await expect(status).toHaveText('Все состояния')
-  await expect(grid.locator(':scope > .cards-grid__item')).toHaveCount(5)
+  await expect(grid.locator('.virtual-grid-row:not([data-group-member]) .cards-grid__item')).toHaveCount(5)
 })
 
 test('заголовки таблицы переключают единственную сортировку по трём состояниям', async ({ page }) => {
@@ -459,26 +460,26 @@ test('карточки переключаются между списком и �
   const rowHeight = await row.evaluate((element) => element.getBoundingClientRect().height)
   await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
-  await expect(grid.locator('li')).toHaveCount(5)
-  const compactColumns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length)
+  await expect(grid.locator('.cards-grid__item')).toHaveCount(5)
+  const compactColumns = await grid.evaluate((element) => getComputedStyle(element.querySelector('.cards-grid')!).gridTemplateColumns.split(' ').length)
   expect(compactColumns).toBeGreaterThan(1)
   const image = grid.locator('.product-placeholder--large').first()
-  const tile = grid.locator('li').first()
+  const tile = grid.locator('.cards-grid__item').first()
   const imageBox = await image.boundingBox()
   const tileBox = await tile.boundingBox()
   expect(imageBox?.width).toBeCloseTo((tileBox?.width ?? 0) - 2, 0)
   expect(imageBox?.height).toBe(190)
   await page.screenshot({ path: '/tmp/price-watch-grid.png' })
-  await grid.locator('li').first().getByRole('button', { name: /Действия с карточкой/ }).click()
+  await grid.locator('.cards-grid__item').first().getByRole('button', { name: /Действия с карточкой/ }).click()
   await expect(page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' })).toBeVisible()
   await page.keyboard.press('Escape')
   await page.getByRole('heading', { name: 'Карточки' }).click()
   await page.setViewportSize({ width: 1536, height: 900 })
-  const wideColumns = await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length)
+  const wideColumns = await grid.evaluate((element) => getComputedStyle(element.querySelector('.cards-grid')!).gridTemplateColumns.split(' ').length)
   expect(wideColumns).toBeGreaterThan(compactColumns)
   await page.screenshot({ path: '/tmp/price-watch-grid-wide.png' })
   await page.reload()
-  await expect(grid.locator('li')).toHaveCount(5)
+  await expect(grid.locator('.cards-grid__item')).toHaveCount(5)
   await grid.getByRole('link', { name: /Смартфон Samsung Galaxy S24/ }).click()
   await expect(page).toHaveURL(/\/cards\/1/)
   await page.setViewportSize({ width: 1024, height: 768 })
@@ -604,10 +605,12 @@ test('плитки одинаковы при разных фото, а мета�
     await portraitTile.getByRole('button', { name: /Действия с карточкой/ }).click()
     await page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' }).click()
     await expect(portraitTile.locator('.tracking-status')).toHaveCount(0)
+    await expect(page.getByRole('menu')).toBeHidden()
     expect(await layout()).toEqual(beforeToggle)
     await portraitTile.getByRole('button', { name: /Действия с карточкой/ }).click()
     await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
     await expect(portraitTile.locator('.tracking-status')).toHaveText('Не участвует в выгодных')
+    await expect(page.getByRole('menu')).toBeHidden()
     expect(await layout()).toEqual(beforeToggle)
   }
   await page.screenshot({ path: '/tmp/price-watch-grid-uniform.png', fullPage: true })
@@ -752,7 +755,7 @@ test('детали карточки показывают середину диа
 })
 
 test('ошибки сбора доступны без страницы запусков', async ({ page }) => {
-  await page.addInitScript(() => window.localStorage.setItem('price-watch-active-run', '20'))
+  await page.addInitScript(() => window.localStorage.setItem('price-watch-active-run', '21'))
   await page.goto('/cards')
   const panel = page.getByLabel('Состояние обновления цен')
   await expect(panel.getByText('Показать ошибки')).toBeVisible()
@@ -805,7 +808,7 @@ test('фильтр предложений показывает цену, мин�
 })
 
 test('после повторного открытия видны сохранённые предложения и результат запуска', async ({ page }) => {
-  await page.addInitScript(() => window.localStorage.setItem('price-watch-active-run', '20'))
+  await page.addInitScript(() => window.localStorage.setItem('price-watch-active-run', '21'))
   await page.goto('/cards?deals=1')
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toContainText('72 990 ₽')
   await expect(page.getByLabel('Состояние обновления цен')).toContainText('Показать ошибки')
@@ -825,6 +828,16 @@ test('ошибки запуска можно повторить отдельно
   await panel.getByRole('button', { name: 'Повторить ошибки' }).click()
   await expect(panel).toContainText('0 из 1')
   await expect(page).toHaveURL(/\/cards$/)
+})
+
+test('старые подробности очищены, но число ошибок и повтор сохранены', async ({page})=>{
+  await page.addInitScript(()=>window.localStorage.setItem('price-watch-active-run','20'))
+  await page.goto('/cards')
+  const panel=page.getByLabel('Состояние обновления цен')
+  await expect(panel).toContainText('Ошибок: 1')
+  await expect(panel).toContainText('Подробности очищены')
+  await expect(panel.getByText('Показать ошибки')).toHaveCount(0)
+  await expect(panel.getByRole('button',{name:'Повторить ошибки и оставшиеся'})).toBeVisible()
 })
 
 test('панель и диалог удерживают фокус и возвращают его после Escape', async ({ page }) => {

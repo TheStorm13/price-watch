@@ -22,6 +22,8 @@ interface CollectionContextValue {
   dismissDealNotice: () => void
 }
 
+type CollectionCommands = Pick<CollectionContextValue, 'start' | 'isStarting' | 'startError'>
+const CollectionCommandsContext = createContext<CollectionCommands | null>(null)
 const CollectionContext = createContext<CollectionContextValue | null>(null)
 const ACTIVE_RUN_KEY = 'price-watch-active-run'
 
@@ -123,31 +125,33 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timeout)
   }, [dismiss, run?.id, run?.status])
 
-  const start = useCallback((cardId?: number) => {
-    startMutation.mutate(cardId)
-  }, [startMutation])
+  const { mutate: startRun, isPending: isStarting, error: startReason } = startMutation
+  const { mutate: continueRun, isPending: isContinuing, variables: continuingId, error: continueReason } = continueMutation
+  const { mutate: retryRun, isPending: isRetrying, variables: retryingId, error: retryReason } = retryMutation
+  const start = useCallback((cardId?: number) => startRun(cardId), [startRun])
+  const resume = useCallback(() => { if (runId !== null && !isContinuing) continueRun(runId) }, [runId, isContinuing, continueRun])
+  const retry = useCallback(() => { if (runId !== null) retryRun(runId) }, [runId, retryRun])
+  const dismissNotice = useCallback(() => setDealNotice(null), [])
+  const commands = useMemo(() => ({ start, isStarting, startError: startReason?.message ?? null }), [start, isStarting, startReason])
 
   const value = useMemo<CollectionContextValue>(() => ({
-    run,
-    isStarting: startMutation.isPending,
-    startError: startMutation.isError ? startMutation.error.message : null,
-    start,
-    continueRun: () => { if (runId !== null && !continueMutation.isPending) continueMutation.mutate(runId) },
-    isContinuing: continueMutation.isPending && continueMutation.variables === runId,
-    continueError: continueMutation.isError && continueMutation.variables === runId ? continueMutation.error.message : null,
-    retryErrors: () => runId !== null && retryMutation.mutate(runId),
-    isRetrying: retryMutation.isPending,
-    retryError: retryMutation.isError && retryMutation.variables === runId ? retryMutation.error.message : null,
-    dismiss,
-    dealNotice,
-    dismissDealNotice: () => setDealNotice(null),
-  }), [continueMutation, dealNotice, dismiss, retryMutation, run, runId, start, startMutation.isPending, startMutation.isError, startMutation.error])
+    ...commands, run, continueRun: resume, isContinuing: isContinuing && continuingId === runId,
+    continueError: continuingId === runId ? continueReason?.message ?? null : null,
+    retryErrors: retry, isRetrying, retryError: retryingId === runId ? retryReason?.message ?? null : null,
+    dismiss, dealNotice, dismissDealNotice: dismissNotice,
+  }), [commands, run, resume, isContinuing, continuingId, runId, continueReason, retry, isRetrying, retryingId, retryReason, dismiss, dealNotice, dismissNotice])
 
-  return <CollectionContext.Provider value={value}>{children}</CollectionContext.Provider>
+  return <CollectionCommandsContext.Provider value={commands}><CollectionContext.Provider value={value}>{children}</CollectionContext.Provider></CollectionCommandsContext.Provider>
 }
 
 export function useCollection() {
   const value = useContext(CollectionContext)
   if (!value) throw new Error('useCollection должен использоваться внутри CollectionProvider')
+  return value
+}
+
+export function useCollectionCommands() {
+  const value = useContext(CollectionCommandsContext)
+  if (!value) throw new Error('useCollectionCommands должен использоваться внутри CollectionProvider')
   return value
 }

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
+from unittest.mock import patch
 from sqlalchemy import delete, func, select
 from datetime import timedelta
 from httpx import ASGITransport, AsyncClient
@@ -20,6 +21,7 @@ from price_watch.infrastructure.postgres.models import (
     CollectionRunRecord,
     MarketplaceCardRecord,
     PriceHistoryRecord,
+    ProductGroupRecord,
 )
 from price_watch.domain.errors import CardInActiveRun
 from price_watch.api import create_app
@@ -167,6 +169,57 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def tearDownClass(cls):
         cls.database.close()
+
+    async def test_export_keeps_one_snapshot_during_concurrent_write(self):
+        repository = create_postgres_stores(self.async_database)
+        card = await repository.cards.add_card("integration-test", f"test-{uuid4()}", "Before")
+        group_id = await repository.groups.create_group(f"Before-{uuid4()}", [card.id])
+        observed = datetime.now(timezone.utc)
+        original_session = self.async_database.session
+        async with original_session() as session, session.begin():
+            session.add(PriceHistoryRecord(card_id=card.id, price=Decimal("100.10"),
+                availability="in_stock", observed_at=observed, snapshot={"not": "exported"}))
+
+        @asynccontextmanager
+        async def export_session():
+            async with original_session() as session:
+                original_scalars = session.scalars
+                changed = False
+
+                async def scalars_then_write(*args, **kwargs):
+                    nonlocal changed
+                    result = await original_scalars(*args, **kwargs)
+                    if not changed:
+                        changed = True
+                        # Commit after the export reads cards, before history/groups.
+                        async with original_session() as writer, writer.begin():
+                            record = await writer.get(MarketplaceCardRecord, card.id)
+                            record.title = "After"
+                            group = await writer.get(ProductGroupRecord, group_id)
+                            group.name = f"After-{group_id}"
+                            writer.add(PriceHistoryRecord(card_id=card.id, price=Decimal("50.05"),
+                                availability="in_stock", observed_at=observed + timedelta(seconds=1), snapshot={}))
+                    return result
+
+                with patch.object(session, "scalars", scalars_then_write):
+                    yield session
+
+        try:
+            with patch.object(self.async_database, "session", export_session):
+                before = await repository.transfer.export_cards()
+            item = next(item for item in before["cards"] if item["external_id"] == card.ref.external_id)
+            self.assertEqual(item["title"], "Before")
+            self.assertEqual([point["price"] for point in item["history"]], [Decimal("100.10")])
+            self.assertTrue(next(group for group in before["groups"]
+                if any(member["external_id"] == card.ref.external_id for member in group["cards"]))["name"].startswith("Before-"))
+            after = await repository.transfer.export_cards()
+            item = next(item for item in after["cards"] if item["external_id"] == card.ref.external_id)
+            self.assertEqual(item["title"], "After")
+            self.assertEqual([point["price"] for point in item["history"]], [Decimal("100.10"), Decimal("50.05")])
+            self.assertIn(f"After-{group_id}", [group["name"] for group in after["groups"]])
+        finally:
+            await repository.cards.delete_card(card.id)
+            await repository.groups.delete_group(group_id)
 
     async def test_export_import_merges_complete_history_idempotently(self):
         repository = create_postgres_stores(self.async_database)

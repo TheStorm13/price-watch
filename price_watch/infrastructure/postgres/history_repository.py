@@ -26,7 +26,8 @@ class HistoryRepository:
         if days <= 0 or page <= 0 or not 1 <= page_size <= 200:
             raise ValueError("Некорректные параметры истории")
         statement = (
-            select(PriceHistoryRecord)
+            select(PriceHistoryRecord.id, PriceHistoryRecord.card_id, PriceHistoryRecord.collection_run_id,
+                   PriceHistoryRecord.price, PriceHistoryRecord.availability, PriceHistoryRecord.observed_at)
             .where(
                 PriceHistoryRecord.card_id == card_id,
                 PriceHistoryRecord.observed_at >= self._cutoff(days),
@@ -36,7 +37,7 @@ class HistoryRepository:
             .limit(page_size)
         )
         async with self._database.session() as session:
-            records = (await session.scalars(statement)).all()
+            records = (await session.execute(statement)).all()
         return [
             PriceHistoryPoint(
                 id=record.id,
@@ -52,13 +53,14 @@ class HistoryRepository:
     async def get_chart_points(self, card_id: int, days: int) -> List[PriceHistoryPoint]:
         """Return every saved price change in chronological order."""
         statement = (
-            select(PriceHistoryRecord)
+            select(PriceHistoryRecord.id, PriceHistoryRecord.card_id, PriceHistoryRecord.collection_run_id,
+                   PriceHistoryRecord.price, PriceHistoryRecord.availability, PriceHistoryRecord.observed_at)
             .where(PriceHistoryRecord.card_id == card_id,
                    PriceHistoryRecord.observed_at >= self._cutoff(days))
             .order_by(PriceHistoryRecord.observed_at, PriceHistoryRecord.id)
         )
         async with self._database.session() as session:
-            records = (await session.scalars(statement)).all()
+            records = (await session.execute(statement)).all()
         return [PriceHistoryPoint(
             id=record.id, card_id=record.card_id,
             collection_run_id=record.collection_run_id,

@@ -1,44 +1,29 @@
+import type { ProductGroup } from '../../types/domain'
+import { useCatalogModel } from './useCatalogModel'
+import { CatalogResults } from './CatalogResults'
 import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InputGroup, InputGroupInput, InputGroupAddon } from '@/components/ui/input-group'
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
-import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from '@/components/ui/table'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Fragment, useCallback, useDeferredValue, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, FolderPlus, LayoutGrid, List, Pencil, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { useCatalog, useDeleteCard, useUpdateCard } from '../../api/queries'
+import { useCallback, useDeferredValue, useMemo, useState } from 'react'
+import { FolderPlus, LayoutGrid, List, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
+import { useLocation, useSearchParams } from 'react-router-dom'
+import { useCatalog } from '../../api/queries'
 import { Button } from '../../components/ui/button'
-import { CardActionsMenu } from '../../components/product/CardActionsMenu'
-import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
 import { LoadingRows } from '../../components/product/LoadingRows'
-import { MarketplaceMark } from '../../components/product/MarketplaceMark'
-import { ProductImage } from '../../components/product/ProductImage'
-import { TagList } from '../../components/product/TagList'
-import { useCollection } from '../collection/CollectionProvider'
-import type { TrackedCardView, ProductGroup } from '../../types/domain'
-import { formatDateTime, formatPrice, formatRelativeTime } from '../../utils/format'
+import { useCollectionCommands } from '../collection/CollectionProvider'
 import { AddCardDrawer } from './AddCardDrawer'
-import { cardItem, catalogItems, columnSortKeys, compareItems, matchesItem, parseSort, type ColumnSortKey } from './catalogItems'
+import { columnLabels, parseSort, type ColumnSortKey } from './catalogItems'
 import { ImportExportControls } from './ImportExportControls'
 import { GroupDialog } from './GroupDialog'
 import { BulkCardActions } from './BulkCardActions'
 import { useCardSelection } from './useCardSelection'
 
-const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
-const columnLabels: Record<ColumnSortKey, string> = {
-  title: 'Карточка', marketplace: 'Маркетплейс', price: 'Цена', minimum: 'Минимальная',
-  average: 'Средняя', savings: 'Выгода', availability: 'Наличие',
-}
-
 export function CardsPage() {
-  const navigate = useNavigate()
   const location = useLocation()
-  const cardLocationState = { returnTo: location.pathname + location.search }
   const [params, setParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<ProductGroup | 'new' | null>(null)
@@ -47,9 +32,7 @@ export function CardsPage() {
   const [transferStatus, setTransferStatus] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
   const catalogQuery = useCatalog()
   const selection = useCardSelection(catalogQuery.data?.cards)
-  const updateCard = useUpdateCard()
-  const deleteCard = useDeleteCard()
-  const collection = useCollection()
+  const collection = useCollectionCommands()
   const query = params.get('q') ?? ''
   const deferredQuery = useDeferredValue(query.trim().toLowerCase())
   const marketplace = params.get('marketplace') ?? 'all'
@@ -61,10 +44,9 @@ export function CardsPage() {
   const selectedTag = params.get('tag') ?? ''
   const selectedIds = [...selection.selectedIds]
   const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealsOnly || selectedTag)
-  const deals = useMemo(() => new Map((catalogQuery.data?.deals ?? []).map((deal) => [deal.card.id, deal])), [catalogQuery.data?.deals])
-  const allItems = useMemo(() => catalogItems(catalogQuery.data?.cards ?? [], catalogQuery.data?.groups ?? [], deals),
-    [catalogQuery.data?.cards, catalogQuery.data?.groups, deals])
-  const availableTags = useMemo(() => [...new Set(allItems.flatMap((item) => item.card?.tags ?? []))].sort(collator.compare), [allItems])
+  const { deals, allItems, availableTags, orderedItems, groupedCards } = useCatalogModel(catalogQuery.data,
+    deferredQuery, marketplace, status, selectedTag, dealsOnly, sort)
+  const returnTo = useDeferredValue(location.pathname + location.search)
 
   function openCreateGroup(ids: number[]) {
     setInitialGroupCardIds(ids)
@@ -80,110 +62,22 @@ export function CardsPage() {
     }, { replace: true, flushSync: true })
   }, [setParams])
 
-  const orderedItems = useMemo(() => allItems.filter((item) => matchesItem(item, {
-    query: deferredQuery, marketplace, status, tag: selectedTag, dealsOnly,
-  })).toSorted((left, right) => compareItems(left, right, sort)),
-  [allItems, deferredQuery, marketplace, status, selectedTag, dealsOnly, sort])
 
-  const groupedCards = useMemo(() => {
-    const byGroup = new Map<number, TrackedCardView[]>()
-    for (const card of catalogQuery.data?.cards ?? []) {
-      if (card.groupId == null) continue
-      const members = byGroup.get(card.groupId) ?? []
-      members.push(card)
-      byGroup.set(card.groupId, members)
-    }
-    for (const members of byGroup.values()) members.sort((left, right) =>
-      compareItems(cardItem(left, deals), cardItem(right, deals), sort))
-    return byGroup
-  }, [catalogQuery.data?.cards, deals, sort])
-
-  function toggleSort(key: ColumnSortKey) {
+  const toggleSort = useCallback((key: ColumnSortKey) => {
     const next = sort?.key === key ? (sort.direction === 'asc' ? `${key}-desc` : '') : `${key}-asc`
     setParam('sort', next, '')
-  }
+  }, [sort, setParam])
 
-  function sortableHeader(label: string, key: ColumnSortKey) {
-    const direction = sort?.key === key ? sort.direction : null
-    return <TableHead scope="col" aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
-      <Button variant="ghost" type="button" className={cn('cards-table__sort h-11.5 px-0', direction && 'is-active')} onClick={() => toggleSort(key)}
-        title={direction === 'asc' ? 'Сортировать по убыванию' : direction === 'desc' ? 'Сбросить сортировку' : 'Сортировать по возрастанию'}>
-        {label}<span className="cards-table__sort-icon" aria-hidden="true">{direction === 'desc' ? <ArrowDown /> : <ArrowUp />}</span>
-      </Button>
-    </TableHead>
-  }
 
-  function toggleGroup(groupId: number) {
+  const toggleGroup = useCallback((groupId: number) => {
     setCollapsedGroups((current) => current.includes(groupId) ? current.filter((id) => id !== groupId) : [...current, groupId])
-  }
+  }, [])
 
   function resetFilters() {
     // Commit the reset before another control can reuse the previous search params.
     setParams(view === 'grid' ? { view: 'grid' } : {}, { replace: true, flushSync: true })
   }
 
-  function actions(card: TrackedCardView) {
-    return <CardActionsMenu cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled}
-      onRefresh={['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace) ? () => collection.start(card.id) : undefined} refreshDisabled={collection.isStarting}
-      onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })}
-      onDelete={() => deleteCard.mutateAsync(card.id)} />
-  }
-
-  function dealStatus(card: TrackedCardView) {
-    return <>
-      {!card.dealsEnabled ? <Badge variant="warning" className="tracking-status" title="Не участвует в выгодных">Не участвует в выгодных</Badge> : null}
-    </>
-  }
-
-  function saving(card: TrackedCardView) {
-    const deal = deals.get(card.id)
-    return deal ? <span className="deal-savings">{formatPrice(deal.savings)}</span> : 'Сейчас не выгодно'
-  }
-
-  function groupSaving(group: ProductGroup) {
-    return group.savings !== null ? <span className="deal-savings">{formatPrice(group.savings)}</span> : 'Сейчас не выгодно'
-  }
-
-  function groupDetails(group: ProductGroup) {
-    const card = group.representativeCard
-    const updated = card?.lastObservedAt ? card.updatedAt : null
-    return <div className="flex flex-wrap items-center gap-2">
-      {card ? dealStatus(card) : null}
-      {group.hasMemberDeals && !group.isDeal ? <Badge variant="secondary">Есть выгодный товар внутри</Badge> : null}
-      <time dateTime={updated ?? undefined} title={formatDateTime(updated)}>{formatRelativeTime(updated)}</time>
-    </div>
-  }
-
-  function tile(card: TrackedCardView) {
-    return <Card key={card.id} asChild className="grid gap-0 py-0"><li className={cn("cards-grid__item", selection.selectedIds.has(card.id) && "is-selected")}>
-      <div className="cards-grid__selection"><Checkbox aria-label={`Выбрать карточку ${card.title ?? 'Без названия'}`} checked={selection.selectedIds.has(card.id)} onCheckedChange={() => selection.toggle(card.id)} /></div>
-      <div className="cards-grid__actions">{actions(card)}</div>
-      <CardHeader className="contents"><Link className="cards-grid__link" to={`/cards/${card.id}`} state={cardLocationState}>
-        <span className="cards-grid__media"><ProductImage card={card} large /></span>
-        <CardTitle className="contents"><span className="cards-grid__title" title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</span></CardTitle>
-      </Link></CardHeader>
-      <CardContent className="contents"><div className="cards-grid__tags" title={card.tags?.join(', ')}><TagList tags={card.tags} /></div>
-      <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
-      <dl className="cards-grid__prices"><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div><div><dt>Выгода</dt><dd>{saving(card)}</dd></div></dl>
-      </CardContent><CardFooter className="contents"><div className="cards-grid__details"><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
-      <div className="cards-grid__tracking">{dealStatus(card)}</div>
-    </CardFooter></li></Card>
-  }
-
-  function row(card: TrackedCardView, nested = false) {
-    return <TableRow key={card.id} className={cn('cards-table__product', nested && 'cards-table__nested', selection.selectedIds.has(card.id) && 'is-selected')} onClick={(event) => { if (!(event.target as HTMLElement).closest('a, button, input, [role="checkbox"]')) navigate(`/cards/${card.id}`, { state: cardLocationState }) }}>
-      <TableCell className="cards-table__selection py-2"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
-        checked={selection.selectedIds.has(card.id)} onClick={(event) => event.stopPropagation()} onCheckedChange={() => selection.toggle(card.id)} /></TableCell>
-      <TableCell className="py-2"><div className="card-identity"><ProductImage card={card} /><span><Link to={`/cards/${card.id}`} state={cardLocationState} className="card-identity__link"><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong></Link><TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
-      <TableCell className="py-2"><MarketplaceMark marketplace={card.marketplace} /></TableCell>
-      <TableCell className="price-cell py-2">{formatPrice(card.currentPrice)}</TableCell>
-      <TableCell className="price-cell py-2">{formatPrice(card.minimumPrice)}</TableCell>
-      <TableCell className="price-cell py-2">{formatPrice(card.averagePrice)}</TableCell>
-      <TableCell className="py-2">{saving(card)}</TableCell>
-      <TableCell className="py-2"><AvailabilityStatus value={card.currentAvailability} /></TableCell>
-      <TableCell className="py-2">{actions(card)}</TableCell>
-    </TableRow>
-  }
 
   return (
     <section className="page cards-page">
@@ -287,36 +181,10 @@ export function CardsPage() {
           <Empty><EmptyHeader><EmptyTitle>Не удалось загрузить каталог</EmptyTitle><EmptyDescription>Проверьте соединение с API и повторите.</EmptyDescription></EmptyHeader><EmptyContent><Button onClick={() => { void catalogQuery.refetch() }}>Повторить</Button></EmptyContent></Empty>
         ) : orderedItems.length === 0 ? (
           <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</EmptyTitle><EmptyDescription>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</EmptyDescription></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : () => setDrawerOpen(true)}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></EmptyContent></Empty>
-        ) : view === 'grid' ? (
-          <ul className="cards-grid" aria-label="Отслеживаемые карточки маркетплейсов">
-            {orderedItems.map((item) => item.kind === 'group' ? <li key={`group-${item.group.id}`} className="cards-grid__group">
-              <div className="product-group__header">
-                <Button variant="ghost" type="button" className="product-group__toggle px-0" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></Button><TagList tags={item.card?.tags} />
-                <div className="flex flex-wrap items-center gap-3">
-                  {item.card ? <><ProductImage card={item.card} /><MarketplaceMark marketplace={item.card.marketplace} /></> : null}
-                  <span>Цена {formatPrice(item.card?.currentPrice)} · Минимальная {formatPrice(item.card?.minimumPrice)} · Средняя {formatPrice(item.card?.averagePrice)}</span>
-                  {groupSaving(item.group)}<AvailabilityStatus value={item.card?.currentAvailability ?? null} />
-                  {groupDetails(item.group)}
-                </div>
-                <Button variant="ghost" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil data-icon="inline-start" />Изменить</Button>
-              </div>
-              {!collapsedGroups.includes(item.group.id) ? <ul className="cards-grid cards-grid--nested">{(groupedCards.get(item.group.id) ?? []).map(tile)}</ul> : null}
-            </li> : tile(item.card))}
-          </ul>
-        ) : (
-            <Table className="cards-table">
-              <TableCaption className="sr-only">Отслеживаемые карточки маркетплейсов</TableCaption>
-              <TableHeader><TableRow><TableHead className="cards-table__selection py-0"><span className="sr-only">Выбор</span></TableHead>{sortableHeader('Карточка', 'title')}{sortableHeader('Маркетплейс', 'marketplace')}{sortableHeader('Цена', 'price')}{sortableHeader('Минимальная', 'minimum')}{sortableHeader('Средняя', 'average')}{sortableHeader('Выгода', 'savings')}{sortableHeader('Наличие', 'availability')}<TableHead><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
-              <TableBody>
-                {orderedItems.map((item) => item.kind === 'group' ? <Fragment key={`group-${item.group.id}`}>
-                  <tr className="cards-table__group-gap" aria-hidden="true"><td colSpan={9} /></tr>
-                  <TableRow className="cards-table__group"><TableCell className="cards-table__selection py-0" /><TableCell className="py-0"><Button variant="ghost" type="button" className="product-group__toggle px-0" aria-expanded={!collapsedGroups.includes(item.group.id)} onClick={() => toggleGroup(item.group.id)}>{collapsedGroups.includes(item.group.id) ? <ChevronRight /> : <ChevronDown />}<strong>{item.group.name}</strong><small>{item.group.cardIds.length} товаров</small></Button><TagList tags={item.card?.tags} />{groupDetails(item.group)}</TableCell><TableCell className="py-0">{item.card ? <MarketplaceMark marketplace={item.card.marketplace} /> : '—'}</TableCell><TableCell className="price-cell py-0">{formatPrice(item.group.currentPrice)}</TableCell><TableCell className="price-cell py-0">{formatPrice(item.group.minimumPrice)}</TableCell><TableCell className="price-cell py-0">{formatPrice(item.card?.averagePrice)}</TableCell><TableCell className="py-0">{groupSaving(item.group)}</TableCell><TableCell className="py-0"><AvailabilityStatus value={item.card?.currentAvailability ?? null} /></TableCell><TableCell className="py-0"><Button variant="ghost" size="icon-sm" type="button" aria-label={`Изменить группу ${item.group.name}`} onClick={() => setEditingGroup(item.group)}><Pencil /></Button></TableCell></TableRow>
-                  {!collapsedGroups.includes(item.group.id) ? (groupedCards.get(item.group.id) ?? []).map((card) => row(card, true)) : null}
-                  <tr className="cards-table__group-gap" aria-hidden="true"><td colSpan={9} /></tr>
-                </Fragment> : row(item.card))}
-              </TableBody>
-            </Table>
-        )}
+        ) : <CatalogResults view={view} items={orderedItems} groupedCards={groupedCards} deals={deals}
+          selectedIds={selection.selectedIds} onSelect={selection.toggle} collapsedGroups={collapsedGroups}
+          onToggleGroup={toggleGroup} onEditGroup={setEditingGroup} sort={sort} onSort={toggleSort} returnTo={returnTo} />
+        }
       </div>
       <AddCardDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       {editingGroup ? <GroupDialog key={editingGroup === 'new' ? 'new' : editingGroup.id} group={editingGroup === 'new' ? null : editingGroup}

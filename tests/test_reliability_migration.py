@@ -33,7 +33,7 @@ class ReliabilityMigrationTests(unittest.TestCase):
                     VALUES (1,1,100,'in_stock',now(),'{"keep":"snapshot"}')"""))
                 history = c.execute(text('SELECT * FROM price_history')).all()
                 errors = c.execute(text('SELECT id,errors FROM collection_runs ORDER BY id')).all()
-            command.upgrade(config, 'head')
+            command.upgrade(config, '0014_run_target_results')
             with db.engine.connect() as c:
                 self.assertEqual(c.execute(text('SELECT * FROM price_history')).all(), history)
                 self.assertEqual(c.execute(text('SELECT id,errors FROM collection_runs ORDER BY id')).all(), errors)

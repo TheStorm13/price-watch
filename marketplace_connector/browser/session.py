@@ -22,6 +22,8 @@ from ..domain.errors import MarketplaceUnavailable
 from .profile_lifecycle import close_profile_browser, request_browser_close
 
 
+from .process_log import ProcessLog
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,6 +39,7 @@ class ChromeSession:
         self.headless = headless
         self.virtual_display = virtual_display
         self._async_context = self._async_browser = self._async_process = None
+        self._process_log = None
         self._async_playwright = None
         self._playwright_manager = None
         self._users = 0
@@ -112,14 +115,17 @@ class ChromeSession:
             args.append("--headless=new")
         args.append("about:blank")
         logger.info("Запуск Chrome для сбора товаров")
-        with (self.profile_dir / "chrome.log").open("ab") as log_file:
+        self._process_log = ProcessLog(self.profile_dir / 'chrome.log')
+        try:
             self._async_process = subprocess.Popen(
-                args,
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-                start_new_session=True,
-                env=chrome_env,
+                args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                start_new_session=True, env=chrome_env,
             )
+            self._process_log.start(self._async_process.stdout)
+        except BaseException:
+            self._process_log.close()
+            self._process_log = None
+            raise
         try:
             await asyncio.to_thread(self._wait_for_debug_port, self._async_process, port)
             self._async_browser = await playwright.chromium.connect_over_cdp(
@@ -167,19 +173,24 @@ class ChromeSession:
                 with suppress(PlaywrightError):
                     await browser.close()
         finally:
-            if process is not None and process.poll() is None:
-                try:
-                    await asyncio.to_thread(process.wait, timeout=5)
-                except subprocess.TimeoutExpired:
-                    logger.warning("Chrome сбора не завершился штатно; посылаю SIGTERM")
-                    with suppress(ProcessLookupError):
-                        process.terminate()
+            try:
+                if process is not None and process.poll() is None:
                     try:
-                        await asyncio.to_thread(process.wait, timeout=3)
-                    except subprocess.TimeoutExpired:
-                        logger.error("Chrome сбора завис; посылаю SIGKILL")
-                        process.kill()
                         await asyncio.to_thread(process.wait, timeout=5)
+                    except subprocess.TimeoutExpired:
+                        logger.warning("Chrome сбора не завершился штатно; посылаю SIGTERM")
+                        with suppress(ProcessLookupError):
+                            process.terminate()
+                        try:
+                            await asyncio.to_thread(process.wait, timeout=3)
+                        except subprocess.TimeoutExpired:
+                            logger.error("Chrome сбора завис; посылаю SIGKILL")
+                            process.kill()
+                            await asyncio.to_thread(process.wait, timeout=5)
+            finally:
+                log, self._process_log = self._process_log, None
+                if log is not None:
+                    await asyncio.to_thread(log.close)
 
     def _find_chrome_executable(self, playwright: Playwright) -> Path:
         if self.chrome_binary is not None:

@@ -1,0 +1,20 @@
+{
+  "root": "/tmp/pw-rel-native-mdlg2az_",
+  "pid": 559613,
+  "checks": {
+    "run_level_failure_retry_visible": true,
+    "retry_saved_price_in_real_webview": true,
+    "api_restart_catalog_restored": true,
+    "large_catalog_last_search_and_grid": true
+  },
+  "catalog": {
+    "syntheticCards": 5000,
+    "initialAccessibleCardCheckboxes": 11
+  },
+  "logs": {
+    "price-watch/api.log": 767,
+    "price-watch/xvfb.log": 936,
+    "price-watch/postgres.log": 543,
+    "price-watch/desktop-worker.log": 0
+  }
+}

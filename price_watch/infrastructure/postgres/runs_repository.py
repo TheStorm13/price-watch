@@ -5,6 +5,8 @@ import json
 from uuid import uuid4
 
 from sqlalchemy import func, select, text
+from sqlalchemy.orm import undefer
+from ...domain.diagnostics import bounded_error, MAX_ERRORS
 
 from ...domain.models import RunLease, LeaseLost, TrackedCard
 from ...domain.collection_policy import CollectionPolicy
@@ -18,6 +20,8 @@ from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
 from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, PriceHistoryRecord
 from .repository_common import _RUN_CREATION_LOCK, _tracked_card, _run
 
+_DIAGNOSTIC_LOCK = text('SELECT pg_advisory_xact_lock_shared(578612392)')
+_DIAGNOSTIC_CREATION_LOCK = text('SELECT pg_advisory_xact_lock(578612392)')
 ACTIVE = ('running', 'waiting_for_user')
 RETRY_STATUSES = ('failed', 'pending', 'unknown')
 
@@ -62,6 +66,10 @@ class RunRepository:
             )
 
     async def _create_run(self, session, cards, *, card_id=None, full=False, owner=None, retry_of=None, now=None):
+        await session.execute(_DIAGNOSTIC_CREATION_LOCK)
+        # All creators already own the exclusive creation lock. Expiry and the
+        # new record commit together; old writers take its shared counterpart.
+        await session.execute(text("UPDATE collection_runs SET errors='[]'::jsonb, diagnostics_status='expired' WHERE diagnostics_status <> 'expired'"))
         record = CollectionRunRecord(status='running' if owner else 'queued', total_count=len(cards),
             requested_card_id=card_id, is_full_collection=full, retry_of_run_id=retry_of,
             worker_id=owner, heartbeat_at=self._clock() if owner else None,
@@ -92,18 +100,21 @@ class RunRepository:
     async def create_queued_run(self, card_id=None):
         async with self._database.session() as s, s.begin():
             await s.execute(_RUN_CREATION_LOCK)
+            await s.execute(_DIAGNOSTIC_CREATION_LOCK)
             return await self._create_run(s, await self._select_targets(s, card_id), card_id=card_id, full=card_id is None)
 
     async def start_direct_run(self, card_id=None):
         await self.fail_stale_runs()
         async with self._database.session() as s, s.begin():
             await s.execute(_RUN_CREATION_LOCK)
+            await s.execute(_DIAGNOSTIC_CREATION_LOCK)
             return await self._create_run(s, await self._select_targets(s, card_id), card_id=card_id,
                                           full=card_id is None, owner=uuid4().hex)
 
     async def create_due_run(self, now=None):
         async with self._database.session() as s, s.begin():
             await s.execute(_RUN_CREATION_LOCK)
+            await s.execute(_DIAGNOSTIC_CREATION_LOCK)
             now = now or self._clock()
             if await s.scalar(select(CollectionRunRecord.id).where(
                 CollectionRunRecord.status.in_(('queued', *ACTIVE))).limit(1)) is not None:
@@ -128,6 +139,7 @@ class RunRepository:
     async def create_retry_run(self, source_run_id):
         async with self._database.session() as s, s.begin():
             await s.execute(_RUN_CREATION_LOCK)
+            await s.execute(_DIAGNOSTIC_CREATION_LOCK)
             source = await s.get(CollectionRunRecord, source_run_id, with_for_update=True)
             if source is None:
                 raise LookupError('Запуск не найден')
@@ -178,7 +190,10 @@ class RunRepository:
             record.current_card_id, record.current_marketplace, record.current_external_id = card.id, card.ref.marketplace, card.ref.external_id
 
     async def _begin_result(self, session, lease, card_id, status, error=None):
-        # Lock order is explicit: owned run -> pending target -> card (in save_result).
+        # Creation locks cards before expiring the old run; all result writers
+        # take the shared guard first to keep that path out of run/card deadlocks.
+        await session.execute(_DIAGNOSTIC_LOCK)
+        # Lock order is explicit: shared creation guard, owned run -> pending target -> card (in save_result).
         # Updating target, counters and heartbeat together avoids extra round trips.
         row = (await session.execute(text("""
             WITH owned AS MATERIALIZED (
@@ -191,21 +206,37 @@ class RunRepository:
             ), progress AS (
                 UPDATE collection_runs SET heartbeat_at=now(),
                   success_count=success_count+CASE WHEN :status='succeeded' THEN (SELECT count(*) FROM changed) ELSE 0 END,
-                  failure_count=failure_count+CASE WHEN :status='failed' THEN (SELECT count(*) FROM changed) ELSE 0 END,
-                  errors=CASE WHEN :status='failed' AND EXISTS(SELECT 1 FROM changed)
-                    THEN errors || CAST(:error AS jsonb) ELSE errors END
+                  failure_count=failure_count+CASE WHEN :status='failed' THEN (SELECT count(*) FROM changed) ELSE 0 END
                 WHERE id=(SELECT id FROM owned) RETURNING id
             )
             SELECT EXISTS(SELECT 1 FROM owned) AS owned,
                    EXISTS(SELECT 1 FROM changed) AS changed,
                    EXISTS(SELECT 1 FROM collection_run_targets WHERE run_id=:run_id AND card_id=:card_id) AS target_exists
         """), {'run_id': lease.run_id, 'owner': lease.owner_token, 'card_id': card_id,
-                'status': status, 'error': json.dumps([error]) if error is not None else '[]'})).one()
+                'status': status})).one()
         if not row.owned:
             raise LeaseLost(f'Владение запуском {lease.run_id} потеряно')
         if not row.target_exists:
             raise ValueError('Карточка не входит в запуск')
+        if row.changed and error is not None:
+            await self._append_error(session, lease.run_id, error)
         return row.changed
+
+    async def _append_error(self, session, run_id, error, *, general=False):
+        payload, shortened = bounded_error(error)
+        await session.execute(text("""
+            UPDATE collection_runs SET
+              errors=CASE
+                WHEN jsonb_array_length(errors)<:max_errors THEN errors || CAST(:error AS jsonb)
+                WHEN :general THEN (SELECT coalesce(jsonb_agg(value ORDER BY ord), '[]'::jsonb)
+                  FROM jsonb_array_elements(errors) WITH ORDINALITY AS e(value,ord) WHERE ord<=:reserved) || CAST(:error AS jsonb)
+                ELSE errors END,
+              diagnostics_status=CASE WHEN :shortened OR jsonb_array_length(errors)>=:max_errors
+                OR diagnostics_status='limited' THEN 'limited' ELSE 'complete' END
+            WHERE id=:run_id AND diagnostics_status<>'expired'
+              AND (diagnostics_status<>'limited' OR jsonb_array_length(errors)<:max_errors OR :general)
+        """), {'run_id': run_id, 'error': json.dumps([payload], ensure_ascii=False),
+                 'shortened': shortened, 'general': general, 'max_errors': MAX_ERRORS, 'reserved': MAX_ERRORS-1})
 
     async def record_card_error(self, lease, card, error):
         async with self._database.session() as s, s.begin():
@@ -229,13 +260,15 @@ class RunRepository:
     async def fail_stale_runs(self, older_than: datetime | None = None):
         older_than = older_than if older_than is not None else self._policy.stale_cutoff(self._clock())
         async with self._database.session() as s, s.begin():
+            await s.execute(_DIAGNOSTIC_LOCK)
             rows = (await s.scalars(select(CollectionRunRecord).where(CollectionRunRecord.status.in_(ACTIVE),
                 func.coalesce(CollectionRunRecord.heartbeat_at, CollectionRunRecord.started_at) < older_than)
                 .with_for_update(skip_locked=True))).all()
             for record in rows:
-                record.errors = [*(record.errors or []), {'cardId': None, 'marketplace': None, 'externalId': None,
-                    'at': self._clock().isoformat(), 'type': 'WorkerStopped',
-                    'message': 'Исполнитель перестал отвечать', 'traceback': ''}]
+                if record.diagnostics_status != 'expired':
+                    await self._append_error(s, record.id, {'cardId': None, 'marketplace': None, 'externalId': None,
+                        'at': self._clock().isoformat(), 'type': 'WorkerStopped',
+                        'message': 'Исполнитель перестал отвечать', 'traceback': ''}, general=True)
                 self._finish(record, 'failed')
             return len(rows)
 
@@ -271,11 +304,12 @@ class RunRepository:
 
     async def fail_run(self, lease, error):
         async with self._database.session() as s, s.begin():
+            await s.execute(_DIAGNOSTIC_LOCK)
             record = await self._locked_run(s, lease)
-            record.errors = [*(record.errors or []), error]
+            await self._append_error(s, record.id, error, general=True)
             self._finish(record, 'failed')
 
-    async def _run_views(self, session, records):
+    async def _run_views(self, session, records, *, include_errors=False):
         ids = [r.id for r in records if r.status in ('failed', 'completed_with_errors')]
         counts = {}
         if ids:
@@ -286,12 +320,15 @@ class RunRepository:
                 MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES),
                 CollectionRunTargetRecord.run_id.notin_(children)).group_by(CollectionRunTargetRecord.run_id))
             counts = dict(rows.all())
-        return [replace(_run(r), retryable_count=counts.get(r.id, 0)) for r in records]
+        return [replace(_run(r, errors=r.errors if include_errors else ()), retryable_count=counts.get(r.id, 0)) for r in records]
 
-    async def get_run(self, run_id):
+    async def get_run(self, run_id, include_errors=True):
         async with self._database.session() as s:
-            record = await s.get(CollectionRunRecord, run_id)
-            return (await self._run_views(s, [record]))[0] if record else None
+            statement = select(CollectionRunRecord).where(CollectionRunRecord.id == run_id)
+            if include_errors:
+                statement = statement.options(undefer(CollectionRunRecord.errors))
+            record = await s.scalar(statement)
+            return (await self._run_views(s, [record], include_errors=include_errors))[0] if record else None
 
     async def list_runs(self, page=1, page_size=50):
         async with self._database.session() as s:

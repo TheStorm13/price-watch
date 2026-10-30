@@ -2,6 +2,7 @@ import { compareMoney, type DecimalString } from '../../utils/money'
 import type { Deal, TrackedCardView, ProductGroup } from '../../types/domain'
 import { availabilityLabel, marketplaceLabel } from '../../utils/format'
 
+export const columnLabels = { title:'Карточка',marketplace:'Маркетплейс',price:'Цена',minimum:'Минимальная',average:'Средняя',savings:'Выгода',availability:'Наличие' }
 export const columnSortKeys = ['title', 'marketplace', 'price', 'minimum', 'average', 'savings', 'availability'] as const
 export type ColumnSortKey = typeof columnSortKeys[number]
 export type Sort = { key: ColumnSortKey | 'updated'; direction: 'asc' | 'desc' } | null

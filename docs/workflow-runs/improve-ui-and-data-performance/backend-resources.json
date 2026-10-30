@@ -1,0 +1,330 @@
+[
+  {
+    "phase": "before",
+    "case": "export",
+    "size": 100,
+    "seconds": 0.1449036590020114,
+    "peakRssKiB": 114736,
+    "sha256": "e4f147b4c92c1f1cc36035874bd575f66dcf1067dcdd9c3482528c75908f9d3d"
+  },
+  {
+    "phase": "before",
+    "case": "export",
+    "size": 1000,
+    "seconds": 1.3184337229977245,
+    "peakRssKiB": 486960,
+    "sha256": "3d9586c22cbb99491a34eeb20b0fa02e850311c406a0173071948d0905a3cd02"
+  },
+  {
+    "phase": "before",
+    "case": "export",
+    "size": 5000,
+    "seconds": 8.246608633002324,
+    "peakRssKiB": 2130292,
+    "sha256": "ef1c1a82bc75c622c5f924f3cefe681de7a91478808fc89c013af837a071e9b8"
+  },
+  {
+    "phase": "before",
+    "case": "errors",
+    "size": 0,
+    "totalMs": 0,
+    "quartiles": [
+      {
+        "meanMs": 0,
+        "p95Ms": 0
+      },
+      {
+        "meanMs": 0,
+        "p95Ms": 0
+      },
+      {
+        "meanMs": 0,
+        "p95Ms": 0
+      },
+      {
+        "meanMs": 0,
+        "p95Ms": 0
+      }
+    ],
+    "compactReadP95Ms": 1.6210419998969883,
+    "storedErrors": 0,
+    "storedBytes": 2,
+    "failureCount": 0
+  },
+  {
+    "phase": "before",
+    "case": "errors",
+    "size": 20,
+    "totalMs": 28.824270993936807,
+    "quartiles": [
+      {
+        "meanMs": 1.5910147994873114,
+        "p95Ms": 1.4520869990519714
+      },
+      {
+        "meanMs": 1.5657101997931022,
+        "p95Ms": 1.8222899998363573
+      },
+      {
+        "meanMs": 1.0242228003335185,
+        "p95Ms": 1.2255399997229688
+      },
+      {
+        "meanMs": 1.5839063991734292,
+        "p95Ms": 1.7562459979671985
+      }
+    ],
+    "compactReadP95Ms": 2.157890998205403,
+    "storedErrors": 20,
+    "storedBytes": 13502,
+    "failureCount": 20
+  },
+  {
+    "phase": "before",
+    "case": "errors",
+    "size": 100,
+    "totalMs": 102.69564700865885,
+    "quartiles": [
+      {
+        "meanMs": 1.017809320037486,
+        "p95Ms": 1.4386610018846113
+      },
+      {
+        "meanMs": 1.0936849200516008,
+        "p95Ms": 1.4450480011873879
+      },
+      {
+        "meanMs": 0.989311720331898,
+        "p95Ms": 1.2348060008662287
+      },
+      {
+        "meanMs": 1.0070199199253693,
+        "p95Ms": 1.290961998165585
+      }
+    ],
+    "compactReadP95Ms": 2.3475989983126055,
+    "storedErrors": 100,
+    "storedBytes": 67584,
+    "failureCount": 100
+  },
+  {
+    "phase": "before",
+    "case": "errors",
+    "size": 1000,
+    "totalMs": 3295.805921065039,
+    "quartiles": [
+      {
+        "meanMs": 1.7238938361115288,
+        "p95Ms": 2.75956899713492
+      },
+      {
+        "meanMs": 2.595979920035461,
+        "p95Ms": 3.698143998917658
+      },
+      {
+        "meanMs": 3.8465435921243625,
+        "p95Ms": 5.795388999104034
+      },
+      {
+        "meanMs": 5.016806335988804,
+        "p95Ms": 6.800511997425929
+      }
+    ],
+    "compactReadP95Ms": 5.273982998915017,
+    "storedErrors": 1000,
+    "storedBytes": 677786,
+    "failureCount": 1000
+  },
+  {
+    "phase": "before",
+    "case": "errors",
+    "size": 5000,
+    "totalMs": 56735.93481491116,
+    "quartiles": [
+      {
+        "meanMs": 3.7973721088434105,
+        "p95Ms": 6.39573100124835
+      },
+      {
+        "meanMs": 8.673204566389904,
+        "p95Ms": 10.890298999584047
+      },
+      {
+        "meanMs": 14.066028931099572,
+        "p95Ms": 18.54831599848694
+      },
+      {
+        "meanMs": 18.852142245596042,
+        "p95Ms": 23.335273999691708
+      }
+    ],
+    "compactReadP95Ms": 26.78024600027129,
+    "storedErrors": 5000,
+    "storedBytes": 3397786,
+    "failureCount": 5000
+  },
+  {
+    "phase": "after",
+    "case": "export",
+    "size": 100,
+    "seconds": 0.058192366999719525,
+    "peakRssKiB": 82772,
+    "sha256": "e4f147b4c92c1f1cc36035874bd575f66dcf1067dcdd9c3482528c75908f9d3d"
+  },
+  {
+    "phase": "after",
+    "case": "export",
+    "size": 1000,
+    "seconds": 0.6057557040003303,
+    "peakRssKiB": 153308,
+    "sha256": "3d9586c22cbb99491a34eeb20b0fa02e850311c406a0173071948d0905a3cd02"
+  },
+  {
+    "phase": "after",
+    "case": "export",
+    "size": 5000,
+    "seconds": 3.353272628999548,
+    "peakRssKiB": 454080,
+    "sha256": "ef1c1a82bc75c622c5f924f3cefe681de7a91478808fc89c013af837a071e9b8"
+  },
+  {
+    "phase": "after",
+    "case": "errors",
+    "size": 0,
+    "totalMs": 0,
+    "quartiles": [
+      {
+        "meanMs": 0,
+        "p95Ms": 0
+      },
+      {
+        "meanMs": 0,
+        "p95Ms": 0
+      },
+      {
+        "meanMs": 0,
+        "p95Ms": 0
+      },
+      {
+        "meanMs": 0,
+        "p95Ms": 0
+      }
+    ],
+    "compactReadP95Ms": 1.9018309976672754,
+    "storedErrors": 0,
+    "storedBytes": 2,
+    "failureCount": 0
+  },
+  {
+    "phase": "after",
+    "case": "errors",
+    "size": 20,
+    "totalMs": 52.156804009428015,
+    "quartiles": [
+      {
+        "meanMs": 3.2297880010446534,
+        "p95Ms": 3.0892249997123145
+      },
+      {
+        "meanMs": 2.5062744003662374,
+        "p95Ms": 2.6746330004243646
+      },
+      {
+        "meanMs": 2.478901800350286,
+        "p95Ms": 2.403741000307491
+      },
+      {
+        "meanMs": 2.216396600124426,
+        "p95Ms": 2.521067999623483
+      }
+    ],
+    "compactReadP95Ms": 2.1404879989859182,
+    "storedErrors": 20,
+    "storedBytes": 13502,
+    "failureCount": 20
+  },
+  {
+    "phase": "after",
+    "case": "errors",
+    "size": 100,
+    "totalMs": 176.7973200257984,
+    "quartiles": [
+      {
+        "meanMs": 1.702813400188461,
+        "p95Ms": 2.5824330004979856
+      },
+      {
+        "meanMs": 1.4943746004428249,
+        "p95Ms": 2.2252809976635035
+      },
+      {
+        "meanMs": 1.9341459599672817,
+        "p95Ms": 2.811124999425374
+      },
+      {
+        "meanMs": 1.9405588404333685,
+        "p95Ms": 2.8062239980499726
+      }
+    ],
+    "compactReadP95Ms": 1.513332001195522,
+    "storedErrors": 20,
+    "storedBytes": 13502,
+    "failureCount": 100
+  },
+  {
+    "phase": "after",
+    "case": "errors",
+    "size": 1000,
+    "totalMs": 1834.8809549825091,
+    "quartiles": [
+      {
+        "meanMs": 1.934768455932499,
+        "p95Ms": 3.015579000930302
+      },
+      {
+        "meanMs": 1.7971638679155149,
+        "p95Ms": 2.804933003062615
+      },
+      {
+        "meanMs": 1.7577752880606567,
+        "p95Ms": 2.8352430017548613
+      },
+      {
+        "meanMs": 1.849816208021366,
+        "p95Ms": 3.193685999576701
+      }
+    ],
+    "compactReadP95Ms": 3.115823998086853,
+    "storedErrors": 20,
+    "storedBytes": 13502,
+    "failureCount": 1000
+  },
+  {
+    "phase": "after",
+    "case": "errors",
+    "size": 5000,
+    "totalMs": 9907.01824484131,
+    "quartiles": [
+      {
+        "meanMs": 1.9057048407092225,
+        "p95Ms": 3.0255829988163896
+      },
+      {
+        "meanMs": 1.9493501999619185,
+        "p95Ms": 3.1247879996953998
+      },
+      {
+        "meanMs": 2.0641320935828844,
+        "p95Ms": 3.2220550019701477
+      },
+      {
+        "meanMs": 2.0064274616190234,
+        "p95Ms": 3.0188310010998975
+      }
+    ],
+    "compactReadP95Ms": 1.7863049979496282,
+    "storedErrors": 20,
+    "storedBytes": 13502,
+    "failureCount": 5000
+  }
+]

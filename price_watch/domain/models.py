@@ -80,6 +80,7 @@ class CollectionRun:
     owner_token: Optional[str] = None
     targets_complete: bool = True
     retryable_count: int = 0
+    diagnostics_status: str = 'complete'
 
     @property
     def lease(self) -> "RunLease":

@@ -352,6 +352,7 @@ class RunResponse(ApiModel):
     retry_of_run_id: int | None = None
     retryable_count: int = 0
     retry_scope_incomplete: bool = False
+    diagnostics_status: str = 'complete'
 
     @classmethod
     def from_domain(cls, run: CollectionRun, include_errors: bool = True) -> "RunResponse":
@@ -376,6 +377,7 @@ class RunResponse(ApiModel):
             started_at=run.started_at,
             finished_at=run.finished_at,
             errors=list(run.errors) if include_errors else None,
+            diagnostics_status=run.diagnostics_status,
             retry_of_run_id=run.retry_of_run_id,
             retryable_count=run.retryable_count,
             retry_scope_incomplete=not run.targets_complete,

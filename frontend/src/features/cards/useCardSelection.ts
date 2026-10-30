@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { TrackedCardView } from '../../types/domain'
 
 export function useCardSelection(cards: TrackedCardView[] | undefined) {
@@ -13,22 +13,23 @@ export function useCardSelection(cards: TrackedCardView[] | undefined) {
     })
   }, [cards])
 
-  function toggle(cardId: number) {
+  const toggle = useCallback((cardId: number) => {
     setSelectedIds((previous) => {
       const next = new Set(previous)
       if (next.has(cardId)) next.delete(cardId)
       else next.add(cardId)
       return next
     })
-  }
+  }, [])
 
-  function clearProcessed(ids: number[]) {
+  const clearProcessed = useCallback((ids: number[]) => {
     setSelectedIds((previous) => {
       const next = new Set(previous)
       ids.forEach((id) => next.delete(id))
       return next
     })
-  }
+  }, [])
 
-  return { selectedIds, toggle, clearProcessed, clear: () => setSelectedIds(new Set()) }
+  const clear = useCallback(() => setSelectedIds(new Set()), [])
+  return { selectedIds, toggle, clearProcessed, clear }
 }

@@ -12,7 +12,7 @@ vi.mock('../../api/queries', () => ({
   useCardChart: () => ({ data: { points: [] }, isLoading: state.chartLoading, isError: state.chartError, refetch: vi.fn() }),
   useUpdateCard: () => ({ isPending: false }), useDeleteCard: () => ({}),
 }))
-vi.mock('../collection/CollectionProvider', () => ({ useCollection: () => ({ isStarting: false, startError: null }) }))
+vi.mock('../collection/CollectionProvider', () => ({ useCollectionCommands: () => ({ isStarting: false, startError: null }) }))
 vi.mock('./PriceChart', () => ({ PriceChart: () => <div>График доступен</div> }))
 afterEach(() => { cleanup(); Object.assign(state, { chartError: false, historyError: false, historyLoading: false, chartLoading: false }) })
 function view() { render(<MemoryRouter initialEntries={['/cards/1']}><Routes><Route path="/cards/:cardId" element={<CardDetailsPage />} /></Routes></MemoryRouter>) }

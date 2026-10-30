@@ -44,6 +44,8 @@ export function ActiveCollectionPanel() {
         <div className="collection-panel__result">
           <p>Успешно: {run.successCount} · Ошибок: {run.failureCount}</p>
           {hasErrors ? <>
+            {details.data?.diagnosticsStatus === 'limited' ? <p>Сохранены только примеры ошибок; технические подробности сокращены.</p> : null}
+            {details.data?.diagnosticsStatus === 'expired' ? <p>Подробности очищены: диагностика хранится только для последнего запуска.</p> : null}
             {details.isLoading ? <p>Загружаем подробности ошибок…</p> : details.isError ? <Button variant="ghost" onClick={() => void details.refetch()}>Не удалось загрузить ошибки. Повторить</Button> : details.data?.errors?.length ? (
               <details className="collection-panel__errors">
                 <summary>Показать ошибки</summary>
@@ -53,7 +55,7 @@ export function ActiveCollectionPanel() {
                   {error.traceback ? <details><summary>Технические подробности</summary><pre>{error.traceback}</pre></details> : null}
                 </li>)}</ul>
               </details>
-            ) : <p>Подробностей об ошибках нет.</p>}
+            ) : details.data?.diagnosticsStatus === 'expired' ? null : <p>Подробностей об ошибках нет.</p>}
             {run.retryScopeIncomplete ? <p>Состав этого запуска известен не полностью. Повтор затронет только известные карточки.</p> : null}
             {run.retryableCount > 0 ? <Button variant="outline" onClick={retryErrors} disabled={isRetrying}>{isRetrying ? 'Повторяем…' : 'Повторить ошибки и оставшиеся'}</Button> : null}
             {retryError ? <Alert variant="destructive"><AlertDescription>{retryError}</AlertDescription></Alert> : null}

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "5.103.2",
+    "@tanstack/react-virtual": "3.14.24",
     "@tauri-apps/api": "2.12.2",
     "@tauri-apps/plugin-opener": "2.7.2",
     "class-variance-authority": "0.7.1",

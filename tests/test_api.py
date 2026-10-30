@@ -112,7 +112,7 @@ class FakeRepository:
             finished_at=None,
         )
 
-    async def get_run(self, run_id):
+    async def get_run(self, run_id, include_errors=True):
         if run_id != 7:
             return None
         run = await self.create_queued_run(1)

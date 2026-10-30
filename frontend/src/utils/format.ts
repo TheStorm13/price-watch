@@ -2,16 +2,20 @@ import type { Availability, Marketplace, RunStatus } from '../types/domain'
 
 export { formatMoney as formatPrice } from './money'
 
+const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+const shortDateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
+const relativeFormatter = new Intl.RelativeTimeFormat('ru', { numeric: 'auto' })
+
 export const formatDateTime = (value: string | null | undefined) =>
-  value ? new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—'
+  value ? dateTimeFormatter.format(new Date(value)) : '—'
 
 export const formatShortDate = (value: string) =>
-  new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(new Date(value))
+  shortDateFormatter.format(new Date(value))
 
 export function formatRelativeTime(value: string | null): string {
   if (!value) return 'Нет данных'
   const seconds = Math.max(0, Math.round((Date.now() - Date.parse(value)) / 1000))
-  const formatter = new Intl.RelativeTimeFormat('ru', { numeric: 'auto' })
+  const formatter = relativeFormatter
   if (seconds < 60) return formatter.format(-seconds, 'second')
   if (seconds < 3_600) return formatter.format(-Math.round(seconds / 60), 'minute')
   if (seconds < 86_400) return formatter.format(-Math.round(seconds / 3_600), 'hour')

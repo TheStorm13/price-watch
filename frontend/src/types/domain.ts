@@ -71,6 +71,7 @@ export interface RunError {
 }
 
 export interface CollectionRun {
+  diagnosticsStatus: 'complete' | 'limited' | 'expired'
   id: number
   status: RunStatus
   totalCount: number

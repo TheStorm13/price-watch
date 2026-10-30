@@ -24,7 +24,7 @@ async def list_runs(
 
 @router.get("/{run_id}", response_model=RunResponse)
 async def get_run(run_id: int, runs: RunDep, include_errors: Annotated[bool, Query(alias="includeErrors")] = True):
-    run = await runs.get_run(run_id)
+    run = await runs.get_run(run_id, include_errors=include_errors)
     if run is None:
         raise ApiProblem(404, "run_not_found", "Запуск не найден")
     return RunResponse.from_domain(run, include_errors=include_errors)

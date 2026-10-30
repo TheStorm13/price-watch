@@ -8,6 +8,15 @@
 `$XDG_STATE_HOME/price-watch/` (обычно `~/.local/state/price-watch/`):
 `postgres.log`, `api.log`, `xvfb.log` и `desktop-worker.log`.
 Сообщение об ошибке запуска указывает соответствующий файл.
+У каждой службы один файл до 10 MiB без архивов: он очищается перед новым запуском
+и при заполнении. После сбоя файл остаётся до следующего запуска, поэтому нужный
+вывод следует сохранить до перезапуска. Chrome пишет `chrome.log` внутри профиля
+по той же политике, в том числе в числовом JSON-режиме без БД.
+
+Панель сбора хранит только небольшую выборку ошибок последнего созданного запуска.
+Создание следующего очищает прежние подробности; счётчики и повтор сохраняются.
+Если обновление остановлено миграцией `0017`, завершите активный сбор или
+восстановите его прежним worker до остановки writers и повторного обновления.
 API слушает свободный локальный порт и требует секрет, который Tauri передаёт
 интерфейсу. Фиксированного адреса для ручного `curl` нет.
 
@@ -148,3 +157,31 @@ dbus-run-session -- xvfb-run -a -s '-screen 0 1440x1000x24' \
 smoke только WB: `PRICE_SMOKE_WB=1 PRICE_SMOKE_ONLY_WB=1`; смешанный Ozon/Ali/WB:
 `PRICE_SMOKE_WB=1 PRICE_SMOKE_ALI=1` перед той же командой desktop smoke.
 [Отчёт WB](../workflow-runs/add-wildberries-connector/verification.md).
+
+
+## Проверка производительности
+
+Результаты PERF-02/03/04/05, окружение, ограничения и сырые before/after:
+[отчёт](../workflow-runs/improve-ui-and-data-performance/verification.md).
+Release Chromium p95 и функциональный native smoke приведены отдельно.
+
+Для UI соберите отдельный mock release с `VITE_E2E_TEST_MODE=true`, поднимите
+loopback preview и выполните `node scripts/benchmark_ui.mjs <URL> <output.json>`.
+Harness использует 100/1000/5000 in-memory карточек, 5 прогревов и 30 измерений.
+Desktop production build не содержит performance fixture.
+
+`scripts/benchmark_diagnostics_export.py --schema perf_<name> --case
+export|errors|history --size <N>` запускается через `.venv/bin/python`, требует
+отдельную `TEST_DATABASE_URL` с именем БД `price_watch_rel_test` и очищает только
+выбранную приватную `perf_*` схему. `--source-root` задаёт before/after исходники.
+`scripts/benchmark_process_log.py` проверяет память, один ограниченный журнал и
+освобождение fd/потока на синтетическом выводе без доступа к пользовательским файлам.
+
+Для native smoke большого каталога:
+
+```bash
+PRICE_SMOKE_CATALOG_SIZE=5000 dbus-run-session -- xvfb-run -a -s '-screen 0 1440x1000x24' python scripts/smoke_reliability_desktop.py
+```
+
+Нужны также libXtst/libX11. Ввод выполняется только на приватном Xvfb теста;
+дополнительные карточки не включаются в сбор.

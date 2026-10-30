@@ -90,6 +90,9 @@ class CollectionRunRecord(Base):
             "started_at",
             postgresql_where=text("status = 'queued'"),
         ),
+        CheckConstraint("diagnostics_status IN ('complete','limited','expired')", name='run_diagnostics_status_check'),
+        CheckConstraint('jsonb_array_length(errors)<=20 AND octet_length(errors::text)<=131072', name='run_diagnostics_size_check'),
+        Index("collection_runs_diagnostics_current_idx", "id", postgresql_where=text("diagnostics_status <> 'expired'")),
         Index("collection_runs_requested_card_idx", "requested_card_id"),
         Index("collection_runs_current_card_idx", "current_card_id"),
         Index("collection_runs_retry_of_unique", "retry_of_run_id", unique=True,
@@ -120,7 +123,8 @@ class CollectionRunRecord(Base):
     worker_id: Mapped[str | None] = mapped_column(String(128))
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     targets_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
-    errors: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    errors: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"), deferred=True, deferred_raiseload=True)
+    diagnostics_status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'complete'"))
 
 
 class CollectionRunTargetRecord(Base):

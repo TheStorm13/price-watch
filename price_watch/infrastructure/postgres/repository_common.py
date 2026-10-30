@@ -28,7 +28,7 @@ def _tracked_card(record: MarketplaceCardRecord) -> TrackedCard:
     )
 
 
-def _run(record: CollectionRunRecord) -> CollectionRun:
+def _run(record: CollectionRunRecord, *, errors=()) -> CollectionRun:
     return CollectionRun(
         id=record.id,
         status=record.status,
@@ -43,7 +43,8 @@ def _run(record: CollectionRunRecord) -> CollectionRun:
         challenge_message=record.challenge_message,
         started_at=record.started_at,
         finished_at=record.finished_at,
-        errors=tuple(record.errors or []),
+        errors=tuple(errors),
+        diagnostics_status=record.diagnostics_status,
         retry_of_run_id=record.retry_of_run_id,
         owner_token=record.worker_id,
         targets_complete=record.targets_complete,
