@@ -3,7 +3,7 @@
 ## 1. Baselines and approval
 
 - [x] 1.1 Run isolated development mock UI diagnostic for 100/1000/5000 cards; record raw observations, DOM counts, methodology and limitations in workflow record. Verify no application code or user data changed.
-- [ ] 1.2 Obtain explicit acceptance of Proposed ADR 0010 and the concrete expanded plan; record the message and date before architecture/application implementation.
+- [ ] 1.2 Reconcile acceptance after the 2026-10-30 retention correction; record that the earlier yes was followed by a pause and a narrower diagnostics/log policy. Confirm the revised concrete plan before application implementation; do not treat approval of the superseded table/archive design as current.
 - [ ] 1.3 Add reproducible release UI benchmark fixtures/harness and run 5 warmups + 30 samples for list/grid/group/editor interactions; capture viewport, versions, console, DOM, timing and memory. Verify fixture never reads user data and retain before results.
 - [ ] 1.4 Prepare disposable TEST_DATABASE_URL and run before catalog/error/export measurements as described in design; verify separate database identity and retain baseline artifacts. No existing user database may be reused.
 
@@ -23,16 +23,16 @@
 
 ## 4. Run diagnostics: PERF-03
 
-- [ ] 4.1 Add Alembic 0017 and error row model; migrate legacy arrays in order, verify counts/payloads before column removal and reject active writers. Verify populated private-schema upgrade, deliberate failure rollback, card/history preservation and historical migration tests on disposable DB.
-- [ ] 4.2 Replace all JSONB-array writers and mappers with transaction-owned append-only diagnostics; preserve run/target locks, lease and duplicate delivery rules. Verify error/success/recovery/concurrent retry reliability tests and remove superseded runtime paths.
-- [ ] 4.3 Carry include_errors through API/ports/read adapter and omit diagnostic reads for list/compact progress. Verify HTTP default/false/true contracts, SQL projection, full traceback/order and standalone CLI diagnostic consumers.
-- [ ] 4.4 Repeat 0/100/1000/5000-error write/read benchmarks and document series/quartile costs and compact progress p95; verify no rewriting of prior payloads and no user DB access. Prepare migration/architecture/API documentation draft.
+- [ ] 4.1 Keep the existing errors field; add diagnosticsStatus and atomic Alembic 0017 normalization to bounded active/latest-completed examples. Verify ≤20 entries/128 KiB, intentional expiry of old diagnostics, unchanged runs/counters/targets/prices/history, migration rollback and historical revision tests on disposable DB. Do not create an errors table.
+- [ ] 4.2 Bound all error writers and reserve space for a terminal general error; stop changing diagnostic payload once limits apply. Preserve lease, pending-target transition and exact counters independently of retained examples. Verify duplicate delivery, oversized Unicode errors, stale recovery, queued-vs-start retention and concurrent finish/retry tests.
+- [ ] 4.3 Carry include_errors through API/ports/read adapter without loading error payload for compact reads/heartbeat. Carry complete/limited/expired status through domain/API/mock/UI; verify explanatory UI, sampled traceback bounds, unchanged retry scope and full failure counts.
+- [ ] 4.4 Repeat 0/20/100/1000/5000-failure benchmarks and document payload/write/read limits and progress p95; verify bounded storage despite many runs, only active/latest-completed diagnostics and no user DB access. Prepare retention/architecture/API documentation draft.
 
 ## 5. Process logs: PERF-04
 
-- [ ] 5.1 Implement bounded Rust process log owner with fixed-size pipe reads and shared stdout/stderr rotation; wire API/PostgreSQL/Xvfb/worker/manual Chrome and lifecycle writes. Verify Rust tests with continuous writes, size/age cleanup, I/O errors and restart/shutdown without unbounded queue or deleted-inode writes.
-- [ ] 5.2 Implement the same policy in shared Python ChromeSession for queued/direct/numeric collection; verify session/profile tests, long-line/continuous output, fd/thread cleanup and bounded shutdown without DATABASE_URL. Do not change Ozon transport/rate/concurrency.
-- [ ] 5.3 Verify long-running isolated native services against 10 MiB ×4/14-day policy and hourly idle cleanup; retain disk/RSS/recovery evidence and prepare troubleshooting/retention documentation draft.
+- [ ] 5.1 Implement one bounded Rust process log owner with fixed-size pipe reads and serialized stdout/stderr writes; wire API/PostgreSQL/Xvfb/worker/manual Chrome and lifecycle writes. Verify one file, truncation at capacity and before restart, I/O errors and bounded shutdown without unbounded queue or deleted-inode writes.
+- [ ] 5.2 Implement the same single-file policy in shared Python ChromeSession for queued/direct/numeric collection; verify session/profile tests, long-line/continuous output, fd/thread cleanup and bounded shutdown without DATABASE_URL. Do not change Ozon transport/rate/concurrency.
+- [ ] 5.3 Verify isolated native services keep one file ≤10 MiB each with no archives; last output remains after failure until the next start. Retain disk/RSS/recovery evidence and prepare troubleshooting/retention documentation draft.
 
 ## 6. Export: PERF-05
 
