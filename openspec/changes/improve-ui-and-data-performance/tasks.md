@@ -23,10 +23,10 @@
 
 ## 4. Run diagnostics: PERF-03
 
-- [ ] 4.1 Keep the existing errors field; add diagnosticsStatus and atomic Alembic 0017 normalization to bounded active/latest-completed examples. Verify ≤20 entries/128 KiB, intentional expiry of old diagnostics, unchanged runs/counters/targets/prices/history, migration rollback and historical revision tests on disposable DB. Do not create an errors table.
-- [ ] 4.2 Bound all error writers and reserve space for a terminal general error; stop changing diagnostic payload once limits apply. Preserve lease, pending-target transition and exact counters independently of retained examples. Verify duplicate delivery, oversized Unicode errors, stale recovery, queued-vs-start retention and concurrent finish/retry tests.
+- [ ] 4.1 Keep the existing errors field; add diagnosticsStatus and atomic Alembic 0017 normalization to examples of only the latest-created run (maximum ID), regardless of status. Verify ≤20 entries/128 KiB, intentional expiry of every earlier run including active runs, unchanged runs/counters/targets/prices/history, migration rollback and historical revision tests on disposable DB. Do not create an errors table.
+- [ ] 4.2 Bound all error writers and reserve space for a terminal general error; stop changing diagnostic payload once limits apply. Preserve lease, pending-target transition and exact counters independently of retained examples. Verify duplicate delivery, oversized Unicode errors, stale recovery, creation-time cleanup including queued/retry, creation rollback and concurrent late-writer/finish tests.
 - [ ] 4.3 Carry include_errors through API/ports/read adapter without loading error payload for compact reads/heartbeat. Carry complete/limited/expired status through domain/API/mock/UI; verify explanatory UI, sampled traceback bounds, unchanged retry scope and full failure counts.
-- [ ] 4.4 Repeat 0/20/100/1000/5000-failure benchmarks and document payload/write/read limits and progress p95; verify bounded storage despite many runs, only active/latest-completed diagnostics and no user DB access. Prepare retention/architecture/API documentation draft.
+- [ ] 4.4 Repeat 0/20/100/1000/5000-failure benchmarks and document payload/write/read limits and progress p95; verify bounded storage despite many runs, only latest-created-run diagnostics and no user DB access. Prepare retention/architecture/API documentation draft.
 
 ## 5. Process logs: PERF-04
 
