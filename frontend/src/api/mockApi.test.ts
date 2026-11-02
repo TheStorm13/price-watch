@@ -19,17 +19,17 @@ it('projects every group field from one cheapest member and switches as prices c
   const createdAt = '2026-10-01T12:00:00Z'
   const imported = (externalId: string, marketplace: 'ozon' | 'wildberries', prices: number[]) => ({
     externalId, marketplace, title: `Fixture ${externalId}`, url: null, tags: [externalId],
-    createdAt, dealsEnabled: true, history: prices.map((price, index) => ({
+    createdAt, dealsEnabled: true, primaryExternalId: marketplace === 'wildberries' ? `${externalId}:1` : externalId, variants: [{externalId: marketplace === 'wildberries' ? `${externalId}:1` : externalId, url: null, history: prices.map((price, index) => ({
       price: String(price), availability: 'in_stock' as const, observedAt: `2026-10-0${index + 1}T12:00:00Z`,
-    })),
+    })), }],
   })
-  await api.importCards({ version: 2, cards: [imported('901', 'ozon', [80, 90]), imported('902', 'wildberries', [60, 240, 120])],
+  await api.importCards({ version: 3, cards: [imported('901', 'ozon', [80, 90]), imported('902', 'wildberries', [60, 240, 120])],
     groups: [{ name: 'Fixture', cards: [{ marketplace: 'ozon', externalId: '901' }, { marketplace: 'wildberries', externalId: '902' }] }] })
   let group = ((await api.getCatalog()).groups)[0]
   expect(group.representativeCard).toMatchObject({ externalId: '901', currentPrice: "90.00", minimumPrice: "80.00", averagePrice: "80" })
   expect(group).toMatchObject({ currentPrice: "90.00", minimumPrice: "80.00", savings: null, isDeal: false, hasMemberDeals: true, baselineDays: 1 })
   expect(group.representativeCard).toEqual(((await api.getCatalog()).cards).find((card) => card.externalId === '901'))
-  await api.importCards({ version: 2, cards: [imported('902', 'wildberries', [60, 240, 120, 50])] })
+  await api.importCards({ version: 3, cards: [imported('902', 'wildberries', [60, 240, 120, 50])] })
   group = ((await api.getCatalog()).groups)[0]
   expect(group.representativeCard).toMatchObject({ externalId: '902', currentPrice: "50.00", minimumPrice: "50.00", marketplace: 'wildberries' })
   expect(group).toMatchObject({ isDeal: true, hasMemberDeals: true, savings: "90", baselineDays: 3 })

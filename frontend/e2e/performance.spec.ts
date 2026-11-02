@@ -2,11 +2,13 @@ import { expect, test, type Page } from '@playwright/test'
 
 async function bottom(page:Page, name:string) {
   const last=page.getByRole('checkbox',{name:`Выбрать карточку ${name}`})
-  for(let i=0;i<12 && !await last.isVisible();i++) {
+  // Virtual row measurements can change the bottom after each scroll/resize.
+  // Keep scrolling while waiting, rather than passively waiting at an old bottom.
+  await expect.poll(async()=>{
+    if(await last.isVisible()) return true
     await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight))
-    await page.waitForTimeout(80)
-  }
-  await expect(last).toBeVisible()
+    return false
+  },{timeout:10000,intervals:[80,100,200]}).toBe(true)
   return last
 }
 

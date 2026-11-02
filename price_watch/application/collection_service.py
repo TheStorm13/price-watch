@@ -37,25 +37,27 @@ class CollectionService:
                         return card, None, exc, traceback.format_exc()
                     return card, snapshot, None, None
 
-            if len(cards) == 1:
-                await self._repository.set_run_current(lease, cards[0])
-            tasks = [asyncio.create_task(fetch(card)) for card in cards]
-            try:
-                for completed in asyncio.as_completed(tasks):
-                    card, snapshot, error, diagnostic = await completed
-                    try:
-                        if error is not None:
-                            raise error
-                        await self._repository.save_result(lease, card, snapshot)
-                    except LeaseLost:
-                        raise
-                    except Exception as exc:
-                        await self._repository.record_card_error(lease, card, {
-                            'cardId': card.id, 'marketplace': card.ref.marketplace, 'externalId': card.ref.external_id,
-                            'at': datetime.now(timezone.utc).isoformat(), 'type': type(exc).__name__,
-                            'message': str(exc), 'traceback': diagnostic or traceback.format_exc()})
-                        logger.error('Не удалось обновить карточку %s: %s', card.id, exc)
-            finally:
-                for task in tasks:
-                    task.cancel()
-                await asyncio.gather(*tasks, return_exceptions=True)
+            while cards:
+                if len(cards) == 1:
+                    await self._repository.set_run_current(lease, cards[0])
+                tasks = [asyncio.create_task(fetch(card)) for card in cards]
+                try:
+                    for completed in asyncio.as_completed(tasks):
+                        card, snapshot, error, diagnostic = await completed
+                        try:
+                            if error is not None:
+                                raise error
+                            await self._repository.save_result(lease, card, snapshot)
+                        except LeaseLost:
+                            raise
+                        except Exception as exc:
+                            await self._repository.record_card_error(lease, card, {
+                                'cardId': card.id, 'variantId': card.variant_id, 'marketplace': card.ref.marketplace, 'externalId': card.ref.external_id,
+                                'at': datetime.now(timezone.utc).isoformat(), 'type': type(exc).__name__,
+                                'message': str(exc), 'traceback': diagnostic or traceback.format_exc()})
+                            logger.error('Не удалось обновить карточку %s: %s', card.id, exc)
+                finally:
+                    for task in tasks:
+                        task.cancel()
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                cards = await self._repository.cards_for_run(lease.run_id, pending_only=True)

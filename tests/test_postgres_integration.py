@@ -85,10 +85,10 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         try:
             async with self.async_database.session() as session, session.begin():
                 session.add_all([
-                    PriceHistoryRecord(card_id=first.id, collection_run_id=None, price=Decimal("60.00"), availability="in_stock", observed_at=observed - timedelta(days=2), snapshot={}),
-                    PriceHistoryRecord(card_id=first.id, collection_run_id=None, price=Decimal("90.00"), availability="in_stock", observed_at=observed, snapshot={}),
-                    PriceHistoryRecord(card_id=second.id, collection_run_id=None, price=Decimal("75.00"), availability="in_stock", observed_at=observed - timedelta(days=1), snapshot={}),
-                    PriceHistoryRecord(card_id=second.id, collection_run_id=None, price=None, availability="out_of_stock", observed_at=observed, snapshot={}),
+                    PriceHistoryRecord(card_id=first.id, variant_id=first.variant_id, collection_run_id=None, price=Decimal("60.00"), availability="in_stock", observed_at=observed - timedelta(days=2), snapshot={}),
+                    PriceHistoryRecord(card_id=first.id, variant_id=first.variant_id, collection_run_id=None, price=Decimal("90.00"), availability="in_stock", observed_at=observed, snapshot={}),
+                    PriceHistoryRecord(card_id=second.id, variant_id=second.variant_id, collection_run_id=None, price=Decimal("75.00"), availability="in_stock", observed_at=observed - timedelta(days=1), snapshot={}),
+                    PriceHistoryRecord(card_id=second.id, variant_id=second.variant_id, collection_run_id=None, price=None, availability="out_of_stock", observed_at=observed, snapshot={}),
                 ])
             group = next(group for group in (await repository.catalog.get_catalog())["groups"] if group["id"] == group_id)
             self.assertEqual(group["current_price"], Decimal("90.00"))
@@ -177,7 +177,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         observed = datetime.now(timezone.utc)
         original_session = self.async_database.session
         async with original_session() as session, session.begin():
-            session.add(PriceHistoryRecord(card_id=card.id, price=Decimal("100.10"),
+            session.add(PriceHistoryRecord(card_id=card.id, variant_id=card.variant_id, price=Decimal("100.10"),
                 availability="in_stock", observed_at=observed, snapshot={"not": "exported"}))
 
         @asynccontextmanager
@@ -197,7 +197,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                             record.title = "After"
                             group = await writer.get(ProductGroupRecord, group_id)
                             group.name = f"After-{group_id}"
-                            writer.add(PriceHistoryRecord(card_id=card.id, price=Decimal("50.05"),
+                            writer.add(PriceHistoryRecord(card_id=card.id, variant_id=card.variant_id, price=Decimal("50.05"),
                                 availability="in_stock", observed_at=observed + timedelta(seconds=1), snapshot={}))
                     return result
 
@@ -209,13 +209,13 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 before = await repository.transfer.export_cards()
             item = next(item for item in before["cards"] if item["external_id"] == card.ref.external_id)
             self.assertEqual(item["title"], "Before")
-            self.assertEqual([point["price"] for point in item["history"]], [Decimal("100.10")])
+            self.assertEqual([point["price"] for point in item["variants"][0]["history"]], [Decimal("100.10")])
             self.assertTrue(next(group for group in before["groups"]
                 if any(member["external_id"] == card.ref.external_id for member in group["cards"]))["name"].startswith("Before-"))
             after = await repository.transfer.export_cards()
             item = next(item for item in after["cards"] if item["external_id"] == card.ref.external_id)
             self.assertEqual(item["title"], "After")
-            self.assertEqual([point["price"] for point in item["history"]], [Decimal("100.10"), Decimal("50.05")])
+            self.assertEqual([point["price"] for point in item["variants"][0]["history"]], [Decimal("100.10"), Decimal("50.05")])
             self.assertIn(f"After-{group_id}", [group["name"] for group in after["groups"]])
         finally:
             await repository.cards.delete_card(card.id)
@@ -230,36 +230,36 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         try:
             with self.database.session() as session, session.begin():
                 session.add(PriceHistoryRecord(
-                    card_id=card.id, collection_run_id=None, price=Decimal("120.00"),
+                    card_id=card.id, variant_id=card.variant_id, collection_run_id=None, price=Decimal("120.00"),
                     availability="in_stock", observed_at=start - timedelta(days=200),
                     snapshot={},
                 ))
                 for minute, price in ((0, "100.00"), (2, "90.00"), (4, "100.00")):
                     session.add(PriceHistoryRecord(
-                        card_id=card.id, collection_run_id=None, price=Decimal(price),
+                        card_id=card.id, variant_id=card.variant_id, collection_run_id=None, price=Decimal(price),
                         availability="in_stock", observed_at=start + timedelta(minutes=minute),
                         snapshot={"not": "exported"},
                     ))
             exported = await repository.transfer.export_cards()
             item = next(item for item in exported["cards"] if item["external_id"] == external_id)
-            self.assertEqual(exported["version"], 2)
-            self.assertEqual(len(item["history"]), 4)
-            self.assertEqual(set(item["history"][0]), {"price", "availability", "observed_at"})
+            self.assertEqual(exported["version"], 3)
+            self.assertEqual(len(item["variants"][0]["history"]), 4)
+            self.assertEqual(set(item["variants"][0]["history"][0]), {"price", "availability", "observed_at"})
             self.assertEqual(set(item), {"marketplace", "external_id", "title", "url", "image_url",
-                                         "tags", "deals_enabled", "created_at", "history"})
+                                         "tags", "deals_enabled", "created_at", "primary_external_id", "variants"})
             item["title"] = "Название из файла"
             item["image_url"] = "https://img.test/import.jpg"
             item["created_at"] = start - timedelta(days=20)
-            item["history"].extend({
+            item["variants"][0]["history"].extend({
                 "price": Decimal(price), "availability": "in_stock",
                 "observed_at": start + timedelta(minutes=minute),
             } for minute, price in ((1, "100.00"), (3, "90.00"),
                                     (5, "100.00"), (6, "80.00")))
             new_item = {**item, "external_id": new_external_id, "title": "Новая карточка",
-                        "deals_enabled": False, "history": [{
+                        "deals_enabled": False, "primary_external_id": new_external_id, "variants": [{"external_id":new_external_id,"url":None,"history": [{
                             "price": Decimal("200.00"), "availability": "in_stock",
                             "observed_at": start,
-                        }]}
+                        }]}]}
             payload = [item, new_item]
             preview = await repository.transfer.import_cards(payload, preview=True)
             self.assertEqual(preview["cards_added"], 1)
@@ -444,7 +444,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             summary = await repository.transfer.import_cards([{
                 "marketplace": "integration-test", "external_id": external_id,
                 "title": "Товар", "url": None, "deals_enabled": True,
-                "created_at": start, "history": history,
+                "created_at": start, "primary_external_id": external_id, "variants": [{"external_id":external_id,"url":None,"history": history}],
             }])
             self.assertEqual(summary["observations_added"], 3)
             card = next(overview.card for overview in await repository.cards.list_cards()
@@ -501,7 +501,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             with self.database.session() as session, session.begin():
                 for minute in (11, 12, 13):
                     session.add(PriceHistoryRecord(
-                        card_id=card.id, collection_run_id=run_id,
+                        card_id=card.id, variant_id=card.variant_id, collection_run_id=run_id,
                         price=Decimal("100.00"), availability="in_stock",
                         observed_at=start + timedelta(minutes=minute), snapshot={},
                     ))
@@ -540,7 +540,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             with self.database.session() as session, session.begin():
                 for index, price in enumerate(prices):
                     session.add(PriceHistoryRecord(
-                        card_id=card.id, collection_run_id=None, price=price,
+                        card_id=card.id, variant_id=card.variant_id, collection_run_id=None, price=price,
                         availability="out_of_stock" if index == 7 else "unknown" if price is None else "in_stock",
                         observed_at=start + timedelta(minutes=index), snapshot={},
                     ))
@@ -593,7 +593,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             with self.database.session() as session, session.begin():
                 for index in range(60):
                     session.add(PriceHistoryRecord(
-                        card_id=card.id, collection_run_id=None,
+                        card_id=card.id, variant_id=card.variant_id, collection_run_id=None,
                         price=Decimal("100.00") if index < 30 else Decimal("90.00"),
                         availability="in_stock", observed_at=start + timedelta(minutes=index),
                         snapshot={},
@@ -688,7 +688,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             with self.database.session() as session, session.begin():
                 session.get(MarketplaceCardRecord, card.id).created_at = now - timedelta(days=10)
                 for index, price in enumerate((100, 120, 80)):
-                    session.add(PriceHistoryRecord(card_id=card.id, collection_run_id=run_id,
+                    session.add(PriceHistoryRecord(card_id=card.id, variant_id=card.variant_id, collection_run_id=run_id,
                         price=Decimal(price), availability="in_stock",
                         observed_at=now - timedelta(days=3 - index), snapshot={}))
             deal = next(item for item in (await repository.catalog.get_catalog())["deals"] if item["card"]["id"] == card.id)
@@ -715,7 +715,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
             await check_deal_api()
             with self.database.session() as session, session.begin():
-                session.add(PriceHistoryRecord(card_id=card.id, collection_run_id=run_id,
+                session.add(PriceHistoryRecord(card_id=card.id, variant_id=card.variant_id, collection_run_id=run_id,
                     price=Decimal("150"), availability="in_stock", observed_at=now, snapshot={}))
             self.assertFalse(any(item["card"]["id"] == card.id for item in (await repository.catalog.get_catalog())["deals"]))
         finally:
@@ -732,7 +732,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 session.get(MarketplaceCardRecord, card.id).created_at = now - timedelta(days=10)
                 for days_ago, price in ((2, "100"), (1, "80")):
                     session.add(PriceHistoryRecord(
-                        card_id=card.id, collection_run_id=None,
+                        card_id=card.id, variant_id=card.variant_id, collection_run_id=None,
                         price=Decimal(price), availability="in_stock",
                         observed_at=now - timedelta(days=days_ago), snapshot={},
                     ))
@@ -750,7 +750,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         try:
             async with self.async_database.session() as session, session.begin():
                 session.add(PriceHistoryRecord(
-                    card_id=card.id, collection_run_id=None,
+                    card_id=card.id, variant_id=card.variant_id, collection_run_id=None,
                     price=Decimal("100"), availability="in_stock",
                     observed_at=now - timedelta(minutes=2), snapshot={},
                 ))
@@ -758,7 +758,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
             async with self.async_database.session() as session, session.begin():
                 session.add(PriceHistoryRecord(
-                    card_id=card.id, collection_run_id=None,
+                    card_id=card.id, variant_id=card.variant_id, collection_run_id=None,
                     price=Decimal("80"), availability="in_stock",
                     observed_at=now - timedelta(minutes=1), snapshot={},
                 ))
@@ -778,7 +778,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 session.get(MarketplaceCardRecord, card.id).created_at = now - timedelta(days=10)
                 for age, price in ((3, "100"), (2, "120"), (1, "80")):
                     session.add(PriceHistoryRecord(
-                        card_id=card.id, collection_run_id=None, price=Decimal(price),
+                        card_id=card.id, variant_id=card.variant_id, collection_run_id=None, price=Decimal(price),
                         availability="in_stock", observed_at=now - timedelta(days=age), snapshot={},
                     ))
             self.assertTrue(any(item["card"]["id"] == card.id for item in (await repository.catalog.get_catalog())["deals"]))

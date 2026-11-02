@@ -47,7 +47,7 @@ class AliExpressMigrationTests(unittest.TestCase):
                 before=[dict(r) for r in c.execute(text('SELECT * FROM marketplace_cards ORDER BY id')).mappings()]
                 history=c.execute(text('SELECT * FROM price_history ORDER BY id')).all()
             with patch('logging.config.fileConfig'):
-                command.upgrade(config,'head')
+                command.upgrade(config,'0015_aliexpress_sku')
             with db.engine.connect() as c:
                 after=[dict(r) for r in c.execute(text('SELECT * FROM marketplace_cards ORDER BY id')).mappings()]
                 self.assertEqual(c.execute(text('SELECT * FROM price_history ORDER BY id')).all(),history)
@@ -63,7 +63,7 @@ class AliExpressMigrationTests(unittest.TestCase):
                     else:c.execute(text("INSERT INTO marketplace_cards(marketplace,external_id) VALUES ('aliexpress','1:2')"))
                     before=c.execute(text('SELECT * FROM marketplace_cards ORDER BY id')).all()
                 with self.assertRaises(RuntimeError), patch('logging.config.fileConfig'):
-                    command.upgrade(config,'head')
+                    command.upgrade(config,'0015_aliexpress_sku')
                 with db.engine.connect() as c:
                     self.assertEqual(c.execute(text('SELECT * FROM marketplace_cards ORDER BY id')).all(),before)
                     self.assertEqual(c.scalar(text('SELECT version_num FROM alembic_version')),'0014_run_target_results')

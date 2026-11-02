@@ -1,0 +1,379 @@
+Executing <Task pending name='Task-1' coro=<AliExpressIntegrationTests.asyncSetUp() running at /home/ilya-groza/DevProjects/price-watch/tests/test_aliexpress_integration.py:34> wait_for=<Future pending cb=[Task.task_wakeup()] created at /usr/lib/python3.14/asyncio/base_events.py:460> cb=[_run_until_complete_cb() at /usr/lib/python3.14/asyncio/base_events.py:181] created at /usr/lib/python3.14/asyncio/runners.py:110> took 0.813 seconds
+Не удалось обновить карточку 1: Не указан SKU
+Executing <Task pending name='Task-27' coro=<AliExpressIntegrationTests.asyncSetUp() running at /home/ilya-groza/DevProjects/price-watch/tests/test_aliexpress_integration.py:34> wait_for=<Future pending cb=[Task.task_wakeup()] created at /usr/lib/python3.14/asyncio/base_events.py:460> cb=[_run_until_complete_cb() at /usr/lib/python3.14/asyncio/base_events.py:181] created at /usr/lib/python3.14/asyncio/runners.py:110> took 0.295 seconds
+Chrome сбора не завершился штатно; посылаю SIGTERM
+Chrome сбора завис; посылаю SIGKILL
+Ozon запросил проверку для артикула 100
+Ozon запросил проверку для артикула 200
+Ozon запросил проверку для артикула 100
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+WARNI [marketplace_connector.browser.process_log] Не удалось записать журнал Chrome: [Errno 28] No space left on device
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Running upgrade 0016_wildberries_size -> 0017_bounded_diagnostics, Retain a bounded diagnostic sample of the latest-created run only.
+INFO  [alembic.runtime.migration] Running upgrade 0017_bounded_diagnostics -> 0018_product_variants, One product card, exact variants, and independent histories; forward only.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_initial, Initial price-watch schema.
+INFO  [alembic.runtime.migration] Running upgrade 0001_initial -> 0002_web_runs, Add durable web collection queue state.
+INFO  [alembic.runtime.migration] Running upgrade 0002_web_runs -> 0003_run_targets_errors, Freeze queued targets and retain collection errors.
+INFO  [alembic.runtime.migration] Running upgrade 0003_run_targets_errors -> 0004_compact_price_plateaus, Keep only the first and last observation of each price plateau.
+INFO  [alembic.runtime.migration] Running upgrade 0004_compact_price_plateaus -> 0005_retry_runs, Link retry runs to their source run.
+INFO  [alembic.runtime.migration] Running upgrade 0005_retry_runs -> 0006_full_collection_schedule, Track which runs reset the automatic full-collection schedule.
+INFO  [alembic.runtime.migration] Running upgrade 0006_full_collection_schedule -> 0007_unavailable_without_price, Store no current price for unavailable products.
+INFO  [alembic.runtime.migration] Running upgrade 0007_unavailable_without_price -> 0008_card_archive, Keep archived cards in collection while excluding them from deals.
+INFO  [alembic.runtime.migration] Running upgrade 0008_card_archive -> 0009_card_image, Store the primary product image on each card.
+INFO  [alembic.runtime.migration] Running upgrade 0009_card_image -> 0010_merge_archive_into_tracking, Use paused tracking as the only archive state.
+INFO  [alembic.runtime.migration] Running upgrade 0010_merge_archive_into_tracking -> 0011_product_groups, Add persistent product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0011_product_groups -> 0012_product_tags, Persist tags on cards and product groups.
+INFO  [alembic.runtime.migration] Running upgrade 0012_product_tags -> 0013_deals_enabled, Name the deal preference independently from collection tracking.
+INFO  [alembic.runtime.migration] Running upgrade 0013_deals_enabled -> 0014_run_target_results, Move frozen targets to durable results; preserve uncertainty in old runs.
+INFO  [alembic.runtime.migration] Running upgrade 0014_run_target_results -> 0015_aliexpress_sku, Retain cards and history; canonicalize only unambiguous AliExpress SKU URLs.
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0015_aliexpress_sku -> 0016_wildberries_size, Retain cards and history; canonicalize only unambiguous Wildberries size URLs.
+----------------------------------------------------------------------
+Ran 229 tests in 42.272s
+
+OK

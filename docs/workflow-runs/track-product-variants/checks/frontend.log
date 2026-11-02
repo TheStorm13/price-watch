@@ -1,0 +1,14 @@
+npm notice run test
+npm notice run vitest run
+
+ RUN  v5.0.1 /home/ilya-groza/DevProjects/price-watch/frontend
+
+
+ Test Files  21 passed (21)
+      Tests  82 passed (82)
+   Start at  10:55:10
+   Duration  6.17s (environment 49%, tests 31%, transform 8%, import 7%, setup 6%)
+
+Environment  jsdom was created 21 times · 25.80s total, 49% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments

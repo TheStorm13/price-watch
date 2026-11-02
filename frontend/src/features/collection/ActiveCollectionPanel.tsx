@@ -56,7 +56,7 @@ export function ActiveCollectionPanel() {
                 </li>)}</ul>
               </details>
             ) : details.data?.diagnosticsStatus === 'expired' ? null : <p>Подробностей об ошибках нет.</p>}
-            {run.retryScopeIncomplete ? <p>Состав этого запуска известен не полностью. Повтор затронет только известные карточки.</p> : null}
+            {run.retryScopeIncomplete ? <p>Состав этого запуска известен не полностью. Повтор затронет только известные варианты.</p> : null}
             {run.retryableCount > 0 ? <Button variant="outline" onClick={retryErrors} disabled={isRetrying}>{isRetrying ? 'Повторяем…' : 'Повторить ошибки и оставшиеся'}</Button> : null}
             {retryError ? <Alert variant="destructive"><AlertDescription>{retryError}</AlertDescription></Alert> : null}
           </> : null}
@@ -64,7 +64,7 @@ export function ActiveCollectionPanel() {
       ) : (
         <p className="collection-panel__current">
           {run.totalCount > 1
-            ? 'Обрабатываем до пяти карточек одновременно'
+            ? 'Обрабатываем до пяти вариантов одновременно'
             : run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
         </p>
       )}

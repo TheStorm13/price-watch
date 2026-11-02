@@ -5,7 +5,7 @@ import json
 from uuid import uuid4
 
 from sqlalchemy import func, select, text
-from sqlalchemy.orm import undefer
+from sqlalchemy.orm import undefer, defer
 from ...domain.diagnostics import bounded_error, MAX_ERRORS
 
 from ...domain.models import RunLease, LeaseLost, TrackedCard
@@ -15,9 +15,8 @@ from ...ports.runs import Clock
 from marketplace_connector.domain.models import MarketplaceCard
 from marketplace_connector.serialization.product_json import card_to_dict
 from .database import AsyncDatabase
-from .queries import overview_statement
 from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
-from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, PriceHistoryRecord
+from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, PriceHistoryRecord, CardVariantRecord
 from .repository_common import _RUN_CREATION_LOCK, _tracked_card, _run
 
 _DIAGNOSTIC_LOCK = text('SELECT pg_advisory_xact_lock_shared(578612392)')
@@ -36,34 +35,70 @@ class RunRepository:
         price = snapshot.price
         availability = snapshot.availability.value
         async with self._database.session() as session, session.begin():
-            if not await self._begin_result(session, lease, card.id, 'succeeded'):
+            if not await self._begin_result(session, lease, card.variant_id, 'succeeded'):
                 return
             if (snapshot.ref.marketplace, snapshot.ref.external_id) != (card.ref.marketplace, card.ref.external_id):
                 raise ValueError("Коннектор вернул другую карточку")
-            # Browser I/O finished before taking run -> target -> card locks.
-            row = (await session.execute(overview_statement().where(
-                MarketplaceCardRecord.id == card.id).with_for_update(of=MarketplaceCardRecord))).first()
-            if row is None:
-                raise LookupError(f"Карточка не найдена: {card.id}")
-            card_record, latest = row
+            card_record = await session.get(MarketplaceCardRecord, card.id, with_for_update=True)
+            variant = await session.get(CardVariantRecord, card.variant_id)
+            if card_record is None or variant is None or variant.card_id != card.id:
+                raise LookupError(f"Вариант не найден: {card.variant_id}")
+            latest = await session.scalar(select(PriceHistoryRecord).options(defer(PriceHistoryRecord.snapshot)).where(PriceHistoryRecord.variant_id == variant.id)
+                .order_by(PriceHistoryRecord.observed_at.desc(), PriceHistoryRecord.id.desc()).limit(1))
             if not card_record.title or not card_record.title.strip():
                 card_record.title = snapshot.title
-            if snapshot.url:
-                card_record.url = snapshot.url
-            card_record.image_url = snapshot.image_url or card_record.image_url
+            if card_record.primary_variant_id == variant.id:
+                if snapshot.url:
+                    card_record.url = snapshot.url
+                card_record.image_url = snapshot.image_url or card_record.image_url
             card_record.updated_at = self._clock()
+            variant.updated_at = snapshot.collected_at
+            if snapshot.url:
+                variant.url = snapshot.url
+            if card.ref.marketplace in ('aliexpress', 'wildberries'):
+                await self._discover_variants(session, lease, card_record, snapshot)
             if latest is not None and (latest.price, latest.availability) == (price, availability):
                 return
-            session.add(
-                PriceHistoryRecord(
-                    card_id=card.id,
-                    collection_run_id=lease.run_id,
-                    price=price,
-                    availability=availability,
-                    observed_at=snapshot.collected_at,
-                    snapshot=card_to_dict(snapshot),
-                )
-            )
+            session.add(PriceHistoryRecord(card_id=card.id, variant_id=variant.id,
+                collection_run_id=lease.run_id, price=price, availability=availability,
+                observed_at=snapshot.collected_at, snapshot=card_to_dict(snapshot)))
+
+    async def _discover_variants(self, session, lease, product, snapshot):
+        from marketplace_connector.application.card_identity import validate_card_identity
+
+        run = await session.get(CollectionRunRecord, lease.run_id)
+        known = {v.external_id: v for v in (await session.scalars(
+            select(CardVariantRecord).where(CardVariantRecord.card_id == product.id))).all()}
+        target_ids = set((await session.scalars(select(CollectionRunTargetRecord.variant_id).where(
+            CollectionRunTargetRecord.run_id == lease.run_id,
+            CollectionRunTargetRecord.card_id == product.id))).all())
+        discovered = []
+        for candidate in snapshot.variants:
+            if (candidate.ref.marketplace != product.marketplace or
+                    candidate.ref.external_id.split(':')[0] != product.external_id):
+                raise ValueError('Коннектор вернул вариант другого товара')
+            ref, url = validate_card_identity(product.marketplace, candidate.ref.external_id, candidate.url)
+            variant = known.get(ref)
+            if variant is None:
+                variant = CardVariantRecord(card_id=product.id, external_id=ref, url=url)
+                session.add(variant)
+                known[ref] = variant
+            variant.title = candidate.title
+            variant.options = dict(candidate.options)
+            if not variant.url:
+                variant.url = url
+            discovered.append(variant)
+        await session.flush()
+        # A retry retains precisely its failed snapshot, including after discovery.
+        new_targets = [v for v in discovered if v.id not in target_ids] if run.retry_of_run_id is None else []
+        if new_targets:
+            position = await session.scalar(select(func.coalesce(func.max(CollectionRunTargetRecord.position), -1))
+                .where(CollectionRunTargetRecord.run_id == lease.run_id))
+            session.add_all([CollectionRunTargetRecord(run_id=lease.run_id, card_id=product.id,
+                variant_id=v.id, position=position + index + 1) for index, v in enumerate(new_targets)])
+            await session.execute(text('UPDATE collection_runs SET total_count=total_count+:count WHERE id=:id'),
+                                  {'count': len(new_targets), 'id': lease.run_id})
+            await session.flush()
 
     async def _create_run(self, session, cards, *, card_id=None, full=False, owner=None, retry_of=None, now=None):
         await session.execute(_DIAGNOSTIC_CREATION_LOCK)
@@ -76,24 +111,25 @@ class RunRepository:
             targets_complete=True, started_at=now or self._clock())
         session.add(record)
         await session.flush()
-        session.add_all([CollectionRunTargetRecord(run_id=record.id, card_id=c.id, position=i)
+        session.add_all([CollectionRunTargetRecord(run_id=record.id, card_id=c.id, variant_id=c.variant_id, position=i)
                          for i, c in enumerate(cards)])
         await session.flush()
         return _run(record)
 
     async def _select_targets(self, session, card_id=None):
-        query = select(MarketplaceCardRecord)
+        query = select(MarketplaceCardRecord, CardVariantRecord).join(CardVariantRecord, CardVariantRecord.card_id == MarketplaceCardRecord.id)
         if card_id is not None:
             query = query.where(MarketplaceCardRecord.id == card_id)
         else:
             query = query.where(MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
-        cards = (await session.scalars(query.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id)
-                                      .with_for_update(read=True))).all()
+        rows = (await session.execute(query.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id, CardVariantRecord.id)
+                                      .with_for_update(read=True, of=MarketplaceCardRecord))).all()
+        cards = [_tracked_card(c, v) for c, v in rows]
         if not cards:
             if card_id is not None:
                 raise LookupError(f'Карточка не найдена: {card_id}')
             raise NoCards('Нет карточек для сбора')
-        if any(c.marketplace in PENDING_CONNECTOR_MARKETPLACES for c in cards):
+        if any(c.ref.marketplace in PENDING_CONNECTOR_MARKETPLACES for c in cards):
             raise ConnectorNotAvailable('Для этого маркетплейса коннектор ещё не подключён')
         return cards
 
@@ -130,8 +166,9 @@ class RunRepository:
             return await self._create_run(s, cards, full=True, now=now)
 
     def _retry_targets(self, source_id):
-        return select(MarketplaceCardRecord).join(CollectionRunTargetRecord,
-            CollectionRunTargetRecord.card_id == MarketplaceCardRecord.id).where(
+        return select(MarketplaceCardRecord, CardVariantRecord).join(CardVariantRecord,
+            CardVariantRecord.card_id == MarketplaceCardRecord.id).join(CollectionRunTargetRecord,
+            CollectionRunTargetRecord.variant_id == CardVariantRecord.id).where(
             CollectionRunTargetRecord.run_id == source_id,
             CollectionRunTargetRecord.status.in_(RETRY_STATUSES),
             MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
@@ -147,20 +184,24 @@ class RunRepository:
                 raise ValueError('Повтор доступен только после завершения с ошибками')
             if await s.scalar(select(CollectionRunRecord.id).where(CollectionRunRecord.retry_of_run_id == source_run_id).limit(1)):
                 raise ValueError('Повтор для этого запуска уже создан')
-            cards = (await s.scalars(self._retry_targets(source_run_id).order_by(CollectionRunTargetRecord.position)
+            rows = (await s.execute(self._retry_targets(source_run_id).order_by(CollectionRunTargetRecord.position)
                                     .with_for_update(read=True, of=MarketplaceCardRecord))).all()
+            cards = [_tracked_card(c, v) for c, v in rows]
             if not cards:
                 raise ValueError('Нет доступных карточек для повтора')
             return await self._create_run(s, cards, retry_of=source_run_id)
 
-    async def cards_for_run(self, run_id):
+    async def cards_for_run(self, run_id, pending_only=False):
         async with self._database.session() as s:
-            records = (await s.scalars(select(MarketplaceCardRecord).join(CollectionRunTargetRecord,
-                CollectionRunTargetRecord.card_id == MarketplaceCardRecord.id).where(
+            query = select(MarketplaceCardRecord, CardVariantRecord).join(CardVariantRecord,
+                CardVariantRecord.card_id == MarketplaceCardRecord.id).join(CollectionRunTargetRecord,
+                CollectionRunTargetRecord.variant_id == CardVariantRecord.id).where(
                 CollectionRunTargetRecord.run_id == run_id,
                 MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
-                .order_by(CollectionRunTargetRecord.position))).all()
-            return [_tracked_card(c) for c in records]
+            if pending_only:
+                query = query.where(CollectionRunTargetRecord.status == 'pending')
+            rows = (await s.execute(query.order_by(CollectionRunTargetRecord.position))).all()
+            return [_tracked_card(c, v) for c, v in rows]
 
     async def claim_next_run(self):
         async with self._database.session() as s, s.begin():
@@ -184,12 +225,12 @@ class RunRepository:
     async def set_run_current(self, lease, card):
         async with self._database.session() as s, s.begin():
             record = await self._locked_run(s, lease)
-            target = await s.get(CollectionRunTargetRecord, (lease.run_id, card.id))
+            target = await s.get(CollectionRunTargetRecord, (lease.run_id, card.variant_id))
             if target is None:
                 raise ValueError('Карточка не входит в запуск')
             record.current_card_id, record.current_marketplace, record.current_external_id = card.id, card.ref.marketplace, card.ref.external_id
 
-    async def _begin_result(self, session, lease, card_id, status, error=None):
+    async def _begin_result(self, session, lease, variant_id, status, error=None):
         # Creation locks cards before expiring the old run; all result writers
         # take the shared guard first to keep that path out of run/card deadlocks.
         await session.execute(_DIAGNOSTIC_LOCK)
@@ -201,8 +242,8 @@ class RunRepository:
                   AND status IN ('running','waiting_for_user') FOR UPDATE
             ), changed AS (
                 UPDATE collection_run_targets SET status=:status
-                WHERE run_id=(SELECT id FROM owned) AND card_id=:card_id AND status='pending'
-                RETURNING card_id
+                WHERE run_id=(SELECT id FROM owned) AND variant_id=:variant_id AND status='pending'
+                RETURNING variant_id
             ), progress AS (
                 UPDATE collection_runs SET heartbeat_at=now(),
                   success_count=success_count+CASE WHEN :status='succeeded' THEN (SELECT count(*) FROM changed) ELSE 0 END,
@@ -211,8 +252,8 @@ class RunRepository:
             )
             SELECT EXISTS(SELECT 1 FROM owned) AS owned,
                    EXISTS(SELECT 1 FROM changed) AS changed,
-                   EXISTS(SELECT 1 FROM collection_run_targets WHERE run_id=:run_id AND card_id=:card_id) AS target_exists
-        """), {'run_id': lease.run_id, 'owner': lease.owner_token, 'card_id': card_id,
+                   EXISTS(SELECT 1 FROM collection_run_targets WHERE run_id=:run_id AND variant_id=:variant_id) AS target_exists
+        """), {'run_id': lease.run_id, 'owner': lease.owner_token, 'variant_id': variant_id,
                 'status': status})).one()
         if not row.owned:
             raise LeaseLost(f'Владение запуском {lease.run_id} потеряно')
@@ -240,7 +281,7 @@ class RunRepository:
 
     async def record_card_error(self, lease, card, error):
         async with self._database.session() as s, s.begin():
-            await self._begin_result(s, lease, card.id, 'failed', error)
+            await self._begin_result(s, lease, card.variant_id, 'failed', error)
 
     async def touch_run(self, lease):
         try:

@@ -1,0 +1,26 @@
+npm notice run test:e2e
+npm notice run playwright test --grep варианты имеют|ошибка history|ожидание графика|детали карточки|одиночное измерение
+[WebServer] npm notice run dev:e2e
+
+[WebServer] npm notice run VITE_E2E_TEST_MODE=true vite --host 127.0.0.1 --port 5175 --strictPort
+
+[WebServer] (node:789211) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 5 tests using 1 worker
+
+(node:789260) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/5] e2e/app.spec.ts:780:1 › детали карточки показывают середину диапазона и страницы истории
+[WebServer] 10:55:03 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[2/5] e2e/app.spec.ts:802:1 › одиночное измерение остаётся точкой на графике с масштабом вокруг цены
+[WebServer] 10:55:05 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[3/5] e2e/usability.spec.ts:38:3 › ошибка history не скрывает доступные разделы, повтор восстанавливает данные
+[4/5] e2e/usability.spec.ts:64:1 › ожидание графика и смена периода оставляют шапку доступной; 404 отличается от отказа раздела
+[5/5] e2e/variants.spec.ts:3:1 › варианты имеют отдельные линии, главный определяет каталог, панель сохраняет общие поля
+  5 passed (21.2s)

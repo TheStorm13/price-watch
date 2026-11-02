@@ -1,3 +1,5 @@
+import { parseAliExpressUrl } from '../features/cards/aliexpressIdentity'
+import { parseWildberriesUrl } from '../features/cards/wildberriesIdentity'
 import { compareMoney, priceText } from '../utils/money'
 import { subtractMoney } from './mockMoney'
 import { historyMetrics, priceMetrics } from './mockPriceMetrics'
@@ -7,6 +9,7 @@ import type {
   CreateCardInput,
   Deal,
   TrackedCardView,
+  TrackedVariant,
   PriceHistoryPoint,
   TransferDocument,
   ImportSummary,
@@ -110,6 +113,30 @@ let history: PriceHistoryPoint[] = [
     })),
 ]
 
+let variants: TrackedVariant[] = cards.map((c) => ({ id: c.id, cardId: c.id, externalId: c.externalId,
+  title: 'Основной вариант', options: {}, url: c.url, currentPrice: c.currentPrice,
+  currentAvailability: c.currentAvailability, lastObservedAt: c.lastObservedAt, updatedAt: c.lastObservedAt ? c.updatedAt : null }))
+cards = cards.map((c) => ({ ...c, primaryVariantId: c.id }))
+history = history.map((p) => ({ ...p, variantId: p.cardId }))
+let nextVariantId = 6
+
+function validateVariant(marketplace: Marketplace, externalId: string, url: string | null) {
+  if (!['wildberries', 'aliexpress'].includes(marketplace)) return
+  const [article, sku] = externalId.split(':')
+  if (!sku || !/^[0-9]+$/.test(sku)) throw new Error('Укажите конкретный SKU варианта')
+  if (url) {
+    const ref = marketplace === 'wildberries' ? parseWildberriesUrl(url) : parseAliExpressUrl(url)
+    const actual = 'nmId' in ref ? `${ref.nmId}:${ref.optionId}` : `${ref.productId}:${ref.skuId}`
+    if (actual !== `${article}:${sku}`) throw new Error('Ссылка не соответствует товару и варианту')
+  }
+}
+
+function variantView(v: TrackedVariant): TrackedVariant {
+  const metrics = priceMetrics(history.filter((h) => h.variantId === v.id))
+  return { ...v, currentPrice: metrics.latest?.price ?? null, currentAvailability: metrics.latest?.availability ?? null,
+    lastObservedAt: metrics.latest?.observedAt ?? null }
+}
+
 let runs: CollectionRun[] = [
   {
     id: 21,
@@ -150,12 +177,12 @@ let groups: { id: number; name: string; tags: string[] }[] = []
 let nextGroupId = 1
 
 function cardMetrics(card: TrackedCardView) {
-  return priceMetrics(history.filter((point) => point.cardId === card.id))
+  return priceMetrics(history.filter((point) => point.variantId === card.primaryVariantId))
 }
 
 function cardView(card: TrackedCardView): TrackedCardView {
   const metrics = cardMetrics(card)
-  return { ...card, currentPrice: metrics.latest?.price ?? null,
+  return { ...card, lastCollectedAt: variants.find((v) => v.id === card.primaryVariantId)?.updatedAt ?? null, currentPrice: metrics.latest?.price ?? null,
     currentAvailability: metrics.latest?.availability ?? null,
     lastObservedAt: metrics.latest?.observedAt ?? null,
     minimumPrice: metrics.minimumPrice, averagePrice: metrics.averagePrice }
@@ -202,102 +229,79 @@ const delay = <T>(value: T, milliseconds = 180) =>
   new Promise<T>((resolve) => window.setTimeout(() => resolve(value), milliseconds))
 
 function mergeImportedCards(document: TransferDocument, apply: boolean): ImportSummary {
-  if (document.version !== 2 || !Array.isArray(document.cards)) throw new Error('Неверный формат файла экспорта')
-  const cardFields = new Set(['marketplace', 'externalId', 'title', 'url', 'imageUrl', 'tags', 'dealsEnabled', 'createdAt', 'history'])
-  if (document.cards.some((card) => typeof card.dealsEnabled !== 'boolean' ||
-    Object.keys(card).some((field) => !cardFields.has(field)))) {
-    throw new Error('Неверный формат карточки в файле экспорта')
-  }
-  const summary: ImportSummary = {
-    cardsAdded: 0, cardsMerged: 0, observationsAdded: 0,
-    observationsRemoved: 0, observationsSkipped: 0, groupsAdded: 0,
-  }
-  const importedGroups = document.groups ?? []
-  const available = new Set(document.cards.map((card) => `${card.marketplace}:${card.externalId}`))
+  if (document.version !== 3 || !Array.isArray(document.cards)) throw new Error('Используйте формат экспорта v3')
+  const summary: ImportSummary = { cardsAdded: 0, cardsMerged: 0, observationsAdded: 0, observationsRemoved: 0, observationsSkipped: 0, groupsAdded: 0 }
+  const available = new Set(document.cards.map((c) => `${c.marketplace}:${c.externalId}`))
+  if (available.size !== document.cards.length) throw new Error('Повторные карточки')
   const assigned = new Set<string>()
-  for (const group of importedGroups) {
-    for (const member of group.cards) {
-      const key = `${member.marketplace}:${member.externalId}`
-      if (!available.has(key) || assigned.has(key)) throw new Error('Некорректный состав групп в файле')
-      assigned.add(key)
+  for (const g of document.groups ?? []) for (const ref of g.cards) {
+    const key = `${ref.marketplace}:${ref.externalId}`
+    if (!available.has(key) || assigned.has(key)) throw new Error('Некорректный состав групп')
+    assigned.add(key)
+  }
+  for (const imported of document.cards) {
+    if (typeof imported.dealsEnabled !== 'boolean' || !imported.variants.length) throw new Error('Некорректная карточка')
+    const refs = new Set<string>()
+    for (const v of imported.variants) {
+      validateVariant(imported.marketplace as Marketplace, v.externalId, v.url)
+      const article = ['aliexpress','wildberries'].includes(imported.marketplace) ? v.externalId.split(':')[0] : v.externalId
+      if (article !== imported.externalId || refs.has(v.externalId)) throw new Error('Повторный или чужой вариант')
+      refs.add(v.externalId)
+    }
+    if (!refs.has(imported.primaryExternalId)) throw new Error('Главный вариант отсутствует')
+    let card = cards.find((c) => c.marketplace === imported.marketplace && c.externalId === imported.externalId)
+    summary[card ? 'cardsMerged' : 'cardsAdded'] += 1
+    if (!card && apply) {
+      card = { id: nextCardId++, marketplace: imported.marketplace as Marketplace, externalId: imported.externalId,
+        title: imported.title, url: imported.url, imageUrl: imported.imageUrl ?? null, tags: imported.tags ?? [], dealsEnabled: imported.dealsEnabled,
+        currentPrice: null, currentAvailability: null, lastObservedAt: null, createdAt: imported.createdAt, updatedAt: imported.createdAt }
+      cards.push(card)
+    }
+    for (const incoming of imported.variants) {
+      let variant = card ? variants.find((v) => v.cardId === card!.id && v.externalId === incoming.externalId) : undefined
+      const local = variant ? history.filter((h) => h.variantId === variant!.id) : []
+      const events = [...local.map((h) => ({ ...h, source: 'local' as const, sourceId: h.id })),
+        ...incoming.history.map((h, sourceId) => ({ ...h, price: h.price === null ? null : priceText(h.price), source: 'import' as const, sourceId }))]
+        .sort((a,b) => Date.parse(a.observedAt)-Date.parse(b.observedAt) || Number(a.source==='import')-Number(b.source==='import') || a.sourceId-b.sourceId)
+      const merged: typeof events = []
+      for (const event of events) {
+        if (event.price !== null && compareMoney(event.price, '0') < 0) throw new Error('Некорректная цена')
+        const last = merged.at(-1)
+        if (last && Date.parse(event.observedAt) === Date.parse(last.observedAt)) {
+          if (event.price !== last.price || event.availability !== last.availability) throw new Error('Разные наблюдения для одного времени')
+          continue
+        }
+        if (last && event.price === last.price && event.availability === last.availability) continue
+        merged.push(event)
+      }
+      const kept = new Set(merged.filter((h) => h.source === 'local').map((h) => h.sourceId))
+      const added = merged.filter((h) => h.source === 'import')
+      summary.observationsAdded += added.length
+      summary.observationsRemoved += local.length-kept.size
+      summary.observationsSkipped += incoming.history.length-added.length
+      if (!apply || !card) continue
+      if (!variant) {
+        variant = { id: nextVariantId++, cardId: card.id, externalId: incoming.externalId, title: incoming.title ?? '', options: incoming.options ?? {}, url: incoming.url,
+          updatedAt: incoming.updatedAt ?? null, currentPrice: null, currentAvailability: null, lastObservedAt: null }
+        variants.push(variant)
+      }
+      if (incoming.externalId === imported.primaryExternalId) card.primaryVariantId = variant.id
+      history = history.filter((h) => h.variantId !== variant!.id || kept.has(h.id))
+      history.push(...added.map((h) => ({ id: nextHistoryId++, cardId: card!.id, variantId: variant!.id, collectionRunId: null,
+        price: h.price, availability: h.availability, observedAt: h.observedAt })))
     }
   }
-  summary.groupsAdded = new Set(importedGroups.map((group) => group.name)
-    .filter((name) => !groups.some((group) => group.name === name))).size
-  for (const importedCard of document.cards) {
-    const current = cards.find((card) => card.marketplace === importedCard.marketplace && card.externalId === importedCard.externalId)
-    const local = current ? history.filter((point) => point.cardId === current.id) : []
-    const events = [
-      ...local.map((point) => ({ ...point, source: 'local' as const, sourceId: point.id })),
-      ...importedCard.history.map((point, sourceId) => ({
-        ...point, price: point.price === null ? null : priceText(point.price),
-        source: 'import' as const, sourceId,
-      })),
-    ].sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt) ||
-      Number(a.source === 'import') - Number(b.source === 'import') || a.sourceId - b.sourceId)
-    const merged: typeof events = []
-    let previousTime: number | null = null
-    let previousTimePrice: string | null = null
-    for (const event of events) {
-      const time = Date.parse(event.observedAt)
-      if (time === previousTime) {
-        if (event.price !== previousTimePrice) throw new Error(`Разные цены для одного времени: ${event.observedAt}`)
-        continue
-      }
-      previousTime = time
-      previousTimePrice = event.price
-      if (merged.length && event.price !== null && merged.at(-1)?.price === event.price) continue
-      merged.push(event)
+  for (const incoming of document.groups ?? []) {
+    let group = groups.find((g) => g.name === incoming.name)
+    if (!group) {
+      summary.groupsAdded! += 1
+      if (!apply) continue
+      group = { id: nextGroupId++, name: incoming.name, tags: incoming.tags ?? [] }
+      groups.push(group)
     }
-    const keptLocal = new Set(merged.filter((point) => point.source === 'local').map((point) => point.sourceId))
-    const added = merged.filter((point) => point.source === 'import')
-    summary[current ? 'cardsMerged' : 'cardsAdded'] += 1
-    summary.observationsAdded += added.length
-    summary.observationsRemoved += local.length - keptLocal.size
-    summary.observationsSkipped += importedCard.history.length - added.length
-    if (!apply) continue
-    const card: TrackedCardView = current ?? {
-      id: nextCardId++, marketplace: importedCard.marketplace as Marketplace,
-      externalId: importedCard.externalId, title: importedCard.title, url: importedCard.url,
-      tags: importedCard.tags ?? [],
-      imageUrl: importedCard.imageUrl ?? null,
-      dealsEnabled: importedCard.dealsEnabled,
-      currentPrice: null, currentAvailability: null,
-      lastObservedAt: null, createdAt: importedCard.createdAt, updatedAt: importedCard.createdAt,
-    }
-    if (!current) cards = [...cards, card]
-    else {
-      if (Date.parse(importedCard.createdAt) < Date.parse(card.createdAt)) card.createdAt = importedCard.createdAt
-      card.imageUrl ||= importedCard.imageUrl ?? null
-      card.tags = [...new Set([...(card.tags ?? []), ...(importedCard.tags ?? [])])].slice(0, 2)
-    }
-    for (const point of importedCard.history) {
-      if (Date.parse(point.observedAt) > Date.parse(card.updatedAt)) card.updatedAt = point.observedAt
-    }
-    history = history.filter((point) => point.cardId !== card.id || keptLocal.has(point.id))
-    history.push(...added.map((point) => ({
-      id: nextHistoryId++, cardId: card.id, collectionRunId: null,
-      price: point.price, availability: point.availability,
-      observedAt: point.observedAt,
-    })))
-    const latest = merged.at(-1)
-    card.currentPrice = latest?.price ?? null
-    card.currentAvailability = latest?.availability ?? null
-    card.lastObservedAt = latest?.observedAt ?? null
-  }
-  if (apply) {
-    for (const imported of importedGroups) {
-      let group = groups.find((item) => item.name === imported.name)
-      if (!group) {
-        group = { id: nextGroupId++, name: imported.name, tags: imported.tags ?? [] }
-        groups = [...groups, group]
-      } else {
-        group.tags = [...new Set([...group.tags, ...(imported.tags ?? [])])]
-      }
-      for (const member of imported.cards) {
-        const card = cards.find((item) => item.marketplace === member.marketplace && item.externalId === member.externalId)
-        if (card && card.groupId == null) card.groupId = group.id
-      }
+    if (apply) for (const ref of incoming.cards) {
+      const card = cards.find((c) => c.marketplace === ref.marketplace && c.externalId === ref.externalId)
+      if (card && card.groupId == null) card.groupId = group.id
     }
   }
   return summary
@@ -334,30 +338,12 @@ export const mockApi = {
   },
   async exportCards(): Promise<TransferDocument> {
     return delay({
-      version: 2,
-      groups: groups.map((group) => ({
-        name: group.name,
-        tags: group.tags,
-        cards: cards.filter((card) => card.groupId === group.id)
-          .map((card) => ({ marketplace: card.marketplace, externalId: card.externalId })),
-      })),
-      cards: cards.map((card) => ({
-        marketplace: card.marketplace,
-        externalId: card.externalId,
-        title: card.title,
-        url: card.url,
-        imageUrl: card.imageUrl,
-        tags: card.tags ?? [],
-        dealsEnabled: card.dealsEnabled,
-        createdAt: card.createdAt,
-        history: history.filter((point) => point.cardId === card.id)
-          .sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt))
-          .map((point) => ({
-            price: point.price === null ? null : priceText(point.price),
-            availability: point.availability,
-            observedAt: point.observedAt,
-          })),
-      })),
+      version: 3,
+      groups: groups.map((g) => ({ name: g.name, tags: g.tags, cards: cards.filter((c) => c.groupId === g.id).map((c) => ({ marketplace:c.marketplace,externalId:c.externalId })) })),
+      cards: cards.map((c) => ({ marketplace:c.marketplace, externalId:c.externalId, title:c.title,url:c.url,imageUrl:c.imageUrl,tags:c.tags,
+        dealsEnabled:c.dealsEnabled,createdAt:c.createdAt,primaryExternalId:variants.find((v) => v.id === c.primaryVariantId)!.externalId,
+        variants:variants.filter((v) => v.cardId === c.id).map((v) => ({ externalId:v.externalId,title:v.title,url:v.url,options:v.options,updatedAt:v.updatedAt,
+          history:history.filter((h) => h.variantId === v.id).toSorted((a,b) => Date.parse(a.observedAt)-Date.parse(b.observedAt)).map((h) => ({ price:h.price,availability:h.availability,observedAt:h.observedAt })) })) })),
     })
   },
 
@@ -366,7 +352,16 @@ export const mockApi = {
   },
 
   async importCards(document: TransferDocument): Promise<ImportSummary> {
-    return delay(mergeImportedCards(document, true))
+    // Validate the entire document before applying; restore on any mutation failure.
+    mergeImportedCards(document, false)
+    const saved = structuredClone({ cards, variants, history, groups, nextCardId, nextVariantId, nextHistoryId, nextGroupId })
+    try { return delay(mergeImportedCards(document, true)) }
+    catch (error) { ({ cards, variants, history, groups, nextCardId, nextVariantId, nextHistoryId, nextGroupId } = saved); throw error }
+  },
+
+  async getVariants(cardId: number) {
+    if (!cards.some((c) => c.id === cardId)) throw new Error('Карточка не найдена')
+    return delay(variants.filter((v) => v.cardId === cardId).map(variantView))
   },
 
   async getCard(cardId: number) {
@@ -376,70 +371,55 @@ export const mockApi = {
   },
 
   async createCard(input: CreateCardInput) {
-    if (cards.some((card) => card.marketplace === input.marketplace && card.externalId === input.externalId)) {
-      const error = new Error('Такая карточка уже добавлена') as Error & { field?: string }
-      error.field = 'externalId'
-      throw error
+    validateVariant(input.marketplace,input.externalId,input.url ?? null)
+    const article = ['aliexpress','wildberries'].includes(input.marketplace) ? input.externalId.split(':')[0] : input.externalId
+    let card = cards.find((c) => c.marketplace === input.marketplace && c.externalId === article)
+    if (card && variants.some((v) => v.cardId === card!.id && v.externalId === input.externalId)) {
+      throw Object.assign(new Error('Такой вариант уже добавлен'), { field: 'externalId' })
     }
-    const createdAt = new Date().toISOString()
-    const card: TrackedCardView = {
-      id: nextCardId++,
-      marketplace: input.marketplace,
-      externalId: input.externalId,
-      title: input.title?.trim() || null,
-      url: input.url?.trim() || null,
-      imageUrl: null,
-      tags: input.tags ?? [],
-      dealsEnabled: true,
-      currentPrice: null,
-      currentAvailability: null,
-      lastObservedAt: null,
-      createdAt,
-      updatedAt: createdAt,
+    const at = new Date().toISOString()
+    if (!card) {
+      card = { id:nextCardId++, marketplace:input.marketplace,externalId:article,title:input.title?.trim() || null,url:input.url || null,imageUrl:null,
+        tags:input.tags ?? [],dealsEnabled:true,currentPrice:null,currentAvailability:null,lastObservedAt:null,createdAt:at,updatedAt:at }
+      cards.push(card)
     }
-    cards = [...cards, card]
-    return delay(card)
+    const variant: TrackedVariant = { id:nextVariantId++,cardId:card.id,externalId:input.externalId,title:'',options:{},url:input.url || null,
+      currentPrice:null,currentAvailability:null,lastObservedAt:null,updatedAt:null }
+    variants.push(variant)
+    card.primaryVariantId ??= variant.id
+    return delay(cardView(card))
   },
 
   async updateCard(cardId: number, input: UpdateCardInput) {
-    let updated: TrackedCardView | undefined
-    cards = cards.map((card) => {
-      if (card.id !== cardId) return card
-      updated = { ...card, ...input, updatedAt: new Date().toISOString() }
-      return updated
-    })
-    if (!updated) throw new Error('Карточка не найдена')
-    return delay(updated)
+    const card = cards.find((c) => c.id === cardId)
+    if (!card) throw new Error('Карточка не найдена')
+    const selected = variants.find((v) => v.id === (input.primaryVariantId ?? card.primaryVariantId))
+    if (!selected || selected.cardId !== cardId) throw new Error('Вариант не принадлежит этому товару')
+    const url = 'url' in input ? input.url ?? null : input.primaryVariantId ? selected.url : card.url
+    validateVariant(card.marketplace,selected.externalId,url)
+    Object.assign(card,input,{url,updatedAt:new Date().toISOString()})
+    if ('url' in input) selected.url=url
+    return delay(cardView(card))
   },
 
   async deleteCard(cardId: number) {
     if (!cards.some((card) => card.id === cardId)) throw new Error('Карточка не найдена')
     cards = cards.filter((card) => card.id !== cardId)
     history = history.filter((point) => point.cardId !== cardId)
+    variants = variants.filter((v) => v.cardId !== cardId)
     return delay(undefined)
   },
 
-  async getHistory(cardId: number, days: number, page = 1, pageSize = 50): Promise<CardHistoryResponse> {
+  async getHistory(cardId: number, days: number, page = 1, pageSize = 50, variantId?: number): Promise<CardHistoryResponse> {
     const card = cards.find((item) => item.id === cardId)
     if (!card) throw new Error('Карточка не найдена')
     const cutoff = Date.now() - days * 86_400_000
-    const savedPoints = history.filter((point) => point.cardId === cardId && Date.parse(point.observedAt) >= cutoff)
+    const savedPoints = history.filter((point) => point.cardId === cardId && point.variantId === (variantId ?? card.primaryVariantId) && Date.parse(point.observedAt) >= cutoff)
       .sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt) || a.id - b.id)
-    const points = savedPoints.length
-      ? savedPoints
-      : card.currentPrice === null
-        ? []
-        : [{
-            id: 1000 + card.id,
-            cardId: card.id,
-            collectionRunId: 21,
-            price: card.currentPrice,
-            availability: card.currentAvailability ?? 'unknown',
-            observedAt: card.lastObservedAt ?? new Date().toISOString(),
-          } satisfies PriceHistoryPoint]
+    const points = savedPoints
     const metrics = historyMetrics(points)
     return delay({
-      card,
+      card: cardView(card),
       statistics: {
         cardId,
         days,
@@ -457,9 +437,9 @@ export const mockApi = {
   },
 
   async getChart(cardId: number, days: number) {
-    const response = await this.getHistory(cardId, days, 1, Number.MAX_SAFE_INTEGER)
-    return { points: response.history.toReversed().map((point) =>
-      point.availability === 'out_of_stock' ? { ...point, price: null } : point) }
+    const cutoff=Date.now()-days*86400000
+    return delay({ points: history.filter((h) => h.cardId === cardId && Date.parse(h.observedAt) >= cutoff)
+      .toSorted((a,b) => Date.parse(a.observedAt)-Date.parse(b.observedAt)).map((h) => h.availability === 'out_of_stock' ? {...h,price:null} : h) })
   },
 
   async listRuns() {
@@ -486,7 +466,7 @@ export const mockApi = {
       retryableCount: 0,
       diagnosticsStatus: 'complete', retryScopeIncomplete: false,
       status: 'queued',
-      totalCount: selected.length,
+      totalCount: variants.filter((v) => selected.some((c) => c.id === v.cardId)).length,
       successCount: 0,
       failureCount: 0,
       current: selected[0]
@@ -536,10 +516,11 @@ export const mockApi = {
           ? priceText(subtractMoney(card.currentPrice, '100')) : card.currentPrice,
         lastObservedAt: observedAt, updatedAt: observedAt,
       } : card)
+      variants=variants.map((v)=>targets.has(v.cardId)?{...v,updatedAt:observedAt}:v)
       const first = cards[0]
       if (first?.id === run.current?.cardId && first.currentPrice !== null && history.at(-1)?.price !== first.currentPrice) {
         history = [...history, {
-          id: history.length + 1,
+          id: nextHistoryId++, variantId: first.primaryVariantId,
           cardId: first.id,
           collectionRunId: runId,
           price: first.currentPrice,

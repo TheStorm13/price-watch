@@ -52,6 +52,8 @@ if sys.argv[1]=='api':
                     await session.execute(text("""INSERT INTO marketplace_cards(marketplace,external_id,title)
                         SELECT 'yandex-market',i::text,'Нативный товар '||lpad(i::text,5,'0')
                         FROM generate_series(1,:count) i"""),{'count':count})
+                    await session.execute(text("INSERT INTO card_variants(card_id,external_id) SELECT id,external_id FROM marketplace_cards WHERE primary_variant_id IS NULL"))
+                    await session.execute(text("UPDATE marketplace_cards c SET primary_variant_id=v.id FROM card_variants v WHERE v.card_id=c.id AND c.primary_variant_id IS NULL"))
         await db.close()
     asyncio.run(seed())
 if sys.argv[1]=='worker':

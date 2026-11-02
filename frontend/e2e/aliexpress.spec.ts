@@ -14,5 +14,5 @@ test('AliExpress: ссылка заполняет точный SKU и созда
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('.cards-table')).not.toContainText('1005009868651525:12000061135122688')
   await page.getByRole('link', { name: 'Ali SKU smoke', exact: true }).click()
-  await expect(page.getByText('ID 1005009868651525:12000061135122688', { exact: true })).toBeVisible()
+  await expect(page.getByText('ID 1005009868651525', { exact: true })).toBeVisible()
 })

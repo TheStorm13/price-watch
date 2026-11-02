@@ -1,25 +1,13 @@
-"""Atomic export and import of cards and price history."""
-
+"""Atomic product/variant transfer v3, merging each independent price history."""
 from __future__ import annotations
-
-from marketplace_connector.application.card_identity import validate_card_identity
-
-from .database import AsyncDatabase
-
 from sqlalchemy import select, text, tuple_
-
+from sqlalchemy.orm import defer
+from marketplace_connector.application.card_identity import validate_card_identity
 from ...domain.history_merge import HistoryEvent, merge_history
-from .models import CollectionRunRecord, MarketplaceCardRecord, PriceHistoryRecord, ProductGroupRecord
 from ...domain.errors import ImportDuringRun
+from .database import AsyncDatabase
+from .models import CollectionRunRecord, MarketplaceCardRecord, CardVariantRecord, PriceHistoryRecord, ProductGroupRecord
 from .repository_common import _RUN_CREATION_LOCK
-
-
-def _validated_import_cards(cards):
-    normalized = []
-    for card in cards:
-        external_id, url = validate_card_identity(card["marketplace"], card["external_id"], card.get("url"))
-        normalized.append(dict(card, external_id=external_id, url=url))
-    return normalized
 
 
 class TransferRepository:
@@ -27,139 +15,111 @@ class TransferRepository:
         self._database = database
 
     async def export_cards(self) -> dict:
-        """Export every card and saved price change from one consistent DB snapshot."""
-        async with self._database.session() as session, session.begin():
-            await session.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
-            cards = (await session.scalars(select(MarketplaceCardRecord).order_by(
-                MarketplaceCardRecord.marketplace, MarketplaceCardRecord.external_id,
-            ))).all()
-            histories = (await session.execute(select(PriceHistoryRecord.card_id, PriceHistoryRecord.price,
-                PriceHistoryRecord.availability, PriceHistoryRecord.observed_at).order_by(
-                PriceHistoryRecord.card_id, PriceHistoryRecord.observed_at, PriceHistoryRecord.id,
-            ))).all()
-            groups = (await session.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
-            result = [{
-                "marketplace": card.marketplace,
-                "external_id": card.external_id,
-                "title": card.title,
-                "url": card.url,
-                "image_url": card.image_url,
-                "tags": card.tags,
-                "deals_enabled": card.deals_enabled,
-                "created_at": card.created_at,
-                "history": [],
-            } for card in cards]
-            by_id = {card.id: item for card, item in zip(cards, result)}
-            for point in histories:
-                by_id[point.card_id]["history"].append({
-                    "price": point.price,
-                    "availability": point.availability,
-                    "observed_at": point.observed_at,
-                })
+        async with self._database.session() as s, s.begin():
+            await s.execute(text('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY'))
+            products = (await s.scalars(select(MarketplaceCardRecord).order_by(MarketplaceCardRecord.id))).all()
+            variants = (await s.scalars(select(CardVariantRecord).order_by(CardVariantRecord.id))).all()
+            histories = (await s.scalars(select(PriceHistoryRecord).options(defer(PriceHistoryRecord.snapshot)).order_by(PriceHistoryRecord.observed_at, PriceHistoryRecord.id))).all()
+            groups = (await s.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
+            by_variant = {v.id: dict(external_id=v.external_id, title=v.title, url=v.url, options=v.options,
+                                     updated_at=v.updated_at, history=[]) for v in variants}
+            for h in histories:
+                by_variant[h.variant_id]['history'].append(dict(price=h.price, availability=h.availability, observed_at=h.observed_at))
             members = {}
-            for card in cards:
-                members.setdefault(card.group_id, []).append(card)
-            group_data = [{
-                "name": group.name,
-                "tags": group.tags,
-                "cards": [{"marketplace": card.marketplace, "external_id": card.external_id}
-                          for card in members.get(group.id, ())],
-            } for group in groups]
-        return {"version": 2, "cards": result, "groups": group_data}
+            for v in variants:
+                members.setdefault(v.card_id, []).append(by_variant[v.id])
+            cards = [dict(marketplace=c.marketplace, external_id=c.external_id, title=c.title, url=c.url,
+                          image_url=c.image_url, tags=c.tags, deals_enabled=c.deals_enabled, created_at=c.created_at,
+                          primary_external_id=by_variant[c.primary_variant_id]['external_id'], variants=members[c.id]) for c in products]
+            group_data = [dict(name=g.name, tags=g.tags, cards=[dict(marketplace=c.marketplace, external_id=c.external_id)
+                for c in products if c.group_id == g.id]) for g in groups]
+            return dict(version=3, cards=cards, groups=group_data)
 
     async def import_cards(self, cards: list[dict], *, groups: list[dict] | None = None, preview: bool = False) -> dict:
-        """Merge cards and histories atomically; preview computes the same result."""
-        summary = {
-            "cards_added": 0, "cards_merged": 0, "observations_added": 0,
-            "observations_removed": 0, "observations_skipped": 0, "groups_added": 0,
-        }
-        cards = _validated_import_cards(cards)
-        keys = [(card["marketplace"].lower(), card["external_id"]) for card in cards]
-        async with self._database.session() as session, session.begin():
-            await session.execute(_RUN_CREATION_LOCK)
-            active_run = (await session.scalar(select(CollectionRunRecord.id).where(
-                CollectionRunRecord.status.in_(("queued", "running", "waiting_for_user")),
-            ).limit(1)))
-            if active_run is not None:
-                raise ImportDuringRun("Дождитесь завершения текущего сбора перед импортом")
-            existing = (await session.scalars(select(MarketplaceCardRecord).where(
-                tuple_(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.external_id).in_(keys)
-            ).with_for_update())).all() if keys else []
-            by_key = {(card.marketplace, card.external_id): card for card in existing}
-            existing_groups = (await session.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
-            groups_by_name = {group.name: group for group in existing_groups}
-            summary["groups_added"] = len({group["name"] for group in (groups or [])} - set(groups_by_name))
-            histories: dict[int, list[PriceHistoryRecord]] = {card.id: [] for card in existing}
-            if histories:
-                rows = (await session.scalars(select(PriceHistoryRecord).where(
-                    PriceHistoryRecord.card_id.in_(histories)
-                ).order_by(PriceHistoryRecord.card_id, PriceHistoryRecord.observed_at,
-                           PriceHistoryRecord.id))).all()
-                for row in rows:
-                    histories[row.card_id].append(row)
-
+        summary = dict(cards_added=0, cards_merged=0, observations_added=0,
+                       observations_removed=0, observations_skipped=0, groups_added=0)
+        # Validate also at the storage boundary, including direct CLI callers.
+        for item in cards:
+            refs = set()
+            for v in item['variants']:
+                ref, url = validate_card_identity(item['marketplace'], v['external_id'], v.get('url'))
+                article = ref.split(':')[0] if item['marketplace'] in ('aliexpress', 'wildberries') else ref
+                if article != item['external_id'] or ref in refs:
+                    raise ValueError('Повторный или чужой вариант')
+                v['external_id'], v['url'] = ref, url
+                refs.add(ref)
+            if item['primary_external_id'] not in refs:
+                raise ValueError('Главный вариант отсутствует')
+        keys = [(c['marketplace'].lower(), c['external_id']) for c in cards]
+        async with self._database.session() as s, s.begin():
+            await s.execute(_RUN_CREATION_LOCK)
+            if await s.scalar(select(CollectionRunRecord.id).where(CollectionRunRecord.status.in_(('queued','running','waiting_for_user'))).limit(1)):
+                raise ImportDuringRun('Дождитесь завершения текущего сбора перед импортом')
+            existing = (await s.scalars(select(MarketplaceCardRecord).where(tuple_(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.external_id).in_(keys)).with_for_update())).all() if keys else []
+            by_key = {(c.marketplace,c.external_id):c for c in existing}
+            variants = (await s.scalars(select(CardVariantRecord).where(CardVariantRecord.card_id.in_([c.id for c in existing])))).all() if existing else []
+            by_ref = {(v.card_id,v.external_id):v for v in variants}
+            histories = {}
+            if variants:
+                for h in (await s.scalars(select(PriceHistoryRecord).options(defer(PriceHistoryRecord.snapshot)).where(PriceHistoryRecord.variant_id.in_([v.id for v in variants])).order_by(PriceHistoryRecord.observed_at, PriceHistoryRecord.id))).all():
+                    histories.setdefault(h.variant_id,[]).append(h)
+            local_groups = {g.name:g for g in (await s.scalars(select(ProductGroupRecord))).all()}
+            summary['groups_added'] = len({g['name'] for g in groups or []} - set(local_groups))
             for item in cards:
-                key = (item["marketplace"].lower(), item["external_id"])
-                card = by_key.get(key)
-                local = histories.get(card.id, []) if card else []
-                imported = item["history"]
-                events = [HistoryEvent(row.observed_at, row.price, row.availability,
-                                       "local", row.id) for row in local]
-                events.extend(HistoryEvent(point["observed_at"], point["price"],
-                                           point["availability"], "import", index)
-                              for index, point in enumerate(imported))
-                merged = merge_history(events)
-                kept_local = {event.source_id for event in merged if event.source == "local"}
-                added = [event for event in merged if event.source == "import"]
-                removed = [row for row in local if row.id not in kept_local]
-                summary["cards_merged" if card else "cards_added"] += 1
-                summary["observations_added"] += len(added)
-                summary["observations_removed"] += len(removed)
-                summary["observations_skipped"] += len(imported) - len(added)
-                if preview:
-                    continue
-                if card is None:
-                    latest_imported_at = max((point["observed_at"] for point in imported),
-                                             default=item["created_at"])
-                    card = MarketplaceCardRecord(
-                        marketplace=key[0], external_id=key[1], title=item["title"],
-                        url=item["url"], deals_enabled=item["deals_enabled"],
-                        image_url=item.get("image_url"),
-                        tags=item.get("tags", []),
-                        created_at=item["created_at"],
-                        updated_at=max(item["created_at"], latest_imported_at),
-                    )
-                    session.add(card)
-                    await session.flush()
-                    by_key[key] = card
-                else:
-                    card.created_at = min(card.created_at, item["created_at"])
-                    if not card.image_url:
-                        card.image_url = item.get("image_url")
-                    card.tags = list(dict.fromkeys([*card.tags, *item.get("tags", [])]))[:2]
-                    if imported:
-                        card.updated_at = max(card.updated_at,
-                                              max(point["observed_at"] for point in imported))
-                for row in removed:
-                    await session.delete(row)
-                for event in added:
-                    session.add(PriceHistoryRecord(
-                        card_id=card.id, collection_run_id=None, price=event.price,
-                        availability=event.availability, observed_at=event.observed_at,
-                        snapshot={},
-                    ))
-            if not preview:
-                for imported_group in groups or []:
-                    group = groups_by_name.get(imported_group["name"])
-                    if group is None:
-                        group = ProductGroupRecord(name=imported_group["name"], tags=imported_group.get("tags", []))
-                        session.add(group)
-                        await session.flush()
-                        groups_by_name[group.name] = group
+                key = (item['marketplace'].lower(),item['external_id'])
+                product = by_key.get(key)
+                summary['cards_merged' if product else 'cards_added'] += 1
+                if not preview:
+                    if product is None:
+                        product = MarketplaceCardRecord(marketplace=key[0],external_id=key[1],title=item['title'],url=item['url'],
+                            image_url=item.get('image_url'),tags=item.get('tags',[]),deals_enabled=item['deals_enabled'],created_at=item['created_at'],updated_at=item['created_at'])
+                        s.add(product)
+                        await s.flush()
+                        by_key[key]=product
                     else:
-                        group.tags = list(dict.fromkeys([*group.tags, *imported_group.get("tags", [])]))
-                    for member in imported_group["cards"]:
-                        card = by_key[(member["marketplace"].lower(), member["external_id"])]
-                        if card.group_id is None:
-                            card.group_id = group.id
+                        product.created_at=min(product.created_at,item['created_at'])
+                        if not product.image_url:
+                            product.image_url=item.get('image_url')
+                        product.tags=list(dict.fromkeys([*product.tags,*item.get('tags',[])]))[:2]
+                for imported in item['variants']:
+                    variant = by_ref.get((product.id,imported['external_id'])) if product else None
+                    local = histories.get(variant.id,[]) if variant else []
+                    events=[HistoryEvent(h.observed_at,h.price,h.availability,'local',h.id) for h in local]
+                    events += [HistoryEvent(h['observed_at'],h['price'],h['availability'],'import',i) for i,h in enumerate(imported['history'])]
+                    merged=merge_history(events)
+                    kept={h.source_id for h in merged if h.source=='local'}
+                    added=[h for h in merged if h.source=='import']
+                    removed=[h for h in local if h.id not in kept]
+                    summary['observations_added']+=len(added)
+                    summary['observations_removed']+=len(removed)
+                    summary['observations_skipped']+=len(imported['history'])-len(added)
+                    if preview:
+                        continue
+                    if variant is None:
+                        variant=CardVariantRecord(card_id=product.id,external_id=imported['external_id'],url=imported.get('url'),
+                            title=imported.get('title',''),options=imported.get('options',{}),updated_at=imported.get('updated_at'))
+                        s.add(variant)
+                        await s.flush()
+                    if imported['external_id']==item['primary_external_id']:
+                        product.primary_variant_id=variant.id
+                    for h in removed:
+                        await s.delete(h)
+                    for h in added:
+                        s.add(PriceHistoryRecord(card_id=product.id,variant_id=variant.id,price=h.price,availability=h.availability,observed_at=h.observed_at,snapshot={}))
+                    dates=[h.observed_at for h in added]
+                    if dates:
+                        product.updated_at=max(product.updated_at,*dates)
+            if not preview:
+                for item in groups or []:
+                    group=local_groups.get(item['name'])
+                    if group is None:
+                        group=ProductGroupRecord(name=item['name'],tags=item.get('tags',[]))
+                        s.add(group)
+                        await s.flush()
+                        local_groups[group.name]=group
+                    group.tags=list(dict.fromkeys([*group.tags,*item.get('tags',[])]))
+                    for ref in item['cards']:
+                        product=by_key[ref['marketplace'].lower(),ref['external_id']]
+                        if product.group_id is None:
+                            product.group_id=group.id
         return summary

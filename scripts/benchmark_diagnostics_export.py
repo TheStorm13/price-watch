@@ -44,14 +44,16 @@ async def main():
             await s.execute(text("""INSERT INTO marketplace_cards(id,marketplace,external_id,title,group_id,created_at,updated_at)
                 OVERRIDING SYSTEM VALUE SELECT i,'ozon',i::text,'Product '||i,CASE WHEN i%2=0 THEN (i-1)/10+1 END,
                 '2026-10-01'::timestamptz,'2026-10-01'::timestamptz FROM generate_series(1,:n) i"""),{'n':cards})
+            await s.execute(text("INSERT INTO card_variants(id,card_id,external_id,updated_at) SELECT id,id,external_id,updated_at FROM marketplace_cards"))
+            await s.execute(text("UPDATE marketplace_cards SET primary_variant_id=id"))
             if args.case=='export':
-                await s.execute(text("""INSERT INTO price_history(card_id,price,availability,observed_at,snapshot)
-                    SELECT i,100+j%10,'in_stock','2026-10-01'::timestamptz+j*interval '1 hour',
+                await s.execute(text("""INSERT INTO price_history(card_id,variant_id,price,availability,observed_at,snapshot)
+                    SELECT i,i,100+j%10,'in_stock','2026-10-01'::timestamptz+j*interval '1 hour',
                     jsonb_build_object('raw',repeat('x',1024))
                     FROM generate_series(1,:n) i CROSS JOIN generate_series(1,100) j"""),{'n':args.size})
             elif args.case=='history':
-                await s.execute(text("""INSERT INTO price_history(card_id,price,availability,observed_at,snapshot)
-                    SELECT 1,CASE WHEN j%10=0 THEN NULL ELSE 100+j%10 END,
+                await s.execute(text("""INSERT INTO price_history(card_id,variant_id,price,availability,observed_at,snapshot)
+                    SELECT 1,1,CASE WHEN j%10=0 THEN NULL ELSE 100+j%10 END,
                     CASE WHEN j%10=0 THEN 'out_of_stock' ELSE 'in_stock' END,
                     '2026-10-01'::timestamptz+j*interval '1 second',jsonb_build_object('raw',repeat('x',1024))
                     FROM generate_series(1,:n) j"""),{'n':args.size})

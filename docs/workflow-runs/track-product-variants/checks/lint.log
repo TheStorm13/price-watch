@@ -1,0 +1,2 @@
+npm notice run lint
+npm notice run tsc -b --pretty false

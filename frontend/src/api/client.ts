@@ -7,6 +7,7 @@ import type {
   CollectionRun,
   CreateCardInput,
   TrackedCardView,
+  TrackedVariant,
   TransferDocument,
   ImportSummary,
   UpdateCardInput,
@@ -86,6 +87,9 @@ export const api = {
       method: 'POST', body: JSON.stringify(document),
     }),
 
+  getVariants: (cardId: number): Promise<TrackedVariant[]> =>
+    isE2ETestMode ? mockApi.getVariants(cardId) : request(`/api/cards/${cardId}/variants`),
+
   getCard: (cardId: number): Promise<TrackedCardView> =>
     isE2ETestMode ? mockApi.getCard(cardId) : request(`/api/cards/${cardId}`),
 
@@ -104,10 +108,10 @@ export const api = {
       ? mockApi.deleteCard(cardId)
       : request(`/api/cards/${cardId}`, { method: 'DELETE' }),
 
-  getHistory: (cardId: number, days: number, page = 1, pageSize = 50): Promise<CardHistoryResponse> =>
+  getHistory: (cardId: number, days: number, page = 1, pageSize = 50, variantId?: number): Promise<CardHistoryResponse> =>
     isE2ETestMode
-      ? mockApi.getHistory(cardId, days, page, pageSize)
-      : request(`/api/cards/${cardId}/history?days=${days}&page=${page}&pageSize=${pageSize}`),
+      ? mockApi.getHistory(cardId, days, page, pageSize, variantId)
+      : request(`/api/cards/${cardId}/history?days=${days}&page=${page}&pageSize=${pageSize}${variantId === undefined ? '' : `&variantId=${variantId}`}`),
 
   getChart: (cardId: number, days: number): Promise<ChartResponse> =>
     isE2ETestMode ? mockApi.getChart(cardId, days) : request(`/api/cards/${cardId}/chart?days=${days}`),

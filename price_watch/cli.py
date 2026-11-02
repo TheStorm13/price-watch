@@ -167,7 +167,8 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
         card = await stores.cards.add_card(
             args.marketplace, args.external_id, args.title, args.url
         )
-        _print_json(_tracked_card_dict(card))
+        overview = await stores.cards.get_card(card.id)
+        _print_json(_tracked_card_dict(overview.card))
         return 0
 
     if args.command == "card" and args.card_command == "list":

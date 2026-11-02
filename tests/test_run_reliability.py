@@ -354,7 +354,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         card = self.cards[0]
         old_snapshot = {'schema_version': '1.0', 'price': 99.9, 'title': 'Old JSON'}
         async with self.db.session() as s, s.begin():
-            s.add(PriceHistoryRecord(card_id=card.id, price=Decimal('99.90'), availability='in_stock',
+            s.add(PriceHistoryRecord(card_id=card.id, variant_id=card.variant_id, price=Decimal('99.90'), availability='in_stock',
                 observed_at=datetime.now(timezone.utc)-timedelta(days=1), snapshot=old_snapshot))
         await self.repo.cards.update_card(card.id, title='User title', update_title=True, tags=['tag'], deals_enabled=False)
         run = await self.owned(card)

@@ -44,7 +44,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     async def point(self, database, card, price, at, availability='in_stock'):
         async with database.session() as session, session.begin():
-            session.add(PriceHistoryRecord(card_id=card.id, price=Decimal(price) if price is not None else None,
+            session.add(PriceHistoryRecord(card_id=card.id, variant_id=card.variant_id, price=Decimal(price) if price is not None else None,
                 availability=availability, observed_at=at, collection_run_id=None, snapshot={}))
 
     async def group(self, repository, group_id):
@@ -134,7 +134,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(group['representativeCardId'], a.id)
                 self.assertEqual(group['savings'], '20')
             document = await repository.transfer.export_cards()
-            imported_cards = [item for item in document['cards'] if item['external_id'] in {a.ref.external_id, b.ref.external_id}]
+            imported_cards = [item for item in document['cards'] if item['external_id'] in {a.ref.external_id.split(':')[0], b.ref.external_id.split(':')[0]}]
             imported_group = next(item for item in document['groups'] if item['name'] == 'Group')
             await repository.groups.update_group(group_id, 'Group', [])
             await repository.transfer.import_cards(imported_cards, groups=[imported_group])

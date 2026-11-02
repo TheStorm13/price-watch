@@ -163,9 +163,6 @@ input::placeholder { color: #98a2b3; }
 .card-identity .tag-list { width: 100%; max-width: 100%; min-width: 0; flex: none; flex-wrap: nowrap; }
 .card-identity .tag { min-width: 0; flex: 0 1 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 .detail-page > .tag-list { margin: -8px 0 12px; }
-.detail-tags { margin-bottom: 22px; }
-.detail-tags__controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.detail-tags__controls input { flex-basis: 220px; }
 .product-group__toggle { display: inline-flex; max-width: 100%; min-width: 0; height: auto; min-height: 32px; align-items: center; gap: 8px; padding: 4px 0; border: 0; color: var(--text); background: transparent; cursor: pointer; text-align: left; white-space: normal; }
 .product-group__toggle svg { width: 18px; height: 18px; color: var(--blue); }
 .product-group__toggle strong { min-width: 0; font-size: 14px; white-space: normal; overflow-wrap: anywhere; }
@@ -297,3 +294,18 @@ input::placeholder { color: #98a2b3; }
 .virtual-grid-row > .cards-grid { margin: 0; }
 .cards-table .virtual-spacer, .cards-table .virtual-spacer:hover { border: 0; pointer-events: none; background: transparent; }
 .cards-table .virtual-spacer > td { padding: 0; border: 0; position: static; }
+
+.variant-section { margin: 24px 0; }
+.variant-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+.variant-heading h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+.variant-table { max-height: 360px; overflow: auto; }
+.variant-table thead { position: sticky; top: 0; z-index: 1; background: var(--background); }
+.variant-table td { white-space: nowrap; }
+.variant-table tr[data-primary] { background: var(--muted); }
+.variant-name { display: flex; align-items: center; gap: 10px; max-width: 360px; white-space: normal; }
+.variant-name strong { font-weight: 500; overflow-wrap: anywhere; }
+.variant-sku { display: block; margin-top: 4px; color: var(--muted-foreground); font-size: 12px; }
+.variant-color { width: 10px; height: 10px; flex: 0 0 10px; border-radius: 50%; display: inline-block; }
+.variant-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; max-height: 150px; overflow-y: auto; margin-bottom: 16px; }
+.variant-legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.variant-chart-section { margin-bottom: 24px; }

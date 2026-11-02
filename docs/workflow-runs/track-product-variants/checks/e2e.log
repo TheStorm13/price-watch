@@ -1,0 +1,94 @@
+npm notice run test:e2e
+npm notice run playwright test
+[WebServer] npm notice run dev:e2e
+
+[WebServer] npm notice run VITE_E2E_TEST_MODE=true vite --host 127.0.0.1 --port 5175 --strictPort
+
+[WebServer] (node:780026) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 59 tests using 1 worker
+
+(node:780110) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/59] e2e/aliexpress.spec.ts:3:1 › AliExpress: ссылка заполняет точный SKU и создаёт отдельную карточку
+[2/59] e2e/app.spec.ts:10:1 › выбор в списке сохраняется при поиске и создаёт группу с найденными карточками
+[3/59] e2e/app.spec.ts:54:1 › выбранные карточки добавляются в существующую группу без потери её участников
+[4/59] e2e/app.spec.ts:79:1 › массовые действия меняют участие и удаляют карточки только после подтверждения
+[5/59] e2e/app.spec.ts:118:1 › при частичном отказе массового удаления неуспешная карточка остаётся выбранной
+[6/59] e2e/app.spec.ts:140:1 › ошибка добавления в группу и частичное изменение участия сохраняют выбор
+[7/59] e2e/app.spec.ts:171:1 › группа объединяет товары и сохраняет индивидуальные карточки
+[8/59] e2e/app.spec.ts:239:1 › товарный фильтр использует теги представителя, теги группы сохраняются отдельно
+[WebServer] 10:49:34 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[9/59] e2e/app.spec.ts:270:1 › основной сценарий интерфейса в браузерном E2E
+[10/59] e2e/app.spec.ts:311:1 › из каталога запускается сбор только выбранной карточки
+[11/59] e2e/app.spec.ts:321:1 › карточки площадок без коннектора добавляются без запуска сбора
+[12/59] e2e/app.spec.ts:349:1 › компактный desktop 1024 px не имеет горизонтального overflow
+[WebServer] 10:49:54 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[13/59] e2e/app.spec.ts:360:1 › фильтры не сдвигаются при сбросе, а сетка занимает доступную ширину
+[14/59] e2e/app.spec.ts:423:1 › заголовки таблицы переключают единственную сортировку по трём состояниям
+[15/59] e2e/app.spec.ts:474:1 › карточки переключаются между списком и адаптивной сеткой
+[16/59] e2e/app.spec.ts:512:1 › плитки одинаковы при разных фото, а метаданные списка помещаются в строку
+[17/59] e2e/app.spec.ts:652:1 › экспорт и импорт объединяют карточки и историю
+[18/59] e2e/app.spec.ts:688:1 › меню карточки управляет показом в выгодных предложениях
+[19/59] e2e/app.spec.ts:704:1 › исключённые карточки идут последними по умолчанию и используют общий ключ при ручной сортировке
+[20/59] e2e/app.spec.ts:725:1 › исключённая карточка обновляется, но не попадает в выгодные предложения
+[WebServer] 10:50:23 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[21/59] e2e/app.spec.ts:751:1 › удаление карточки требует подтверждения
+[22/59] e2e/app.spec.ts:768:1 › запуск доходит до проверки и продолжается
+[23/59] e2e/app.spec.ts:780:1 › детали карточки показывают середину диапазона и страницы истории
+[WebServer] 10:50:38 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[24/59] e2e/app.spec.ts:790:1 › ошибки сбора доступны без страницы запусков
+[25/59] e2e/app.spec.ts:802:1 › одиночное измерение остаётся точкой на графике с масштабом вокруг цены
+[WebServer] 10:50:41 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[26/59] e2e/app.spec.ts:810:1 › дата обновления карточки новее первой сохранённой точки цены
+[27/59] e2e/app.spec.ts:824:1 › фильтр предложений показывает цену, минимум, среднюю и выгоду
+[28/59] e2e/app.spec.ts:843:1 › после повторного открытия видны сохранённые предложения и результат запуска
+[29/59] e2e/app.spec.ts:857:1 › ошибки запуска можно повторить отдельно
+[30/59] e2e/app.spec.ts:866:1 › старые подробности очищены, но число ошибок и повтор сохранены
+[31/59] e2e/app.spec.ts:876:1 › панель и диалог удерживают фокус и возвращают его после Escape
+[32/59] e2e/app.spec.ts:907:1 › переход меню → подтверждение → отмена возвращает фокус без удаления
+[33/59] e2e/app.spec.ts:926:1 › выпадающие фильтры оформлены в общей теме и управляются клавиатурой
+[34/59] e2e/group-metrics.spec.ts:26:1 › группа фильтруется по представителю и чередуется с карточками в обоих видах
+[35/59] e2e/group-metrics.spec.ts:84:1 › выгодный участник даёт приоритет без подмены полей и фильтра выгодности группы
+[36/59] e2e/group-metrics.spec.ts:103:1 › изменение участия и удаление представителя сразу обновляют поля группы
+[37/59] e2e/group-metrics.spec.ts:130:1 › десятичные цены сортируются численно и сохраняют копейки в списке и плитке
+[38/59] e2e/layout.spec.ts:26:1 › панель обновления растёт с сообщением и сохраняет доступными ошибки и действия
+[39/59] e2e/layout.spec.ts:69:1 › панель изменения доступна в desktop-окне, ошибки тегов не теряют черновик
+[WebServer] 10:51:20 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[WebServer] 10:51:22 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[40/59] e2e/layout.spec.ts:92:1 › уведомление о пяти предложениях разделяет текст и действия и открывает фильтр
+[41/59] e2e/layout.spec.ts:114:1 › цены и наличие читаемы, а переключатель каталога сохраняет скругления
+[42/59] e2e/performance.spec.ts:15:47 › bounded catalog and last item: plain
+[43/59] e2e/performance.spec.ts:15:47 › bounded catalog and last item: mixed
+[44/59] e2e/performance.spec.ts:15:47 › bounded catalog and last item: group
+[45/59] e2e/performance.spec.ts:40:1 › large group editor saves the complete offscreen membership
+[46/59] e2e/performance.spec.ts:57:1 › progress updates leave unchanged catalog DOM untouched
+[47/59] e2e/performance.spec.ts:76:1 › virtualized catalog restores position after card details
+[48/59] e2e/performance.spec.ts:88:1 › an offscreen action owner survives its menu and confirmation
+[49/59] e2e/performance.spec.ts:104:1 › tab navigation reaches cards beyond the initial virtual window
+[50/59] e2e/usability.spec.ts:8:1 › контекст каталога, скрытые артикулы и клавиатурная ссылка сохраняются
+[WebServer] 10:51:45 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[51/59] e2e/usability.spec.ts:38:3 › ошибка chart не скрывает доступные разделы, повтор восстанавливает данные
+[52/59] e2e/usability.spec.ts:38:3 › ошибка history не скрывает доступные разделы, повтор восстанавливает данные
+[53/59] e2e/usability.spec.ts:64:1 › ожидание графика и смена периода оставляют шапку доступной; 404 отличается от отказа раздела
+[54/59] e2e/usability.spec.ts:84:1 › выбор плиток общий со списком и включает участников групп
+[55/59] e2e/usability.spec.ts:110:1 › наличие и меню закреплены при прокрутке узкой таблицы
+[56/59] e2e/usability.spec.ts:127:1 › названия и зоны плиток выровнены, теги целые, артикулы скрыты и безымянный товар доступен
+[57/59] e2e/usability.spec.ts:162:1 › длинные названия, крупные цены и действия форм помещаются в desktop-окне
+[WebServer] 10:52:00 AM [vite] (client) [console.warn] No `HydrateFallback` element provided to render during initial hydration
+
+[58/59] e2e/variants.spec.ts:3:1 › варианты имеют отдельные линии, главный определяет каталог, панель сохраняет общие поля
+[59/59] e2e/wildberries.spec.ts:3:1 › WB: размеры сохраняются в одной карточке и имеет действие обновления
+  59 passed (3.2m)

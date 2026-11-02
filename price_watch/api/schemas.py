@@ -68,6 +68,7 @@ class CardUpdate(ApiModel):
     title: str | None = None
     url: HttpUrl | None = None
     deals_enabled: bool | None = None
+    primary_variant_id: int | None = Field(default=None, ge=1)
     group_id: int | None = Field(default=None, ge=1)
     tags: list[str] | None = Field(default=None, max_length=2)
 
@@ -117,6 +118,16 @@ class TransferHistoryPoint(ApiModel):
         return value
 
 
+class TransferVariant(ApiModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+    external_id: str
+    title: str = ""
+    url: str | None = None
+    options: dict[str, str] = Field(default_factory=dict)
+    updated_at: datetime | None = None
+    history: list[TransferHistoryPoint] = Field(default_factory=list)
+
+
 class TransferCard(ApiModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
     marketplace: str
@@ -128,7 +139,8 @@ class TransferCard(ApiModel):
     _normalize_tags = field_validator("tags")(normalize_tags)
     deals_enabled: bool
     created_at: datetime
-    history: list[TransferHistoryPoint]
+    primary_external_id: str
+    variants: list[TransferVariant] = Field(min_length=1)
 
     @field_validator("marketplace", "external_id")
     @classmethod
@@ -167,7 +179,7 @@ class TransferGroup(ApiModel):
 
 
 class TransferDocument(ApiModel):
-    version: Literal[2]
+    version: Literal[3]
     cards: list[TransferCard]
     groups: list[TransferGroup] = Field(default_factory=list)
 
@@ -195,13 +207,21 @@ class TransferDocument(ApiModel):
 
 
 class ImportDocument(TransferDocument):
-    """New imports require concrete variants; exports preserve stored historical refs."""
+    """Only the explicit product/variant transfer v3 schema is accepted."""
 
     @field_validator("cards")
     @classmethod
     def validate_identities(cls, cards: list[TransferCard]) -> list[TransferCard]:
         for card in cards:
-            card.external_id, card.url = validate_card_identity(card.marketplace, card.external_id, card.url)
+            refs = set()
+            for variant in card.variants:
+                variant.external_id, variant.url = validate_card_identity(card.marketplace, variant.external_id, variant.url)
+                article = variant.external_id.split(':')[0] if card.marketplace in ('aliexpress', 'wildberries') else variant.external_id
+                if article != card.external_id or variant.external_id in refs:
+                    raise ValueError("Вариант повторяется или принадлежит другому товару")
+                refs.add(variant.external_id)
+            if card.primary_external_id not in refs:
+                raise ValueError("Главный вариант отсутствует в товаре")
         return cards
 
 
@@ -224,6 +244,8 @@ class CardResponse(ApiModel):
     tags: list[str]
     deals_enabled: bool
     group_id: int | None = None
+    primary_variant_id: int | None = None
+    last_collected_at: datetime | None = None
     current_price: Decimal | None
     minimum_price: Decimal | None = None
     average_price: Decimal | None = None
@@ -239,6 +261,8 @@ class CardResponse(ApiModel):
         card = overview.card
         return cls(
             id=card.id,
+            primary_variant_id=card.primary_variant_id,
+            last_collected_at=card.last_collected_at,
             marketplace=card.ref.marketplace,
             external_id=card.ref.external_id,
             title=card.title,
@@ -257,6 +281,19 @@ class CardResponse(ApiModel):
         )
 
 
+class VariantResponse(ApiModel):
+    id: int
+    card_id: int
+    external_id: str
+    title: str
+    url: str | None
+    options: dict[str, str]
+    current_price: Decimal | None
+    current_availability: str | None
+    last_observed_at: datetime | None
+    updated_at: datetime | None
+
+
 class GroupResponse(ApiModel):
     id: int
     name: str
@@ -273,6 +310,7 @@ class GroupResponse(ApiModel):
 
 
 class HistoryPointResponse(ApiModel):
+    variant_id: int | None = None
     id: int
     card_id: int
     collection_run_id: int | None

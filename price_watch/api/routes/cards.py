@@ -10,6 +10,7 @@ from ..schemas import (
     CardCreate,
     CardResponse,
     CardUpdate,
+    VariantResponse,
     HistoryPointResponse,
     HistoryResponse,
     ChartResponse,
@@ -75,7 +76,7 @@ async def create_card(payload: CardCreate, cards: CardDep):
         )
     except CardAlreadyExists as exc:
         raise ApiProblem(409, "card_already_exists", str(exc), "externalId") from exc
-    return CardResponse.from_overview(TrackedCardOverview(card, None, None, None))
+    return CardResponse.from_overview(await cards.get_card(card.id))
 
 
 @router.get("/{card_id}", response_model=CardResponse)
@@ -84,6 +85,13 @@ async def get_card(card_id: int, cards: CardDep):
     if overview is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
     return CardResponse.from_overview(overview)
+
+
+@router.get("/{card_id}/variants", response_model=list[VariantResponse])
+async def get_variants(card_id: int, cards: CardDep):
+    if await cards.get_card(card_id) is None:
+        raise ApiProblem(404, "card_not_found", "Карточка не найдена")
+    return await cards.get_variants(card_id)
 
 
 @router.patch("/{card_id}", response_model=CardResponse)
@@ -100,11 +108,12 @@ async def update_card(card_id: int, payload: CardUpdate, cards: CardDep):
             group_id=payload.group_id,
             update_group="group_id" in fields,
             tags=payload.tags,
+            primary_variant_id=payload.primary_variant_id,
         )
     except InvalidProductId as exc:
         raise ApiProblem(422, "invalid_card_url", str(exc), "url") from exc
     except ValueError as exc:
-        raise ApiProblem(422, "invalid_group", str(exc), "groupId") from exc
+        raise ApiProblem(422, "invalid_card_update", str(exc), "primaryVariantId" if "primary_variant_id" in fields else "groupId") from exc
     if card is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
     overview = await cards.get_card(card_id)
@@ -133,18 +142,22 @@ async def get_history(
     days: int = 30,
     page: int = 1,
     page_size: Annotated[int, Query(alias="pageSize")] = 50,
+    variant_id: Annotated[int | None, Query(alias="variantId", ge=1)] = None,
 ):
     if days not in {7, 30, 90} or page < 1 or not 1 <= page_size <= 200:
         raise ApiProblem(422, "invalid_history_query", "Некорректные параметры истории")
     overview = await cards.get_card(card_id)
     if overview is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
-    points = await history.get_history(card_id, days, page, page_size)
+    if variant_id is not None and variant_id not in {v['id'] for v in await cards.get_variants(card_id)}:
+        raise ApiProblem(422, "invalid_variant", "Вариант не принадлежит этому товару", "variantId")
+    options = {"variant_id": variant_id} if variant_id is not None else {}
+    points = await history.get_history(card_id, days, page, page_size, **options)
     return HistoryResponse(
         card=CardResponse.from_overview(overview),
-        statistics=StatisticsResponse.from_domain(await history.get_statistics(card_id, days)),
+        statistics=StatisticsResponse.from_domain(await history.get_statistics(card_id, days, **options)),
         history=[HistoryPointResponse.from_domain(item) for item in points],
         page=page,
         page_size=page_size,
-        total_count=await history.count_history(card_id, days),
+        total_count=await history.count_history(card_id, days, **options),
     )

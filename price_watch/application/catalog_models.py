@@ -35,6 +35,8 @@ class CatalogInputs:
 
 
 class CatalogCard(TypedDict):
+    primary_variant_id: int | None
+    last_collected_at: datetime | None
     id: int
     marketplace: str
     external_id: str

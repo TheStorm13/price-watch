@@ -12,6 +12,8 @@ def bounded_error(error: dict) -> tuple[dict, bool]:
     result = {'cardId': error.get('cardId')}
     if not isinstance(result['cardId'], (int, type(None))):
         result['cardId'] = None
+    if 'variantId' in error:
+        result['variantId'] = error['variantId'] if isinstance(error['variantId'], int) else None
     shortened = False
     for key, limit in limits.items():
         value = error.get(key)

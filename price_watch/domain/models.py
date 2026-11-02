@@ -20,6 +20,9 @@ class TrackedCard:
     image_url: Optional[str] = None
     group_id: Optional[int] = None
     tags: tuple[str, ...] = ()
+    variant_id: int | None = None
+    primary_variant_id: int | None = None
+    last_collected_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,7 @@ class PriceHistoryPoint:
     price: Optional[Decimal]
     availability: str
     observed_at: datetime
+    variant_id: int | None = None
 
 
 @dataclass(frozen=True)

@@ -34,7 +34,7 @@ class DiagnosticsMigrationTests(unittest.TestCase):
                 c.execute(text("INSERT INTO price_history(card_id,price,availability,observed_at,snapshot) VALUES (1,100,'in_stock',now(),CAST(:snapshot AS jsonb))"), {'snapshot':json.dumps({'keep':1})})
                 history=c.execute(text('SELECT * FROM price_history')).all()
                 targets=c.execute(text('SELECT * FROM collection_run_targets ORDER BY run_id')).all()
-            command.upgrade(config,'head')
+            command.upgrade(config,'0017_bounded_diagnostics')
             with db.engine.connect() as c:
                 self.assertEqual(c.execute(text('SELECT * FROM price_history')).all(),history)
                 self.assertEqual(c.execute(text('SELECT * FROM collection_run_targets ORDER BY run_id')).all(),targets)
@@ -59,7 +59,7 @@ class DiagnosticsMigrationTests(unittest.TestCase):
             command.upgrade(config,'0016_wildberries_size')
             with db.engine.begin() as c:
                 c.execute(text("INSERT INTO collection_runs(status,worker_id,errors) VALUES ('running','owner','[{\"message\":\"keep\"}]')"))
-            with self.assertRaisesRegex(RuntimeError,'Остановите сбор'): command.upgrade(config,'head')
+            with self.assertRaisesRegex(RuntimeError,'Остановите сбор'): command.upgrade(config,'0017_bounded_diagnostics')
             with db.engine.connect() as c:
                 self.assertEqual(c.scalar(text('SELECT version_num FROM alembic_version')),'0016_wildberries_size')
                 self.assertEqual(c.scalar(text("SELECT count(*) FROM information_schema.columns WHERE table_schema=:s AND column_name='diagnostics_status'"),{'s':schema}),0)

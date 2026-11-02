@@ -22,11 +22,13 @@ test('каталог, формы и детали с согласованной �
   await expect(page.getByRole('dialog')).toHaveScreenshot('add-drawer.png')
   await page.keyboard.press('Escape')
   await page.locator('.cards-grid__link').filter({ hasText: 'Очень длинное название' }).click()
-  await expect(page.getByLabel('График истории цены')).toBeVisible()
+  await expect(page.getByLabel('График цен всех SKU')).toBeVisible()
   for (const width of [1024, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 })
     await expect(page).toHaveScreenshot(`details-${width}.png`)
   }
+  await page.getByRole('button',{name:'Изменить',exact:true}).click()
+  await expect(page.getByRole('dialog',{name:'Изменить карточку'})).toHaveScreenshot('edit-drawer.png')
 })
 
 test('группа в каталоге', async ({ page }) => {

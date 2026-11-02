@@ -40,8 +40,10 @@ async def seed(db, count):
         await session.execute(text("""INSERT INTO marketplace_cards(id,marketplace,external_id,title,group_id) OVERRIDING SYSTEM VALUE
             SELECT i,'ozon',i::text,'Product '||i,CASE WHEN i%2=0 THEN (i-1)/10+1 END
             FROM generate_series(1,:n) i"""), {'n': count})
-        await session.execute(text("""INSERT INTO price_history(card_id,price,availability,observed_at,snapshot)
-            SELECT i,100+(j%10), 'in_stock', '2026-10-01'::timestamptz+j*interval '1 hour','{}'::jsonb
+        await session.execute(text("INSERT INTO card_variants(id,card_id,external_id,updated_at) SELECT id,id,external_id,updated_at FROM marketplace_cards"))
+        await session.execute(text("UPDATE marketplace_cards SET primary_variant_id=id"))
+        await session.execute(text("""INSERT INTO price_history(card_id,variant_id,price,availability,observed_at,snapshot)
+            SELECT i,i,100+(j%10), 'in_stock', '2026-10-01'::timestamptz+j*interval '1 hour','{}'::jsonb
             FROM generate_series(1,:n) i CROSS JOIN generate_series(1,100) j"""), {'n': count})
     async with db.session() as session:
         await session.execute(text('ANALYZE marketplace_cards'))

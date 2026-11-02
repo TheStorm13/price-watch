@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PriceHistoryPoint } from '../../types/domain'
-import { priceDomain, turningPointIndices } from './PriceChart'
+import { priceDomain } from './priceDomain'
 
 const history = (prices: Array<number | null>): PriceHistoryPoint[] => prices.map((price, index) => ({
   id: index + 1, cardId: 1, collectionRunId: 1, price: price === null ? null : price.toFixed(2),
@@ -14,19 +14,6 @@ describe('price chart scale and labels', () => {
     expect(priceDomain(history([0, 10]))).toEqual([0, 11])
     expect(priceDomain(history([100, 100]))).toEqual([90, 110])
     expect(priceDomain(history([null]))).toEqual([0, 1])
-  })
-
-  it('labels important turns without filling a flat line with labels', () => {
-    expect([...turningPointIndices(history([100, 80, 110, 90, 120]))]).toEqual([1, 4])
-    expect(turningPointIndices(history([100, 100, 100])).size).toBe(0)
-  })
-
-  it('compares Decimal extrema beyond floating point precision', () => {
-    const points = history([0, 0, 0, 0, 0])
-    for (const [index, cents] of ['01', '00', '03', '02', '04'].entries()) {
-      points[index].price = `9007199254740992.${cents}`
-    }
-    expect([...turningPointIndices(points)]).toEqual([1, 4])
   })
 
   it('handles long histories without a spread argument limit', () => {

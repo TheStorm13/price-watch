@@ -17,6 +17,8 @@ export interface TrackedCardView {
   url: string | null
   imageUrl: string | null
   dealsEnabled: boolean
+  primaryVariantId?: number | null
+  lastCollectedAt?: string | null
   groupId?: number | null
   tags?: string[]
   currentPrice: DecimalString | null
@@ -28,7 +30,21 @@ export interface TrackedCardView {
   updatedAt: string
 }
 
+export interface TrackedVariant {
+  id: number
+  cardId: number
+  externalId: string
+  title: string
+  url: string | null
+  options: Record<string, string>
+  currentPrice: DecimalString | null
+  currentAvailability: Availability | null
+  lastObservedAt: string | null
+  updatedAt: string | null
+}
+
 export interface PriceHistoryPoint {
+  variantId?: number | null
   id: number
   cardId: number
   collectionRunId: number | null
@@ -61,6 +77,7 @@ export interface ChartResponse {
 }
 
 export interface RunError {
+  variantId?: number | null
   cardId: number | null
   marketplace: Marketplace | null
   externalId: string | null
@@ -114,6 +131,7 @@ export interface UpdateCardInput {
   title?: string | null
   url?: string | null
   dealsEnabled?: boolean
+  primaryVariantId?: number | null
   groupId?: number | null
   tags?: string[]
 }
@@ -154,11 +172,21 @@ export interface TransferCard {
   tags?: string[]
   dealsEnabled: boolean
   createdAt: string
+  primaryExternalId: string
+  variants: TransferVariant[]
+}
+
+export interface TransferVariant {
+  externalId: string
+  title?: string
+  url: string | null
+  options?: Record<string, string>
+  updatedAt?: string | null
   history: TransferHistoryPoint[]
 }
 
 export interface TransferDocument {
-  version: 2
+  version: 3
   cards: TransferCard[]
   groups?: { name: string; tags?: string[]; cards: { marketplace: string; externalId: string }[] }[]
 }

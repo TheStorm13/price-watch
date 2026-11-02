@@ -30,7 +30,9 @@ class FakeRepository:
         now = datetime.now(timezone.utc)
         self.run = CollectionRun(42, 'running', len(self.targets), 0, 0, card_id, None, None, None, None, None, now, None, owner_token='owner')
         return self.run
-    async def cards_for_run(self, run_id): return self.targets
+    async def cards_for_run(self, run_id, pending_only=False):
+        done = {c.id for c, _ in self.saved} | {e['cardId'] for e in self.errors}
+        return [c for c in self.targets if not pending_only or c.id not in done]
     async def touch_run(self, lease): return not self.lost
     async def set_run_current(self, lease, item):
         if self.lost: raise LeaseLost('lost')

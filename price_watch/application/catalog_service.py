@@ -19,6 +19,7 @@ class CatalogService:
             local = overview.card
             metrics[local.id] = metric
             card: CatalogCard = {
+                'primary_variant_id': local.primary_variant_id, 'last_collected_at': local.last_collected_at,
                 'id': local.id, 'marketplace': local.ref.marketplace, 'external_id': local.ref.external_id,
                 'title': local.title, 'url': local.url, 'image_url': local.image_url,
                 'deals_enabled': local.deals_enabled, 'group_id': local.group_id, 'tags': local.tags,

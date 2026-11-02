@@ -54,7 +54,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
       <CardContent className="contents"><div className="cards-grid__tags" title={card.tags?.join(', ')}><TagList tags={card.tags} /></div>
       <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
       <dl className="cards-grid__prices"><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div><div><dt>Выгода</dt><dd>{saving(card)}</dd></div></dl>
-      </CardContent><CardFooter className="contents"><div className="cards-grid__details"><time dateTime={card.lastObservedAt ? card.updatedAt : undefined} title={formatDateTime(card.lastObservedAt ? card.updatedAt : null)}>{formatRelativeTime(card.lastObservedAt ? card.updatedAt : null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
+      </CardContent><CardFooter className="contents"><div className="cards-grid__details"><time dateTime={card.lastCollectedAt ?? undefined} title={formatDateTime(card.lastCollectedAt ?? null)}>{formatRelativeTime(card.lastCollectedAt ?? null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
       <div className="cards-grid__tracking">{dealStatus(card)}</div>
     </CardFooter></li></Card>
   }

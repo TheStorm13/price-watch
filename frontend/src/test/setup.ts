@@ -7,3 +7,9 @@ vi.stubGlobal('ResizeObserver', class {
   unobserve() {}
   disconnect() {}
 })
+
+// JSDOM omits pointer capture and scrolling used by Radix Select.
+HTMLElement.prototype.hasPointerCapture = () => false
+HTMLElement.prototype.setPointerCapture = () => {}
+HTMLElement.prototype.releasePointerCapture = () => {}
+HTMLElement.prototype.scrollIntoView = () => {}

@@ -50,7 +50,7 @@ class WildberriesMigrationTests(unittest.TestCase):
                 targets=c.execute(text('SELECT * FROM collection_run_targets')).all()
                 history=c.execute(text('SELECT * FROM price_history ORDER BY id')).all()
             with patch('logging.config.fileConfig'):
-                command.upgrade(config,'head')
+                command.upgrade(config,'0016_wildberries_size')
             with db.engine.connect() as c:
                 after=[dict(r) for r in c.execute(text('SELECT * FROM marketplace_cards ORDER BY id')).mappings()]
                 self.assertEqual(c.execute(text('SELECT * FROM price_history ORDER BY id')).all(),history)
@@ -67,7 +67,7 @@ class WildberriesMigrationTests(unittest.TestCase):
                     else:c.execute(text("INSERT INTO marketplace_cards(marketplace,external_id) VALUES ('wildberries','1:2')"))
                     before=c.execute(text('SELECT * FROM marketplace_cards ORDER BY id')).all()
                 with self.assertRaises(RuntimeError), patch('logging.config.fileConfig'):
-                    command.upgrade(config,'head')
+                    command.upgrade(config,'0016_wildberries_size')
                 with db.engine.connect() as c:
                     self.assertEqual(c.execute(text('SELECT * FROM marketplace_cards ORDER BY id')).all(),before)
                     self.assertEqual(c.scalar(text('SELECT version_num FROM alembic_version')),'0015_aliexpress_sku')

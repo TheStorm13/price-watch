@@ -5,14 +5,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
-import { Field, FieldLabel, FieldDescription, FieldGroup } from '@/components/ui/field'
-import { useState, type FormEvent, type MouseEvent } from 'react'
-import { ArrowLeft, ExternalLink, RefreshCw } from 'lucide-react'
+import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
+import { useState, type MouseEvent } from 'react'
+import { ArrowLeft, ExternalLink, RefreshCw, Pencil } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, isDesktopMode } from '../../api/client'
-import { useCard, useCardChart, useCardHistory, useDeleteCard, useUpdateCard } from '../../api/queries'
+import { useCard, useCardChart, useCardHistory, useCardVariants, useDeleteCard, useUpdateCard } from '../../api/queries'
 import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
 import { Button } from '../../components/ui/button'
 import { CardActionsMenu } from '../../components/product/CardActionsMenu'
@@ -21,42 +20,13 @@ import { ProductImage } from '../../components/product/ProductImage'
 import { TagList } from '../../components/product/TagList'
 import { formatDateTime, formatPrice, marketplaceLabel } from '../../utils/format'
 import { useCollectionCommands } from '../collection/CollectionProvider'
-import { PriceChart } from './PriceChart'
-import { parseTags } from '../cards/tags'
+import { VariantPriceChart } from './VariantPriceChart'
+import { VariantPanel } from './VariantPanel'
+import { CardDrawer } from '../cards/AddCardDrawer'
+import { variantLabel } from './variantDisplay'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select'
 
 const periods = [7, 30, 90] as const
-
-function CardTagsEditor({ card }: { card: NonNullable<ReturnType<typeof useCard>['data']> }) {
-  const [tags, setTags] = useState((card.tags ?? []).join(', '))
-  const [error, setError] = useState<string | null>(null)
-  const updateCard = useUpdateCard()
-
-  async function save(event: FormEvent) {
-    event.preventDefault()
-    try {
-      const parsed = parseTags(tags, 2)
-      await updateCard.mutateAsync({ cardId: card.id, input: { tags: parsed } })
-      setTags(parsed.join(', '))
-      setError(null)
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Не удалось сохранить теги')
-    }
-  }
-
-  return <form className="detail-tags" onSubmit={(event) => void save(event)}>
-    <FieldGroup className="max-w-[560px]">
-      <Field data-invalid={Boolean(error)}>
-        <FieldLabel htmlFor="field-carddetailspage-1">Теги товара</FieldLabel>
-        <div className="detail-tags__controls">
-          <Input id="field-carddetailspage-1" className="min-w-0 flex-1" aria-invalid={Boolean(error)} aria-describedby={error ? 'card-tags-description card-tags-error' : 'card-tags-description'} value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, подарок" />
-          <Button variant="outline" type="submit" disabled={updateCard.isPending}>Сохранить теги</Button>
-        </div>
-        <FieldDescription id="card-tags-description">Не больше двух тегов, через запятую</FieldDescription>
-        {error ? <Alert id="card-tags-error" variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-      </Field>
-    </FieldGroup>
-  </form>
-}
 
 export function CardDetailsPage() {
   const navigate = useNavigate()
@@ -66,18 +36,24 @@ export function CardDetailsPage() {
   const searchOptions = { state: location.state }
   const cardId = Number(useParams().cardId)
   const [params, setParams] = useSearchParams()
+  const [editing, setEditing] = useState(false)
+  const [historyVariantId, setHistoryVariantId] = useState<number | undefined>()
   const [openError, setOpenError] = useState<string | null>(null)
   const days = periods.includes(Number(params.get('days')) as 7 | 30 | 90) ? Number(params.get('days')) : 30
   const requestedPage = Number(params.get('page'))
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
   const cardQuery = useCard(cardId)
-  const historyQuery = useCardHistory(cardId, days, page)
+  const primaryVariantId = cardQuery.data?.primaryVariantId ?? undefined
+  const historyQuery = useCardHistory(cardId, days, page, historyVariantId ?? primaryVariantId, !cardQuery.isPending)
+  const mainHistoryQuery = useCardHistory(cardId, days, 1, primaryVariantId, !cardQuery.isPending)
+  const variantsQuery = useCardVariants(cardId)
+  const variants = variantsQuery.data ?? []
   const chartQuery = useCardChart(cardId, days)
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
   const collection = useCollectionCommands()
   const card = cardQuery.data ?? historyQuery.data?.card
-  const statistics = historyQuery.isError ? undefined : historyQuery.data?.statistics
+  const statistics = mainHistoryQuery.isError ? undefined : mainHistoryQuery.data?.statistics
   const history = historyQuery.data?.history ?? []
   const chart = chartQuery.data?.points ?? []
   const midpoint = statistics?.minimumPrice != null && statistics.maximumPrice != null
@@ -120,6 +96,7 @@ export function CardDetailsPage() {
           <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.dealsEnabled ? <><span>·</span><Badge variant="warning" className="tracking-status">Не участвует в выгодных</Badge></> : null}</div></div>
         </div>
         <div className="page-actions">
+          <Button variant="outline" disabled={!variantsQuery.data} onClick={() => setEditing(true)}><Pencil data-icon="inline-start" aria-hidden="true" />Изменить</Button>
           {card.url ? <Button variant="outline" asChild><a href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink data-icon="inline-start" aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a></Button> : null}
           {['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace)
             ? <Button variant="outline" onClick={() => collection.start(card.id)} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить эту карточку</Button>
@@ -131,13 +108,14 @@ export function CardDetailsPage() {
       {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
       {cardQuery.isError ? <SectionError message="Не удалось обновить карточку" retry={() => void cardQuery.refetch()} /> : null}
       <TagList tags={card.tags} />
-      <CardTagsEditor key={card.id} card={card} />
+      <CardDrawer open={editing} onClose={() => setEditing(false)} card={card} variants={variants} isPending={updateCard.isPending}
+        onSave={({ title, url, tags, primaryVariantId }) => updateCard.mutateAsync({ cardId: card.id, input: { title, url, tags, primaryVariantId } })} />
 
       <div className="price-summary">
         <div className="price-summary__primary">
           <strong>{formatPrice(card.currentPrice)}</strong>
           <AvailabilityStatus value={card.currentAvailability} />
-          <span>Обновлено: {formatDateTime(card.lastObservedAt ? card.updatedAt : null)}</span>
+          <span>Обновлено: {formatDateTime(card.lastCollectedAt ?? null)}</span>
         </div>
         <div className="price-stat"><span>Минимум</span><strong>{formatPrice(statistics?.minimumPrice)}</strong></div>
         <div className="price-stat"><span>Середина диапазона</span><strong>{formatPrice(midpoint)}</strong></div>
@@ -145,16 +123,24 @@ export function CardDetailsPage() {
         <div className="price-stat"><span>Разница</span><strong>{formatPrice(priceGap)}</strong></div>
       </div>
 
+      {variantsQuery.isError ? <SectionError message="Не удалось загрузить варианты" retry={() => void variantsQuery.refetch()} /> : variantsQuery.isLoading ? <Skeleton className="h-[160px]" aria-label="Загрузка вариантов" /> : <VariantPanel card={card} variants={variants} />}
+
       <div className="chart-heading">
         <h2>История цены</h2>
         <ToggleGroup type="single" value={String(days)} onValueChange={(value) => { if (value) setParams({ days: value }, searchOptions) }} variant="outline" spacing={0} aria-label="Период истории">
           {periods.map((period) => <ToggleGroupItem key={period} value={String(period)}>{period} дней</ToggleGroupItem>)}
         </ToggleGroup>
       </div>
-      <section aria-label="История цены">{chartQuery.isLoading ? <Skeleton className="price-chart" aria-label="Загрузка графика" /> : chartQuery.isError ? <SectionError message="Не удалось загрузить график" retry={() => void chartQuery.refetch()} /> : <PriceChart history={chart} midpoint={midpoint} />}</section>
+      <section aria-label="История цены">{chartQuery.isLoading ? <Skeleton className="price-chart" aria-label="Загрузка графика" /> : chartQuery.isError ? <SectionError message="Не удалось загрузить график" retry={() => void chartQuery.refetch()} /> : <VariantPriceChart key={card.id} history={chart} variants={variants} primaryVariantId={card.primaryVariantId} />}</section>
 
       <section className="measurements">
-        <h2>Измерения</h2>
+        <div className="variant-heading"><h2>Измерения</h2>
+          {variants.length > 1 ? <FieldGroup className="w-full sm:w-[320px]"><Field><FieldLabel htmlFor="history-variant">Вариант для измерений</FieldLabel>
+            <Select value={historyVariantId === undefined ? 'primary' : String(historyVariantId)} onValueChange={(value) => { setHistoryVariantId(value === 'primary' ? undefined : Number(value)); setParams({ days: String(days) }, searchOptions) }}>
+              <SelectTrigger id="history-variant"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="primary">Главный вариант</SelectItem>{variants.map((v) => <SelectItem key={v.id} value={String(v.id)}>{variantLabel(v)}</SelectItem>)}</SelectGroup></SelectContent>
+            </Select>
+          </Field></FieldGroup> : null}
+        </div>
         {historyQuery.isLoading ? <Skeleton className="h-[240px]" aria-label="Загрузка измерений" /> : historyQuery.isError ? <SectionError message="Не удалось загрузить измерения" retry={() => void historyQuery.refetch()} /> : <div className="table-surface">
           <Table className="history-table">
             <TableCaption className="sr-only">История измерений цены</TableCaption>

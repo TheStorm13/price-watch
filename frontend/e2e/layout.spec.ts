@@ -66,31 +66,26 @@ test('панель обновления растёт с сообщением и 
   }
 })
 
-test('поле тегов и кнопка выровнены с подсказкой и ошибкой, переключатели скруглены', async ({ page }) => {
+test('панель изменения доступна в desktop-окне, ошибки тегов не теряют черновик', async ({ page }) => {
   for (const width of [1024, 1440]) {
-    await page.setViewportSize({ width, height: 900 })
+    await page.setViewportSize({ width, height: 700 })
     await page.goto('/cards/1')
-    const input = page.getByLabel('Теги товара')
-    const save = page.getByRole('button', { name: 'Сохранить теги' })
-    const aligned = async () => {
-      const [field, button] = await Promise.all([input.boundingBox(), save.boundingBox()])
-      expect(Math.abs(field!.y + field!.height / 2 - button!.y - button!.height / 2)).toBeLessThan(1)
-    }
+    await roundedEnds(page.getByRole('radiogroup', { name: 'Период истории' }))
+    await page.getByRole('button', { name: 'Изменить', exact:true }).click()
+    const panel=page.getByRole('dialog',{name:'Изменить карточку'})
+    const input=panel.getByLabel('Теги',{exact:true})
     await expect(input).toBeVisible()
-    await aligned()
-    await roundedEnds(page.getByRole('radiogroup', { name: 'Период истории' }))
     await input.fill('раз, два, три')
-    await save.click()
-    await expect(page.getByRole('alert')).toBeVisible()
-    await aligned()
-    await page.screenshot({ path: `/tmp/price-watch-layout-tags-error-${width}.png` })
+    await panel.getByRole('button',{name:'Сохранить',exact:true}).click()
+    await expect(panel).toContainText('не больше 2')
+    await expect(input).toHaveValue('раз, два, три')
+    await page.screenshot({path:`/tmp/price-watch-edit-error-${width}.png`})
     await input.fill('кухня, подарок')
-    await save.click()
-    await expect(page.getByRole('alert')).toHaveCount(0)
-    await aligned()
-    await page.getByRole('radio', { name: '7 дней' }).click()
-    await roundedEnds(page.getByRole('radiogroup', { name: 'Период истории' }))
-    await page.screenshot({ path: `/tmp/price-watch-layout-details-${width}.png` })
+    await panel.getByRole('button',{name:'Сохранить',exact:true}).click()
+    await expect(panel).toHaveCount(0)
+    await expect(page.getByRole('button',{name:'Изменить',exact:true})).toBeFocused()
+    await page.getByRole('radio',{name:'7 дней'}).click()
+    await roundedEnds(page.getByRole('radiogroup',{name:'Период истории'}))
   }
 })
 

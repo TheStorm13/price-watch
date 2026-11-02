@@ -10,10 +10,10 @@ export function installPerformanceFixture() {
   const shape = params.get('shape') ?? 'plain'
   const now = new Date().toISOString()
   const cards: TrackedCardView[] = Array.from({ length: count }, (_, i) => ({
-    id: 10000 + i, externalId: String(10000 + i), marketplace: 'ozon', title: `Тестовый товар ${String(i).padStart(5, '0')}`,
+    id: 10000 + i, primaryVariantId: 10000 + i, externalId: String(10000 + i), marketplace: 'ozon', title: `Тестовый товар ${String(i).padStart(5, '0')}`,
     groupId: shape === 'group' ? 1 : shape === 'mixed' && i % 2 === 0 ? Math.floor(i / 10) + 1 : null,
     tags: [], url: null, imageUrl: null, dealsEnabled: true, currentPrice: '100.00', minimumPrice: '90.00',
-    averagePrice: '110.00', currentAvailability: 'in_stock', lastObservedAt: now, createdAt: now, updatedAt: now,
+    averagePrice: '110.00', currentAvailability: 'in_stock', lastObservedAt: now, lastCollectedAt: now, createdAt: now, updatedAt: now,
   }))
   const members = new Map<number, TrackedCardView[]>()
   for (const card of cards) if (card.groupId != null) {
@@ -30,6 +30,10 @@ export function installPerformanceFixture() {
     const card = cards.find(card=>card.id===id)
     if(!card) throw new Error('Карточка не найдена')
     return card
+  }
+  api.getVariants = async id => {
+    const card=await api.getCard(id)
+    return [{id,cardId:id,externalId:card.externalId,title:'Основной вариант',url:null,options:{},currentPrice:card.currentPrice,currentAvailability:card.currentAvailability,lastObservedAt:now,updatedAt:now}]
   }
   api.getChart = async () => ({points:[]})
   api.getHistory = async (id,days,page=1,pageSize=50) => ({card:await api.getCard(id),history:[],days,page,pageSize,totalCount:0,

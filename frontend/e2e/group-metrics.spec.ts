@@ -9,7 +9,8 @@ async function choose(page: Page, name: string, value: string) {
 function fixtureCard(externalId: string, marketplace: string, prices: number[], tag: string) {
   return { externalId, marketplace, title: `Fixture товар ${externalId}`, url: null, imageUrl: null,
     tags: [tag], createdAt: '2026-10-01T12:00:00Z', dealsEnabled: true,
-    history: prices.map((price, index) => ({ price: String(price), availability: 'in_stock', observedAt: `2026-10-0${index + 1}T12:00:00Z` })) }
+    primaryExternalId: marketplace==='wildberries'?`${externalId}:1`:externalId,
+    variants:[{externalId:marketplace==='wildberries'?`${externalId}:1`:externalId,url:null,history: prices.map((price, index) => ({ price: String(price), availability: 'in_stock', observedAt: `2026-10-0${index + 1}T12:00:00Z` })) }] }
 }
 async function importFixture(page: Page, document: object) {
   await page.getByLabel('Дополнительные действия').click()
@@ -31,7 +32,7 @@ test('группа фильтруется по представителю и ч�
   await expect(page).toHaveTitle('price-watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
-  await importFixture(page, { version: 2, cards: [fixtureCard('901', 'ozon', [60, 70], 'cheap'),
+  await importFixture(page, { version: 3, cards: [fixtureCard('901', 'ozon', [60, 70], 'cheap'),
     fixtureCard('902', 'wildberries', [40, 110], 'other'), fixtureCard('903', 'ozon', [60, 80], 'standalone'),
     fixtureCard('904', 'wildberries', [60, 90], 'second')], groups: [
     { name: 'Fixture A', tags: ['own'], cards: members },
@@ -85,7 +86,7 @@ test('выгодный участник даёт приоритет без по�
   await expect(page).toHaveTitle('price-watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
-  await importFixture(page, { version: 2,
+  await importFixture(page, { version: 3,
     cards: [fixtureCard('901', 'ozon', [60, 70], 'cheap'), fixtureCard('902', 'wildberries', [200, 110], 'other'),
       fixtureCard('903', 'ozon', [10, 20], 'standalone')], groups: [{ name: 'Fixture A', cards: members }] })
   await page.getByLabel('Поиск карточек').fill('Fixture')
@@ -104,7 +105,7 @@ test('изменение участия и удаление представит
   await expect(page).toHaveTitle('price-watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
-  await importFixture(page, { version: 2,
+  await importFixture(page, { version: 3,
     cards: [fixtureCard('901', 'ozon', [100, 70], 'cheap'), fixtureCard('902', 'wildberries', [200, 110], 'other')],
     groups: [{ name: 'Fixture A', cards: members }] })
   await page.getByLabel('Поиск карточек').fill('Fixture')
@@ -133,11 +134,11 @@ test('десятичные цены сортируются численно и �
   await page.goto('/cards')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   const createdAt = new Date().toISOString()
-  await importFixture(page, { version: 2, groups: [], cards: [
+  await importFixture(page, { version: 3, groups: [], cards: [
     { marketplace: 'ozon', externalId: '9901', title: 'Decimal A', url: null, dealsEnabled: true, createdAt,
-      history: [{ price: '9.90', availability: 'in_stock', observedAt: createdAt }] },
+      primaryExternalId:'9901',variants:[{externalId:'9901',url:null,history: [{ price: '9.90', availability: 'in_stock', observedAt: createdAt }]}] },
     { marketplace: 'wildberries', externalId: '9902', title: 'Decimal B', url: null, dealsEnabled: true, createdAt,
-      history: [{ price: '10.00', availability: 'in_stock', observedAt: createdAt }] },
+      primaryExternalId:'9902:1',variants:[{externalId:'9902:1',url:null,history: [{ price: '10.00', availability: 'in_stock', observedAt: createdAt }]}] },
   ] })
   await page.getByLabel('Поиск карточек').fill('Decimal')
   await choose(page, 'Сортировка', 'Сначала дешевле')

@@ -12,6 +12,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -33,7 +34,7 @@ class ProductGroupRecord(Base):
     __tablename__ = "product_groups"
     __table_args__ = (CheckConstraint("btrim(name) <> ''", name="product_groups_name_not_blank"),)
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     tags: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'::text[]"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -42,6 +43,7 @@ class ProductGroupRecord(Base):
 class MarketplaceCardRecord(Base):
     __tablename__ = "marketplace_cards"
     __table_args__ = (
+        ForeignKeyConstraint(["id", "primary_variant_id"], ["card_variants.card_id", "card_variants.id"], name="card_primary_variant_owner_fk", deferrable=True, initially="DEFERRED", use_alter=True),
         UniqueConstraint("marketplace", "external_id", name="marketplace_cards_marketplace_external_unique"),
         CheckConstraint("btrim(marketplace) <> ''", name="marketplace_cards_marketplace_not_blank"),
         CheckConstraint("btrim(external_id) <> ''", name="marketplace_cards_external_id_not_blank"),
@@ -54,7 +56,8 @@ class MarketplaceCardRecord(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    primary_variant_id: Mapped[int | None] = mapped_column(BigInteger)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     marketplace: Mapped[str] = mapped_column(Text, nullable=False)
     external_id: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str | None] = mapped_column(Text)
@@ -71,6 +74,22 @@ class MarketplaceCardRecord(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+
+class CardVariantRecord(Base):
+    __tablename__ = "card_variants"
+    __table_args__ = (
+        UniqueConstraint("card_id", "external_id", name="card_variants_identity_unique"),
+        UniqueConstraint("card_id", "id", name="card_variants_owner_unique"),
+        CheckConstraint("btrim(external_id) <> ''", name="card_variants_identity_not_blank"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    card_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("marketplace_cards.id", ondelete="CASCADE"), index=True)
+    external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    url: Mapped[str | None] = mapped_column(Text)
+    options: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class CollectionRunRecord(Base):
@@ -99,7 +118,7 @@ class CollectionRunRecord(Base):
               postgresql_where=text("retry_of_run_id is not null")),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'queued'"))
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -136,7 +155,8 @@ class CollectionRunTargetRecord(Base):
     )
     run_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("collection_runs.id", ondelete="CASCADE"), primary_key=True)
     # Keep the original target identity after a card is deleted.
-    card_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    card_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    variant_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'pending'"))
 
@@ -144,6 +164,7 @@ class CollectionRunTargetRecord(Base):
 class PriceHistoryRecord(Base):
     __tablename__ = "price_history"
     __table_args__ = (
+        ForeignKeyConstraint(["card_id", "variant_id"], ["card_variants.card_id", "card_variants.id"], name="history_variant_fk", ondelete="CASCADE"),
         CheckConstraint("price is null or price >= 0", name="price_history_price_check"),
         CheckConstraint("availability <> 'out_of_stock' or price is null",
                         name="price_history_unavailable_price_check"),
@@ -164,10 +185,11 @@ class PriceHistoryRecord(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     card_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("marketplace_cards.id", ondelete="CASCADE"), nullable=False
     )
+    variant_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     collection_run_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("collection_runs.id", ondelete="SET NULL")
     )

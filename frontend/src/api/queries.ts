@@ -7,6 +7,7 @@ export const queryKeys = {
   cardRoot: ['cards'] as const,
   card: (id: number) => ['cards', id] as const,
   history: (id: number, days: number, page: number) => ['cards', id, 'history', days, page] as const,
+  variants: (id: number) => ['cards', id, 'variants'] as const,
   chart: (id: number, days: number) => ['cards', id, 'chart', days] as const,
   run: (id: number, includeErrors = false) => ['runs', id, includeErrors] as const,
 }
@@ -45,12 +46,16 @@ export function useCard(cardId: number) {
   return useQuery({ queryKey: queryKeys.card(cardId), queryFn: () => api.getCard(cardId), enabled: Number.isFinite(cardId) })
 }
 
-export function useCardHistory(cardId: number, days: number, page = 1) {
+export function useCardHistory(cardId: number, days: number, page = 1, variantId?: number, enabled = true) {
   return useQuery({
-    queryKey: queryKeys.history(cardId, days, page),
-    queryFn: () => api.getHistory(cardId, days, page),
-    enabled: Number.isFinite(cardId),
+    queryKey: [...queryKeys.history(cardId, days, page), variantId],
+    queryFn: () => api.getHistory(cardId, days, page, 50, variantId),
+    enabled: Number.isFinite(cardId) && enabled,
   })
+}
+
+export function useCardVariants(cardId: number) {
+  return useQuery({ queryKey: queryKeys.variants(cardId), queryFn: () => api.getVariants(cardId), enabled: Number.isFinite(cardId) })
 }
 
 export function useCardChart(cardId: number, days: number) {

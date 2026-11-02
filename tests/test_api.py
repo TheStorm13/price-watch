@@ -61,12 +61,12 @@ class FakeRepository:
         )
 
     async def export_cards(self):
-        return {"version": 2, "cards": [{
+        return {"version": 3, "cards": [{
             "marketplace": "ozon", "external_id": "1604900984",
             "title": "Тестовый товар", "url": None, "tags": ["кухня"], "deals_enabled": True,
-            "created_at": NOW, "history": [{
+            "created_at": NOW, "primary_external_id": "1604900984", "variants": [{"external_id":"1604900984", "url":None, "history": [{
                 "price": "999.00", "availability": "in_stock", "observed_at": NOW,
-            }],
+            }]}],
         }], "groups": [{
             "name": "Бутылки", "tags": ["подарок"],
             "cards": [{"marketplace": "ozon", "external_id": "1604900984"}],
@@ -85,7 +85,12 @@ class FakeRepository:
             raise CardAlreadyExists("Такая карточка уже добавлена")
         self.last_added_marketplace = marketplace
         card = make_card(2, external_id)
-        return TrackedCard(**{**card.__dict__, "ref": ProductRef(marketplace, external_id), "tags": tuple(tags or [])})
+        article = external_id.split(':')[0] if marketplace in ('aliexpress', 'wildberries') else external_id
+        self.card = TrackedCard(**{**card.__dict__, "ref": ProductRef(marketplace, article), "tags": tuple(tags or [])})
+        return self.card
+
+    async def get_card(self, card_id):
+        return TrackedCardOverview(self.card, None, None, None) if self.card and self.card.id == card_id else None
 
     async def delete_card(self, card_id):
         if self.card is None or self.card.id != card_id:
@@ -217,7 +222,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         document = exported.json()
         card = document["cards"][0]
         self.assertEqual(set(card), {"marketplace", "externalId", "title", "url", "imageUrl", "tags",
-                                     "dealsEnabled", "createdAt", "history"})
+                                     "dealsEnabled", "createdAt", "primaryExternalId", "variants"})
         self.assertEqual(card["tags"], ["кухня"])
         self.assertEqual(document["groups"], [{
             "name": "Бутылки", "tags": ["подарок"],
@@ -244,7 +249,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         document = (await self.client.get("/api/cards/export")).json()
         document["version"] = 1
         self.assertEqual((await self.client.post("/api/cards/import/preview", json=document)).status_code, 422)
-        document["version"] = 2
+        document["version"] = 3
         document["cards"][0]["isActive"] = document["cards"][0].pop("dealsEnabled")
         self.assertEqual((await self.client.post("/api/cards/import/preview", json=document)).status_code, 422)
         document["cards"][0]["dealsEnabled"] = True
@@ -282,11 +287,11 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(invalid.status_code, 422)
         response = await self.client.post("/api/cards", json={"marketplace":"aliexpress", "externalId":"123456:98765432101234567"})
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json()["externalId"], "123456:98765432101234567")
+        self.assertEqual(response.json()["externalId"], "123456")
 
     async def test_import_rejects_invalid_history_before_writing(self):
         document = (await self.client.get("/api/cards/export")).json()
-        document["cards"][0]["history"][0]["price"] = "-10"
+        document["cards"][0]["variants"][0]["history"][0]["price"] = "-10"
         response = await self.client.post("/api/cards/import", json=document)
         self.assertEqual(response.status_code, 422)
 

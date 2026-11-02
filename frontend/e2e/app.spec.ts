@@ -82,7 +82,7 @@ test('массовые действия меняют участие и удал�
     const modulePath = '/src/api/mockApi.ts'
     const { mockApi } = await import(/* @vite-ignore */ modulePath)
     const exported = await mockApi.exportCards()
-    return exported.cards.find((card: { externalId: string }) => card.externalId === '1604900984')?.history.length ?? null
+    return exported.cards.find((card: { externalId: string }) => card.externalId === '1604900984')?.variants[0].history.length ?? null
   })
   const originalHistoryCount = await historyCount()
   const samsung = page.getByRole('row', { name: /Смартфон Samsung/ })
@@ -238,13 +238,15 @@ test('группа объединяет товары и сохраняет ин�
 
 test('товарный фильтр использует теги представителя, теги группы сохраняются отдельно', async ({ page }) => {
   await page.goto('/cards/1')
-  await page.getByRole('textbox', { name: 'Теги товара' }).fill('электроника, подарок')
-  await page.getByRole('button', { name: 'Сохранить теги' }).click()
+  await page.getByRole('button', { name: 'Изменить', exact:true }).click()
+  await page.getByRole('textbox', { name: 'Теги', exact:true }).fill('электроника, подарок')
+  await page.getByRole('button', { name: 'Сохранить', exact:true }).click()
   await expect(page.locator('.detail-page > .tag-list')).toContainText('подарок')
   await page.getByRole('link', { name: 'К карточкам' }).click()
   await page.getByRole('row', { name: /Наушники Apple/ }).click()
-  await page.getByRole('textbox', { name: 'Теги товара' }).fill('аудио')
-  await page.getByRole('button', { name: 'Сохранить теги' }).click()
+  await page.getByRole('button', { name: 'Изменить', exact:true }).click()
+  await page.getByRole('textbox', { name: 'Теги', exact:true }).fill('аудио')
+  await page.getByRole('button', { name: 'Сохранить', exact:true }).click()
   await expect(page.locator('.detail-page > .tag-list')).toContainText('аудио')
   await page.getByRole('link', { name: 'К карточкам' }).click()
   await page.getByRole('button', { name: 'Создать группу' }).click()
@@ -515,7 +517,7 @@ test('плитки одинаковы при разных фото, а мета�
   const portrait = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="400"><rect width="200" height="400" fill="blue"/></svg>'
   const landscape = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="green"/></svg>'
   const imported = {
-    version: 2,
+    version: 3,
     cards: [
       {
         marketplace: 'ozon', externalId: 'portrait-test',
@@ -532,12 +534,15 @@ test('плитки одинаковы при разных фото, а мета�
       },
     ],
   }
+  const transfer = {...imported, cards: imported.cards.map(({history,...card}) => ({...card,primaryExternalId:card.externalId,variants:[{externalId:card.externalId,url:card.url,history}]}))}
   const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await dialog.locator('input[type="file"]').setInputFiles({
-    name: 'portrait.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(imported)),
+    name: 'portrait.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(transfer)),
   })
   await expect(dialog).toContainText('Добавлено карточек: 2')
   await dialog.getByRole('button', { name: 'Импортировать' }).click()
+  // Keep the photo/layout check independent of the default reordering after a toggle.
+  await chooseOption(page.getByRole('combobox', { name: 'Сортировка' }), 'Сначала дешевле')
   const excludedRow = page.getByRole('row', { name: /Очень длинное название вертикального товара/ })
   const ordinaryRow = page.getByRole('row', { name: /Горизонтальное фото/ })
   for (const width of [1024, 1536]) {
@@ -559,11 +564,21 @@ test('плитки одинаковы при разных фото, а мета�
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
   const portraitTile = grid.locator('.cards-grid__item').filter({ hasText: 'Очень длинное название вертикального товара' })
   const landscapeTile = grid.locator('.cards-grid__item').filter({ hasText: 'Горизонтальное фото' })
-  await expect(grid.locator('.cards-grid__item')).toHaveCount(7)
+  async function waitForGridLayout() {
+    const columns = await grid.evaluate(element => Math.max(1, Math.floor((element.clientWidth + 12) / 232)))
+    await expect(grid.locator('.cards-grid')).toHaveCount(Math.ceil(7 / columns))
+    await expect.poll(() => grid.locator('.cards-grid').first().evaluate(element =>
+      getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(columns)
+    await expect(grid.locator('.cards-grid__item')).toHaveCount(7)
+    await expect(portraitTile).toBeVisible()
+  }
   for (const width of [1024, 1536]) {
     await page.setViewportSize({ width, height: 900 })
-    const tiles = await grid.locator('.cards-grid__item').all()
-    const tileBoxes = await Promise.all(tiles.map((tile) => tile.boundingBox()))
+    await waitForGridLayout()
+    const tileBoxes = await grid.locator('.cards-grid__item').evaluateAll(tiles => tiles.map(tile => {
+      const {width,height} = tile.getBoundingClientRect()
+      return {width,height}
+    }))
     const widths = tileBoxes.map((box) => box?.width ?? 0)
     const heights = tileBoxes.map((box) => box?.height ?? 0)
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1)
@@ -618,16 +633,17 @@ test('плитки одинаковы при разных фото, а мета�
   })
   for (const width of [1536, 1024]) {
     await page.setViewportSize({ width, height: 900 })
+    await waitForGridLayout()
     const beforeToggle = await layout()
     await portraitTile.getByRole('button', { name: /Действия с карточкой/ }).click()
     await page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' }).click()
-    await expect(portraitTile.locator('.tracking-status')).toHaveCount(0)
-    await expect(page.getByRole('menu')).toBeHidden()
+    await expect(portraitTile).not.toContainText('Не участвует в выгодных')
+    await expect(page.getByRole('menu')).toHaveCount(0)
     expect(await layout()).toEqual(beforeToggle)
     await portraitTile.getByRole('button', { name: /Действия с карточкой/ }).click()
     await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
     await expect(portraitTile.locator('.tracking-status')).toHaveText('Не участвует в выгодных')
-    await expect(page.getByRole('menu')).toBeHidden()
+    await expect(page.getByRole('menu')).toHaveCount(0)
     expect(await layout()).toEqual(beforeToggle)
   }
   await page.screenshot({ path: '/tmp/price-watch-grid-uniform.png', fullPage: true })
@@ -642,16 +658,16 @@ test('экспорт и импорт объединяют карточки и и
   const download = await downloadPromise
   const exportData = JSON.parse(await readFile(await download.path(), 'utf8'))
   expect(exportData.cards).toHaveLength(5)
-  expect(exportData.cards[0].history[0]).toEqual(expect.objectContaining({
+  expect(exportData.cards[0].variants[0].history[0]).toEqual(expect.objectContaining({
     price: expect.any(String), availability: expect.any(String), observedAt: expect.any(String),
   }))
-  expect(exportData.version).toBe(2)
+  expect(exportData.version).toBe(3)
   expect(exportData.cards[0]).not.toHaveProperty('isActive')
   expect(exportData.cards[0]).not.toHaveProperty('isArchived')
   exportData.cards.push({
     marketplace: 'ozon', externalId: '9999911111', title: 'Тестовый импорт',
     url: null, dealsEnabled: false, createdAt: new Date().toISOString(),
-    history: [{ price: '123.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
+    primaryExternalId:'9999911111',variants:[{externalId:'9999911111',url:null,history: [{ price: '123.00', availability: 'in_stock', observedAt: new Date().toISOString() }]}],
   })
   await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
@@ -767,7 +783,7 @@ test('детали карточки показывают середину диа
   await expect(page.getByText('77 240 ₽', { exact: true })).toBeVisible()
   await expect(page.getByText('Разница', { exact: true })).toBeVisible()
   await expect(page.getByText('8 500 ₽', { exact: true })).toBeVisible()
-  await expect(page.getByLabel('График истории цены')).toBeVisible()
+  await expect(page.getByLabel('График цен всех SKU')).toBeVisible()
   await page.screenshot({ path: '/tmp/price-watch-chart.png' })
 })
 
@@ -785,7 +801,7 @@ test('ошибки сбора доступны без страницы запу�
 
 test('одиночное измерение остаётся точкой на графике с масштабом вокруг цены', async ({ page }) => {
   await page.goto('/cards/2')
-  const chart = page.getByLabel('График истории цены')
+  const chart = page.getByLabel('График цен всех SKU')
   await expect(chart).toBeVisible()
   await expect(chart.locator('.recharts-line-dot')).toHaveCount(1)
   await expect(chart.getByText('0', { exact: true })).toHaveCount(0)
