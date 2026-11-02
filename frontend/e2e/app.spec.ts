@@ -19,7 +19,6 @@ test('выбор в списке сохраняется при поиске и �
   for (const width of [1024, 1536]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-    await page.screenshot({ path: `/tmp/price-watch-bulk-list-${width}.png`, fullPage: true })
   }
   await page.getByLabel('Поиск карточек').fill('Dyson')
   await expect(bulk).toContainText('Выбрано карточек: 2')
@@ -187,7 +186,6 @@ test('группа объединяет товары и сохраняет ин�
   await expect(page.getByRole('row', { name: /Наушники Apple AirPods Pro 2/ })).toHaveCount(0)
   await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
   await expect(page.getByRole('row', { name: /Наушники Apple AirPods Pro 2/ })).toBeVisible()
-  await page.screenshot({ path: '/tmp/price-watch-groups-list.png' })
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
   await group.locator('.product-group__toggle').click()
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toHaveCount(0)
@@ -206,7 +204,6 @@ test('группа объединяет товары и сохраняет ин�
     expect(tileWidths.grouped).toBeGreaterThan(0)
     expect(Math.abs(tileWidths.grouped - tileWidths.standalone)).toBeLessThan(16)
   }
-  await page.screenshot({ path: '/tmp/price-watch-groups-grid.png' })
   await page.getByRole('button', { name: 'Изменить группу Бутылка' }).click()
   const edit = page.getByRole('dialog', { name: 'Изменить группу' })
   await edit.getByPlaceholder('Например, бутылка').fill('Техника')
@@ -276,14 +273,13 @@ test('основной сценарий интерфейса в браузерн
   await page.setViewportSize({ width: 1536, height: 1024 })
   await page.goto('/cards')
   await expect(page).toHaveTitle('price-watch')
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Карточки' })).toBeVisible()
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
-  await page.screenshot({ path: '/tmp/price-watch-cards.png' })
 
   await page.getByRole('button', { name: 'Добавить карточку' }).click()
   await expect(page.getByRole('dialog', { name: 'Добавить карточку' })).toBeVisible()
   await page.waitForTimeout(250)
-  await page.screenshot({ path: '/tmp/price-watch-drawer.png' })
   await page.getByRole('button', { name: 'Закрыть', exact: true }).click()
 
   await page.getByLabel('Поиск карточек').fill('Dyson')
@@ -304,7 +300,6 @@ test('основной сценарий интерфейса в браузерн
   await expect(page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Удалить карточку' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await page.screenshot({ path: '/tmp/price-watch-detail.png' })
   expect(errors).toEqual([])
 })
 
@@ -385,7 +380,6 @@ test('фильтры не сдвигаются при сбросе, а сетк�
     expect(reset.y + reset.height / 2).toBeCloseTo(toggle.y + toggle.height / 2, 0)
     await expect(status).toHaveText('Не участвует в выгодных')
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
-    await page.screenshot({ path: `/tmp/price-watch-reset-${width}.png` })
     await resetButton.click()
     await expect(resetButton).toHaveCount(0)
     const cleared = await Promise.all(controls.map((control) => control.boundingBox()))
@@ -410,7 +404,6 @@ test('фильтры не сдвигаются при сбросе, а сетк�
   })
   expect(width.gridRight - width.tileRight).toBeLessThan(2)
   await expect(grid.locator('.cards-grid__item').filter({ hasText: 'Наушники Apple AirPods Pro 2' })).toContainText('Сейчас не выгодно')
-  await page.screenshot({ path: '/tmp/price-watch-grid-filled.png' })
   await chooseOption(status, 'Не участвует в выгодных')
   await expect(grid.locator('.virtual-grid-row:not([data-group-member]) .cards-grid__item')).toHaveCount(1)
   await page.getByRole('button', { name: 'Сбросить' }).click()
@@ -435,7 +428,6 @@ test('заголовки таблицы переключают единстве�
   await expect(rows.nth(1)).toContainText('Умные часы Xiaomi Watch S3')
   await expect(page).toHaveURL(/sort=price-asc/)
   await expect(sort).toHaveText('Сначала дешевле')
-  await page.screenshot({ path: '/tmp/price-watch-sort-ascending.png' })
 
   await price.getByRole('button').click()
   await expect(price).toHaveAttribute('aria-sort', 'descending')
@@ -488,7 +480,6 @@ test('карточки переключаются между списком и �
   const tileBox = await tile.boundingBox()
   expect(imageBox?.width).toBeCloseTo((tileBox?.width ?? 0) - 2, 0)
   expect(imageBox?.height).toBe(190)
-  await page.screenshot({ path: '/tmp/price-watch-grid.png' })
   await grid.locator('.cards-grid__item').first().getByRole('button', { name: /Действия с карточкой/ }).click()
   await expect(page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' })).toBeVisible()
   await page.keyboard.press('Escape')
@@ -496,7 +487,6 @@ test('карточки переключаются между списком и �
   await page.setViewportSize({ width: 1536, height: 900 })
   const wideColumns = await grid.evaluate((element) => getComputedStyle(element.querySelector('.cards-grid')!).gridTemplateColumns.split(' ').length)
   expect(wideColumns).toBeGreaterThan(compactColumns)
-  await page.screenshot({ path: '/tmp/price-watch-grid-wide.png' })
   await page.reload()
   await expect(grid.locator('.cards-grid__item')).toHaveCount(5)
   await grid.getByRole('link', { name: /Смартфон Samsung Galaxy S24/ }).click()
@@ -558,7 +548,6 @@ test('плитки одинаковы при разных фото, а мета�
     expect((rowBoxes[2]?.x ?? 0) + (rowBoxes[2]?.width ?? 0)).toBeLessThanOrEqual((firstCell?.x ?? 0) + (firstCell?.width ?? 0))
   }
   await excludedRow.scrollIntoViewIfNeeded()
-  await page.screenshot({ path: '/tmp/price-watch-list-uniform.png', fullPage: true })
 
   await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
@@ -646,7 +635,6 @@ test('плитки одинаковы при разных фото, а мета�
     await expect(page.getByRole('menu')).toHaveCount(0)
     expect(await layout()).toEqual(beforeToggle)
   }
-  await page.screenshot({ path: '/tmp/price-watch-grid-uniform.png', fullPage: true })
 })
 
 test('экспорт и импорт объединяют карточки и историю', async ({ page }) => {
@@ -677,11 +665,9 @@ test('экспорт и импорт объединяют карточки и и
     buffer: Buffer.from(JSON.stringify(exportData)),
   })
   await expect(dialog).toContainText('Добавлено карточек: 1, объединено: 5')
-  await page.screenshot({ path: '/tmp/price-watch-import-preview.png' })
   await dialog.getByRole('button', { name: 'Импортировать' }).click()
   await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toBeVisible()
   await expect(page.getByRole('row', { name: /Тестовый импорт/ })).toContainText('Не участвует в выгодных')
-  await page.screenshot({ path: '/tmp/price-watch-imported.png' })
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
 })
 
@@ -696,7 +682,6 @@ test('меню карточки управляет показом в выгод�
 
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await expect(page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' })).toBeVisible()
-  await page.screenshot({ path: '/tmp/price-watch-card-actions.png' })
   await page.getByRole('menuitem', { name: 'Учитывать в выгодных предложениях' }).click()
   await expect(row.getByText('Не участвует в выгодных')).toBeHidden()
 })
@@ -756,7 +741,6 @@ test('удаление карточки требует подтверждени�
   await page.getByRole('menuitem', { name: 'Удалить карточку' }).click()
   const dialog = page.getByRole('alertdialog', { name: 'Удалить карточку?' })
   await expect(dialog).toContainText('вся история её цен будут удалены')
-  await page.screenshot({ path: '/tmp/price-watch-delete-confirmation.png' })
   await dialog.getByRole('button', { name: 'Отмена' }).click()
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
@@ -773,7 +757,7 @@ test('запуск доходит до проверки и продолжает�
   await expect(page.getByText('Требуется проверка в Chrome')).toBeVisible({ timeout: 8_000 })
   await page.getByRole('button', { name: 'Проверка пройдена' }).click()
   await expect(page.getByText('Цены обновлены')).toBeVisible({ timeout: 8_000 })
-  await expect(page.getByRole('status').filter({ hasText: 'Найдено выгодных предложений: 1' })).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByText('Найдено выгодных предложений:', { exact: false })).toHaveCount(0)
   await expect(page.getByText('Цены обновлены')).toBeHidden({ timeout: 3_000 })
 })
 
@@ -784,7 +768,6 @@ test('детали карточки показывают середину диа
   await expect(page.getByText('Разница', { exact: true })).toBeVisible()
   await expect(page.getByText('8 500 ₽', { exact: true })).toBeVisible()
   await expect(page.getByLabel('График цен всех SKU')).toBeVisible()
-  await page.screenshot({ path: '/tmp/price-watch-chart.png' })
 })
 
 test('ошибки сбора доступны без страницы запусков', async ({ page }) => {
@@ -796,7 +779,6 @@ test('ошибки сбора доступны без страницы запу�
   await expect(panel.getByText('Не удалось получить страницу товара', { exact: true })).toBeVisible()
   await panel.getByText('Технические подробности').click()
   await expect(panel.getByText('MarketplaceUnavailable: Не удалось получить страницу товара')).toBeVisible()
-  await page.screenshot({ path: '/tmp/price-watch-collection-error.png' })
 })
 
 test('одиночное измерение остаётся точкой на графике с масштабом вокруг цены', async ({ page }) => {
@@ -832,7 +814,6 @@ test('фильтр предложений показывает цену, мин�
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toContainText('77 878,89 ₽')
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ }).locator('td').nth(4)).toContainText('72 990 ₽')
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ }).locator('td').nth(6)).toContainText('4 888,89 ₽')
-  await page.screenshot({ path: '/tmp/price-watch-deals-filter.png' })
   await page.getByRole('radio', { name: 'Сетка' }).click()
   await expect(page.locator('.cards-grid__item')).toHaveCount(1)
   await expect(page.locator('.cards-grid__item')).toContainText(['77 878,89 ₽'])
@@ -943,7 +924,6 @@ test('выпадающие фильтры оформлены в общей те�
       const bounds = await popup.boundingBox()
       expect(bounds!.x).toBeGreaterThanOrEqual(0)
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
-      if (name === 'Состояние') await page.screenshot({ path: `/tmp/price-watch-select-state-${width}.png` })
       await page.keyboard.press('Escape')
       await expect(popup).toBeHidden()
       await expect(trigger).toBeFocused()

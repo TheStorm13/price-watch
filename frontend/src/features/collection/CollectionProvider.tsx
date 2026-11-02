@@ -2,9 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { api, isDesktopMode } from '../../api/client'
-import { catalogOptions, queryKeys, useRun } from '../../api/queries'
+import { queryKeys, useRun } from '../../api/queries'
 import type { CollectionRun } from '../../types/domain'
-import { DealNotifications } from './dealNotifications'
 
 interface CollectionContextValue {
   run: CollectionRun | null
@@ -18,8 +17,6 @@ interface CollectionContextValue {
   isRetrying: boolean
   retryError: string | null
   dismiss: () => void
-  dealNotice: number | null
-  dismissDealNotice: () => void
 }
 
 type CollectionCommands = Pick<CollectionContextValue, 'start' | 'isStarting' | 'startError'>
@@ -36,7 +33,6 @@ function initialRunId() {
 export function CollectionProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient()
   const [runId, setRunId] = useState<number | null>(initialRunId)
-  const [dealNotice, setDealNotice] = useState<number | null>(null)
   const seenLatestRun = useRef<number | null>(null)
   const runQuery = useRun(runId)
   const recentRuns = useQuery({ queryKey: ['recent-runs'], queryFn: api.listRuns, refetchInterval: 5_000 })
@@ -94,24 +90,12 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const run = runQuery.data ?? null
   const isTerminal = run ? ['completed', 'completed_with_errors', 'failed'].includes(run.status) : false
 
-  const notifications = useMemo(() => new DealNotifications(window.localStorage, async () => {
-    // A pre-terminal request cannot acknowledge this run's notification work.
-    await client.cancelQueries({ queryKey: queryKeys.catalog })
-    return client.fetchQuery({ ...catalogOptions, staleTime: 0, retry: false })
-  }, setDealNotice), [client])
-
-  useEffect(() => {
-    notifications.start()
-    return () => notifications.stop()
-  }, [notifications])
-
   useEffect(() => {
     if (!isTerminal || !run) return
     void client.invalidateQueries({ queryKey: queryKeys.cardRoot })
     void client.invalidateQueries({ queryKey: ['recent-runs'] })
-    if (run.status === 'failed') void client.invalidateQueries({ queryKey: queryKeys.catalog })
-    else notifications.enqueue(run.id)
-  }, [client, isTerminal, run?.id, run?.status, notifications])
+    void client.invalidateQueries({ queryKey: queryKeys.catalog })
+  }, [client, isTerminal, run?.id, run?.status])
 
   const dismiss = useCallback(() => {
     if (runId !== null) seenLatestRun.current = Math.max(seenLatestRun.current ?? 0, runId)
@@ -131,15 +115,14 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const start = useCallback((cardId?: number) => startRun(cardId), [startRun])
   const resume = useCallback(() => { if (runId !== null && !isContinuing) continueRun(runId) }, [runId, isContinuing, continueRun])
   const retry = useCallback(() => { if (runId !== null) retryRun(runId) }, [runId, retryRun])
-  const dismissNotice = useCallback(() => setDealNotice(null), [])
   const commands = useMemo(() => ({ start, isStarting, startError: startReason?.message ?? null }), [start, isStarting, startReason])
 
   const value = useMemo<CollectionContextValue>(() => ({
     ...commands, run, continueRun: resume, isContinuing: isContinuing && continuingId === runId,
     continueError: continuingId === runId ? continueReason?.message ?? null : null,
     retryErrors: retry, isRetrying, retryError: retryingId === runId ? retryReason?.message ?? null : null,
-    dismiss, dealNotice, dismissDealNotice: dismissNotice,
-  }), [commands, run, resume, isContinuing, continuingId, runId, continueReason, retry, isRetrying, retryingId, retryReason, dismiss, dealNotice, dismissNotice])
+    dismiss,
+  }), [commands, run, resume, isContinuing, continuingId, runId, continueReason, retry, isRetrying, retryingId, retryReason, dismiss])
 
   return <CollectionCommandsContext.Provider value={commands}><CollectionContext.Provider value={value}>{children}</CollectionContext.Provider></CollectionCommandsContext.Provider>
 }

@@ -63,7 +63,6 @@ test('группа фильтруется по представителю и ч�
   await expect(page.locator('.cards-table__group')).toHaveCount(1)
   await expect(page.locator('.cards-table__nested')).toHaveCount(2) // complete membership
   await choose(page, 'Тег', 'Все теги')
-  await page.screenshot({ path: '/tmp/price-watch-group-metrics-list.png' })
   await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
   await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item')).toHaveCount(3)
@@ -76,7 +75,6 @@ test('группа фильтруется по представителю и ч�
   for (const width of [1024, 1536]) {
     await page.setViewportSize({ width, height: 1000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-    await page.screenshot({ path: `/tmp/price-watch-group-metrics-grid-${width}.png` })
   }
   expect(errors).toEqual([])
 })
@@ -152,11 +150,9 @@ test('десятичные цены сортируются численно и �
   await expect(tiles.nth(0)).toContainText('Decimal A')
   await expect(tiles.nth(0)).toContainText('9,90 ₽')
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
-  await page.screenshot({ path: '/tmp/price-watch-model-decimal-grid.png', fullPage: true })
   await tiles.nth(0).getByRole('link').click()
   await expect(page.getByRole('heading', { name: 'Decimal A', exact: true })).toBeVisible()
   await page.locator('.recharts-line-dots .recharts-dot').first().hover()
   await expect(page.locator('.recharts-tooltip-wrapper')).toContainText('9,90 ₽')
-  await page.screenshot({ path: '/tmp/price-watch-model-decimal-chart.png', fullPage: true })
   expect(errors).toEqual([])
 })

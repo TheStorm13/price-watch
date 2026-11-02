@@ -4,15 +4,14 @@ import { afterEach, expect, it, vi } from 'vitest'
 import type { CollectionRun, CatalogSnapshot } from '../../types/domain'
 import { CollectionProvider, useCollection, useCollectionCommands } from './CollectionProvider'
 import { api } from '../../api/client'
-import { queryKeys } from '../../api/queries'
-import { NOTIFICATIONS_KEY } from './dealNotifications'
+import { queryKeys, useCatalog } from '../../api/queries'
 
 vi.mock('../../api/client', () => ({ isDesktopMode: false, api: {
   getCatalog: vi.fn(), getRun: vi.fn(), listRuns: vi.fn(), startRun: vi.fn(), retryRun: vi.fn(), continueRun: vi.fn(),
 } }))
 function Observer() {
   const state = useCollection()
-  return <><span data-testid="run">{state.run?.id ?? 'closed'}</span><span data-testid="notice">{state.dealNotice ?? 'none'}</span></>
+  return <span data-testid="run">{state.run?.id ?? 'closed'}</span>
 }
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.resetAllMocks(); localStorage.clear() })
 it('does not render command consumers for thirty progress updates', async () => {
@@ -36,33 +35,58 @@ it('does not render command consumers for thirty progress updates', async () => 
   expect(renders).toBe(before)
   cleanup();client.clear()
 })
-it('loads fresh catalog after terminal state and retries after panel dismissal', async () => {
+it.each(['completed', 'completed_with_errors', 'failed'] as const)(
+  'refreshes an active catalog after %s, independently of panel dismissal', async (status) => {
+    vi.useFakeTimers()
+    localStorage.setItem('price-watch-active-run', '99')
+    const run: CollectionRun = { id: 99, status: 'running', totalCount: 1, successCount: 0, failureCount: 0,
+      current: null, challenge: null, startedAt: new Date().toISOString(), finishedAt: null,
+      retryableCount: 0, diagnosticsStatus: 'complete', retryScopeIncomplete: false }
+    vi.mocked(api.getRun).mockResolvedValue(run)
+    vi.mocked(api.listRuns).mockResolvedValue([])
+    let finishCatalog!: (catalog: CatalogSnapshot) => void
+    vi.mocked(api.getCatalog).mockImplementation(() => new Promise((resolve) => { finishCatalog = resolve }))
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 15_000 } } })
+    const previousUpdate = Date.now()
+    client.setQueryData(queryKeys.catalog, { cards: [], groups: [], deals: [] })
+    function Catalog() {
+      const { isFetching } = useCatalog()
+      return <span data-testid="catalog">{isFetching ? 'loading' : 'ready'}</span>
+    }
+    render(<QueryClientProvider client={client}><CollectionProvider><Observer /><Catalog /></CollectionProvider></QueryClientProvider>)
+    await act(async () => { await vi.advanceTimersByTimeAsync(20) })
+    expect(api.getCatalog).not.toHaveBeenCalled()
+    await act(async () => {
+      client.setQueryData(queryKeys.run(99), { ...run, status, finishedAt: new Date().toISOString() })
+      await vi.advanceTimersByTimeAsync(20)
+    })
+    expect(api.getCatalog).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('catalog')).toHaveTextContent('loading')
+    if (status === 'completed') {
+      await act(async () => { await vi.advanceTimersByTimeAsync(2_100) })
+      expect(screen.getByTestId('run')).toHaveTextContent('closed')
+    }
+    const fresh: CatalogSnapshot = { cards: [], groups: [], deals: [] }
+    await act(async () => { finishCatalog(fresh); await vi.advanceTimersByTimeAsync(20) })
+    expect(screen.getByTestId('catalog')).toHaveTextContent('ready')
+    expect(client.getQueryData(queryKeys.catalog)).toEqual(fresh)
+    expect(client.getQueryState(queryKeys.catalog)!.dataUpdatedAt).toBeGreaterThan(previousUpdate)
+    expect(api.getCatalog).toHaveBeenCalledTimes(1)
+    cleanup(); client.clear()
+  },
+)
+
+it('ignores saved notification queues and does not fetch an inactive catalog for notifications', async () => {
   vi.useFakeTimers()
-  localStorage.setItem('price-watch-active-run', '99')
-  const run: CollectionRun = { id: 99, status: 'completed', totalCount: 1, successCount: 1, failureCount: 0,
-    current: null, challenge: null, startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
-    retryableCount: 0, diagnosticsStatus: 'complete', retryScopeIncomplete: false }
-  const catalog: CatalogSnapshot = { cards: [], groups: [], deals: [{
-    card: { id: 1, marketplace: 'ozon', externalId: '1', title: 'Item', url: null, imageUrl: null,
-      tags: [], dealsEnabled: true, currentPrice: "80.00", currentAvailability: 'in_stock',
-      minimumPrice: "80.00", averagePrice: "100.00", lastObservedAt: '2026-10-22', createdAt: '2026-10-01', updatedAt: '2026-10-22' },
-    averagePrice: "100.00", savings: "20.00", baselineDays: 1, lastCollectionRunId: 99 }] }
-  vi.mocked(api.getRun).mockResolvedValue(run)
-  vi.mocked(api.listRuns).mockResolvedValue([run])
-  vi.mocked(api.getCatalog).mockRejectedValueOnce(new Error('offline')).mockRejectedValueOnce(new Error('offline')).mockResolvedValue(catalog)
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 15_000 } } })
-  // This cached snapshot is fresh by staleTime but predates terminal observation.
-  client.setQueryData(queryKeys.catalog, { cards: [], groups: [], deals: [] })
+  localStorage.setItem('price-watch-deal-notifications', JSON.stringify({ version: 2, pending: [98], processed: 0, prices: {} }))
+  localStorage.setItem('price-watch-notified-run', '97')
+  localStorage.setItem('price-watch-notified-prices', '{}')
+  vi.mocked(api.listRuns).mockResolvedValue([])
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(<QueryClientProvider client={client}><CollectionProvider><Observer /></CollectionProvider></QueryClientProvider>)
-  for (let i = 0; i < 8; i++) await act(async () => { await vi.advanceTimersByTimeAsync(10) })
-  expect(api.getCatalog).toHaveBeenCalledTimes(1)
-  expect(JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY)!)).toMatchObject({ pending: [99], processed: 0 })
-  await act(async () => { await vi.advanceTimersByTimeAsync(2_100) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(35_000) })
+  expect(api.getCatalog).not.toHaveBeenCalled()
   expect(screen.getByTestId('run')).toHaveTextContent('closed')
-  expect(screen.getByTestId('notice')).toHaveTextContent('none')
-  await act(async () => { await vi.advanceTimersByTimeAsync(1_100) })
-  expect(screen.getByTestId('notice')).toHaveTextContent('1')
-  expect(api.getCatalog).toHaveBeenCalledTimes(3)
   cleanup(); client.clear()
 })
 

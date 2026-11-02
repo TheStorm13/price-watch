@@ -14,11 +14,9 @@ async function panelFixture(page: Page) {
     const response = await route.fetch()
     await route.fulfill({ response, body: await response.text() + `
 const layoutMode = new URLSearchParams(location.search).get('layout') || 'running';
-const layoutRun = { id:999, retryableCount:layoutMode==='errors'?4:0, retryScopeIncomplete:false, status:layoutMode.startsWith('waiting')?'waiting_for_user':layoutMode==='errors'?'completed_with_errors':layoutMode==='notice'?'completed':'running', totalCount:5, successCount:layoutMode==='notice'?5:1, failureCount:layoutMode==='errors'?4:0, current:{cardId:1,marketplace:'ozon',externalId:'1604900984'}, startedAt:new Date().toISOString(), finishedAt:layoutMode==='errors'||layoutMode==='notice'?new Date().toISOString():null, challenge:layoutMode.startsWith('waiting')?{type:'browser_verification',message:layoutMode==='waiting-long'?'Завершите проверку в открывшемся Chrome. '.repeat(30):'Завершите проверку в Chrome'}:null };
+const layoutRun = { id:999, retryableCount:layoutMode==='errors'?4:0, retryScopeIncomplete:false, status:layoutMode.startsWith('waiting')?'waiting_for_user':layoutMode==='errors'?'completed_with_errors':layoutMode==='completed'?'completed':'running', totalCount:5, successCount:layoutMode==='completed'?5:1, failureCount:layoutMode==='errors'?4:0, current:{cardId:1,marketplace:'ozon',externalId:'1604900984'}, startedAt:new Date().toISOString(), finishedAt:layoutMode==='errors'||layoutMode==='completed'?new Date().toISOString():null, challenge:layoutMode.startsWith('waiting')?{type:'browser_verification',message:layoutMode==='waiting-long'?'Завершите проверку в открывшемся Chrome. '.repeat(30):'Завершите проверку в Chrome'}:null };
 mockApi.getRun = async (_id, includeErrors) => ({...layoutRun,errors:includeErrors?Array.from({length:8},(_,i)=>({cardId:i+1,marketplace:'ozon',externalId:String(i+1),message:'Не удалось получить страницу товара. '.repeat(8),traceback:'Ошибка сбора\\n'.repeat(25)})):null});
 mockApi.listRuns = async () => [];
-const originalCatalog = mockApi.getCatalog.bind(mockApi);
-if(layoutMode==='notice') mockApi.getCatalog=async()=>{const snapshot=await originalCatalog();return {...snapshot,deals:snapshot.cards.map(card=>({card:{...card,currentPrice:'100.00'},savings:'50',averagePrice:'150',baselineDays:1,lastCollectionRunId:999}))}};
 ` })
   })
 }
@@ -43,6 +41,10 @@ test('панель обновления растёт с сообщением и 
       expect(box.y + box.height).toBeLessThanOrEqual(width === 1024 ? 700 : 900)
       const progress = panel.getByLabel('Прогресс обновления цен')
       await expect(progress).toBeVisible()
+      const footer = panel.locator('[data-slot=card-footer]')
+      await expect(footer).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      await expect(footer).toHaveCSS('border-top-width', '0px')
+      await expect(footer).toHaveCSS('box-shadow', 'none')
       const progressBox = (await progress.boundingBox())!
       expect(progressBox.y + progressBox.height).toBeLessThan(box.y + box.height)
       if (mode.startsWith('waiting')) {
@@ -58,7 +60,6 @@ test('панель обновления растёт с сообщением и 
         await panel.getByRole('button', { name: 'Повторить ошибки' }).scrollIntoViewIfNeeded()
         await expect(panel.getByRole('button', { name: 'Повторить ошибки' })).toBeInViewport()
       }
-      await page.screenshot({ path: `/tmp/price-watch-layout-panel-${mode}-${width}.png` })
     }
     expect(heights[1]).toBeGreaterThan(heights[0])
     expect(heights[2]).toBeGreaterThan(heights[1])
@@ -79,7 +80,6 @@ test('панель изменения доступна в desktop-окне, ош
     await panel.getByRole('button',{name:'Сохранить',exact:true}).click()
     await expect(panel).toContainText('не больше 2')
     await expect(input).toHaveValue('раз, два, три')
-    await page.screenshot({path:`/tmp/price-watch-edit-error-${width}.png`})
     await input.fill('кухня, подарок')
     await panel.getByRole('button',{name:'Сохранить',exact:true}).click()
     await expect(panel).toHaveCount(0)
@@ -89,26 +89,19 @@ test('панель изменения доступна в desktop-окне, ош
   }
 })
 
-test('уведомление о пяти предложениях разделяет текст и действия и открывает фильтр', async ({ page }) => {
+test('завершённый сбор со старой очередью не показывает уведомление', async ({ page }) => {
   await panelFixture(page)
-  for (const width of [1024, 1440]) {
-    await page.setViewportSize({ width, height: 900 })
-    await page.goto('/cards?layout=notice')
-    const notice = page.getByRole('status').filter({ hasText: 'Найдено выгодных предложений: 5' })
-    await expect(notice).toBeVisible()
-    const message = (await notice.getByText('Найдено выгодных предложений: 5', { exact: true }).boundingBox())!
-    const link = (await notice.getByRole('link', { name: 'Посмотреть' }).boundingBox())!
-    expect(link.x).toBeGreaterThanOrEqual(message.x + message.width + 12)
-    await expect(notice.getByRole('button', { name: 'Закрыть уведомление' })).toBeVisible()
-    await page.screenshot({ path: `/tmp/price-watch-layout-notice-${width}.png` })
-    await notice.getByRole('link', { name: 'Посмотреть' }).click()
-    await expect(page).toHaveURL(/deals=1/)
-    await expect(notice).toBeHidden()
-    await page.evaluate(() => localStorage.removeItem('price-watch-deal-notifications'))
-  }
-  await page.goto('/cards?layout=notice')
-  await page.getByRole('button', { name: 'Закрыть уведомление' }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Найдено выгодных предложений:' })).toBeHidden()
+  await page.addInitScript(() => {
+    localStorage.setItem('price-watch-deal-notifications', JSON.stringify({ version: 2, pending: [999], processed: 0, prices: {} }))
+    localStorage.setItem('price-watch-notified-run', '998')
+    localStorage.setItem('price-watch-notified-prices', '{}')
+  })
+  await page.goto('/cards?layout=completed')
+  await expect(page.getByText('Цены обновлены')).toBeVisible()
+  await expect(page.locator('.cards-table__product')).toHaveCount(5)
+  await expect(page.getByText('Цены обновлены')).toBeHidden({ timeout: 4_000 })
+  await expect(page.getByText('Найдено выгодных предложений:', { exact: false })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Закрыть уведомление' })).toHaveCount(0)
 })
 
 test('цены и наличие читаемы, а переключатель каталога сохраняет скругления', async ({ page }) => {

@@ -68,7 +68,7 @@ export function ActiveCollectionPanel() {
             : run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
         </p>
       )}
-      </CardContent><CardFooter className="shrink-0 px-0 pt-3 pb-0"><div className="collection-panel__progress-row">
+      </CardContent><CardFooter className="shrink-0 border-t-0 bg-transparent px-0 pt-3 pb-0"><div className="collection-panel__progress-row">
         <Progress value={progress} aria-label="Прогресс обновления цен" className="flex-1" />
         <span className="shrink-0 whitespace-nowrap">{run.totalCount ? `${run.successCount + run.failureCount} из ${run.totalCount}` : 'Подготовка…'}</span>
       </div>

@@ -9,7 +9,6 @@ test('AliExpress: ссылка заполняет точный SKU и созда
   await expect(page.getByLabel('ID товара')).toHaveValue('1005009868651525')
   await expect(page.getByLabel('SKU варианта')).toHaveValue('12000061135122688')
   await page.getByLabel('Название', { exact: true }).fill('Ali SKU smoke')
-  await page.screenshot({ path: '/tmp/price-watch-ali-add-card.png', fullPage: false })
   await page.getByRole('button', { name: 'Добавить', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('.cards-table')).not.toContainText('1005009868651525:12000061135122688')

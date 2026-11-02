@@ -13,7 +13,7 @@ it('offers retry for pending targets despite only a run-level error', () => {
     current: null, challenge: null, startedAt: '2026-10-22', finishedAt: '2026-10-22',
     retryableCount: 5, diagnosticsStatus: 'complete', retryScopeIncomplete: true }
   vi.mocked(useCollection).mockReturnValue({ run, continueRun: vi.fn(), dismiss: vi.fn(), retryErrors: vi.fn(),
-    isContinuing: false, continueError: null, isRetrying: false, retryError: null, isStarting: false, startError: null, start: vi.fn(), dealNotice: null, dismissDealNotice: vi.fn() })
+    isContinuing: false, continueError: null, isRetrying: false, retryError: null, isStarting: false, startError: null, start: vi.fn() })
   const view = render(<ActiveCollectionPanel />)
   expect(screen.getByRole('button', { name: 'Повторить ошибки и оставшиеся' })).toBeEnabled()
   expect(screen.getByText(/Состав этого запуска известен не полностью/)).toBeVisible()
