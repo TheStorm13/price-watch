@@ -356,27 +356,44 @@ test('компактный desktop 1024 px не имеет горизонтал�
 })
 
 test('фильтры не сдвигаются при сбросе, а сетка занимает доступную ширину', async ({ page }) => {
-  await page.setViewportSize({ width: 1536, height: 900 })
-  await page.goto('/cards')
-  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
   const marketplace = page.getByRole('combobox', { name: 'Маркетплейс' })
   const status = page.getByRole('combobox', { name: 'Состояние' })
   const sort = page.getByRole('combobox', { name: 'Сортировка' })
-  const before = await Promise.all([marketplace, status, sort].map((control) => control.boundingBox()))
-  await chooseOption(status, 'Не участвует в выгодных')
-  await expect(page.getByRole('button', { name: 'Сбросить' })).toBeVisible()
-  const after = await Promise.all([marketplace, status, sort].map((control) => control.boundingBox()))
-  for (let index = 0; index < before.length; index += 1) {
-    expect(after[index]?.x).toBeCloseTo(before[index]?.x ?? 0, 0)
-    expect(after[index]?.y).toBeCloseTo(before[index]?.y ?? 0, 0)
+  const view = page.getByRole('radiogroup', { name: 'Вид карточек' })
+  const resetButton = page.getByRole('button', { name: 'Сбросить', exact: true })
+  const surface = page.locator('.table-surface')
+  const controls = [marketplace, status, sort, view, surface]
+  for (const width of [1536, 1024]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/cards')
+    await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toBeVisible()
+    const before = await Promise.all(controls.map((control) => control.boundingBox()))
+    await chooseOption(status, 'Не участвует в выгодных')
+    await expect(resetButton).toBeVisible()
+    const after = await Promise.all(controls.map((control) => control.boundingBox()))
+    for (let index = 0; index < before.length; index += 1) {
+      expect(after[index]).not.toBeNull()
+      expect(before[index]).not.toBeNull()
+      expect(after[index]!.x).toBeCloseTo(before[index]!.x, 0)
+      expect(after[index]!.y).toBeCloseTo(before[index]!.y, 0)
+    }
+    const reset = (await resetButton.boundingBox())!
+    const toggle = (await view.boundingBox())!
+    expect(reset.x + reset.width).toBeLessThanOrEqual(toggle.x)
+    expect(reset.y + reset.height / 2).toBeCloseTo(toggle.y + toggle.height / 2, 0)
+    await expect(status).toHaveText('Не участвует в выгодных')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
+    await page.screenshot({ path: `/tmp/price-watch-reset-${width}.png` })
+    await resetButton.click()
+    await expect(resetButton).toHaveCount(0)
+    const cleared = await Promise.all(controls.map((control) => control.boundingBox()))
+    for (let index = 0; index < before.length; index += 1) {
+      expect(cleared[index]).not.toBeNull()
+      expect(cleared[index]!.x).toBeCloseTo(before[index]!.x, 0)
+      expect(cleared[index]!.y).toBeCloseTo(before[index]!.y, 0)
+    }
   }
-  const reset = await page.getByRole('button', { name: 'Сбросить' }).boundingBox()
-  expect(reset?.y).toBeGreaterThanOrEqual(after[1]?.y ?? 0)
-  await expect(status).toHaveText('Не участвует в выгодных')
-  await page.screenshot({ path: '/tmp/price-watch-filters.png' })
-  await page.setViewportSize({ width: 1024, height: 768 })
-  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false)
-  await page.screenshot({ path: '/tmp/price-watch-filters-compact.png' })
+  await chooseOption(status, 'Не участвует в выгодных')
   await page.getByRole('button', { name: 'Сбросить' }).click()
   await page.getByRole('radio', { name: 'Сетка' }).click()
   await expect(page).toHaveURL(/\/cards\?view=grid$/)

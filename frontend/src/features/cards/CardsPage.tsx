@@ -162,15 +162,17 @@ export function CardsPage() {
           </span>
           <div className="flex items-center gap-2"><Checkbox id="deals-only" checked={dealsOnly} onCheckedChange={(checked) => setParam('deals', checked === true ? '1' : '', '')} /><label htmlFor="deals-only" className="filters__checkbox">Выгодные предложения</label></div>
         </div>
-        {hasFilters ? <div className="filters__reset"><Button variant="ghost" onClick={resetFilters}><RotateCcw data-icon="inline-start" />Сбросить</Button></div> : null}
       </div>
 
       <div className="cards-view-bar">
         <span>{orderedItems.length} из {allItems.length}</span>
-        <ToggleGroup type="single" value={view} onValueChange={(value) => { if (value) setParam('view', value, 'list') }} variant="outline" spacing={0} aria-label="Вид карточек">
-          <ToggleGroupItem value="list" aria-label="Список" title="Список"><List aria-hidden="true" /></ToggleGroupItem>
-          <ToggleGroupItem value="grid" aria-label="Сетка" title="Сетка"><LayoutGrid aria-hidden="true" /></ToggleGroupItem>
-        </ToggleGroup>
+        <div className="flex items-center gap-2">
+          {hasFilters ? <Button variant="ghost" size="sm" onClick={resetFilters}><RotateCcw data-icon="inline-start" />Сбросить</Button> : null}
+          <ToggleGroup type="single" value={view} onValueChange={(value) => { if (value) setParam('view', value, 'list') }} variant="outline" spacing={0} aria-label="Вид карточек">
+            <ToggleGroupItem value="list" aria-label="Список" title="Список"><List aria-hidden="true" /></ToggleGroupItem>
+            <ToggleGroupItem value="grid" aria-label="Сетка" title="Сетка"><LayoutGrid aria-hidden="true" /></ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </div>
 
       <BulkCardActions selectedIds={selectedIds} cards={catalogQuery.data?.cards ?? []} groups={catalogQuery.data?.groups ?? []}
