@@ -24,15 +24,21 @@ If the plan changes materially, revise it and request approval again.
 
 Implement the approved plan. Run relevant tests and checks; inspect the diff,
 affected contracts, execution modes, data effects, and migrations. Fix findings.
-Present changed files, verification results, and remaining risks. **Wait for
-explicit user acceptance before completion.** Then update only relevant
-documentation, sync specs and archive the OpenSpec change when one exists.
-**Before reporting completion, create one or more Git commits containing all
-changes belonging to the accepted task, including its tests, documentation,
-and OpenSpec artifacts.** Inspect the staged diff and keep unrelated existing
-changes out of these commits. Verify the commits were created and report their
-hashes in the final response. If committing fails, report the blocker instead
-of claiming completion. Do not push or merge without separate permission.
+**Before requesting user evaluation or acceptance, create one or more Git
+commits containing all current changes belonging to the task, including its
+tests, documentation, and OpenSpec artifacts.** Inspect the staged diff and
+keep unrelated existing changes out of these commits. Verify the commits were
+created, then present their hashes, changed files, verification results, and
+remaining risks for evaluation. Do not postpone commits until acceptance.
+Commit checked revisions requested during evaluation before asking for another
+evaluation, too.
+
+**Wait for explicit user acceptance before completion.** Then update only
+relevant documentation, sync specs and archive the OpenSpec change when one
+exists. Commit these follow-up changes before reporting completion, leaving no
+uncommitted changes belonging to the task. If committing fails, report the
+blocker instead of claiming a committed result. Do not push or merge without
+separate permission.
 
 For work spanning sessions, keep a short record in
 `docs/workflow-runs/<task-slug>.md` with the plan, approval, current state,
