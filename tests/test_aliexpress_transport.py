@@ -28,7 +28,7 @@ class AliExpressTransportTests(unittest.IsolatedAsyncioTestCase):
             if len(page.calls) == 5: entered.set()
             await release.wait()
             return response()
-        transport, page = await self.transport(fetch)
+        transport, page = await self.transport(fetch, concurrency=5)
         tasks = [asyncio.create_task(transport.fetch(REF)) for _ in range(5)]
         await asyncio.wait_for(entered.wait(), 1)
         tasks[0].cancel()
@@ -120,7 +120,7 @@ class AliExpressTransportTests(unittest.IsolatedAsyncioTestCase):
                     await release.wait()
                 return response()
             finally:active-=1
-        transport,_=await self.transport(fetch,prepare)
+        transport,_=await self.transport(fetch,prepare,concurrency=2)
         tasks=[asyncio.create_task(transport.fetch(REF)) for _ in range(2)]
         await asyncio.wait_for(blocked.wait(),1)
         await asyncio.sleep(.02)

@@ -41,7 +41,7 @@ class AsyncAliExpressClient:
         virtual_display: bool = False,
         *,
         session: ChromeSession | None = None,
-        concurrency: int = 5,
+        concurrency: int = 1,
         starts_per_second: float = 5,
         request_timeout: float = 30,
         max_attempts: int = 3,

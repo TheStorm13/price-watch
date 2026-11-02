@@ -93,7 +93,7 @@ def validate_product_text(raw_text, article):
 
 
 class AliExpressJsonTransport:
-    def __init__(self, context, prepare_page, *, concurrency=5, starts_per_second=5,
+    def __init__(self, context, prepare_page, *, concurrency=1, starts_per_second=5,
                  request_timeout=30, max_attempts=3, max_retry_wait=30):
         for name, value in (("concurrency", concurrency), ("max_attempts", max_attempts)):
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
