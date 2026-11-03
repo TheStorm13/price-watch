@@ -25,8 +25,18 @@ it('shows each variant photo with its own parameters and plain labels', () => {
     options: { Цвет: id === 1 ? 'Чёрный' : 'Белый' }, imageUrl: id < 3 ? `https://img.test/${id}.webp` : null,
     url: null, currentPrice: '100.00', currentAvailability: 'in_stock', lastObservedAt: null, updatedAt: null }))
   const { container } = render(<VariantPanel card={card} variants={variants} />)
-  expect([...container.querySelectorAll('img')].map((img) => img.src)).toEqual(['https://img.test/1.webp', 'https://img.test/2.webp'])
+  expect([...container.querySelectorAll('img')].map((img) => img.src)).toEqual(['https://img.test/2.webp', 'https://img.test/1.webp'])
   expect(container.querySelectorAll('.product-placeholder')).toHaveLength(3)
-  expect(screen.getByText('Код варианта: 2')).toBeInTheDocument()
+  expect(container.textContent).not.toContain('Код варианта')
   expect(container.textContent).not.toContain('SKU')
+})
+
+it('sorts variants by their visible name with natural number ordering and hides identifiers', () => {
+  const card = { id: 1, primaryVariantId: 1 } as TrackedCardView
+  const variants: TrackedVariant[] = ['10', '2', '1'].map((size, index) => ({ id: index + 1, cardId: 1,
+    externalId: `987654321:${9000 + index}`, title: '', options: { Размер: size }, url: null,
+    currentPrice: null, currentAvailability: null, lastObservedAt: null, updatedAt: null }))
+  const { container } = render(<VariantPanel card={card} variants={variants} />)
+  expect([...container.querySelectorAll('.variant-name strong')].map((el) => el.textContent)).toEqual(['Размер: 1', 'Размер: 2', 'Размер: 10'])
+  expect(container.textContent).not.toMatch(/987654321|9000|9001|9002/)
 })

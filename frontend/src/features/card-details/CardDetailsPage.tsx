@@ -23,7 +23,7 @@ import { useCollectionCommands } from '../collection/CollectionProvider'
 import { VariantPriceChart } from './VariantPriceChart'
 import { VariantPanel } from './VariantPanel'
 import { CardDrawer } from '../cards/AddCardDrawer'
-import { variantLabel } from './variantDisplay'
+import { sortVariants, variantLabel } from './variantDisplay'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select'
 
 const periods = [7, 30, 90] as const
@@ -137,7 +137,7 @@ export function CardDetailsPage() {
         <div className="variant-heading"><h2>Измерения</h2>
           {variants.length > 1 ? <FieldGroup className="w-full sm:w-[320px]"><Field><FieldLabel htmlFor="history-variant">Вариант для измерений</FieldLabel>
             <Select value={historyVariantId === undefined ? 'primary' : String(historyVariantId)} onValueChange={(value) => { setHistoryVariantId(value === 'primary' ? undefined : Number(value)); setParams({ days: String(days) }, searchOptions) }}>
-              <SelectTrigger id="history-variant"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="primary">Главный вариант</SelectItem>{variants.map((v) => <SelectItem key={v.id} value={String(v.id)}>{variantLabel(v)}</SelectItem>)}</SelectGroup></SelectContent>
+              <SelectTrigger id="history-variant"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="primary">Главный вариант</SelectItem>{sortVariants(variants).map((v) => <SelectItem key={v.id} value={String(v.id)}>{variantLabel(v)}</SelectItem>)}</SelectGroup></SelectContent>
             </Select>
           </Field></FieldGroup> : null}
         </div>

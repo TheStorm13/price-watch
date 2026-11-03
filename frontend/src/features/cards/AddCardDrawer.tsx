@@ -1,3 +1,4 @@
+import { sortVariants } from '../card-details/variantDisplay'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { restoreFocus } from '@/lib/focus'
@@ -170,7 +171,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
                 setErrors({})
               }}>
                 <SelectTrigger id="primary-variant"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectGroup>{variants.map((v) => <SelectItem key={v.id} value={String(v.id)}>{Object.values(v.options).join(' · ') || v.title || v.externalId}</SelectItem>)}</SelectGroup></SelectContent>
+                <SelectContent><SelectGroup>{sortVariants(variants).map((v) => <SelectItem key={v.id} value={String(v.id)}>{Object.values(v.options).join(' · ') || v.title || 'Без названия'}</SelectItem>)}</SelectGroup></SelectContent>
               </Select>
               <FieldDescription>Его название, фото, параметры, ссылка, цена и наличие отображаются в карточке и каталоге.</FieldDescription>
             </Field> : null}

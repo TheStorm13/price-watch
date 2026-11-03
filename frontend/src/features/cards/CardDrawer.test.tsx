@@ -74,7 +74,7 @@ it('selects a known SKU as primary together with its exact URL', async () => {
   render(<CardDrawer open onClose={vi.fn()} card={card} variants={[variants[0],second]} isPending={false} onSave={save} />)
   screen.getByRole('combobox',{name:'Главный вариант'}).focus()
   await user.keyboard('{Enter}')
-  await user.keyboard('{End}{Enter}')
+  await user.keyboard('{Home}{Enter}')
   expect(screen.getByLabelText('URL')).toHaveValue(second.url)
   await user.click(screen.getByRole('button',{name:'Сохранить'}))
   expect(save).toHaveBeenCalledWith(expect.objectContaining({primaryVariantId:20,url:second.url}))

@@ -1,7 +1,13 @@
 import type { TrackedVariant } from '../../types/domain'
 
 export function variantLabel(variant: TrackedVariant) {
-  return Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(' · ') || variant.title || `Вариант ${variant.externalId.split(':').at(-1)}`
+  return Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(' · ') || variant.title || 'Без названия'
+}
+
+const variantNames = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
+
+export function sortVariants(variants: TrackedVariant[]) {
+  return variants.toSorted((a, b) => variantNames.compare(variantLabel(a), variantLabel(b)))
 }
 
 /** Identity-based colors stay stable when variants are filtered or reordered. */

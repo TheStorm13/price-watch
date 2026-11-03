@@ -16,3 +16,12 @@ it('shows the primary series by default and switches with the primary key', () =
   expect(screen.getByRole('checkbox', { name: 'Показать на графике: Размер: 1' })).not.toBeChecked()
   expect(screen.getByRole('checkbox', { name: 'Показать на графике: Размер: 2' })).toBeChecked()
 })
+
+it('sorts the legend by variant name without showing product codes', () => {
+  const shuffled = [variants[1], variants[0]]
+  const { container } = render(<VariantPriceChart history={[]} variants={shuffled} primaryVariantId={1} />)
+  expect(screen.getAllByRole('checkbox').map((el) => el.getAttribute('aria-label'))).toEqual([
+    'Показать на графике: Размер: 1', 'Показать на графике: Размер: 2',
+  ])
+  expect(container.textContent).not.toContain('123:')
+})
