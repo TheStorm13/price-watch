@@ -23,6 +23,68 @@ async function importFixture(page: Page, document: object) {
 }
 const members = [{ marketplace: 'ozon', externalId: '901' }, { marketplace: 'wildberries', externalId: '902' }]
 
+test('границы папки, теги и одинаковые интервалы сохраняются при раскрытии и смене вида', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.setViewportSize({ width: 1536, height: 1000 })
+  await page.goto('/cards')
+  const representative = fixtureCard('901', 'ozon', [100, 70], 'Очень длинный тег представителя группы')
+  representative.tags.push('Ещё один длинный тег для проверки ширины')
+  const name = 'Fixture группа с длинным названием для проверки переноса текста'
+  await importFixture(page, { version: 3, cards: [representative,
+    fixtureCard('902', 'wildberries', [200, 110], 'other'),
+    fixtureCard('903', 'ozon', [60, 80], 'standalone'),
+    fixtureCard('904', 'ozon', [60, 90], 'standalone')],
+    groups: [{ name, cards: members }, { name: 'Fixture пустая группа', cards: [] }] })
+  await page.getByLabel('Поиск карточек').fill('Fixture')
+  const group = page.locator('.cards-table__group').filter({ hasText: name })
+  const toggle = group.locator('.product-group__toggle')
+  await expect(group).toContainText('Группа · 2 товара')
+  await expect(group.locator('time')).toHaveCount(0)
+  await expect(group.locator('.tag')).toHaveText(representative.tags)
+  const empty = page.locator('.cards-table__group').filter({ hasText: 'Fixture пустая группа' })
+  await expect(empty).toHaveAttribute('data-block-end', 'true')
+  await expect(empty).toContainText('Группа · 0 товаров')
+  for (const width of [1536, 1024]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await expect(group.locator('td').first()).toHaveCSS('border-top-width', '8px')
+    const lastMember = page.locator('.cards-table__nested').last()
+    await expect(lastMember).toHaveAttribute('data-block-end', 'true')
+    await expect(lastMember.locator('td').first()).toHaveCSS('border-bottom-left-radius', '10px')
+    await expect(lastMember.locator('td').first()).toHaveCSS('border-bottom-color', 'rgb(228, 231, 236)')
+    for (const row of await page.locator('.cards-table__product:not(.cards-table__nested)').all()) {
+      await expect(row.locator('td').first()).toHaveCSS('border-top-width', '8px')
+      await expect(row.locator('td').first()).toHaveCSS('border-bottom-left-radius', '10px')
+    }
+    const tagsFit = await group.locator('.tag-list').evaluate(element => {
+      const bounds = element.getBoundingClientRect()
+      return [...element.children].every(tag => tag.getBoundingClientRect().right <= bounds.right + 1)
+    })
+    expect(tagsFit).toBe(true)
+    await toggle.focus()
+    await page.keyboard.press('Enter')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(group).toHaveAttribute('data-block-end', 'true')
+    await expect(page.locator('.cards-table__nested')).toHaveCount(0)
+    await expect(group.locator('td').first()).toHaveCSS('border-bottom-left-radius', '10px')
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.cards-table__nested')).toHaveCount(2)
+  }
+  await page.getByRole('radio', { name: 'Сетка', exact: true }).click()
+  const gridGroup = page.locator('.cards-grid__group').filter({ hasText: name })
+  await expect(gridGroup.locator('time')).toHaveCount(0)
+  await expect(gridGroup.locator('.tag')).toHaveText(representative.tags)
+  const nested = page.locator('.virtual-grid-row[data-group-member][data-block-end]')
+  await expect(nested.locator('.cards-grid')).toHaveCSS('border-bottom-left-radius', '10px')
+  await expect(nested).toHaveCSS('padding-bottom', '8px')
+  await gridGroup.locator('.product-group__toggle').click()
+  await expect(page.locator('.cards-grid--nested')).toHaveCount(0)
+  await expect(gridGroup.locator('.product-group__header')).toHaveCSS('border-bottom-left-radius', '10px')
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  expect(errors).toEqual([])
+})
+
 test('группа фильтруется по представителю и чередуется с карточками в обоих видах', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))

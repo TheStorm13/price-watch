@@ -29,6 +29,14 @@ for(const shape of ['plain','mixed','group']) test(`bounded catalog and last ite
   await page.evaluate(()=>window.scrollTo(0,0))
   await page.getByRole('radio',{name:'Сетка'}).click()
   expect(await page.locator('.cards-grid__item').count()).toBeLessThan(100)
+  if (shape === 'group') {
+    const gridRows = page.locator('.cards-grid--nested')
+    const first = await gridRows.nth(0).locator('.cards-grid__item').first().boundingBox()
+    const next = await gridRows.nth(1).locator('.cards-grid__item').first().boundingBox()
+    expect(first).not.toBeNull()
+    expect(next).not.toBeNull()
+    expect(next!.y - first!.y - first!.height).toBeCloseTo(8, 0)
+  }
   await bottom(page,`Тестовый товар ${lastName}`)
   expect(await page.locator('.cards-grid__item').count()).toBeLessThan(120)
   await page.setViewportSize({width:1024,height:768})

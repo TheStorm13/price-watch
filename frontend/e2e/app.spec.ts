@@ -46,7 +46,7 @@ test('выбор в списке сохраняется при поиске и �
   expect(descending).toEqual([...ascending].reverse())
   await dialog.getByRole('textbox', { name: 'Название' }).fill('Выбранные товары')
   await dialog.getByRole('button', { name: 'Сохранить' }).click()
-  await expect(page.getByRole('row', { name: /Выбранные товары/ })).toContainText('3 товаров')
+  await expect(page.getByRole('row', { name: /Выбранные товары/ })).toContainText('3 товара')
   await expect(bulk).toHaveCount(0)
 })
 
@@ -70,7 +70,7 @@ test('выбранные карточки добавляются в сущест
   await chooseOption(bulk.getByRole('combobox', { name: 'Существующая группа' }), 'Первая группа')
   await expect(bulk).toContainText('Карточки из других групп перейдут')
   await bulk.getByRole('button', { name: 'Добавить карточки' }).click()
-  await expect(page.getByRole('row', { name: /Первая группа/ })).toContainText('3 товаров')
+  await expect(page.getByRole('row', { name: /Первая группа/ })).toContainText('3 товара')
   await expect(page.getByRole('row', { name: /Вторая группа/ })).toContainText('0 товаров')
   await expect(bulk).toHaveCount(0)
 })
@@ -554,7 +554,7 @@ test('плитки одинаковы при разных фото, а мета�
   const portraitTile = grid.locator('.cards-grid__item').filter({ hasText: 'Очень длинное название вертикального товара' })
   const landscapeTile = grid.locator('.cards-grid__item').filter({ hasText: 'Горизонтальное фото' })
   async function waitForGridLayout() {
-    const columns = await grid.evaluate(element => Math.max(1, Math.floor((element.clientWidth + 12) / 232)))
+    const columns = await grid.evaluate(element => Math.max(1, Math.floor((element.clientWidth + 8) / 228)))
     await expect(grid.locator('.cards-grid')).toHaveCount(Math.ceil(7 / columns))
     await expect.poll(() => grid.locator('.cards-grid').first().evaluate(element =>
       getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(columns)

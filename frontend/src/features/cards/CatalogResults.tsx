@@ -5,12 +5,15 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCaption } from
 import { cn } from '@/lib/utils'
 import type { Deal, ProductGroup, TrackedCardView } from '../../types/domain'
 import { columnLabels, type ColumnSortKey, type DisplayItem, type Sort } from './catalogItems'
-import { catalogRows } from './catalogRows'
+import { catalogRows, type CatalogRow } from './catalogRows'
 import { CatalogProduct } from './CatalogProduct'
 import { CatalogGroup } from './CatalogGroup'
 import { useVirtualRows } from './useVirtualRows'
 
 type Measurements = ReturnType<typeof useVirtualRows>['virtualizer']['measurementsCache']
+function endsBlock(next:CatalogRow | undefined) {
+ return !(next?.kind==='cards' && next.cards[0]?.nested)
+}
 const positions = new Map<string,{offset:number;width:number;measurements:Measurements}>()
 interface Props {
  view:'list'|'grid';items:DisplayItem[];groupedCards:Map<number,TrackedCardView[]>;deals:Map<number,Deal>
@@ -25,7 +28,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  const saved=useRef(positions.get(location.pathname+location.search))
  const windowed=useVirtualRows(keys,view==='grid'?460:82, saved.current?.width===window.innerWidth?saved.current:undefined)
  const {root,virtualizer,virtual,margin}=windowed
- useLayoutEffect(()=>{if(windowed.width) setColumns(Math.max(1,Math.floor((windowed.width+12)/232)))},[windowed.width])
+ useLayoutEffect(()=>{if(windowed.width) setColumns(Math.max(1,Math.floor((windowed.width+8)/228)))},[windowed.width])
  const current=useRef({returnTo,virtualizer})
  current.current={returnTo,virtualizer}
  useLayoutEffect(()=>{
@@ -48,10 +51,10 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  function content(index:number) {
    const row=rows[index]
    if(row.kind==='group') return <CatalogGroup group={row.item.group} view={view} collapsed={collapsedGroups.includes(row.item.id)}
-     onToggle={onToggleGroup} onEdit={onEditGroup} index={index} measure={virtual && view==='list'?virtualizer.measureElement:undefined} />
+     onToggle={onToggleGroup} onEdit={onEditGroup} index={index} blockEnd={endsBlock(rows[index+1])} measure={virtual && view==='list'?virtualizer.measureElement:undefined} />
    const cards=row.cards.map(({card,nested})=><CatalogProduct key={card.id} card={card} nested={nested} view={view}
      selected={selectedIds.has(card.id)} onToggle={onSelect} savings={deals.get(card.id)?.savings ?? null} returnTo={returnTo}
-     index={index} measure={virtual && view==='list'?virtualizer.measureElement:undefined} />)
+     index={index} blockEnd={endsBlock(rows[index+1])} measure={virtual && view==='list'?virtualizer.measureElement:undefined} />)
    return view==='list'?cards:<ul className={cn('cards-grid',row.cards[0]?.nested && 'cards-grid--nested')} style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`}}>{cards}</ul>
  }
  let last=margin
@@ -63,6 +66,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
      {gap>0?<li aria-hidden="true" style={{height:gap}} />:null}
      <li data-index={item.index} data-vrow={item.index} ref={virtual?virtualizer.measureElement:undefined}
        data-group-member={record.kind==='cards' && record.cards[0]?.nested || undefined}
+       data-block-end={endsBlock(rows[item.index+1]) || undefined}
        className={rows[item.index].kind==='group'?'cards-grid__group':'virtual-grid-row'}>{content(item.index)}</li>
    </Fragment>
    return <Fragment key={item.key}>{gap>0?<tr aria-hidden="true" className="virtual-spacer"><td colSpan={9} style={{height:gap}} /></tr>:null}{content(item.index)}</Fragment>

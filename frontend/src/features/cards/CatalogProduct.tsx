@@ -25,9 +25,9 @@ export function dealStatus(card: TrackedCardView) {
 interface Props {
   card: TrackedCardView; view: 'list' | 'grid'; nested?: boolean; selected: boolean
   savings: DecimalString | null; returnTo: string; onToggle: (id: number) => void
-  index: number; measure?: (element: HTMLTableRowElement | null) => void
+  index: number; blockEnd: boolean; measure?: (element: HTMLTableRowElement | null) => void
 }
-export const CatalogProduct = memo(function CatalogProduct({ card, view, nested = false, selected, savings, returnTo, onToggle, index, measure }: Props) {
+export const CatalogProduct = memo(function CatalogProduct({ card, view, nested = false, selected, savings, returnTo, onToggle, index, blockEnd, measure }: Props) {
   const navigate = useNavigate()
   const cardLocationState = { returnTo }
   const updateCard = useUpdateCard(), deleteCard = useDeleteCard()
@@ -61,7 +61,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
   }
 
   function row(card: TrackedCardView, nested = false) {
-    return <TableRow data-index={index} data-vrow={index} ref={measure} aria-rowindex={index + 2} key={card.id} className={cn('cards-table__product', nested && 'cards-table__nested', selected && 'is-selected')} onClick={(event) => { if (!(event.target as HTMLElement).closest('a, button, input, [role="checkbox"]')) navigate(`/cards/${card.id}`, { state: cardLocationState }) }}>
+    return <TableRow data-index={index} data-vrow={index} data-block-start={!nested || undefined} data-block-end={blockEnd || undefined} ref={measure} aria-rowindex={index + 2} key={card.id} className={cn('cards-table__product', nested && 'cards-table__nested', selected && 'is-selected')} onClick={(event) => { if (!(event.target as HTMLElement).closest('a, button, input, [role="checkbox"]')) navigate(`/cards/${card.id}`, { state: cardLocationState }) }}>
       <TableCell className="cards-table__selection py-2"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
         checked={selected} onClick={(event) => event.stopPropagation()} onCheckedChange={() => onToggle(card.id)} /></TableCell>
       <TableCell className="py-2"><div className="card-identity"><ProductImage card={card} /><span><Link to={`/cards/${card.id}`} state={cardLocationState} className="card-identity__link"><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong></Link>{Object.keys(card.options ?? {}).length ? <span className="text-sm text-muted-foreground">{Object.values(card.options ?? {}).join(' · ')}</span> : null}<TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
