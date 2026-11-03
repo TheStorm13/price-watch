@@ -18,8 +18,23 @@
   #group-designs .pw-group td:first-child { box-shadow:inset 3px 0 var(--pw-blue); }
   #group-designs .pw-nested td { background:color-mix(in srgb,var(--pw-blue-bg) 40%,var(--pw-bg)); }
   #group-designs .pw-nested td:first-child { box-shadow:inset 3px 0 var(--pw-blue); }
-  #group-designs #pw-folder-members tr:last-child td { border-bottom:2px solid color-mix(in srgb,var(--pw-blue) 40%,var(--pw-line)); }
-  #group-designs .pw-group:has([aria-expanded="false"]) td { border-bottom:2px solid color-mix(in srgb,var(--pw-blue) 40%,var(--pw-line)); }
+  #group-designs #pw-folder-preview .pw-scroll { padding:0 12px 12px; background:var(--pw-soft); }
+  #group-designs #pw-folder-preview table { border-collapse:separate; border-spacing:0; }
+  #group-designs #pw-folder-preview .pw-group td:first-child,
+  #group-designs #pw-folder-preview .pw-nested td:first-child { box-shadow:none; background-image:linear-gradient(90deg,var(--pw-blue) 3px,transparent 3px); }
+  #group-designs #pw-folder-preview .pw-group td:first-child { border-top-left-radius:10px; }
+  #group-designs #pw-folder-preview .pw-group td:last-child { border-top-right-radius:10px; }
+  #group-designs #pw-folder-preview .pw-group td:last-child,
+  #group-designs #pw-folder-preview .pw-nested td:last-child { border-right:1px solid var(--pw-line); }
+  #group-designs #pw-folder-members tr:last-child td,
+  #group-designs #pw-folder-preview .pw-group:has([aria-expanded="false"]) td { border-bottom:1px solid var(--pw-line); }
+  #group-designs #pw-folder-members tr:last-child td:first-child,
+  #group-designs #pw-folder-preview .pw-group:has([aria-expanded="false"]) td:first-child { border-bottom-left-radius:10px; }
+  #group-designs #pw-folder-members tr:last-child td:last-child,
+  #group-designs #pw-folder-preview .pw-group:has([aria-expanded="false"]) td:last-child { border-bottom-right-radius:10px; }
+  #group-designs .pw-standalone td { background:var(--pw-bg); border-bottom:1px solid var(--pw-line); }
+  #group-designs .pw-standalone td:first-child { border-left:1px solid var(--pw-line); border-radius:10px 0 0 10px; }
+  #group-designs .pw-standalone td:last-child { border-right:1px solid var(--pw-line); border-radius:0 10px 10px 0; }
   #group-designs .pw-separator td { height:12px; padding:0; border:0; background:var(--pw-soft); }
   #group-designs .pw-identity { display:flex; gap:10px; align-items:center; min-width:0; }
   #group-designs .pw-identity > div { min-width:0; }
@@ -72,7 +87,7 @@
             <tr class="pw-nested"><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="package" aria-hidden="true"></i></span><div><strong>Jardin Espresso, 1 кг</strong><div class="pw-muted">Wildberries</div></div></div></td><td>1 450 ₽</td><td>1 350 ₽</td><td>1 520 ₽</td><td class="pw-saving">70 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr>
           </tbody>
           <tbody class="pw-separator" aria-hidden="true"><tr><td colspan="7"></td></tr></tbody>
-          <tbody><tr><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="headphones" aria-hidden="true"></i></span><div><strong>Sony WH-CH720N</strong><div class="pw-muted">Ozon · Электроника</div></div></div></td><td>8 990 ₽</td><td>8 490 ₽</td><td>9 800 ₽</td><td class="pw-saving">810 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr></tbody>
+          <tbody class="pw-standalone"><tr><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="headphones" aria-hidden="true"></i></span><div><strong>Sony WH-CH720N</strong><div class="pw-muted">Ozon · Электроника</div></div></div></td><td>8 990 ₽</td><td>8 490 ₽</td><td>9 800 ₽</td><td class="pw-saving">810 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr></tbody>
         </table></div>
         <div class="pw-edit-note" hidden aria-live="polite">Редактирование группы: в приложении здесь откроется существующий диалог.</div>
       </div>
