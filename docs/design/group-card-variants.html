@@ -1,0 +1,115 @@
+<style>
+  #group-designs { color-scheme: light dark; }
+  #group-designs .pw-preview { --pw-bg: light-dark(#fff,#191c22); --pw-text: light-dark(#17191c,#edf0f5); --pw-muted: light-dark(#667085,#a8b0bf); --pw-line: light-dark(#e4e7ec,#383f4b); --pw-soft: light-dark(#f6f7f9,#232833); --pw-blue: light-dark(#2563eb,#8eb4ff); --pw-blue-bg: light-dark(#eff6ff,#232f46); --pw-green: light-dark(#16803c,#8ed6a4); --pw-green-bg: light-dark(#ecfdf3,#20362a); color:var(--pw-text); font:14px/1.45 ui-sans-serif,system-ui,sans-serif; min-height:490px; padding:18px 0 10px; }
+  #group-designs * { box-sizing:border-box; }
+  #group-designs .pw-window { background:var(--pw-bg); border:1px solid var(--pw-line); border-radius:12px; overflow:hidden; }
+  #group-designs .pw-title { padding:16px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--pw-line); }
+  #group-designs h3 { margin:0; font-size:16px; font-weight:500; }
+  #group-designs .pw-muted { color:var(--pw-muted); font-size:12px; }
+  #group-designs .pw-scroll { overflow-x:auto; }
+  #group-designs table { width:100%; min-width:680px; border-collapse:collapse; table-layout:fixed; font-size:12px; }
+  #group-designs th { font-weight:400; color:var(--pw-muted); text-align:right; padding:11px 9px; background:var(--pw-soft); }
+  #group-designs th:first-child { width:37%; text-align:left; padding-left:16px; }
+  #group-designs th:last-child { width:40px; }
+  #group-designs td { padding:14px 9px; border-top:1px solid var(--pw-line); text-align:right; vertical-align:middle; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #group-designs td:first-child { width:37%; text-align:left; white-space:normal; padding-left:16px; }
+  #group-designs td:last-child { width:40px; }
+  #group-designs .pw-group td { background:var(--pw-blue-bg); }
+  #group-designs .pw-group td:first-child { box-shadow:inset 3px 0 var(--pw-blue); }
+  #group-designs .pw-identity { display:flex; gap:10px; align-items:center; min-width:0; }
+  #group-designs .pw-identity > div { min-width:0; }
+  #group-designs strong { font-weight:500; }
+  #group-designs .pw-name { display:block; font-size:14px; overflow-wrap:anywhere; }
+  #group-designs .pw-label { display:flex; align-items:center; gap:6px; color:var(--pw-blue); font-size:11px; margin-bottom:3px; }
+  #group-designs .pw-tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; min-width:0; }
+  #group-designs .pw-group .pw-tags { margin-left:24px; }
+  #group-designs .pw-tag { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 7px; background:var(--pw-bg); border:1px solid var(--pw-line); border-radius:5px; font-size:11px; color:var(--pw-muted); }
+  #group-designs .pw-action { border:0; background:transparent; color:var(--pw-muted); display:inline-flex; align-items:center; justify-content:center; padding:6px; border-radius:6px; font:inherit; }
+  #group-designs .pw-action:hover { background:var(--pw-soft); color:var(--pw-blue); }
+  #group-designs .pw-toggle { align-items:flex-start; gap:8px; padding:0; text-align:left; color:var(--pw-text); }
+  #group-designs .pw-toggle > svg { flex:none; margin-top:3px; }
+  #group-designs .pw-toggle[aria-expanded="false"] > svg { transform:rotate(-90deg); }
+  #group-designs svg { width:16px; height:16px; flex:none; }
+  #group-designs .pw-photo { width:36px; height:42px; display:grid; place-items:center; background:var(--pw-soft); border:1px solid var(--pw-line); border-radius:6px; flex:none; color:var(--pw-muted); }
+  #group-designs .pw-nested td:first-child { padding-left:37px; }
+  #group-designs .pw-nested .pw-identity { border-left:2px solid var(--pw-line); padding-left:12px; }
+  #group-designs .pw-saving { color:var(--pw-green); }
+  #group-designs .pw-available { color:var(--pw-green); font-size:11px; }
+  #group-designs .pw-section { margin:14px; border:1px solid var(--pw-line); border-radius:10px; overflow:hidden; }
+  #group-designs .pw-section-head { display:flex; align-items:flex-start; gap:12px; padding:16px; background:var(--pw-soft); }
+  #group-designs .pw-section-head .pw-heading { flex:1; min-width:0; }
+  #group-designs .pw-folder { width:36px; height:36px; border-radius:8px; color:var(--pw-blue); background:var(--pw-blue-bg); display:grid; place-items:center; flex:none; }
+  #group-designs .pw-best { padding:0 16px 14px; background:var(--pw-soft); display:flex; align-items:baseline; flex-wrap:wrap; gap:6px 18px; font-size:12px; }
+  #group-designs .pw-best strong { font-size:18px; color:var(--pw-text); }
+  #group-designs .pw-best span { color:var(--pw-muted); }
+  #group-designs .pw-best .pw-saving { color:var(--pw-green); }
+  #group-designs .pw-section table { min-width:650px; }
+  #group-designs .pw-alone { margin-top:12px; border-top:1px solid var(--pw-line); }
+  #group-designs .pw-edit-note { font-size:12px; color:var(--pw-muted); padding:10px 16px; border-top:1px solid var(--pw-line); }
+  #group-designs [hidden] { display:none !important; }
+  @media(max-width:480px) { #group-designs .pw-preview { min-height:560px; } #group-designs .pw-section { margin:8px; } #group-designs .pw-section-head { padding:12px; gap:8px; } }
+</style>
+<div id="group-designs" class="viz-carousel viz-dotted-background" aria-label="Варианты оформления групп" data-previous-label="Предыдущий" data-next-label="Следующий">
+  <section data-variant="Строка-папка" aria-label="Строка-папка">
+    <div class="pw-preview" id="pw-folder-preview">
+      <div class="pw-window">
+        <div class="pw-title"><h3>Карточки</h3><span class="pw-muted">Список</span></div>
+        <div class="pw-scroll"><table aria-label="Каталог со строкой группы">
+          <thead><tr><th>Товар / группа</th><th>Цена</th><th>Мин.</th><th>Средняя</th><th>Выгода</th><th>Наличие</th><th><span aria-label="Действия"></span></th></tr></thead>
+          <tbody>
+            <tr class="pw-group"><td>
+              <button type="button" class="pw-action pw-toggle cursor-interaction" aria-expanded="true" aria-controls="pw-folder-members" data-members="pw-folder-members"><i data-lucide="chevron-down" aria-hidden="true"></i><span><span class="pw-label"><i data-lucide="folders" aria-hidden="true"></i>Группа · 2 товара</span><strong class="pw-name">Кофе в зёрнах</strong></span></button>
+              <div class="pw-tags"><span class="pw-tag">Кофе</span><span class="pw-tag">Для дома</span></div>
+            </td><td><strong>1 290 ₽</strong></td><td>1 190 ₽</td><td>1 490 ₽</td><td class="pw-saving">200 ₽</td><td class="pw-available">В наличии</td><td><button type="button" class="pw-action cursor-interaction" data-edit aria-label="Изменить группу Кофе в зёрнах"><i data-lucide="pencil" aria-hidden="true"></i></button></td></tr>
+          </tbody>
+          <tbody id="pw-folder-members">
+            <tr class="pw-nested"><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="package" aria-hidden="true"></i></span><div><strong>Lavazza Crema e Aroma, 1 кг</strong><div class="pw-muted">Ozon</div></div></div></td><td>1 290 ₽</td><td>1 190 ₽</td><td>1 490 ₽</td><td class="pw-saving">200 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr>
+            <tr class="pw-nested"><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="package" aria-hidden="true"></i></span><div><strong>Jardin Espresso, 1 кг</strong><div class="pw-muted">Wildberries</div></div></div></td><td>1 450 ₽</td><td>1 350 ₽</td><td>1 520 ₽</td><td class="pw-saving">70 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr>
+          </tbody>
+          <tbody><tr><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="headphones" aria-hidden="true"></i></span><div><strong>Sony WH-CH720N</strong><div class="pw-muted">Ozon · Электроника</div></div></div></td><td>8 990 ₽</td><td>8 490 ₽</td><td>9 800 ₽</td><td class="pw-saving">810 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr></tbody>
+        </table></div>
+        <div class="pw-edit-note" hidden aria-live="polite">Редактирование группы: в приложении здесь откроется существующий диалог.</div>
+      </div>
+    </div>
+  </section>
+  <section data-variant="Секция" aria-label="Секция" hidden>
+    <div class="pw-preview" id="pw-section-preview">
+      <div class="pw-window">
+        <div class="pw-title"><h3>Карточки</h3><span class="pw-muted">Список</span></div>
+        <section class="pw-section" aria-label="Группа Кофе в зёрнах">
+          <div class="pw-section-head"><span class="pw-folder"><i data-lucide="folders" aria-hidden="true"></i></span><div class="pw-heading"><div class="pw-label">Группа · 2 товара</div><button type="button" class="pw-action pw-toggle cursor-interaction" aria-expanded="true" aria-controls="pw-section-members" data-members="pw-section-members"><i data-lucide="chevron-down" aria-hidden="true"></i><strong class="pw-name">Кофе в зёрнах</strong></button><div class="pw-tags"><span class="pw-tag">Кофе</span><span class="pw-tag">Для дома</span></div></div><button type="button" class="pw-action cursor-interaction" data-edit aria-label="Изменить группу Кофе в зёрнах"><i data-lucide="pencil" aria-hidden="true"></i></button></div>
+          <div class="pw-best"><span>Самая дешёвая карточка</span><strong>1 290 ₽</strong><span>Мин. 1 190 ₽</span><span>Средняя 1 490 ₽</span><span class="pw-saving">Выгода 200 ₽</span><span>Ozon · В наличии</span></div>
+          <div id="pw-section-members" class="pw-scroll"><table aria-label="Товары группы Кофе в зёрнах"><thead><tr><th>Товар</th><th>Цена</th><th>Мин.</th><th>Средняя</th><th>Выгода</th><th>Наличие</th><th></th></tr></thead><tbody>
+            <tr><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="package" aria-hidden="true"></i></span><div><strong>Lavazza Crema e Aroma, 1 кг</strong><div class="pw-muted">Ozon</div></div></div></td><td>1 290 ₽</td><td>1 190 ₽</td><td>1 490 ₽</td><td class="pw-saving">200 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr>
+            <tr><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="package" aria-hidden="true"></i></span><div><strong>Jardin Espresso, 1 кг</strong><div class="pw-muted">Wildberries</div></div></div></td><td>1 450 ₽</td><td>1 350 ₽</td><td>1 520 ₽</td><td class="pw-saving">70 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr>
+          </tbody></table></div>
+        </section>
+        <div class="pw-scroll pw-alone"><table aria-label="Товар вне группы"><tbody><tr><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="headphones" aria-hidden="true"></i></span><div><strong>Sony WH-CH720N</strong><div class="pw-muted">Ozon · Электроника</div></div></div></td><td>8 990 ₽</td><td>8 490 ₽</td><td>9 800 ₽</td><td class="pw-saving">810 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr></tbody></table></div>
+        <div class="pw-edit-note" hidden aria-live="polite">Редактирование группы: в приложении здесь откроется существующий диалог.</div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('group-designs');
+  root.querySelectorAll('[data-members]').forEach(button => {
+    button.addEventListener('click', () => {
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!expanded));
+      document.getElementById(button.dataset.members).hidden = expanded;
+    });
+  });
+  root.querySelectorAll('[data-edit]').forEach(button => button.addEventListener('click', () => {
+    const note = button.closest('.pw-window').querySelector('.pw-edit-note');
+    note.hidden = !note.hidden;
+  }));
+  if (globalThis.Tweak) {
+    root.querySelectorAll('.pw-preview').forEach(preview => {
+      const state = { tags: true };
+      const tweak = new Tweak({ container: preview, onChange: () => preview.querySelectorAll('.pw-tags').forEach(tags => { tags.hidden = !state.tags; }) });
+      tweak.addToggle(state, 'tags', { label: 'Показывать теги' });
+    });
+  }
+})();
+</script>
