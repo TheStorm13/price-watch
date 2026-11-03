@@ -140,7 +140,10 @@ class AliExpressJsonTransport:
                 self._bootstrap.add_done_callback(self._retrieve_exception)
             await asyncio.shield(self._bootstrap)
             ref = AliExpressRef.parse(article)
-            url = HOME_URL.rstrip("/") + API_PATH + "?" + urlencode(dict(productId=ref.product_id, sourceId="0", sku_id=ref.sku_id))
+            params = dict(productId=ref.product_id, sourceId="0")
+            if ref.sku_id is not None:
+                params["sku_id"] = ref.sku_id
+            url = HOME_URL.rstrip("/") + API_PATH + "?" + urlencode(params)
             for attempt in range(self.max_attempts):
                 result, generation = await self._attempt(url)
                 recovering = self._needs_recovery(result)

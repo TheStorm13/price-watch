@@ -18,7 +18,7 @@ class AliExpressResponse:
 class AliExpressProductData:
     ref: AliExpressRef
     data: dict[str, Any]
-    selected: dict[str, Any]
+    selected: dict[str, Any] | None
     price: Decimal | None
     availability: Availability
     collected_at: datetime

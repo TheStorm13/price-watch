@@ -172,7 +172,7 @@ class WildberriesTransport:
         await self.prepare_page(self.page)
 
     async def fetch(self, external_id):
-        ref = WildberriesRef.parse(external_id)  # Legacy IDs fail before browser/network.
+        ref = WildberriesRef.parse(external_id)
         owner = asyncio.current_task()
         self._owners.add(owner)
         try:

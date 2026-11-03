@@ -123,11 +123,13 @@ let nextVariantId = 6
 function validateVariant(marketplace: Marketplace, externalId: string, url: string | null) {
   if (!['wildberries', 'aliexpress'].includes(marketplace)) return
   const [article, sku] = externalId.split(':')
-  if (!sku || !/^[0-9]+$/.test(sku)) throw new Error('Укажите конкретный SKU варианта')
+  if (externalId.split(':').length > 2 || !/^[0-9]+$/.test(article) || (sku !== undefined && !/^[0-9]+$/.test(sku))) throw new Error('Укажите числовой артикул товара')
   if (url) {
     const ref = marketplace === 'wildberries' ? parseWildberriesUrl(url) : parseAliExpressUrl(url)
     const actual = 'nmId' in ref ? `${ref.nmId}:${ref.optionId}` : `${ref.productId}:${ref.skuId}`
-    if (actual !== `${article}:${sku}`) throw new Error('Ссылка не соответствует товару и варианту')
+    const linkedArticle = 'nmId' in ref ? ref.nmId : ref.productId
+    const linkedSku = 'optionId' in ref ? ref.optionId : ref.skuId
+    if (linkedArticle !== article || (sku && linkedSku && actual !== externalId)) throw new Error('Ссылка не соответствует товару и варианту')
   }
 }
 
@@ -374,7 +376,7 @@ export const mockApi = {
     validateVariant(input.marketplace,input.externalId,input.url ?? null)
     const article = ['aliexpress','wildberries'].includes(input.marketplace) ? input.externalId.split(':')[0] : input.externalId
     let card = cards.find((c) => c.marketplace === input.marketplace && c.externalId === article)
-    if (card && variants.some((v) => v.cardId === card!.id && v.externalId === input.externalId)) {
+    if (card && (input.externalId === article || variants.some((v) => v.cardId === card!.id && v.externalId === input.externalId))) {
       throw Object.assign(new Error('Такой вариант уже добавлен'), { field: 'externalId' })
     }
     const at = new Date().toISOString()

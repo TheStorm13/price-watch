@@ -85,3 +85,11 @@ class WildberriesMapperTests(unittest.TestCase):
         self.assertEqual(card.attributes[0].values,('графит, темно-серый',))
         self.assertEqual(card.description,'')
         self.assertIsNone(card.image_url)
+
+    def test_product_discovery_has_variants_without_borrowing_size_price(self):
+        card = WildberriesMapper.to_card(self.payload, REF.split(':')[0])
+        self.assertEqual(card.ref.external_id, REF.split(':')[0])
+        self.assertIsNone(card.price)
+        self.assertEqual(card.availability.value, 'unknown')
+        self.assertTrue(card.variants)
+        self.assertFalse(any(v.selected for v in card.variants))

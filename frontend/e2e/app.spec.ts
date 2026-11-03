@@ -942,3 +942,27 @@ test('выпадающие фильтры оформлены в общей те�
   await expect(state).toHaveText('Все состояния')
   expect(errors).toEqual([])
 })
+
+test('WB и AliExpress добавляются по артикулу без поля SKU', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/cards')
+  for (const [marketplace, field, article, title, url] of [
+    ['Wildberries', 'Артикул WB', '179224846', 'Все размеры WB', 'https://www.wildberries.ru/catalog/179224846/detail.aspx'],
+    ['AliExpress', 'ID товара', '1005009868651525', 'Все SKU Ali', 'https://aliexpress.ru/item/1005009868651525.html'],
+  ]) {
+    await page.getByRole('button', { name: 'Добавить карточку' }).click()
+    const drawer = page.getByRole('dialog', { name: 'Добавить карточку' })
+    await drawer.getByRole('radio', { name: new RegExp(marketplace) }).check()
+    await expect(drawer.getByLabel('SKU варианта')).toHaveCount(0)
+    await expect(drawer.getByLabel('Код размера WB')).toHaveCount(0)
+    await drawer.getByRole('textbox', { name: field, exact: true }).fill(article)
+    await expect(drawer.getByRole('button', { name: 'Добавить', exact: true })).toBeEnabled()
+    await drawer.getByRole('textbox', { name: 'URL', exact: true }).fill(url)
+    await drawer.getByRole('textbox', { name: 'Название', exact: true }).fill(title)
+    await drawer.getByRole('button', { name: 'Добавить', exact: true }).click()
+    await expect(drawer).toBeHidden()
+    await expect(page.getByRole('row', { name: new RegExp(title) })).toBeVisible()
+  }
+  expect(errors).toEqual([])
+})

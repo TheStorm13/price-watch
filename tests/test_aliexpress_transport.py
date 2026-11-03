@@ -66,39 +66,14 @@ class AliExpressTransportTests(unittest.IsolatedAsyncioTestCase):
             transport, _ = await self.transport(AsyncMock(return_value=result), max_attempts=1)
             with self.subTest(result=result.get('status')), self.assertRaises(error): await transport.fetch(REF)
 
-    async def test_old_card_never_reaches_browser_fetch(self):
-        from marketplace_connector.connectors.aliexpress.client import AsyncAliExpressClient
-        client=AsyncAliExpressClient('/tmp/unused-ali-profile')
-        client._request_session=MagicMock()
-        with self.assertRaisesRegex(InvalidProductId,'Не указан SKU'):
-            await client.fetch_product_async('1005009868651525')
-        client._request_session.assert_not_called()
-
-    async def test_mixed_run_leaves_legacy_card_untouched_and_continues(self):
-        from contextlib import asynccontextmanager
-        from dataclasses import replace
-        from marketplace_connector import ConnectorRegistry
-        from marketplace_connector.domain.models import ProductRef
-        from marketplace_connector.connectors.aliexpress.client import AsyncAliExpressClient
-        from marketplace_connector.connectors.aliexpress.connector import AliExpressConnector
-        from price_watch.application.run_executor import RunExecutor
-        from tests.test_collection_service import FakeRepository, card, Connector
-        legacy=replace(card(1),ref=ProductRef('aliexpress','1005009868651525'))
-        neighbor=card(2)
-        repo=FakeRepository([legacy,neighbor])
-        client=AsyncAliExpressClient('/tmp/unused-ali-profile')
-        @asynccontextmanager
-        async def no_browser():yield
-        client.collection_session=no_browser
-        client._request_session=MagicMock()
-        async def factory(run):return ConnectorRegistry([AliExpressConnector(client),Connector()])
-        with self.assertLogs('price_watch.application.collection_service',level='ERROR'):
-            result=await RunExecutor(repo,factory).collect()
-        self.assertEqual((result.success_count,result.failure_count),(1,1))
-        self.assertEqual(repo.cards[0],legacy)
-        self.assertEqual([item.id for item,_ in repo.saved],[2])
-        self.assertIn('Не указан SKU',repo.errors[0]['message'])
-        client._request_session.assert_not_called()
+    async def test_product_only_fetch_omits_sku_and_returns_discovery(self):
+        from urllib.parse import parse_qs, urlsplit
+        fetch = AsyncMock(return_value=response())
+        transport, _ = await self.transport(fetch)
+        self.assertEqual(await transport.fetch(REF.split(':')[0]), RAW)
+        params = parse_qs(urlsplit(fetch.call_args.args[0]['url']).query)
+        self.assertEqual(params['productId'], [REF.split(':')[0]])
+        self.assertNotIn('sku_id', params)
 
     async def test_recovery_waits_for_active_neighbor(self):
         blocked,release=asyncio.Event(),asyncio.Event()

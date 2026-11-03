@@ -63,7 +63,7 @@ class WildberriesIntegrationTests(unittest.IsolatedAsyncioTestCase):
         document['cards'][0]['variants'][0]['externalId']='179224846'
         self.assertEqual((await self.client.post('/api/cards/import',json=document)).status_code,422)
 
-    async def test_legacy_card_error_preserves_all_fields_history_and_neighbor_success(self):
+    async def test_wrong_discovery_response_preserves_history_and_neighbor_success(self):
         with self.sync.engine.begin() as c:
             c.execute(text("INSERT INTO marketplace_cards(marketplace,external_id,title) VALUES ('wildberries','999999999','Legacy')"))
             c.execute(text("INSERT INTO card_variants(card_id,external_id) VALUES (1,'999999999')"))
@@ -75,7 +75,7 @@ class WildberriesIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(exported.status_code, 200)
         self.assertEqual(exported.json()['cards'][0]['externalId'], '999999999')
         self.assertEqual(exported.json()['cards'][0]['variants'][0]['history'][0]['price'], '500.00')
-        self.assertEqual((await self.client.post('/api/cards/import', json=exported.json())).status_code, 422)
+        self.assertEqual((await self.client.post('/api/cards/import', json=exported.json())).status_code, 200)
         valid=await self.stores.cards.add_card('wildberries',REF)
         client=AsyncWildberriesClient('/tmp/unused-ali-profile')
         @asynccontextmanager
@@ -89,13 +89,15 @@ class WildberriesIntegrationTests(unittest.IsolatedAsyncioTestCase):
         async def factory(run):return ConnectorRegistry([WildberriesConnector(client)])
         run=await RunExecutor(self.stores.runs,factory).collect()
         self.assertEqual((run.success_count,run.failure_count),(1,1))
-        transport.fetch.assert_awaited_once_with(REF)
+        self.assertEqual(transport.fetch.await_count,2)
+        transport.fetch.assert_any_await(REF)
+        transport.fetch.assert_any_await('999999999')
         with self.sync.engine.connect() as c:
             self.assertEqual(c.execute(text('SELECT * FROM marketplace_cards WHERE id=1')).one(),before)
             self.assertEqual(c.execute(text('SELECT * FROM price_history WHERE card_id=1')).all(),history)
             self.assertEqual(c.scalar(text('SELECT price FROM price_history WHERE card_id=:id'),{'id':valid.id}),1024)
         errors=(await self.client.get(f'/api/runs/{run.run_id}')).json()['errors']
-        self.assertIn('Не указан размер',errors[0]['message'])
+        self.assertIn('ответ другого товара',errors[0]['message'])
 
     async def test_direct_cli_and_queued_worker_share_one_price_and_history(self):
         import asyncio

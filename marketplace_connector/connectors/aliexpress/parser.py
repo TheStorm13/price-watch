@@ -1,4 +1,4 @@
-"""Validate productData and select exactly one price of the requested SKU."""
+"""Validate productData for discovery or the exact requested SKU price."""
 import json
 import re
 from datetime import datetime, timezone
@@ -52,16 +52,18 @@ def _decode(raw_text):
 
 
 def _selected_sku(data, ref):
-    if data.get('id') != ref.product_id or data.get('activeSkuId') != ref.sku_id:
+    if data.get('id') != ref.product_id or (ref.sku_id is not None and data.get('activeSkuId') != ref.sku_id):
         raise ValueError('identity mismatch')
     rows = data['skuInfo']['priceList']
-    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+    if not isinstance(rows, list) or not rows or any(not isinstance(row, dict) for row in rows):
         raise ValueError('priceList')
     ids = [row.get('skuId') for row in rows]
     if any(not isinstance(sku, str) or not re.fullmatch(r'[0-9]+', sku) for sku in ids):
         raise ValueError('invalid SKU')
     if len(set(ids)) != len(ids):
         raise ValueError('duplicate SKU')
+    if ref.sku_id is None:
+        return None
     return next(row for row in rows if row['skuId'] == ref.sku_id)
 
 
@@ -74,8 +76,8 @@ class AliExpressProductParser:
             selected = _selected_sku(data, ref)
             if not isinstance(data.get('name'), str) or not data['name'].strip():
                 raise ValueError('name')
-            availability = stock(selected)
-            price = None if availability == Availability.OUT_OF_STOCK else selected_price(selected)
+            availability = stock(selected) if ref.sku_id is not None else Availability.UNKNOWN
+            price = None if ref.sku_id is None or availability == Availability.OUT_OF_STOCK else selected_price(selected)
             if availability == Availability.IN_STOCK and price is None:
                 raise MarketplaceSchemaChanged('Нет цены доступного SKU AliExpress')
             return AliExpressProductData(ref, data, selected, price, availability,

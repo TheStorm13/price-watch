@@ -45,6 +45,8 @@ class CardRepository:
                     record = MarketplaceCardRecord(marketplace=marketplace, external_id=article, title=title, url=url, tags=tags or [])
                     session.add(record)
                     await session.flush()
+                if external_id == article and record.primary_variant_id is not None:
+                    raise CardAlreadyExists("Такой товар уже добавлен")
                 if await session.scalar(select(CardVariantRecord.id).where(
                     CardVariantRecord.card_id == record.id, CardVariantRecord.external_id == external_id)):
                     raise CardAlreadyExists("Такой вариант уже добавлен")
@@ -170,8 +172,9 @@ class CardRepository:
         async with self._database.session() as session:
             rows = (await session.execute(select(CardVariantRecord, latest.price, latest.availability, latest.observed_at).outerjoin(latest, latest.id == latest_id)
                 .where(CardVariantRecord.card_id == card_id).order_by(CardVariantRecord.id))).all()
+            exact = any(':' in v.external_id for v, *_ in rows)
             return [dict(id=v.id, card_id=v.card_id, external_id=v.external_id, title=v.title,
                          url=v.url, options=v.options, current_price=price,
                          current_availability=availability,
                          last_observed_at=observed_at, updated_at=v.updated_at)
-                    for v, price, availability, observed_at in rows]
+                    for v, price, availability, observed_at in rows if not exact or ':' in v.external_id or observed_at is not None]

@@ -22,8 +22,6 @@ export interface CardDrawerProps {
 
 interface Errors {
   externalId?: string
-  skuId?: string
-  optionId?: string
   url?: string
   tags?: string
 }
@@ -73,8 +71,6 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
   const [primaryVariantId, setPrimaryVariantId] = useState(initialVariant?.id)
   const [marketplace, setMarketplace] = useState<Marketplace>(card?.marketplace ?? 'ozon')
   const [externalId, setExternalId] = useState(card?.externalId.split(':')[0] ?? '')
-  const [skuId, setSkuId] = useState(card?.marketplace === 'aliexpress' ? initialVariant?.externalId.split(':')[1] ?? '' : '')
-  const [optionId, setOptionId] = useState(card?.marketplace === 'wildberries' ? initialVariant?.externalId.split(':')[1] ?? '' : '')
   const [title, setTitle] = useState(card?.title ?? '')
   const [url, setUrl] = useState(card?.url ?? '')
   const [tags, setTags] = useState((card?.tags ?? []).join(', '))
@@ -84,11 +80,10 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
 
   function validate() {
     const next: Errors = {}
+    const selectedSku = variants.find((v) => v.id === primaryVariantId)?.externalId.split(':')[1]
     if (!/^\d+$/.test(externalId.trim())) next.externalId = `Введите числовой ID карточки ${marketplaceLabel[marketplace]}`
-    if (!card && marketplace === 'aliexpress' && !/^[0-9]+$/.test(skuId.trim())) next.skuId = 'Введите числовой SKU выбранного варианта'
     if (marketplace === 'wildberries') {
       if (!isWildberriesId(externalId.trim())) next.externalId = 'Введите положительный артикул WB в безопасном диапазоне'
-      if (!card && !isWildberriesId(optionId.trim())) next.optionId = 'Введите код выбранного размера WB'
     }
     if (url.trim()) {
       try {
@@ -96,11 +91,11 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
         if (!['http:', 'https:'].includes(parsed.protocol)) next.url = 'Используйте абсолютный HTTP(S) URL'
         if (marketplace === 'wildberries') {
           const ref = parseWildberriesUrl(url.trim())
-          if (ref.nmId !== externalId.trim() || ref.optionId !== optionId.trim()) next.url = 'Ссылка не соответствует артикулу и размеру WB'
+          if (ref.nmId !== externalId.trim() || (selectedSku && ref.optionId && selectedSku !== ref.optionId)) next.url = card ? 'Ссылка не соответствует артикулу и размеру WB' : 'Ссылка не соответствует артикулу WB'
         }
         if (marketplace === 'aliexpress') {
           const ref = parseAliExpressUrl(url.trim())
-          if (ref.productId !== externalId.trim() || ref.skuId !== skuId.trim()) next.url = 'Ссылка не соответствует ID товара и SKU'
+          if (ref.productId !== externalId.trim() || (selectedSku && ref.skuId && selectedSku !== ref.skuId)) next.url = card ? 'Ссылка не соответствует ID товара и SKU' : 'Ссылка не соответствует ID товара'
         }
       } catch {
         next.url = 'Введите корректный абсолютный URL'
@@ -121,16 +116,15 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
     setSaveError(null)
     submitting.current = true
     try {
-      const variantId = marketplace === 'aliexpress' ? skuId.trim() : marketplace === 'wildberries' ? optionId.trim() : undefined
       await onSave({
-        marketplace, externalId: variantId ? `${externalId.trim()}:${variantId}` : externalId.trim(),
+        marketplace, externalId: externalId.trim(),
         primaryVariantId, title: title.trim() || null, url: url.trim() || null, tags: parsedTags,
       })
       onClose()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Не удалось сохранить карточку'
       const field = error && typeof error === 'object' && 'field' in error ? String(error.field) : undefined
-      if (field && ['externalId', 'skuId', 'optionId', 'url', 'tags'].includes(field)) {
+      if (field && ['externalId', 'url', 'tags'].includes(field)) {
         setErrors((current) => ({ ...current, [field]: message }))
       }
       setSaveError(message)
@@ -163,26 +157,14 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
               <FieldLabel htmlFor="external-id">{marketplace === 'aliexpress' ? 'ID товара' : marketplace === 'wildberries' ? 'Артикул WB' : 'ID карточки'}</FieldLabel>
               <Input id="external-id" readOnly={Boolean(card)} data-initial-focus={card ? undefined : true} value={externalId} onChange={(event) => setExternalId(event.target.value)} inputMode="numeric"
                 placeholder={marketplace === 'ozon' ? '1604900984' : 'Введите ID товара'} aria-invalid={Boolean(errors.externalId)} aria-describedby="external-id-hint" />
-              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">Введите числовой ID карточки товара</FieldDescription>}
+              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">{['wildberries', 'aliexpress'].includes(marketplace) ? 'Введите артикул товара. Все SKU будут найдены и добавлены при сборе.' : 'Введите числовой ID карточки товара'}</FieldDescription>}
             </Field>
-            {!card && marketplace === 'aliexpress' ? <Field data-invalid={Boolean(errors.skuId)}>
-              <FieldLabel htmlFor="sku-id">SKU варианта</FieldLabel>
-              <Input id="sku-id" value={skuId} onChange={(event) => setSkuId(event.target.value)} inputMode="numeric" aria-invalid={Boolean(errors.skuId)} aria-describedby="sku-id-hint" />
-              {errors.skuId ? <FieldError id="sku-id-hint">{errors.skuId}</FieldError> : <FieldDescription id="sku-id-hint">SKU выбранного варианта из параметра sku_id в ссылке</FieldDescription>}
-            </Field> : null}
-            {!card && marketplace === 'wildberries' ? <Field data-invalid={Boolean(errors.optionId)}>
-              <FieldLabel htmlFor="option-id">Код размера WB</FieldLabel>
-              <Input id="option-id" value={optionId} onChange={(event) => setOptionId(event.target.value)} inputMode="numeric" aria-invalid={Boolean(errors.optionId)} aria-describedby="option-id-hint" />
-              {errors.optionId ? <FieldError id="option-id-hint">{errors.optionId}</FieldError> : <FieldDescription id="option-id-hint">Вставьте ссылку с параметром size выбранного размера или укажите его код. Каждый размер отслеживается отдельно.</FieldDescription>}
-            </Field> : null}
             {card && variants.length > 1 ? <Field>
               <FieldLabel htmlFor="primary-variant">Главный вариант</FieldLabel>
               <Select value={String(primaryVariantId)} onValueChange={(value) => {
                 const selected = variants.find((v) => v.id === Number(value))
                 if (!selected) return
                 setPrimaryVariantId(selected.id)
-                setSkuId(selected.externalId.split(':')[1] ?? '')
-                setOptionId(selected.externalId.split(':')[1] ?? '')
                 setUrl(selected.url ?? '')
                 setErrors({})
               }}>
@@ -205,7 +187,6 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
                   try {
                     const ref = parseWildberriesUrl(value.trim())
                     if (!card) setExternalId(ref.nmId)
-                    if (!card) setOptionId(ref.optionId)
                     setErrors({})
                   } catch { /* Validate incomplete links on submit. */ }
                 }
@@ -213,7 +194,6 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
                   try {
                     const ref = parseAliExpressUrl(value.trim())
                     if (!card) setExternalId(ref.productId)
-                    if (!card) setSkuId(ref.skuId)
                     setErrors({})
                   } catch { /* Validate incomplete links on submit. */ }
                 }
@@ -231,7 +211,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
           {saveError ? <Alert variant="destructive" className="mx-4"><AlertDescription>{saveError}</AlertDescription></Alert> : null}
           <SheetFooter className="flex-row justify-end">
             <Button variant="outline" type="button" disabled={isPending} onClick={onClose}>Отмена</Button>
-            <Button type="submit" disabled={isPending || !externalId.trim() || (!card && marketplace === 'aliexpress' && !skuId.trim()) || (!card && marketplace === 'wildberries' && !optionId.trim())}>{isPending ? (card ? 'Сохранение…' : 'Добавление…') : (card ? 'Сохранить' : 'Добавить')}</Button>
+            <Button type="submit" disabled={isPending || !externalId.trim()}>{isPending ? (card ? 'Сохранение…' : 'Добавление…') : (card ? 'Сохранить' : 'Добавить')}</Button>
           </SheetFooter>
         </form>
   )

@@ -64,7 +64,7 @@ class AliExpressIntegrationTests(unittest.IsolatedAsyncioTestCase):
         document['cards'][0]['variants'][0]['externalId']='1005009868651525'
         self.assertEqual((await self.client.post('/api/cards/import',json=document)).status_code,422)
 
-    async def test_legacy_card_error_preserves_all_fields_history_and_neighbor_success(self):
+    async def test_wrong_discovery_response_preserves_history_and_neighbor_success(self):
         with self.sync.engine.begin() as c:
             c.execute(text("INSERT INTO marketplace_cards(marketplace,external_id,title) VALUES ('aliexpress','999999999999999','Legacy')"))
             c.execute(text("INSERT INTO card_variants(card_id,external_id) VALUES (1,'999999999999999')"))
@@ -76,7 +76,7 @@ class AliExpressIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(exported.status_code, 200)
         self.assertEqual(exported.json()['cards'][0]['externalId'], '999999999999999')
         self.assertEqual(exported.json()['cards'][0]['variants'][0]['history'][0]['price'], '500.00')
-        self.assertEqual((await self.client.post('/api/cards/import', json=exported.json())).status_code, 422)
+        self.assertEqual((await self.client.post('/api/cards/import', json=exported.json())).status_code, 200)
         valid=await self.stores.cards.add_card('aliexpress',REF)
         client=AsyncAliExpressClient('/tmp/unused-ali-profile')
         @asynccontextmanager
@@ -85,7 +85,7 @@ class AliExpressIntegrationTests(unittest.IsolatedAsyncioTestCase):
         # Keep production identity validation, intercept only its browser transport.
         async def response_for_sku(ref):
             payload=json.loads(RAW)
-            payload['data']['activeSkuId']=ref.split(':')[1]
+            payload['data']['activeSkuId']=ref.split(':')[1] if ':' in ref else None
             return json.dumps(payload)
         transport=MagicMock(fetch=AsyncMock(side_effect=response_for_sku))
         @asynccontextmanager
@@ -100,4 +100,4 @@ class AliExpressIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(c.execute(text('SELECT * FROM price_history WHERE card_id=1')).all(),history)
             self.assertEqual(c.scalar(text('SELECT price FROM price_history WHERE card_id=:id'),{'id':valid.id}),77648)
         errors=(await self.client.get(f'/api/runs/{run.run_id}')).json()['errors']
-        self.assertIn('Не указан SKU',errors[0]['message'])
+        self.assertIn('идентичность SKU',errors[0]['message'])

@@ -167,10 +167,14 @@ class WildberriesBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(str((await neighbor).price),'1024.00')
         self.assertIsNotNone(self.session._async_process)
 
-    async def test_legacy_fails_before_network(self):
-        with self.assertRaisesRegex(InvalidProductId,'Не указан размер'):
-            await self.client.fetch_product_async('179224846')
-        self.assertEqual(self.navigations,[])
+    async def test_product_only_discovers_sizes_before_exact_price_collection(self):
+        connector = WildberriesConnector(self.client)
+        discovery = await connector.get_product(REF.split(':')[0])
+        self.assertIsNone(discovery.price)
+        self.assertEqual(discovery.ref.external_id, REF.split(':')[0])
+        self.assertEqual(discovery.variants[0].ref.external_id, REF)
+        self.assertEqual(str((await connector.get_product(REF)).price), '1024.00')
+        self.assertEqual(self.counts['detail'], 2)
 
     async def test_timeout_closes_only_wb_page_and_next_target_recovers(self):
         self.wait=asyncio.Event()

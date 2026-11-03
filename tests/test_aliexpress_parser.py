@@ -87,3 +87,16 @@ class AliExpressParserTests(unittest.TestCase):
         self.assertEqual(card.attributes,())
         self.assertEqual(card.description,'')
         self.assertEqual(dict(card.variants[0].options),{})
+
+    def test_product_discovery_has_variants_without_price_or_selected_sku(self):
+        self.payload['data'].pop('activeSkuId')
+        product = AliExpressProductParser.parse(self.payload, expected_external_id=REF.split(':')[0])
+        card = AliExpressMapper.to_card(product)
+        self.assertEqual(card.ref.external_id, REF.split(':')[0])
+        self.assertIsNone(card.price)
+        self.assertEqual(card.availability.value, 'unknown')
+        self.assertTrue(card.variants)
+        self.assertFalse(any(v.selected for v in card.variants))
+        self.payload['data']['skuInfo']['priceList'] = []
+        with self.assertRaises(MarketplaceSchemaChanged):
+            AliExpressProductParser.parse(self.payload, expected_external_id=REF.split(':')[0])

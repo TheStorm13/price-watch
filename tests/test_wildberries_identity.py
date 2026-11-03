@@ -16,13 +16,13 @@ class WildberriesIdentityTests(unittest.TestCase):
         self.assertNotEqual(ref, WildberriesRef.parse('179224846:296499717'))
 
     def test_invalid_id(self):
-        for value in ['1', '1:', '1:2:3', '１:2', '1:٢', '-1:2', '0:2', '1:0', '01:2', '1:9007199254740992']:
+        for value in ['', '1:', '1:2:3', '１:2', '1:٢', '-1:2', '0:2', '1:0', '01:2', '1:9007199254740992']:
             with self.subTest(value=value), self.assertRaises(InvalidProductId):
                 WildberriesRef.parse(value)
 
     def test_invalid_url_and_mismatch(self):
         ref = WildberriesRef.parse('1:2')
-        for url in ['https://www.wildberries.ru/catalog/1/detail.aspx', ref.url+'&size=2',
+        for url in [ref.url+'&size=2',
                     ref.url.replace('https:', 'http:'), ref.url.replace('www.wildberries.ru', 'evil.ru'),
                     ref.url+'&size=', ref.url+'#fragment']:
             with self.subTest(url=url), self.assertRaises(InvalidProductId):
@@ -30,3 +30,13 @@ class WildberriesIdentityTests(unittest.TestCase):
         for value in ['1:3', '2:2']:
             with self.assertRaises(InvalidProductId):
                 validate_card_identity('wildberries', value, ref.url)
+
+    def test_product_only_starts_discovery(self):
+        marketplace = 'wildberries'
+        ref_type = WildberriesRef
+        ref = ref_type.parse('123')
+        self.assertEqual(ref.external_id, '123')
+        self.assertEqual(ref_type.from_url(ref.url), ref)
+        self.assertEqual(CardCreate(marketplace=marketplace, external_id='123').external_id, '123')
+        self.assertEqual(validate_card_identity(marketplace, '123', ref_type.parse('123:456').url)[0], '123')
+        self.assertEqual(validate_card_identity(marketplace, '123:456', ref.url)[0], '123:456')

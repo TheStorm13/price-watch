@@ -7,9 +7,9 @@ export function parseWildberriesUrl(value: string) {
   const match = /^\/catalog\/([0-9]+)\/detail\.aspx$/.exec(url.pathname)
   const sizes = url.searchParams.getAll('size')
   if (url.protocol !== 'https:' || !['wildberries.ru', 'www.wildberries.ru'].includes(url.host) ||
-      url.username || url.password || url.hash || !match || sizes.length !== 1 ||
-      !isWildberriesId(match[1]) || !isWildberriesId(sizes[0])) {
-    throw new Error('Укажите полную ссылку Wildberries с единственным size выбранного размера')
+      url.username || url.password || url.hash || !match || sizes.length > 1 ||
+      !isWildberriesId(match[1]) || (sizes.length === 1 && !isWildberriesId(sizes[0]))) {
+    throw new Error('Укажите полную ссылку на товар Wildberries')
   }
   return { nmId: match[1], optionId: sizes[0] }
 }

@@ -8,8 +8,11 @@ describe('Wildberries size identity', () => {
   })
   it('rejects unsafe and ambiguous input', () => {
     for (const id of ['0', '01', '１', '٢', '-1', '9007199254740992']) expect(isWildberriesId(id)).toBe(false)
-    for (const url of ['https://www.wildberries.ru/catalog/1/detail.aspx',
-      'https://www.wildberries.ru/catalog/1/detail.aspx?size=2&size=2',
+    for (const url of [      'https://www.wildberries.ru/catalog/1/detail.aspx?size=2&size=2',
       'https://evil.ru/catalog/1/detail.aspx?size=2']) expect(() => parseWildberriesUrl(url)).toThrow()
   })
+})
+
+it('принимает товарную ссылку без SKU', () => {
+  expect(parseWildberriesUrl('https://www.wildberries.ru/catalog/123/detail.aspx')).toEqual({ nmId: '123', optionId: undefined })
 })

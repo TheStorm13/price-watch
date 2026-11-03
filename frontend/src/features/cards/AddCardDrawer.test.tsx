@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AddCardDrawer } from './AddCardDrawer'
+import { AddCardDrawer, CardDrawer } from './AddCardDrawer'
 
 afterEach(cleanup)
 
@@ -28,7 +28,7 @@ describe('AddCardDrawer', () => {
     )
     await user.click(screen.getByRole('radio', { name: /Wildberries/ }))
     expect(screen.getByRole('radio', { name: /Wildberries/ })).toBeChecked()
-    expect(screen.getByLabelText('Код размера WB')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Код размера WB')).not.toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /AliExpress/ }))
     expect(screen.getByRole('radio', { name: /AliExpress/ })).toBeChecked()
     await user.click(screen.getByRole('radio', { name: /Яндекс Маркет/ }))
@@ -37,30 +37,39 @@ describe('AddCardDrawer', () => {
   })
 })
 
-it('заполняет точный SKU из ссылки AliExpress и отклоняет несовпадение', async () => {
+
+it.each([
+  ['Wildberries', 'Артикул WB', '123', 'https://www.wildberries.ru/catalog/123/detail.aspx', 'wildberries'],
+  ['AliExpress', 'ID товара', '123', 'https://aliexpress.ru/item/123.html', 'aliexpress'],
+])('добавляет %s по артикулу или товарной ссылке без SKU', async (label, field, article, url, marketplace) => {
   const user = userEvent.setup()
-  render(<QueryClientProvider client={new QueryClient()}><AddCardDrawer open onClose={vi.fn()} /></QueryClientProvider>)
-  await user.click(screen.getByRole('radio', { name: /AliExpress/ }))
-  expect(screen.getByRole('button', { name: 'Добавить' })).toBeDisabled()
-  await user.type(screen.getByLabelText('URL'), 'https://aliexpress.ru/item/1005009868651525.html?sku_id=12000061135122688')
-  expect(screen.getByLabelText('ID товара')).toHaveValue('1005009868651525')
-  expect(screen.getByLabelText('SKU варианта')).toHaveValue('12000061135122688')
-  await user.clear(screen.getByLabelText('SKU варианта'))
-  await user.type(screen.getByLabelText('SKU варианта'), '12000061135122692')
+  const onSave = vi.fn().mockResolvedValue(undefined)
+  const onClose = vi.fn()
+  render(<CardDrawer open onClose={onClose} onSave={onSave} isPending={false} />)
+  await user.click(screen.getByRole('radio', { name: new RegExp(label) }))
+  expect(screen.queryByLabelText('Код размера WB')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('SKU варианта')).not.toBeInTheDocument()
+  await user.type(screen.getByLabelText(field), article)
+  expect(screen.getByRole('button', { name: 'Добавить' })).toBeEnabled()
+  await user.type(screen.getByLabelText('URL'), url)
   await user.click(screen.getByRole('button', { name: 'Добавить' }))
-  expect(screen.getByText('Ссылка не соответствует ID товара и SKU')).toBeInTheDocument()
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ marketplace, externalId: article, url }))
+  expect(onClose).toHaveBeenCalledOnce()
 })
 
-it('заполняет артикул и размер WB из ссылки и отклоняет несовпадение', async () => {
+it.each([
+  ['Wildberries', 'Артикул WB', 'https://www.wildberries.ru/catalog/123/detail.aspx?size=456', 'Ссылка не соответствует артикулу WB'],
+  ['AliExpress', 'ID товара', 'https://aliexpress.ru/item/123.html?sku_id=456', 'Ссылка не соответствует ID товара'],
+])('извлекает артикул %s из ссылки с SKU и проверяет принадлежность товара', async (label, field, url, error) => {
   const user = userEvent.setup()
-  render(<QueryClientProvider client={new QueryClient()}><AddCardDrawer open onClose={vi.fn()} /></QueryClientProvider>)
-  await user.click(screen.getByRole('radio', { name: /Wildberries/ }))
-  expect(screen.getByRole('button', { name: 'Добавить' })).toBeDisabled()
-  await user.type(screen.getByLabelText('URL'), 'https://www.wildberries.ru/catalog/179224846/detail.aspx?size=296499716')
-  expect(screen.getByLabelText('Артикул WB')).toHaveValue('179224846')
-  expect(screen.getByLabelText('Код размера WB')).toHaveValue('296499716')
-  await user.clear(screen.getByLabelText('Код размера WB'))
-  await user.type(screen.getByLabelText('Код размера WB'), '296499717')
+  const onSave = vi.fn()
+  render(<CardDrawer open onClose={vi.fn()} onSave={onSave} isPending={false} />)
+  await user.click(screen.getByRole('radio', { name: new RegExp(label) }))
+  await user.type(screen.getByLabelText('URL'), url)
+  expect(screen.getByLabelText(field)).toHaveValue('123')
+  await user.clear(screen.getByLabelText(field))
+  await user.type(screen.getByLabelText(field), '999')
   await user.click(screen.getByRole('button', { name: 'Добавить' }))
-  expect(screen.getByText('Ссылка не соответствует артикулу и размеру WB')).toBeInTheDocument()
+  expect(screen.getByText(error)).toBeInTheDocument()
+  expect(onSave).not.toHaveBeenCalled()
 })

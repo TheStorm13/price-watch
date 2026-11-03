@@ -1,4 +1,4 @@
-"""Validate the runtime envelope and map only one exact-size price."""
+"""Validate the runtime envelope: product discovery or one exact-size price."""
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
@@ -50,9 +50,9 @@ def parse_product(payload, ref):
     if not isinstance(sizes, list) or not sizes or any(not isinstance(s, dict) for s in sizes):
         raise schema('отсутствуют размеры')
     ids = [s.get('optionId') for s in sizes]
-    if any(not isinstance(value, str) for value in ids) or len(set(ids)) != len(ids) or ref.option_id not in ids:
+    if any(not isinstance(value, str) for value in ids) or len(set(ids)) != len(ids) or (ref.option_id is not None and ref.option_id not in ids):
         raise schema('выбранный размер отсутствует или дублируется')
-    return product, sizes, sizes[ids.index(ref.option_id)]
+    return product, sizes, sizes[ids.index(ref.option_id)] if ref.option_id is not None else None
 
 def map_variants(sizes, ref):
     variants = []
@@ -116,9 +116,9 @@ class WildberriesMapper:
             supplier_id = str(product['supplierId']) if product.get('supplierId') else None
             seller = Seller(supplier_id, product['supplier'])
         attributes, description = map_metadata(payload)
-        stock = availability(size)
+        stock = availability(size) if size is not None else Availability.UNKNOWN
         return MarketplaceCard(
-            ProductRef('wildberries', ref.external_id), name, ref.url, stock, selected_price(size, stock),
+            ProductRef('wildberries', ref.external_id), name, ref.url, stock, selected_price(size, stock) if size is not None else None,
             seller=seller, rating=map_rating(product), variants=map_variants(sizes, ref),
             attributes=attributes, description=description,
             collected_at=collected_at or datetime.now(timezone.utc))

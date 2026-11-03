@@ -282,9 +282,9 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(response.json()["marketplace"], marketplace)
                 self.assertEqual(self.repository.last_added_marketplace, marketplace)
 
-    async def test_aliexpress_requires_exact_sku(self):
-        invalid = await self.client.post("/api/cards", json={"marketplace":"aliexpress", "externalId":"123456"})
-        self.assertEqual(invalid.status_code, 422)
+    async def test_aliexpress_accepts_product_id_and_exact_sku(self):
+        product = await self.client.post("/api/cards", json={"marketplace":"aliexpress", "externalId":"123456"})
+        self.assertEqual(product.status_code, 201)
         response = await self.client.post("/api/cards", json={"marketplace":"aliexpress", "externalId":"123456:98765432101234567"})
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["externalId"], "123456")
