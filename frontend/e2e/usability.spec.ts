@@ -125,6 +125,8 @@ test('наличие и меню закреплены при прокрутке 
 })
 
 test('названия и зоны плиток выровнены, теги целые, артикулы скрыты и безымянный товар доступен', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
   const { uiFixture } = await import('./uiFixtures')
   await uiFixture(page)
   for (const width of [1024, 1440]) {
@@ -132,10 +134,33 @@ test('названия и зоны плиток выровнены, теги ц�
     await page.getByRole('radio', { name: 'Список', exact: true }).click()
     const offsets = await page.locator('.cards-table__product').evaluateAll((rows) => rows.map((row) => row.querySelector('.card-identity strong')!.getBoundingClientRect().top - row.getBoundingClientRect().top))
     expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThanOrEqual(1)
+    await expect(page.locator('.table-surface')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    for (const image of await page.locator('.cards-table__product img').all()) {
+      await expect(image).toBeVisible()
+      const geometry = await image.evaluate(element => {
+        const image = element as HTMLImageElement
+        const box = image.getBoundingClientRect()
+        const cell = image.closest('td')!
+        const cellStyle = getComputedStyle(cell)
+        const thumbnail = image.parentElement!.getBoundingClientRect()
+        const bounds = cell.getBoundingClientRect()
+        return { radius: parseFloat(getComputedStyle(image).borderRadius), ratio: box.width / box.height,
+          naturalRatio: image.naturalWidth / image.naturalHeight,
+          top: thumbnail.top - bounds.top - parseFloat(cellStyle.borderTopWidth),
+          bottom: bounds.bottom - thumbnail.bottom - parseFloat(cellStyle.borderBottomWidth) }
+      })
+      expect(geometry.radius).toBeGreaterThanOrEqual(8)
+      expect(geometry.ratio).toBeCloseTo(geometry.naturalRatio, 1)
+      expect(geometry.top).toBeCloseTo(4, 0)
+      // A taller title/tag block may add space below the fixed-size thumbnail.
+      expect(geometry.bottom).toBeGreaterThanOrEqual(4)
+      expect(geometry.bottom).toBeLessThanOrEqual(8)
+    }
     await expect(page.locator('.cards-table')).not.toContainText('ID:')
     await expect(page.getByRole('link', { name: 'Без названия', exact: true })).toBeVisible()
     await page.getByRole('radio', { name: 'Сетка', exact: true }).click()
     const tiles = page.locator('.cards-grid__item')
+    for (const image of await tiles.locator('img').all()) await expect(image).toHaveCSS('border-top-left-radius', '8px')
     const geometry = await tiles.evaluateAll((items) => items.map((tile) => {
       const top = tile.getBoundingClientRect().top
       return ['.cards-grid__media', '.cards-grid__title', '.cards-grid__tags', '.cards-grid__prices', 'time'].map((selector) => tile.querySelector(selector)!.getBoundingClientRect().top - top)
@@ -157,6 +182,7 @@ test('названия и зоны плиток выровнены, теги ц�
     }
     await expect(page.locator('.cards-grid__id')).toHaveCount(0)
   }
+  expect(errors).toEqual([])
 })
 
 test('длинные названия, крупные цены и действия форм помещаются в desktop-окне', async ({ page }) => {

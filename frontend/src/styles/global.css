@@ -105,8 +105,8 @@ input::placeholder { color: #98a2b3; }
 .cards-table tr:not(.virtual-spacer) > :last-child { position: sticky; right: 0; z-index: 1; }
 .cards-table td:nth-last-child(-n+2) { background: var(--row-surface, var(--surface)); }
 .cards-table th:nth-last-child(-n+2) { background: var(--surface-subtle); }
-.cards-table__product { height: 84px; }
-.cards-table__product td { height: 84px; }
+.cards-table__product { height: auto; }
+.cards-table__product td { height: auto; }
 .cards-table__product .card-identity { min-height: 68px; }
 .cards-table__product .card-identity > span:last-child { min-width: 0; width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
 .cards-table__product .card-identity strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; }
@@ -130,7 +130,7 @@ input::placeholder { color: #98a2b3; }
 .cards-grid__link { min-width: 0; display: grid; grid-template-rows: 190px 48px; color: var(--text); text-decoration: none; }
 .cards-grid__link:hover .cards-grid__title { color: var(--blue); }
 .cards-grid__media { display: block; width: 100%; height: 190px; overflow: hidden; background: #fff; }
-.cards-grid .product-placeholder--large { display: grid; width: 100%; height: 100%; border-radius: 0; font-size: 44px; }
+.cards-grid .product-placeholder--large { display: grid; width: 100%; height: 100%; border-radius: var(--radius-control); font-size: 44px; }
 .cards-grid .product-placeholder--large > span, .cards-grid .product-placeholder--large img { grid-area: 1 / 1; }
 .cards-grid .product-placeholder--large img { position: absolute; display: block; height: 100%; object-fit: contain; }
 .cards-grid__title { display: -webkit-box; height: 40px; margin: 8px 12px 0; overflow: hidden; font-size: 14px; font-weight: 650; line-height: 20px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -281,6 +281,13 @@ input::placeholder { color: #98a2b3; }
 
 /* Spacing belongs to each measured row, so virtual offsets include the gap. */
 [data-catalog-results] { --catalog-gap: 8px; --catalog-radius: 10px; --group-member-surface: color-mix(in srgb, var(--accent) 40%, var(--surface)); }
+.cards-page .table-surface:has(.cards-table) { background: transparent; border: 0; border-radius: 0; }
+.cards-table thead th:first-child { border-top-left-radius: var(--catalog-radius); }
+.cards-table thead th:last-child { border-top-right-radius: var(--catalog-radius); }
+.cards-table__product .product-placeholder--with-image,
+.cards-grid .product-placeholder--with-image { background: var(--surface); }
+.cards-table__product .product-placeholder img,
+.cards-grid .product-placeholder img { width: auto; height: auto; max-width: 100%; max-height: 100%; margin: auto; border-radius: inherit; }
 .cards-table tbody tr, .cards-table tbody tr:hover { background: transparent; border: 0; }
 .cards-table tbody tr > td { background-color: var(--row-surface); background-clip: padding-box; }
 .cards-table [data-block-start] > td { border-top: var(--catalog-gap) solid transparent; box-shadow: inset 0 1px var(--border); }
