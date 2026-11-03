@@ -16,6 +16,11 @@
   #group-designs td:last-child { width:40px; }
   #group-designs .pw-group td { background:var(--pw-blue-bg); }
   #group-designs .pw-group td:first-child { box-shadow:inset 3px 0 var(--pw-blue); }
+  #group-designs .pw-nested td { background:color-mix(in srgb,var(--pw-blue-bg) 40%,var(--pw-bg)); }
+  #group-designs .pw-nested td:first-child { box-shadow:inset 3px 0 var(--pw-blue); }
+  #group-designs #pw-folder-members tr:last-child td { border-bottom:2px solid color-mix(in srgb,var(--pw-blue) 40%,var(--pw-line)); }
+  #group-designs .pw-group:has([aria-expanded="false"]) td { border-bottom:2px solid color-mix(in srgb,var(--pw-blue) 40%,var(--pw-line)); }
+  #group-designs .pw-separator td { height:12px; padding:0; border:0; background:var(--pw-soft); }
   #group-designs .pw-identity { display:flex; gap:10px; align-items:center; min-width:0; }
   #group-designs .pw-identity > div { min-width:0; }
   #group-designs strong { font-weight:500; }
@@ -32,7 +37,7 @@
   #group-designs svg { width:16px; height:16px; flex:none; }
   #group-designs .pw-photo { width:36px; height:42px; display:grid; place-items:center; background:var(--pw-soft); border:1px solid var(--pw-line); border-radius:6px; flex:none; color:var(--pw-muted); }
   #group-designs .pw-nested td:first-child { padding-left:37px; }
-  #group-designs .pw-nested .pw-identity { border-left:2px solid var(--pw-line); padding-left:12px; }
+  #group-designs .pw-nested .pw-identity { padding-left:0; }
   #group-designs .pw-saving { color:var(--pw-green); }
   #group-designs .pw-available { color:var(--pw-green); font-size:11px; }
   #group-designs .pw-section { margin:14px; border:1px solid var(--pw-line); border-radius:10px; overflow:hidden; }
@@ -66,6 +71,7 @@
             <tr class="pw-nested"><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="package" aria-hidden="true"></i></span><div><strong>Lavazza Crema e Aroma, 1 кг</strong><div class="pw-muted">Ozon</div></div></div></td><td>1 290 ₽</td><td>1 190 ₽</td><td>1 490 ₽</td><td class="pw-saving">200 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr>
             <tr class="pw-nested"><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="package" aria-hidden="true"></i></span><div><strong>Jardin Espresso, 1 кг</strong><div class="pw-muted">Wildberries</div></div></div></td><td>1 450 ₽</td><td>1 350 ₽</td><td>1 520 ₽</td><td class="pw-saving">70 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr>
           </tbody>
+          <tbody class="pw-separator" aria-hidden="true"><tr><td colspan="7"></td></tr></tbody>
           <tbody><tr><td><div class="pw-identity"><span class="pw-photo"><i data-lucide="headphones" aria-hidden="true"></i></span><div><strong>Sony WH-CH720N</strong><div class="pw-muted">Ozon · Электроника</div></div></div></td><td>8 990 ₽</td><td>8 490 ₽</td><td>9 800 ₽</td><td class="pw-saving">810 ₽</td><td class="pw-available">В наличии</td><td>⋯</td></tr></tbody>
         </table></div>
         <div class="pw-edit-note" hidden aria-live="polite">Редактирование группы: в приложении здесь откроется существующий диалог.</div>
