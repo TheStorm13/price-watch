@@ -11,6 +11,7 @@ from marketplace_connector.domain.models import (
     Attribute,
     Availability,
     ProductRef,
+    ProductVariant,
     MarketplaceCard,
 )
 from marketplace_connector.serialization.product_json import card_to_json
@@ -59,6 +60,16 @@ class ConnectorContractTests(unittest.TestCase):
         self.assertNotIn("prices", payload)
         self.assertEqual(payload["attributes"][0]["values"], ["зелёный"])
         self.assertEqual(payload["collected_at"], "2026-01-02T03:04:05+00:00")
+
+    def test_serializes_independent_variant_images(self):
+        from dataclasses import replace
+        snapshot = asyncio.run(FakeConnector().get_product('product-1'))
+        variants = tuple(ProductVariant(ProductRef('demo', str(i)), str(i), f'https://example.test/{i}',
+            Availability.IN_STOCK, image_url=image) for i, image in enumerate(
+                ['https://example.test/a.webp', 'https://example.test/b.webp', None]))
+        payload = json.loads(card_to_json(replace(snapshot, variants=variants)))
+        self.assertEqual([v['image_url'] for v in payload['variants']],
+            ['https://example.test/a.webp', 'https://example.test/b.webp', None])
 
     def test_rejects_duplicate_connector(self):
         registry = ConnectorRegistry([FakeConnector()])

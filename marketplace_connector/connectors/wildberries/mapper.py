@@ -1,6 +1,7 @@
 """Validate the runtime envelope: product discovery or one exact-size price."""
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlsplit
 
 from ...domain.errors import MarketplaceSchemaChanged
 from ...domain.models import Attribute, Availability, MarketplaceCard, ProductRef, ProductVariant, Rating, Seller
@@ -54,7 +55,7 @@ def parse_product(payload, ref):
         raise schema('выбранный размер отсутствует или дублируется')
     return product, sizes, sizes[ids.index(ref.option_id)] if ref.option_id is not None else None
 
-def map_variants(sizes, ref):
+def map_variants(sizes, ref, image_url=None):
     variants = []
     for size in sizes:
         try:
@@ -63,7 +64,7 @@ def map_variants(sizes, ref):
             raise schema('повреждён ID размера') from exc
         label = size.get('name') or size.get('origName') or variant_ref.option_id
         variants.append(ProductVariant(ProductRef('wildberries', variant_ref.external_id), str(label),
-            variant_ref.url, availability(size), variant_ref == ref, {'Размер': str(label)}))
+            variant_ref.url, availability(size), variant_ref == ref, {'Размер': str(label)}, image_url=image_url))
     return tuple(variants)
 
 def selected_price(size, stock):
@@ -116,9 +117,16 @@ class WildberriesMapper:
             supplier_id = str(product['supplierId']) if product.get('supplierId') else None
             seller = Seller(supplier_id, product['supplier'])
         attributes, description = map_metadata(payload)
+        image_url = product.get('imageUrl')
+        try:
+            location = urlsplit(image_url) if isinstance(image_url, str) else None
+            if not location or location.scheme != 'https' or not location.hostname or location.username or location.password:
+                image_url = None
+        except ValueError:
+            image_url = None
         stock = availability(size) if size is not None else Availability.UNKNOWN
         return MarketplaceCard(
             ProductRef('wildberries', ref.external_id), name, ref.url, stock, selected_price(size, stock) if size is not None else None,
-            seller=seller, rating=map_rating(product), variants=map_variants(sizes, ref),
+            image_url=image_url, seller=seller, rating=map_rating(product), variants=map_variants(sizes, ref, image_url),
             attributes=attributes, description=description,
             collected_at=collected_at or datetime.now(timezone.utc))

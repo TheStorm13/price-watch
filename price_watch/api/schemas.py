@@ -123,6 +123,8 @@ class TransferVariant(ApiModel):
     external_id: str
     title: str = ""
     url: str | None = None
+    image_url: str | None = None
+    product_title: str | None = None
     options: dict[str, str] = Field(default_factory=dict)
     updated_at: datetime | None = None
     history: list[TransferHistoryPoint] = Field(default_factory=list)
@@ -241,6 +243,7 @@ class CardResponse(ApiModel):
     title: str | None
     url: str | None
     image_url: str | None
+    options: dict[str, str] = Field(default_factory=dict)
     tags: list[str]
     deals_enabled: bool
     group_id: int | None = None
@@ -268,6 +271,7 @@ class CardResponse(ApiModel):
             title=card.title,
             url=card.url,
             image_url=card.image_url,
+            options=card.options,
             tags=list(card.tags),
             deals_enabled=card.deals_enabled,
             group_id=card.group_id,
@@ -287,6 +291,8 @@ class VariantResponse(ApiModel):
     external_id: str
     title: str
     url: str | None
+    image_url: str | None
+    product_title: str | None
     options: dict[str, str]
     current_price: Decimal | None
     current_availability: str | None

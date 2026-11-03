@@ -37,10 +37,10 @@ async def seed(db, count):
             raise RuntimeError('Benchmark requires database named price_watch_rel_test')
         await session.execute(text('TRUNCATE marketplace_cards, product_groups, collection_runs RESTART IDENTITY CASCADE'))
         await session.execute(text("INSERT INTO product_groups(id,name) OVERRIDING SYSTEM VALUE SELECT i, 'Group '||i FROM generate_series(1,:n) i"), {'n': max(1, count//10)})
-        await session.execute(text("""INSERT INTO marketplace_cards(id,marketplace,external_id,title,group_id) OVERRIDING SYSTEM VALUE
-            SELECT i,'ozon',i::text,'Product '||i,CASE WHEN i%2=0 THEN (i-1)/10+1 END
+        await session.execute(text("""INSERT INTO marketplace_cards(id,marketplace,external_id,group_id) OVERRIDING SYSTEM VALUE
+            SELECT i,'ozon',i::text,CASE WHEN i%2=0 THEN (i-1)/10+1 END
             FROM generate_series(1,:n) i"""), {'n': count})
-        await session.execute(text("INSERT INTO card_variants(id,card_id,external_id,updated_at) SELECT id,id,external_id,updated_at FROM marketplace_cards"))
+        await session.execute(text("INSERT INTO card_variants(id,card_id,external_id,product_title,updated_at) SELECT id,id,external_id,'Product '||id,updated_at FROM marketplace_cards"))
         await session.execute(text("UPDATE marketplace_cards SET primary_variant_id=id"))
         await session.execute(text("""INSERT INTO price_history(card_id,variant_id,price,availability,observed_at,snapshot)
             SELECT i,i,100+(j%10), 'in_stock', '2026-10-01'::timestamptz+j*interval '1 hour','{}'::jsonb

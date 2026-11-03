@@ -84,7 +84,7 @@ class WildberriesMapperTests(unittest.TestCase):
         card=self.card()
         self.assertEqual(card.attributes[0].values,('графит, темно-серый',))
         self.assertEqual(card.description,'')
-        self.assertIsNone(card.image_url)
+        self.assertEqual(card.image_url, self.payload['product']['imageUrl'])
 
     def test_product_discovery_has_variants_without_borrowing_size_price(self):
         card = WildberriesMapper.to_card(self.payload, REF.split(':')[0])
@@ -93,3 +93,15 @@ class WildberriesMapperTests(unittest.TestCase):
         self.assertEqual(card.availability.value, 'unknown')
         self.assertTrue(card.variants)
         self.assertFalse(any(v.selected for v in card.variants))
+
+    def test_images_belong_to_article_and_all_sizes(self):
+        image = self.payload['product']['imageUrl']
+        card = self.card()
+        self.assertEqual(card.image_url, image)
+        self.assertTrue(all(v.image_url == image for v in card.variants))
+        self.assertEqual(card_to_dict(card)['variants'][0]['image_url'], image)
+        for value in [None, '', 12, 'javascript:alert(1)', 'https://[']:
+            self.payload['product']['imageUrl'] = value
+            card = self.card()
+            self.assertIsNone(card.image_url)
+            self.assertEqual(card.price, Decimal('1024.00'))

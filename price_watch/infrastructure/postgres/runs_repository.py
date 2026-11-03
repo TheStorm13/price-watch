@@ -47,19 +47,18 @@ class RunRepository:
                 if not snapshot.variants:
                     raise ValueError('Ответ товара не содержит вариантов для отслеживания')
                 await self._discover_variants(session, lease, card_record, snapshot, initial=True)
-                if not card_record.title or not card_record.title.strip():
-                    card_record.title = snapshot.title
                 card_record.updated_at = self._clock()
                 # Discovery is not a price observation. Keep pre-SKU history and identity intact.
                 return
             latest = await session.scalar(select(PriceHistoryRecord).options(defer(PriceHistoryRecord.snapshot)).where(PriceHistoryRecord.variant_id == variant.id)
                 .order_by(PriceHistoryRecord.observed_at.desc(), PriceHistoryRecord.id.desc()).limit(1))
-            if not card_record.title or not card_record.title.strip():
-                card_record.title = snapshot.title
-            if card_record.primary_variant_id == variant.id:
-                if snapshot.url:
-                    card_record.url = snapshot.url
-                card_record.image_url = snapshot.image_url or card_record.image_url
+            if not variant.product_title or not variant.product_title.strip():
+                variant.product_title = snapshot.title
+            own = next((v for v in snapshot.variants if v.ref == snapshot.ref), None)
+            if own is not None:
+                variant.title = own.title
+                variant.options = dict(own.options)
+            variant.image_url = snapshot.image_url or (own.image_url if own else None) or variant.image_url
             card_record.updated_at = self._clock()
             variant.updated_at = snapshot.collected_at
             if snapshot.url:
@@ -88,13 +87,14 @@ class RunRepository:
                 raise ValueError('Коннектор вернул вариант другого товара')
             ref, url = validate_card_identity(product.marketplace, candidate.ref.external_id, candidate.url)
             if ':' not in ref:
-                raise ValueError('Обнаруженный вариант не содержит SKU')
+                raise ValueError('Обнаруженный вариант не содержит код варианта')
             variant = known.get(ref)
             if variant is None:
                 variant = CardVariantRecord(card_id=product.id, external_id=ref, url=url)
                 session.add(variant)
                 known[ref] = variant
             variant.title = candidate.title
+            variant.image_url = candidate.image_url or variant.image_url
             variant.options = dict(candidate.options)
             if not variant.url:
                 variant.url = url
@@ -103,8 +103,9 @@ class RunRepository:
         if initial:
             primary = await session.get(CardVariantRecord, product.primary_variant_id)
             if primary is None or ':' not in primary.external_id:
+                if primary is not None and primary.product_title and not discovered[0].product_title:
+                    discovered[0].product_title = primary.product_title
                 product.primary_variant_id = discovered[0].id
-                product.url = discovered[0].url
         # Retrying failed discovery must expand its SKU targets; ordinary SKU retries stay exact.
         new_targets = [v for v in discovered if v.id not in target_ids] if initial or run.retry_of_run_id is None else []
         if new_targets:
@@ -141,7 +142,7 @@ class RunRepository:
         rows = (await session.execute(query.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id, CardVariantRecord.id)
                                       .with_for_update(read=True, of=MarketplaceCardRecord))).all()
         exact_products = {c.id for c, v in rows if c.marketplace in ('aliexpress', 'wildberries') and ':' in v.external_id}
-        cards = [_tracked_card(c, v) for c, v in rows if c.id not in exact_products or ':' in v.external_id]
+        cards = [_tracked_card(c, v, for_collection=True) for c, v in rows if c.id not in exact_products or ':' in v.external_id]
         if not cards:
             if card_id is not None:
                 raise LookupError(f'Карточка не найдена: {card_id}')
@@ -203,7 +204,7 @@ class RunRepository:
                 raise ValueError('Повтор для этого запуска уже создан')
             rows = (await s.execute(self._retry_targets(source_run_id).order_by(CollectionRunTargetRecord.position)
                                     .with_for_update(read=True, of=MarketplaceCardRecord))).all()
-            cards = [_tracked_card(c, v) for c, v in rows]
+            cards = [_tracked_card(c, v, for_collection=True) for c, v in rows]
             if not cards:
                 raise ValueError('Нет доступных карточек для повтора')
             return await self._create_run(s, cards, retry_of=source_run_id)
@@ -218,7 +219,7 @@ class RunRepository:
             if pending_only:
                 query = query.where(CollectionRunTargetRecord.status == 'pending')
             rows = (await s.execute(query.order_by(CollectionRunTargetRecord.position))).all()
-            return [_tracked_card(c, v) for c, v in rows]
+            return [_tracked_card(c, v, for_collection=True) for c, v in rows]
 
     async def claim_next_run(self):
         async with self._database.session() as s, s.begin():

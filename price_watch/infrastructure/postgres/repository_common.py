@@ -13,16 +13,17 @@ from .models import CollectionRunRecord, MarketplaceCardRecord
 _RUN_CREATION_LOCK = text("SELECT pg_advisory_xact_lock(578612391)")
 
 
-def _tracked_card(record: MarketplaceCardRecord, variant=None, last_collected_at=None) -> TrackedCard:
+def _tracked_card(record: MarketplaceCardRecord, variant=None, last_collected_at=None, *, for_collection=False) -> TrackedCard:
     return TrackedCard(
         id=record.id,
         variant_id=variant.id if variant else None,
         primary_variant_id=record.primary_variant_id,
         last_collected_at=last_collected_at,
-        ref=ProductRef(record.marketplace, variant.external_id if variant else record.external_id),
-        title=record.title,
-        url=variant.url if variant else record.url,
-        image_url=record.image_url,
+        ref=ProductRef(record.marketplace, variant.external_id if for_collection and variant else record.external_id),
+        options=dict(variant.options) if variant else {},
+        title=variant.product_title if variant else None,
+        url=variant.url if variant else None,
+        image_url=variant.image_url if variant else None,
         group_id=record.group_id,
         tags=tuple(record.tags),
         deals_enabled=record.deals_enabled,

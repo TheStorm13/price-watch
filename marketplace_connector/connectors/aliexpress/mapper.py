@@ -11,13 +11,15 @@ def _variants(data, ref):
     properties = {}
     for prop in sku_info.get('propertyList') or []:
         for value in prop.get('values') or []:
-            properties[value['id']] = (prop['name'], value.get('displayName') or value.get('name') or '')
+            properties[value['id']] = (prop['name'], value.get('displayName') or value.get('name') or '', value.get('imageMainUrl') or value.get('imagePreviewUrl'))
     for row in sku_info['priceList']:
         variant_ref = AliExpressRef(ref.product_id, row['skuId'])
-        options = dict(properties[key] for key in (row.get('skuPropIds') or '').split(',') if key in properties)
+        values = [properties[key] for key in (row.get('skuPropIds') or '').split(',') if key in properties]
+        options = {name: value for name, value, _ in values}
+        image = next((url for _, _, url in values if url), None) or _image(data)
         yield ProductVariant(
             ref=ProductRef('aliexpress', variant_ref.external_id), title=data['name'], url=variant_ref.url,
-            availability=stock(row), selected=variant_ref == ref, options=options)
+            availability=stock(row), selected=variant_ref == ref, options=options, image_url=image)
 
 
 def _rating(data):
@@ -42,10 +44,12 @@ class AliExpressMapper:
     def to_card(product):
         data, ref = product.data, product.ref
         try:
+            variants = tuple(_variants(data, ref))
+            image = next((v.image_url for v in variants if v.selected), None) or _image(data)
             return MarketplaceCard(
                 ref=ProductRef('aliexpress', ref.external_id), title=data['name'], url=ref.url,
-                availability=product.availability, price=product.price, image_url=_image(data), rating=_rating(data),
-                attributes=_attributes(data), description=data.get('description') or '', variants=tuple(_variants(data, ref)),
+                availability=product.availability, price=product.price, image_url=image, rating=_rating(data),
+                attributes=_attributes(data), description=data.get('description') or '', variants=variants,
                 collected_at=product.collected_at)
         except (TypeError, ValueError, KeyError, AttributeError, InvalidOperation) as exc:
             raise MarketplaceSchemaChanged('Изменились поля карточки AliExpress') from exc

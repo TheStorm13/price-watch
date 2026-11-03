@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { TrackedCardView } from '../../types/domain'
 import { ProductImage } from './ProductImage'
@@ -31,4 +31,15 @@ describe('ProductImage', () => {
 
     expect(getByRole('img', { name: 'Фото товара: Товар' })).toHaveAttribute('loading', 'eager')
   })
+  it('restores a photo after the previous variant image failed', () => {
+    const { container, rerender } = render(<ProductImage card={card} />)
+    fireEvent.error(container.querySelector('img')!)
+    expect(container.querySelector('.product-placeholder')).not.toHaveClass('product-placeholder--with-image')
+    rerender(<ProductImage card={{ ...card, imageUrl: 'https://img.test/next.webp' }} />)
+    expect(container.querySelector('.product-placeholder')).toHaveClass('product-placeholder--with-image')
+    expect(container.querySelector('img')).not.toHaveStyle({ display: 'none' })
+    rerender(<ProductImage card={{ ...card, imageUrl: null }} />)
+    expect(container.querySelector('img')).toBeNull()
+  })
+
 })

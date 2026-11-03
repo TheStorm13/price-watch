@@ -78,6 +78,7 @@ class ProductVariant:
     availability: Availability
     selected: bool = False
     options: Mapping[str, str] = field(default_factory=dict)
+    image_url: Optional[str] = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "options", _immutable_mapping(self.options))

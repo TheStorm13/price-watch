@@ -49,10 +49,10 @@ if sys.argv[1]=='api':
                 if count not in (1000,5000): raise ValueError('Unsupported smoke catalog size')
                 from sqlalchemy import text
                 async with db.session() as session,session.begin():
-                    await session.execute(text("""INSERT INTO marketplace_cards(marketplace,external_id,title)
-                        SELECT 'yandex-market',i::text,'Нативный товар '||lpad(i::text,5,'0')
+                    await session.execute(text("""INSERT INTO marketplace_cards(marketplace,external_id)
+                        SELECT 'yandex-market',i::text
                         FROM generate_series(1,:count) i"""),{'count':count})
-                    await session.execute(text("INSERT INTO card_variants(card_id,external_id) SELECT id,external_id FROM marketplace_cards WHERE primary_variant_id IS NULL"))
+                    await session.execute(text("INSERT INTO card_variants(card_id,external_id,product_title) SELECT id,external_id,'Нативный товар '||lpad(external_id,5,'0') FROM marketplace_cards WHERE primary_variant_id IS NULL"))
                     await session.execute(text("UPDATE marketplace_cards c SET primary_variant_id=v.id FROM card_variants v WHERE v.card_id=c.id AND c.primary_variant_id IS NULL"))
         await db.close()
     asyncio.run(seed())

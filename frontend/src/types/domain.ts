@@ -16,6 +16,7 @@ export interface TrackedCardView {
   title: string | null
   url: string | null
   imageUrl: string | null
+  options?: Record<string, string>
   dealsEnabled: boolean
   primaryVariantId?: number | null
   lastCollectedAt?: string | null
@@ -31,6 +32,8 @@ export interface TrackedCardView {
 }
 
 export interface TrackedVariant {
+  imageUrl?: string | null
+  productTitle?: string | null
   id: number
   cardId: number
   externalId: string
@@ -177,6 +180,8 @@ export interface TransferCard {
 }
 
 export interface TransferVariant {
+  imageUrl?: string | null
+  productTitle?: string | null
   externalId: string
   title?: string
   url: string | null

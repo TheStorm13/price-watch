@@ -41,10 +41,10 @@ async def main():
             await s.execute(text('TRUNCATE marketplace_cards,product_groups,collection_runs RESTART IDENTITY CASCADE'))
             cards = 1 if args.case == 'history' else max(1,args.size)
             await s.execute(text("INSERT INTO product_groups(id,name) OVERRIDING SYSTEM VALUE SELECT i,'Group '||i FROM generate_series(1,:n) i"),{'n':max(1,cards//10)})
-            await s.execute(text("""INSERT INTO marketplace_cards(id,marketplace,external_id,title,group_id,created_at,updated_at)
-                OVERRIDING SYSTEM VALUE SELECT i,'ozon',i::text,'Product '||i,CASE WHEN i%2=0 THEN (i-1)/10+1 END,
+            await s.execute(text("""INSERT INTO marketplace_cards(id,marketplace,external_id,group_id,created_at,updated_at)
+                OVERRIDING SYSTEM VALUE SELECT i,'ozon',i::text,CASE WHEN i%2=0 THEN (i-1)/10+1 END,
                 '2026-10-01'::timestamptz,'2026-10-01'::timestamptz FROM generate_series(1,:n) i"""),{'n':cards})
-            await s.execute(text("INSERT INTO card_variants(id,card_id,external_id,updated_at) SELECT id,id,external_id,updated_at FROM marketplace_cards"))
+            await s.execute(text("INSERT INTO card_variants(id,card_id,external_id,product_title,updated_at) SELECT id,id,external_id,'Product '||id,updated_at FROM marketplace_cards"))
             await s.execute(text("UPDATE marketplace_cards SET primary_variant_id=id"))
             if args.case=='export':
                 await s.execute(text("""INSERT INTO price_history(card_id,variant_id,price,availability,observed_at,snapshot)

@@ -224,6 +224,7 @@ class OzonMapper:
                 ),
                 selected=external_id == current_id,
                 options={"option": option} if option else {},
+                image_url=data.get("coverImage"),
             )
 
     @staticmethod

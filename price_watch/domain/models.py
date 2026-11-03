@@ -1,6 +1,6 @@
 """Entities owned by the price-watch, independently of persistence."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
@@ -23,6 +23,7 @@ class TrackedCard:
     variant_id: int | None = None
     primary_variant_id: int | None = None
     last_collected_at: datetime | None = None
+    options: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

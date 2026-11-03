@@ -104,7 +104,7 @@ class NormalizerTests(unittest.TestCase):
         self.assertNotIn("card_price_text", serialized)
         self.assertNotIn("currency", serialized)
         self.assertNotIn("sku", serialized["variants"][0])
-        self.assertNotIn("image_url", serialized["variants"][0])
+        self.assertEqual(serialized["variants"][0]["image_url"], "https://img.test/1.jpg")
         self.assertEqual(serialized["availability"], "in_stock")
         self.assertEqual(serialized["variants"][0]["availability"], "in_stock")
 

@@ -43,3 +43,22 @@ it('projects every group field from one cheapest member and switches as prices c
   expect(noData.representativeCardId).toBe(unpriced.id)
   expect(noData.representativeCard?.lastObservedAt).toBeNull()
 })
+
+it('projects every displayed field from the primary variant and edits it independently', async () => {
+  vi.resetModules()
+  const { mockApi: api } = await import('./mockApi')
+  await api.importCards({ version: 3, cards: [{ marketplace: 'wildberries', externalId: '77777', title: 'Первый', url: null,
+    createdAt: '2026-10-01T12:00:00Z', dealsEnabled: true, primaryExternalId: '77777:1', variants: [1,2].map((id) => ({
+      externalId: `77777:${id}`, title: `Размер ${id}`, productTitle: id === 1 ? 'Первый' : 'Второй', imageUrl: id === 1 ? 'https://img.test/one.webp' : null,
+      url: `https://www.wildberries.ru/catalog/77777/detail.aspx?size=${id}`, options: { Размер: String(id) },
+      history: [{ price: `${id}0.00`, availability: 'in_stock', observedAt: '2026-10-01T12:00:00Z' }],
+    })) }] })
+  const card = (await api.getCatalog()).cards.find((c) => c.externalId === '77777')!
+  const variants = await api.getVariants(card.id)
+  expect(card.imageUrl).toBe('https://img.test/one.webp')
+  const switched = await api.updateCard(card.id, { primaryVariantId: variants[1].id })
+  expect(switched).toMatchObject({ title: 'Второй', imageUrl: null, options: { Размер: '2' }, currentPrice: '20.00' })
+  await api.updateCard(card.id, { title: 'Мой второй' })
+  const first = await api.updateCard(card.id, { primaryVariantId: variants[0].id })
+  expect(first).toMatchObject({ title: 'Первый', imageUrl: 'https://img.test/one.webp', currentPrice: '10.00' })
+})

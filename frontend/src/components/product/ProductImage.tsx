@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import type { TrackedCardView } from '../../types/domain'
 
 interface Props {
-  card: TrackedCardView
+  card: Pick<TrackedCardView, 'title' | 'imageUrl'>
   large?: boolean
   alt?: string
   eager?: boolean
@@ -10,7 +10,7 @@ interface Props {
 
 export function ProductImage({ card, large = false, alt, eager = false }: Props) {
   return (
-    <span className={cn('product-placeholder', large && 'product-placeholder--large', card.imageUrl && 'product-placeholder--with-image')} aria-hidden={alt ? undefined : true}>
+    <span key={card.imageUrl ?? ''} className={cn('product-placeholder', large && 'product-placeholder--large', card.imageUrl && 'product-placeholder--with-image')} aria-hidden={alt ? undefined : true}>
       <span>{(card.title ?? 'Т').slice(0, 1)}</span>
       {card.imageUrl ? (
         <img key={card.imageUrl} src={card.imageUrl} alt={alt ?? ''} loading={eager ? 'eager' : 'lazy'} referrerPolicy="no-referrer"

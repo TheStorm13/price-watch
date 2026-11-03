@@ -2,6 +2,7 @@
   "currency": "RUB",
   "walletReady": true,
   "product": {
+    "pics": 16, "imageUrl": "https://basket-12.wbbasket.ru/vol1792/part179224/179224846/images/big/1.webp",
     "id": "179224846", "name": "Шапка зимняя бини с отворотом двойная", "brand": "ALDINI",
     "supplier": "ALDINI", "supplierId": "44721", "reviewRating": 4.8, "feedbacks": 6470,
     "sizes": [{"optionId": "296499716", "name": "58–60", "origName": "универсальный", "stocks": [{"qty": 10}],

@@ -60,9 +60,6 @@ class MarketplaceCardRecord(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     marketplace: Mapped[str] = mapped_column(Text, nullable=False)
     external_id: Mapped[str] = mapped_column(Text, nullable=False)
-    title: Mapped[str | None] = mapped_column(Text)
-    url: Mapped[str | None] = mapped_column(Text)
-    image_url: Mapped[str | None] = mapped_column(Text)
     tags: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'::text[]"))
     group_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("product_groups.id", ondelete="SET NULL"), index=True)
     deals_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
@@ -88,6 +85,8 @@ class CardVariantRecord(Base):
     external_id: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
     url: Mapped[str | None] = mapped_column(Text)
+    product_title: Mapped[str | None] = mapped_column(Text)
+    image_url: Mapped[str | None] = mapped_column(Text)
     options: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

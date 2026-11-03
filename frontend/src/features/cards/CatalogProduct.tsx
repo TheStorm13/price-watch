@@ -50,6 +50,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
       <CardHeader className="contents"><Link className="cards-grid__link" to={`/cards/${card.id}`} state={cardLocationState}>
         <span className="cards-grid__media"><ProductImage card={card} large /></span>
         <CardTitle className="contents"><span className="cards-grid__title" title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</span></CardTitle>
+        {Object.keys(card.options ?? {}).length ? <span className="text-sm text-muted-foreground">{Object.values(card.options ?? {}).join(' · ')}</span> : null}
       </Link></CardHeader>
       <CardContent className="contents"><div className="cards-grid__tags" title={card.tags?.join(', ')}><TagList tags={card.tags} /></div>
       <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
@@ -63,7 +64,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
     return <TableRow data-index={index} data-vrow={index} ref={measure} aria-rowindex={index + 2} key={card.id} className={cn('cards-table__product', nested && 'cards-table__nested', selected && 'is-selected')} onClick={(event) => { if (!(event.target as HTMLElement).closest('a, button, input, [role="checkbox"]')) navigate(`/cards/${card.id}`, { state: cardLocationState }) }}>
       <TableCell className="cards-table__selection py-2"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
         checked={selected} onClick={(event) => event.stopPropagation()} onCheckedChange={() => onToggle(card.id)} /></TableCell>
-      <TableCell className="py-2"><div className="card-identity"><ProductImage card={card} /><span><Link to={`/cards/${card.id}`} state={cardLocationState} className="card-identity__link"><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong></Link><TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
+      <TableCell className="py-2"><div className="card-identity"><ProductImage card={card} /><span><Link to={`/cards/${card.id}`} state={cardLocationState} className="card-identity__link"><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong></Link>{Object.keys(card.options ?? {}).length ? <span className="text-sm text-muted-foreground">{Object.values(card.options ?? {}).join(' · ')}</span> : null}<TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
       <TableCell className="py-2"><MarketplaceMark marketplace={card.marketplace} /></TableCell>
       <TableCell className="price-cell py-2">{formatPrice(card.currentPrice)}</TableCell>
       <TableCell className="price-cell py-2">{formatPrice(card.minimumPrice)}</TableCell>

@@ -53,11 +53,11 @@ for (const section of ['chart', 'history'] as const) {
     const error = page.getByRole('alert').filter({ hasText: section === 'chart' ? 'Не удалось загрузить график' : 'Не удалось загрузить измерения' })
     await expect(error).toBeVisible()
     if (section === 'chart') await expect(page.locator('.history-table tbody tr')).toHaveCount(10)
-    else await expect(page.getByLabel('График цен всех SKU')).toBeVisible()
+    else await expect(page.getByLabel('График цен вариантов товара')).toBeVisible()
     await error.getByRole('button', { name: 'Повторить' }).click()
     await expect(error).toHaveCount(0)
     await expect(page.locator('.history-table tbody tr')).toHaveCount(10)
-    await expect(page.getByLabel('График цен всех SKU')).toBeVisible()
+    await expect(page.getByLabel('График цен вариантов товара')).toBeVisible()
   })
 }
 

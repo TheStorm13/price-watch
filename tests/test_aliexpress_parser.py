@@ -100,3 +100,23 @@ class AliExpressParserTests(unittest.TestCase):
         self.payload['data']['skuInfo']['priceList'] = []
         with self.assertRaises(MarketplaceSchemaChanged):
             AliExpressProductParser.parse(self.payload, expected_external_id=REF.split(':')[0])
+
+    def test_variant_images_match_properties_and_selected_snapshot(self):
+        data = self.payload['data']
+        properties = data['skuInfo']['propertyList']
+        expected = {str(v['id']): v.get('imageMainUrl') or v.get('imagePreviewUrl')
+                    for p in properties for v in p['values']}
+        rows = data['skuInfo']['priceList']
+        cards = self.card()
+        for row, variant in zip(rows, cards.variants):
+            image = next((expected[k] for k in row['skuPropIds'].split(',') if expected.get(k)), None)
+            self.assertEqual(variant.image_url, image)
+        self.assertEqual(cards.image_url, next(v.image_url for v in cards.variants if v.selected))
+        # Drop only the selected color photo: never borrow another color's photo.
+        selected_ids = set(self.row['skuPropIds'].split(','))
+        for p in properties:
+            for v in p['values']:
+                if str(v['id']) in selected_ids:
+                    v.pop('imageMainUrl', None)
+                    v.pop('imagePreviewUrl', None)
+        self.assertEqual(self.card().image_url, data['gallery'][0]['imageUrl'])

@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test'
 
-test('варианты имеют отдельные линии, главный определяет каталог, панель сохраняет общие поля', async ({ page }) => {
+test('варианты имеют отдельные линии, главный определяет каталог, панель сохраняет поля варианта и общие теги', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   await page.setViewportSize({width:1024,height:700})
   await page.goto('/cards')
   const now=Date.now()
   const card={marketplace:'wildberries',externalId:'179224846',title:'Куртка с вариантами',url:'https://www.wildberries.ru/catalog/179224846/detail.aspx?size=100',imageUrl:null,tags:['одежда'],dealsEnabled:true,createdAt:new Date(now-86400000*5).toISOString(),primaryExternalId:'179224846:100',
-    variants:['S','M','L'].map((size,i)=>({externalId:`179224846:${100+i}`,title:`Размер ${size}`,url:`https://www.wildberries.ru/catalog/179224846/detail.aspx?size=${100+i}`,options:{Размер:size},updatedAt:new Date(now-60000).toISOString(),
+    variants:['S','M','L'].map((size,i)=>({externalId:`179224846:${100+i}`,title:`Размер ${size}`,productTitle:'Куртка с вариантами',url:`https://www.wildberries.ru/catalog/179224846/detail.aspx?size=${100+i}`,options:{Размер:size},updatedAt:new Date(now-60000).toISOString(),
       history:[0,1,2].map((day)=>({price: i===1 && day===1 ? null : `${1000+i*100-day*50}.00`,availability:i===1 && day===1 ? 'out_of_stock' : 'in_stock',observedAt:new Date(now-(3-day)*86400000).toISOString()}))}))}
   await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('menuitem',{name:'Импорт',exact:true}).click()
@@ -20,7 +20,9 @@ test('варианты имеют отдельные линии, главный 
   await expect(page.getByText('ID 179224846',{exact:true})).toBeVisible()
   const section=page.getByRole('region',{name:'Варианты товара'})
   await expect(section.getByRole('row')).toHaveCount(4)
-  const chart=page.getByLabel('График цен всех SKU')
+  const chart=page.getByLabel('График цен вариантов товара')
+  await expect(chart.locator('.recharts-line')).toHaveCount(1)
+  await page.getByRole('button',{name:'Показать все',exact:true}).click()
   await expect(chart.locator('.recharts-line')).toHaveCount(3)
   const colors=await chart.locator('.recharts-line-curve').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('stroke')))
   expect(new Set(colors).size).toBe(3)
@@ -32,8 +34,9 @@ test('варианты имеют отдельные линии, главный 
   await expect(page.locator('.price-summary__primary')).toContainText('1 100 ₽')
   await expect(page.locator('.price-stat').first()).toContainText('1 100 ₽')
   await expect(page.locator('.history-table tbody tr').first()).toContainText('1 100 ₽')
+  await expect(chart.locator('.recharts-line')).toHaveCount(1)
   await page.getByRole('checkbox',{name:'Показать на графике: Размер: M',exact:true}).check()
-  await expect(chart.locator('.recharts-line')).toHaveCount(3)
+  await expect(chart.locator('.recharts-line')).toHaveCount(2)
   await page.getByRole('button',{name:'Изменить',exact:true}).click()
   const edit=page.getByRole('dialog',{name:'Изменить карточку'})
   await expect(edit.getByLabel('Артикул WB')).toHaveAttribute('readonly','')

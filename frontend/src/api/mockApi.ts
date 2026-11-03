@@ -114,7 +114,7 @@ let history: PriceHistoryPoint[] = [
 ]
 
 let variants: TrackedVariant[] = cards.map((c) => ({ id: c.id, cardId: c.id, externalId: c.externalId,
-  title: 'Основной вариант', options: {}, url: c.url, currentPrice: c.currentPrice,
+  title: 'Основной вариант', productTitle: c.title, imageUrl: c.imageUrl, options: {}, url: c.url, currentPrice: c.currentPrice,
   currentAvailability: c.currentAvailability, lastObservedAt: c.lastObservedAt, updatedAt: c.lastObservedAt ? c.updatedAt : null }))
 cards = cards.map((c) => ({ ...c, primaryVariantId: c.id }))
 history = history.map((p) => ({ ...p, variantId: p.cardId }))
@@ -184,7 +184,8 @@ function cardMetrics(card: TrackedCardView) {
 
 function cardView(card: TrackedCardView): TrackedCardView {
   const metrics = cardMetrics(card)
-  return { ...card, lastCollectedAt: variants.find((v) => v.id === card.primaryVariantId)?.updatedAt ?? null, currentPrice: metrics.latest?.price ?? null,
+  const primary = variants.find((v) => v.id === card.primaryVariantId)
+  return { ...card, title: primary?.productTitle ?? null, options: primary?.options ?? {}, url: primary?.url ?? null, imageUrl: primary?.imageUrl ?? null, lastCollectedAt: primary?.updatedAt ?? null, currentPrice: metrics.latest?.price ?? null,
     currentAvailability: metrics.latest?.availability ?? null,
     lastObservedAt: metrics.latest?.observedAt ?? null,
     minimumPrice: metrics.minimumPrice, averagePrice: metrics.averagePrice }
@@ -283,10 +284,12 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
       summary.observationsSkipped += incoming.history.length-added.length
       if (!apply || !card) continue
       if (!variant) {
-        variant = { id: nextVariantId++, cardId: card.id, externalId: incoming.externalId, title: incoming.title ?? '', options: incoming.options ?? {}, url: incoming.url,
+        variant = { id: nextVariantId++, cardId: card.id, externalId: incoming.externalId, title: incoming.title ?? '', productTitle: incoming.productTitle ?? (incoming.externalId === imported.primaryExternalId ? imported.title : null), imageUrl: incoming.imageUrl ?? (incoming.externalId === imported.primaryExternalId ? imported.imageUrl ?? null : null), options: incoming.options ?? {}, url: incoming.url,
           updatedAt: incoming.updatedAt ?? null, currentPrice: null, currentAvailability: null, lastObservedAt: null }
         variants.push(variant)
       }
+      variant.imageUrl ??= incoming.imageUrl ?? (incoming.externalId === imported.primaryExternalId ? imported.imageUrl ?? null : null)
+      variant.productTitle ??= incoming.productTitle ?? (incoming.externalId === imported.primaryExternalId ? imported.title : null)
       if (incoming.externalId === imported.primaryExternalId) card.primaryVariantId = variant.id
       history = history.filter((h) => h.variantId !== variant!.id || kept.has(h.id))
       history.push(...added.map((h) => ({ id: nextHistoryId++, cardId: card!.id, variantId: variant!.id, collectionRunId: null,
@@ -342,9 +345,9 @@ export const mockApi = {
     return delay({
       version: 3,
       groups: groups.map((g) => ({ name: g.name, tags: g.tags, cards: cards.filter((c) => c.groupId === g.id).map((c) => ({ marketplace:c.marketplace,externalId:c.externalId })) })),
-      cards: cards.map((c) => ({ marketplace:c.marketplace, externalId:c.externalId, title:c.title,url:c.url,imageUrl:c.imageUrl,tags:c.tags,
+      cards: cards.map(cardView).map((c) => ({ marketplace:c.marketplace, externalId:c.externalId, title:c.title,url:c.url,imageUrl:c.imageUrl,tags:c.tags,
         dealsEnabled:c.dealsEnabled,createdAt:c.createdAt,primaryExternalId:variants.find((v) => v.id === c.primaryVariantId)!.externalId,
-        variants:variants.filter((v) => v.cardId === c.id).map((v) => ({ externalId:v.externalId,title:v.title,url:v.url,options:v.options,updatedAt:v.updatedAt,
+        variants:variants.filter((v) => v.cardId === c.id).map((v) => ({ externalId:v.externalId,title:v.title,url:v.url,imageUrl:v.imageUrl ?? null,productTitle:v.productTitle ?? null,options:v.options,updatedAt:v.updatedAt,
           history:history.filter((h) => h.variantId === v.id).toSorted((a,b) => Date.parse(a.observedAt)-Date.parse(b.observedAt)).map((h) => ({ price:h.price,availability:h.availability,observedAt:h.observedAt })) })) })),
     })
   },
@@ -385,7 +388,7 @@ export const mockApi = {
         tags:input.tags ?? [],dealsEnabled:true,currentPrice:null,currentAvailability:null,lastObservedAt:null,createdAt:at,updatedAt:at }
       cards.push(card)
     }
-    const variant: TrackedVariant = { id:nextVariantId++,cardId:card.id,externalId:input.externalId,title:'',options:{},url:input.url || null,
+    const variant: TrackedVariant = { id:nextVariantId++,cardId:card.id,externalId:input.externalId,title:'',productTitle:input.title ?? null,imageUrl:null,options:{},url:input.url || null,
       currentPrice:null,currentAvailability:null,lastObservedAt:null,updatedAt:null }
     variants.push(variant)
     card.primaryVariantId ??= variant.id
@@ -397,10 +400,11 @@ export const mockApi = {
     if (!card) throw new Error('Карточка не найдена')
     const selected = variants.find((v) => v.id === (input.primaryVariantId ?? card.primaryVariantId))
     if (!selected || selected.cardId !== cardId) throw new Error('Вариант не принадлежит этому товару')
-    const url = 'url' in input ? input.url ?? null : input.primaryVariantId ? selected.url : card.url
+    const url = 'url' in input ? input.url ?? null : selected.url
     validateVariant(card.marketplace,selected.externalId,url)
     Object.assign(card,input,{url,updatedAt:new Date().toISOString()})
     if ('url' in input) selected.url=url
+    if ('title' in input) selected.productTitle=input.title ?? null
     return delay(cardView(card))
   },
 

@@ -161,6 +161,79 @@ class ProductVariantTests(unittest.IsolatedAsyncioTestCase):
         old=copy.deepcopy(exported);old['version']=2
         self.assertEqual((await self.client.post('/api/cards/import',json=old)).status_code,422)
 
+    async def test_primary_projects_all_variant_fields_without_recollection(self):
+        from dataclasses import replace
+        class DetailsConnector(VariantConnector):
+            async def get_product(inner, ref):
+                card = await super().get_product(ref)
+                return replace(card, title='Название '+ref, image_url='https://img.test/'+ref+'.webp',
+                    variants=tuple(replace(v, image_url='https://img.test/'+v.ref.external_id+'.webp') for v in card.variants))
+        card = await self.add()
+        connector = DetailsConnector()
+        await self.executor(connector).collect(card['id'])
+        path = f'/api/cards/{card["id"]}'
+        variants = (await self.client.get(path+'/variants')).json()
+        self.assertEqual([v['productTitle'] for v in variants], ['Название 123:10', 'Название 123:20'])
+        # Discovery names must not overwrite the selected variant's own name.
+        self.assertEqual((await self.client.get(path)).json()['title'], 'Название 123:10')
+        switched = (await self.client.patch(path,json={'primaryVariantId':variants[1]['id']})).json()
+        self.assertEqual(switched['title'], 'Название 123:20')
+        self.assertEqual(switched['imageUrl'], 'https://img.test/123:20.webp')
+        self.assertEqual(switched['url'], connector.url('123','20'))
+        self.assertEqual(switched['options'], {'Размер':'20'})
+        self.assertEqual(switched['currentPrice'], '20.00')
+        calls = connector.calls.copy()
+        await self.client.patch(path,json={'title':'Мой вариант', 'url':None})
+        await self.client.patch(path,json={'primaryVariantId':variants[0]['id']})
+        first = (await self.client.get(path)).json()
+        self.assertEqual(first['title'], 'Название 123:10')
+        self.assertEqual(first['imageUrl'], 'https://img.test/123:10.webp')
+        self.assertEqual(connector.calls, calls)
+
+    async def test_discovery_keeps_initial_user_title_on_new_primary(self):
+        from dataclasses import replace
+        class DiscoveryConnector(VariantConnector):
+            async def get_product(inner, ref):
+                if ':' not in ref:
+                    card = await super().get_product(ref+':10')
+                    return replace(card, ref=ProductRef('wildberries', ref), price=None)
+                return await super().get_product(ref)
+        response = await self.client.post('/api/cards', json={'marketplace':'wildberries','externalId':'123','title':'Мой товар'})
+        card = response.json()
+        result = await self.executor(DiscoveryConnector()).collect(card['id'])
+        self.assertEqual(result.failure_count,0)
+        view = (await self.client.get(f'/api/cards/{card["id"]}')).json()
+        self.assertEqual(view['title'],'Мой товар')
+        variants = (await self.client.get(f'/api/cards/{card["id"]}/variants')).json()
+        self.assertEqual(next(v['productTitle'] for v in variants if v['externalId']=='123:20'),'Товар')
+
+    async def test_photo_only_refresh_and_missing_photo_preserve_history(self):
+        from dataclasses import replace
+        class ImageConnector(VariantConnector):
+            image = 'https://img.test/one.webp'
+            async def get_product(inner, ref):
+                card = await super().get_product(ref)
+                return replace(card, image_url=inner.image,
+                    variants=tuple(replace(v,image_url=inner.image) for v in card.variants))
+        card = await self.add()
+        path = f'/api/cards/{card["id"]}'
+        connector = ImageConnector()
+        await self.executor(connector).collect(card['id'])
+        before = (await self.client.get(path+'/chart')).json()
+        connector.image = 'https://img.test/two.webp'
+        await self.executor(connector).collect(card['id'])
+        self.assertEqual((await self.client.get(path)).json()['imageUrl'], connector.image)
+        connector.image = None
+        await self.executor(connector).collect(card['id'])
+        self.assertEqual((await self.client.get(path)).json()['imageUrl'], 'https://img.test/two.webp')
+        self.assertEqual((await self.client.get(path+'/chart')).json(), before)
+        exported = (await self.client.get('/api/cards/export')).json()
+        self.assertTrue(all(v['imageUrl']=='https://img.test/two.webp' for v in exported['cards'][0]['variants']))
+        await self.client.delete(path)
+        self.assertEqual((await self.client.post('/api/cards/import',json=exported)).status_code,200)
+        self.assertEqual((await self.client.get('/api/cards/export')).json(),exported)
+
+
 
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'requires disposable TEST_DATABASE_URL')
 class ProductVariantMigrationTests(unittest.TestCase):
@@ -202,3 +275,33 @@ class ProductVariantMigrationTests(unittest.TestCase):
             self.assertEqual(c.scalar(text('SELECT count(*) FROM marketplace_cards')),3)
             self.assertEqual(c.scalar(text('SELECT count(*) FROM price_history')),3)
             self.assertIsNone(c.scalar(text("SELECT to_regclass('card_variants')")))
+
+    def test_variant_details_migration_preserves_primary_and_recovers_exact_snapshot(self):
+        self.seed()
+        with patch('logging.config.fileConfig'): command.upgrade(self.config,'0018_product_variants')
+        with self.db.engine.begin() as c:
+            c.execute(text("UPDATE marketplace_cards SET title='Моё название',image_url='https://img.test/main.webp' WHERE id=11"))
+            c.execute(text("UPDATE price_history SET snapshot=CAST(:snapshot AS jsonb) WHERE variant_id=22"),
+                {'snapshot':'{"ref":{"marketplace":"wildberries","external_id":"123:20"},"title":"Второй","image_url":"https://img.test/second.webp"}'})
+            c.execute(text("""INSERT INTO price_history(card_id,variant_id,price,availability,observed_at,snapshot)
+                SELECT card_id,variant_id,21,availability,observed_at+interval '1 minute',
+                    jsonb_set(snapshot,'{image_url}','null'::jsonb) FROM price_history WHERE variant_id=22"""))
+            before=c.execute(text('SELECT id,price,snapshot FROM price_history ORDER BY id')).all()
+        with patch('logging.config.fileConfig'): command.upgrade(self.config,'head')
+        with self.db.engine.connect() as c:
+            self.assertEqual(c.execute(text('SELECT id,product_title,image_url FROM card_variants ORDER BY id')).all(),
+                [(11,'Моё название','https://img.test/main.webp'),(22,'Второй','https://img.test/second.webp'),(33,'Неполный',None)])
+            self.assertEqual(c.execute(text('SELECT id,price,snapshot FROM price_history ORDER BY id')).all(),before)
+            columns={r[0] for r in c.execute(text("SELECT column_name FROM information_schema.columns WHERE table_schema=:schema AND table_name='marketplace_cards'"),{'schema':self.schema})}
+            self.assertTrue({'title','url','image_url'}.isdisjoint(columns))
+
+    def test_active_run_blocks_variant_details_migration_before_changes(self):
+        self.seed()
+        with patch('logging.config.fileConfig'): command.upgrade(self.config,'0018_product_variants')
+        with self.db.engine.begin() as c:
+            c.execute(text("UPDATE collection_runs SET status='running' WHERE id=1"))
+        with patch('logging.config.fileConfig'),self.assertRaisesRegex(RuntimeError,'Завершите активный сбор'):
+            command.upgrade(self.config,'head')
+        with self.db.engine.connect() as c:
+            columns={r[0] for r in c.execute(text("SELECT column_name FROM information_schema.columns WHERE table_schema=:schema AND table_name='card_variants'"),{'schema':self.schema})}
+            self.assertNotIn('image_url',columns)

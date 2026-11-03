@@ -95,7 +95,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
         }
         if (marketplace === 'aliexpress') {
           const ref = parseAliExpressUrl(url.trim())
-          if (ref.productId !== externalId.trim() || (selectedSku && ref.skuId && selectedSku !== ref.skuId)) next.url = card ? 'Ссылка не соответствует ID товара и SKU' : 'Ссылка не соответствует ID товара'
+          if (ref.productId !== externalId.trim() || (selectedSku && ref.skuId && selectedSku !== ref.skuId)) next.url = card ? 'Ссылка не соответствует ID товара и варианту' : 'Ссылка не соответствует ID товара'
         }
       } catch {
         next.url = 'Введите корректный абсолютный URL'
@@ -157,7 +157,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
               <FieldLabel htmlFor="external-id">{marketplace === 'aliexpress' ? 'ID товара' : marketplace === 'wildberries' ? 'Артикул WB' : 'ID карточки'}</FieldLabel>
               <Input id="external-id" readOnly={Boolean(card)} data-initial-focus={card ? undefined : true} value={externalId} onChange={(event) => setExternalId(event.target.value)} inputMode="numeric"
                 placeholder={marketplace === 'ozon' ? '1604900984' : 'Введите ID товара'} aria-invalid={Boolean(errors.externalId)} aria-describedby="external-id-hint" />
-              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">{['wildberries', 'aliexpress'].includes(marketplace) ? 'Введите артикул товара. Все SKU будут найдены и добавлены при сборе.' : 'Введите числовой ID карточки товара'}</FieldDescription>}
+              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">{['wildberries', 'aliexpress'].includes(marketplace) ? 'Введите артикул товара. Все варианты будут найдены и добавлены при сборе.' : 'Введите числовой ID карточки товара'}</FieldDescription>}
             </Field>
             {card && variants.length > 1 ? <Field>
               <FieldLabel htmlFor="primary-variant">Главный вариант</FieldLabel>
@@ -166,12 +166,13 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
                 if (!selected) return
                 setPrimaryVariantId(selected.id)
                 setUrl(selected.url ?? '')
+                setTitle(selected.productTitle ?? '')
                 setErrors({})
               }}>
                 <SelectTrigger id="primary-variant"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectGroup>{variants.map((v) => <SelectItem key={v.id} value={String(v.id)}>{Object.values(v.options).join(' · ') || v.title || v.externalId}</SelectItem>)}</SelectGroup></SelectContent>
               </Select>
-              <FieldDescription>Его цена и наличие отображаются в каталоге.</FieldDescription>
+              <FieldDescription>Его название, фото, параметры, ссылка, цена и наличие отображаются в карточке и каталоге.</FieldDescription>
             </Field> : null}
             <Field>
               <FieldLabel htmlFor="card-title">Название</FieldLabel>

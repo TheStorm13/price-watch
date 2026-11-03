@@ -49,6 +49,7 @@ def _variant(value: ProductVariant) -> Dict[str, Any]:
         "availability": value.availability.value,
         "selected": value.selected,
         "options": dict(value.options),
+        "image_url": value.image_url,
     }
 
 

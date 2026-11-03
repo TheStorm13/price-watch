@@ -42,7 +42,7 @@ class CardRepository:
                 record = await session.scalar(select(MarketplaceCardRecord).where(
                     MarketplaceCardRecord.marketplace == marketplace, MarketplaceCardRecord.external_id == article).with_for_update())
                 if record is None:
-                    record = MarketplaceCardRecord(marketplace=marketplace, external_id=article, title=title, url=url, tags=tags or [])
+                    record = MarketplaceCardRecord(marketplace=marketplace, external_id=article, tags=tags or [])
                     session.add(record)
                     await session.flush()
                 if external_id == article and record.primary_variant_id is not None:
@@ -50,7 +50,7 @@ class CardRepository:
                 if await session.scalar(select(CardVariantRecord.id).where(
                     CardVariantRecord.card_id == record.id, CardVariantRecord.external_id == external_id)):
                     raise CardAlreadyExists("Такой вариант уже добавлен")
-                variant = CardVariantRecord(card_id=record.id, external_id=external_id, url=url)
+                variant = CardVariantRecord(card_id=record.id, external_id=external_id, url=url, product_title=title)
                 session.add(variant)
                 await session.flush()
                 if record.primary_variant_id is None:
@@ -85,13 +85,11 @@ class CardRepository:
                 if variant is None or variant.card_id != card_id:
                     raise ValueError("Вариант не принадлежит этому товару")
                 record.primary_variant_id = primary_variant_id
-                record.url = variant.url
             if update_url and record.marketplace in ("aliexpress", "wildberries") and url:
                 validate_card_identity(record.marketplace, variant.external_id, url)
             if update_title:
-                record.title = title
+                variant.product_title = title
             if update_url:
-                record.url = url
                 if variant is not None:
                     variant.url = url
             if deals_enabled is not None:
@@ -103,7 +101,7 @@ class CardRepository:
             if tags is not None:
                 record.tags = tags
             record.updated_at = datetime.now(timezone.utc)
-        return _tracked_card(record)
+        return _tracked_card(record, variant)
 
     async def delete_card(self, card_id: int) -> bool:
         async with self._database.session() as session, session.begin():
@@ -130,12 +128,12 @@ class CardRepository:
         rows = (await session.execute(statement)).all()
         return [
             TrackedCardOverview(
-                card=_tracked_card(card, last_collected_at=collected_at),
+                card=_tracked_card(card, variant, last_collected_at=variant.updated_at if variant else None),
                 current_price=latest.price if latest else None,
                 current_availability=latest.availability if latest else None,
                 last_observed_at=latest.observed_at if latest else None,
             )
-            for card, latest, collected_at in rows
+            for card, latest, variant in rows
         ]
 
     async def get_card(self, card_id: int) -> Optional[TrackedCardOverview]:
@@ -145,9 +143,9 @@ class CardRepository:
             )).first()
         if row is None:
             return None
-        card, latest, collected_at = row
+        card, latest, variant = row
         return TrackedCardOverview(
-            card=_tracked_card(card, last_collected_at=collected_at),
+            card=_tracked_card(card, variant, last_collected_at=variant.updated_at if variant else None),
             current_price=latest.price if latest else None,
             current_availability=latest.availability if latest else None,
             last_observed_at=latest.observed_at if latest else None,
@@ -161,7 +159,7 @@ class CardRepository:
             statement = statement.where(MarketplaceCardRecord.id == card_id)
         async with self._database.session() as session:
             rows = (await session.execute(statement.order_by(MarketplaceCardRecord.id, CardVariantRecord.id))).all()
-            return [_tracked_card(record, variant) for record, variant in rows]
+            return [_tracked_card(record, variant, for_collection=True) for record, variant in rows]
 
     async def get_variants(self, card_id: int) -> list[dict]:
         from .models import PriceHistoryRecord
@@ -174,7 +172,7 @@ class CardRepository:
                 .where(CardVariantRecord.card_id == card_id).order_by(CardVariantRecord.id))).all()
             exact = any(':' in v.external_id for v, *_ in rows)
             return [dict(id=v.id, card_id=v.card_id, external_id=v.external_id, title=v.title,
-                         url=v.url, options=v.options, current_price=price,
+                         url=v.url, image_url=v.image_url, product_title=v.product_title, options=v.options, current_price=price,
                          current_availability=availability,
                          last_observed_at=observed_at, updated_at=v.updated_at)
                     for v, price, availability, observed_at in rows if not exact or ':' in v.external_id or observed_at is not None]

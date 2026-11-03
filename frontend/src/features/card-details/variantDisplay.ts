@@ -1,7 +1,7 @@
 import type { TrackedVariant } from '../../types/domain'
 
 export function variantLabel(variant: TrackedVariant) {
-  return Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(' · ') || variant.title || `SKU ${variant.externalId.split(':').at(-1)}`
+  return Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(' · ') || variant.title || `Вариант ${variant.externalId.split(':').at(-1)}`
 }
 
 /** Identity-based colors stay stable when variants are filtered or reordered. */

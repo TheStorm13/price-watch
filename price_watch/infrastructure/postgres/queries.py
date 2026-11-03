@@ -14,8 +14,9 @@ def overview_statement():
         .scalar_subquery()
     )
     latest = aliased(PriceHistoryRecord)
-    collected_at = select(CardVariantRecord.updated_at).where(CardVariantRecord.id == MarketplaceCardRecord.primary_variant_id).correlate(MarketplaceCardRecord).scalar_subquery()
-    return select(MarketplaceCardRecord, latest, collected_at.label('last_collected_at')).outerjoin(latest, latest.id == latest_id).options(defer(latest.snapshot))
+    return (select(MarketplaceCardRecord, latest, CardVariantRecord)
+            .outerjoin(CardVariantRecord, CardVariantRecord.id == MarketplaceCardRecord.primary_variant_id)
+            .outerjoin(latest, latest.id == latest_id).options(defer(latest.snapshot)))
 
 
 async def card_price_metric_rows(session):

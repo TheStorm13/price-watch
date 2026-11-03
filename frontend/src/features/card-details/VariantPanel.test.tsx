@@ -18,3 +18,15 @@ it('searches a large SKU list and explicitly selects the matching variant as pri
   await user.click(within(table).getByRole('button',{name:'Сделать главным: Размер: 82'}))
   expect(mutate).toHaveBeenCalledWith({cardId:1,input:{primaryVariantId:82}})
 })
+
+it('shows each variant photo with its own parameters and plain labels', () => {
+  const card = { id: 1, primaryVariantId: 1 } as TrackedCardView
+  const variants: TrackedVariant[] = [1, 2, 3].map((id) => ({ id, cardId: 1, externalId: `123:${id}`, title: '',
+    options: { Цвет: id === 1 ? 'Чёрный' : 'Белый' }, imageUrl: id < 3 ? `https://img.test/${id}.webp` : null,
+    url: null, currentPrice: '100.00', currentAvailability: 'in_stock', lastObservedAt: null, updatedAt: null }))
+  const { container } = render(<VariantPanel card={card} variants={variants} />)
+  expect([...container.querySelectorAll('img')].map((img) => img.src)).toEqual(['https://img.test/1.webp', 'https://img.test/2.webp'])
+  expect(container.querySelectorAll('.product-placeholder')).toHaveLength(3)
+  expect(screen.getByText('Код варианта: 2')).toBeInTheDocument()
+  expect(container.textContent).not.toContain('SKU')
+})

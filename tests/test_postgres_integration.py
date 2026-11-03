@@ -20,6 +20,7 @@ from price_watch.infrastructure.postgres import (
 from price_watch.infrastructure.postgres.models import (
     CollectionRunRecord,
     MarketplaceCardRecord,
+    CardVariantRecord,
     PriceHistoryRecord,
     ProductGroupRecord,
 )
@@ -193,8 +194,8 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         changed = True
                         # Commit after the export reads cards, before history/groups.
                         async with original_session() as writer, writer.begin():
-                            record = await writer.get(MarketplaceCardRecord, card.id)
-                            record.title = "After"
+                            record = await writer.get(CardVariantRecord, card.variant_id)
+                            record.product_title = "After"
                             group = await writer.get(ProductGroupRecord, group_id)
                             group.name = f"After-{group_id}"
                             writer.add(PriceHistoryRecord(card_id=card.id, variant_id=card.variant_id, price=Decimal("50.05"),

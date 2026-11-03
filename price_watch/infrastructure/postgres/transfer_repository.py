@@ -21,15 +21,15 @@ class TransferRepository:
             variants = (await s.scalars(select(CardVariantRecord).order_by(CardVariantRecord.id))).all()
             histories = (await s.scalars(select(PriceHistoryRecord).options(defer(PriceHistoryRecord.snapshot)).order_by(PriceHistoryRecord.observed_at, PriceHistoryRecord.id))).all()
             groups = (await s.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
-            by_variant = {v.id: dict(external_id=v.external_id, title=v.title, url=v.url, options=v.options,
+            by_variant = {v.id: dict(external_id=v.external_id, title=v.title, url=v.url, image_url=v.image_url, product_title=v.product_title, options=v.options,
                                      updated_at=v.updated_at, history=[]) for v in variants}
             for h in histories:
                 by_variant[h.variant_id]['history'].append(dict(price=h.price, availability=h.availability, observed_at=h.observed_at))
             members = {}
             for v in variants:
                 members.setdefault(v.card_id, []).append(by_variant[v.id])
-            cards = [dict(marketplace=c.marketplace, external_id=c.external_id, title=c.title, url=c.url,
-                          image_url=c.image_url, tags=c.tags, deals_enabled=c.deals_enabled, created_at=c.created_at,
+            cards = [dict(marketplace=c.marketplace, external_id=c.external_id, title=by_variant[c.primary_variant_id]['product_title'], url=by_variant[c.primary_variant_id]['url'],
+                          image_url=by_variant[c.primary_variant_id]['image_url'], tags=c.tags, deals_enabled=c.deals_enabled, created_at=c.created_at,
                           primary_external_id=by_variant[c.primary_variant_id]['external_id'], variants=members[c.id]) for c in products]
             group_data = [dict(name=g.name, tags=g.tags, cards=[dict(marketplace=c.marketplace, external_id=c.external_id)
                 for c in products if c.group_id == g.id]) for g in groups]
@@ -71,15 +71,12 @@ class TransferRepository:
                 summary['cards_merged' if product else 'cards_added'] += 1
                 if not preview:
                     if product is None:
-                        product = MarketplaceCardRecord(marketplace=key[0],external_id=key[1],title=item['title'],url=item['url'],
-                            image_url=item.get('image_url'),tags=item.get('tags',[]),deals_enabled=item['deals_enabled'],created_at=item['created_at'],updated_at=item['created_at'])
+                        product = MarketplaceCardRecord(marketplace=key[0],external_id=key[1],tags=item.get('tags',[]),deals_enabled=item['deals_enabled'],created_at=item['created_at'],updated_at=item['created_at'])
                         s.add(product)
                         await s.flush()
                         by_key[key]=product
                     else:
                         product.created_at=min(product.created_at,item['created_at'])
-                        if not product.image_url:
-                            product.image_url=item.get('image_url')
                         product.tags=list(dict.fromkeys([*product.tags,*item.get('tags',[])]))[:2]
                 for imported in item['variants']:
                     variant = by_ref.get((product.id,imported['external_id'])) if product else None
@@ -97,10 +94,14 @@ class TransferRepository:
                         continue
                     if variant is None:
                         variant=CardVariantRecord(card_id=product.id,external_id=imported['external_id'],url=imported.get('url'),
-                            title=imported.get('title',''),options=imported.get('options',{}),updated_at=imported.get('updated_at'))
+                            title=imported.get('title',''),product_title=imported.get('product_title'),image_url=imported.get('image_url'),options=imported.get('options',{}),updated_at=imported.get('updated_at'))
                         s.add(variant)
                         await s.flush()
+                    variant.image_url = variant.image_url or imported.get('image_url')
+                    variant.product_title = variant.product_title or imported.get('product_title')
                     if imported['external_id']==item['primary_external_id']:
+                        variant.product_title = variant.product_title or item.get('title')
+                        variant.image_url = variant.image_url or item.get('image_url')
                         product.primary_variant_id=variant.id
                     for h in removed:
                         await s.delete(h)

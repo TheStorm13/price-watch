@@ -37,7 +37,7 @@ window.wb={user:{
   }
   testState.gradeCalls++;testState.discount=c?.discount_value??0;
  }
-},xnm:{
+},helpers:{url:{urlProductStatic:id=>`https://basket-12.wbbasket.ru/vol1792/part179224/${id}/info/ru/card.json`},getCardImgName:({idx})=>idx},xnm:{
  getXnmProducts:async(ids,detail,a,b,c,d,signal)=>{
   let r;
   for(let attempt=0;attempt<5;attempt++){
@@ -67,6 +67,7 @@ class WildberriesBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.manager = self.client.collection_session()
         await self.manager.__aenter__()
         self.payload = json.loads(FIXTURE.read_text())['product']
+        self.payload.pop('imageUrl', None)
         self.payload['id'] = int(self.payload['id'])
         self.payload['supplierId'] = int(self.payload['supplierId'])
         for s in self.payload['sizes']:
@@ -248,3 +249,18 @@ class WildberriesBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(str((await self.card()).price),'1024.00')
         self.assertEqual(await self.client._transport.page.evaluate('testState.xinfoCalls'),3)
         self.assertEqual(self.counts['detail'],1)
+
+    async def test_image_url_uses_native_routing_and_article_photo(self):
+        card = await self.card()
+        self.assertEqual(card.image_url, 'https://basket-12.wbbasket.ru/vol1792/part179224/179224846/images/big/1.webp')
+        self.assertTrue(all(v.image_url == card.image_url for v in card.variants))
+        self.payload['pics'] = 0
+        card = await self.card()
+        self.assertIsNone(card.image_url)
+        self.assertEqual(str(card.price), '1024.00')
+
+    async def test_optional_image_helper_failure_does_not_fail_price(self):
+        self.home = HOME.replace('getCardImgName:({idx})=>idx', "getCardImgName:()=>{throw Error('photo unavailable')}")
+        card = await self.card()
+        self.assertIsNone(card.image_url)
+        self.assertEqual(str(card.price), '1024.00')

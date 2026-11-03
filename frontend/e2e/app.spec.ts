@@ -767,7 +767,7 @@ test('детали карточки показывают середину диа
   await expect(page.getByText('77 240 ₽', { exact: true })).toBeVisible()
   await expect(page.getByText('Разница', { exact: true })).toBeVisible()
   await expect(page.getByText('8 500 ₽', { exact: true })).toBeVisible()
-  await expect(page.getByLabel('График цен всех SKU')).toBeVisible()
+  await expect(page.getByLabel('График цен вариантов товара')).toBeVisible()
 })
 
 test('ошибки сбора доступны без страницы запусков', async ({ page }) => {
@@ -783,7 +783,7 @@ test('ошибки сбора доступны без страницы запу�
 
 test('одиночное измерение остаётся точкой на графике с масштабом вокруг цены', async ({ page }) => {
   await page.goto('/cards/2')
-  const chart = page.getByLabel('График цен всех SKU')
+  const chart = page.getByLabel('График цен вариантов товара')
   await expect(chart).toBeVisible()
   await expect(chart.locator('.recharts-line-dot')).toHaveCount(1)
   await expect(chart.getByText('0', { exact: true })).toHaveCount(0)

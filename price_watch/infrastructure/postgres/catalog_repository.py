@@ -22,11 +22,11 @@ class PostgresCatalogReader:
             metrics = {metric.id: metric for metric in await card_price_metric_rows(session)}
             return CatalogInputs(
                 cards=tuple(CatalogCardInput(
-                    overview=TrackedCardOverview(_tracked_card(record, last_collected_at=collected_at), latest.price if latest else None,
+                    overview=TrackedCardOverview(_tracked_card(record, variant, last_collected_at=variant.updated_at if variant else None), latest.price if latest else None,
                         latest.availability if latest else None, latest.observed_at if latest else None),
                     metrics=CardMetrics(metrics[record.id].minimum_price, metrics[record.id].average_price,
                                         metrics[record.id].baseline_days),
                     last_collection_run_id=latest.collection_run_id if latest else None,
-                ) for record, latest, collected_at in rows),
+                ) for record, latest, variant in rows),
                 groups=tuple(GroupMetadata(group.id, group.name, tuple(group.tags)) for group in groups),
             )

@@ -74,6 +74,24 @@ async ({id, nmId, timeoutMs}) => {
                 paymentDiscountAmount: money(s.price.paymentDiscountAmount)
             } : null
         }));
+        let imageUrl = null;
+        // Use the storefront's current basket routing and AB photo selection.
+        // Both helpers are synchronous; missing optional image data cannot stall price collection.
+        if (Number.isInteger(p.pics) && p.pics > 0 &&
+            typeof w.helpers?.url?.urlProductStatic === 'function' &&
+            typeof w.helpers.getCardImgName === 'function') {
+            try {
+                const base = new URL(w.helpers.url.urlProductStatic(Number(nmId)));
+                const photo = w.helpers.getCardImgName({nmId: Number(nmId), viewFlags: p.viewFlags, idx: 1});
+                if (base.protocol === 'https:' && /\/info\/[^/]+\/card\.json$/.test(base.pathname) &&
+                    /^(?:[1-9][0-9]*|ab_[0-9]+)$/.test(String(photo))) {
+                    base.pathname = base.pathname.replace(/\/info\/[^/]+\/card\.json$/, `/images/big/${photo}.webp`);
+                    base.search = '';
+                    base.hash = '';
+                    imageUrl = base.href;
+                }
+            } catch { /* Images are optional; never replace an exact price with an image error. */ }
+        }
         let metadata = null;
         let metadataTimedOut = false;
         if (typeof w.xnm.getProductColorsByNmIdsAsync === 'function') {
@@ -92,7 +110,7 @@ async ({id, nmId, timeoutMs}) => {
         return {currency: 'RUB', walletReady: true, product: {
             id: safeId(p.id), name: p.name, brand: p.brand, supplier: p.supplier,
             supplierId: p.supplierId == null ? null : safeId(p.supplierId),
-            reviewRating: p.reviewRating, feedbacks: p.feedbacks, sizes
+            reviewRating: p.reviewRating, feedbacks: p.feedbacks, imageUrl, sizes
         }, metadata, metadataTimedOut};
     } catch (error) {
         return {errorKind: controller.signal.aborted ? 'timeout' : 'schema', error: controller.signal.aborted ? 'Таймаут запроса WB' : String(error.message)};

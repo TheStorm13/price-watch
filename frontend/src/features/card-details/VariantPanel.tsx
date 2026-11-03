@@ -10,6 +10,7 @@ import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
 import { useUpdateCard } from '../../api/queries'
 import type { TrackedCardView, TrackedVariant } from '../../types/domain'
 import { formatDateTime, formatPrice } from '../../utils/format'
+import { ProductImage } from '../../components/product/ProductImage'
 import { variantColor, variantLabel } from './variantDisplay'
 
 export function VariantPanel({ card, variants }: { card: TrackedCardView; variants: TrackedVariant[] }) {
@@ -26,7 +27,7 @@ export function VariantPanel({ card, variants }: { card: TrackedCardView; varian
 
   return <section className="variant-section" aria-label="Варианты товара">
     <div className="variant-heading"><div><h2>Варианты товара <Badge variant="secondary">{variants.length}</Badge></h2><p className="text-sm text-muted-foreground">Отслеживаются все варианты. Главный отображается в каталоге.</p></div>
-      {variants.length > 4 ? <FieldGroup className="w-full sm:w-[280px]"><Field><FieldLabel className="sr-only" htmlFor="variant-search">Поиск варианта</FieldLabel><Input id="variant-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Размер, цвет или SKU" /></Field></FieldGroup> : null}
+      {variants.length > 4 ? <FieldGroup className="w-full sm:w-[280px]"><Field><FieldLabel className="sr-only" htmlFor="variant-search">Поиск варианта</FieldLabel><Input id="variant-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Размер, цвет или код варианта" /></Field></FieldGroup> : null}
     </div>
     {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
     <div className="variant-table table-surface"><Table>
@@ -35,7 +36,7 @@ export function VariantPanel({ card, variants }: { card: TrackedCardView; varian
         const primary = variant.id === card.primaryVariantId
         const label = variantLabel(variant)
         return <TableRow key={variant.id} data-primary={primary || undefined}>
-          <TableCell><div className="variant-name"><span className="variant-color" style={{ backgroundColor: variantColor(variant.externalId) }} /><div><strong>{label}</strong><span className="variant-sku">SKU {variant.externalId.split(':').at(-1)}</span></div></div></TableCell>
+          <TableCell><div className="variant-name"><ProductImage card={{ title: label, imageUrl: variant.imageUrl ?? null }} /><span className="variant-color" style={{ backgroundColor: variantColor(variant.externalId) }} /><div><strong>{label}</strong><span className="variant-sku">Код варианта: {variant.externalId.split(':').at(-1)}</span></div></div></TableCell>
           <TableCell className="price-cell">{formatPrice(variant.currentPrice)}</TableCell>
           <TableCell><AvailabilityStatus value={variant.currentAvailability} /></TableCell>
           <TableCell>{formatDateTime(variant.updatedAt)}</TableCell>

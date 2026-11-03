@@ -93,7 +93,7 @@ export function CardDetailsPage() {
       <header className="detail-header">
         <div className="detail-header__product">
           <ProductImage card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager />
-          <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span>{!card.dealsEnabled ? <><span>·</span><Badge variant="warning" className="tracking-status">Не участвует в выгодных</Badge></> : null}</div></div>
+          <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span><span>{Object.entries(card.options ?? {}).map(([name, value]) => `${name}: ${value}`).join(' · ')}</span>{!card.dealsEnabled ? <><span>·</span><Badge variant="warning" className="tracking-status">Не участвует в выгодных</Badge></> : null}</div></div>
         </div>
         <div className="page-actions">
           <Button variant="outline" disabled={!variantsQuery.data} onClick={() => setEditing(true)}><Pencil data-icon="inline-start" aria-hidden="true" />Изменить</Button>
@@ -131,7 +131,7 @@ export function CardDetailsPage() {
           {periods.map((period) => <ToggleGroupItem key={period} value={String(period)}>{period} дней</ToggleGroupItem>)}
         </ToggleGroup>
       </div>
-      <section aria-label="История цены">{chartQuery.isLoading ? <Skeleton className="price-chart" aria-label="Загрузка графика" /> : chartQuery.isError ? <SectionError message="Не удалось загрузить график" retry={() => void chartQuery.refetch()} /> : <VariantPriceChart key={card.id} history={chart} variants={variants} primaryVariantId={card.primaryVariantId} />}</section>
+      <section aria-label="История цены">{chartQuery.isLoading || variantsQuery.isLoading ? <Skeleton className="price-chart" aria-label="Загрузка графика" /> : chartQuery.isError ? <SectionError message="Не удалось загрузить график" retry={() => void chartQuery.refetch()} /> : <VariantPriceChart key={`${card.id}:${card.primaryVariantId}`} history={chart} variants={variants} primaryVariantId={card.primaryVariantId} />}</section>
 
       <section className="measurements">
         <div className="variant-heading"><h2>Измерения</h2>
