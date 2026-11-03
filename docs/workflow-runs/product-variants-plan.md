@@ -1,6 +1,6 @@
 # Товарные карточки и варианты SKU
 
-Дата: 2026-11-02. Workflow: vibe-flow. Активный OpenSpec change: `track-product-variants`.
+Дата: 2026-11-02. Workflow: vibe-flow. OpenSpec change: `track-product-variants` (архивирован 2026-11-03).
 
 ## Запрос и согласование
 
@@ -22,15 +22,15 @@ Python 229 passed; frontend 82 passed; TypeScript passed; visual 5 passed. Deskt
 
 CodeGraph использован с явным корнем. Repowise MCP настроен на старый путь, поэтому использованы локальные working-tree update/risk/change-risk; неполная историческая индексация новых путей учтена. Browser plugin недоступен; QA выполнен существующим Playwright workflow. Подробности и доказательства: [verification.md](track-product-variants/verification.md).
 
-## Следующее действие
+## Закрытие
 
-Итог проверен, скриншоты и логи сохранены. Пользователь уточнил порядок 2026-11-02: сначала закоммитить все изменения задачи, затем оценивать реализацию. Навык vibe-flow обновлён: проверенные изменения коммитятся до каждой оценки, включая доработки. Финальная приёмка ещё не получена. После неё — применить подготовленный documentation-draft, sync specs, archive change и закоммитить завершающие изменения. Push/merge не разрешены.
+Пользователь принял работу 2026-11-03 сообщением «Пометь в беклог, что сейчас али урезан по запросам и закрывай эту задачу». Исправление в коммите e8c8ce4; финальная запись об ограничении AliExpress добавлена в docs/BACKLOG.md. Четыре delta specs синхронизированы с основными, change перенесён в openspec/changes/archive/2026-11-03-track-product-variants. Задача закрыта, push/merge не выполнялись.
 
-Временный PostgreSQL остановлен после проверок (`pg_ctl stop`); каталог тестового кластера сохранён.
+Документация по WB/Ali, API, CLI и диагностике актуализирована в исправлении. Сохранявшийся documentation-draft является историческим черновиком; актуальные правила ввода без SKU находятся в docs/guide и основных specs. Пользовательская БД не использовалась при разработке и проверках.
 
 ## Исправление 2026-11-03
 
-Последний WB-сбор: карточки 15 и 16 остановились 12:13:44 на «Не указан размер WB» до получения товара. Пользователь подтвердил исправление: ввод только артикула WB/Ali, автоматическое первичное обнаружение SKU, сохранность истории. Одобрение: «Да», продолжение: «Продолжи». Задачи 5.1–5.3 добавлены в существующий change. Исправление реализовано; финальная приёмка не получена.
+Последний WB-сбор: карточки 15 и 16 остановились 12:13:44 на «Не указан размер WB» до получения товара. Пользователь подтвердил исправление: ввод только артикула WB/Ali, автоматическое первичное обнаружение SKU, сохранность истории. Одобрение: «Да», продолжение: «Продолжи». Задачи 5.1–5.3 добавлены в существующий change. Исправление реализовано и принято пользователем 2026-11-03.
 
 Repowise MCP возвращает старый индекс 9f3876d; запущено локальное index-only обновление без генерации моделью. Browser plugin/skill отсутствует: UI проверяется имеющимся Playwright workflow (Browser plugin not available). Для формы использованы project shadcn и React best practices; текущие Field docs получены через Context7.
 
@@ -45,4 +45,8 @@ Repowise MCP возвращает старый индекс 9f3876d; запущ�
 
 Фактические CLI add WB/Ali по одному артикулу выполнены на отдельной disposable БД; оба CLI импортируются без DATABASE_URL. OpenSpec strict validate и git diff --check прошли. Локальный Repowise index-only обновлён; risk относит diff к Elevated по размеру/распределению изменений, это не оценка вероятности дефекта. Исторические метаданные новых модулей в индексе ограничены; критические пути проверены в актуальном коде и тестах.
 
-Логи проверок: /tmp/price-watch-discovery-python-verified.log, /tmp/price-watch-discovery-frontend2.log, /tmp/price-watch-discovery-e2e.log, /tmp/price-watch-discovery-build.log. Disposable PostgreSQL: /tmp/price-watch-discovery-pg, порт 55443; БД price_watch_discovery_test и price_watch_discovery_cli_test. После проверок сервер остановлен. Desktop binary обновлён в frontend/src-tauri/target/release/price-watch; действующее приложение автоматически не перезапускалось. Следующий шаг — оценка исправления пользователем; sync/archive существующего change только после приёмки.
+Логи проверок: /tmp/price-watch-discovery-python-verified.log, /tmp/price-watch-discovery-frontend2.log, /tmp/price-watch-discovery-e2e.log, /tmp/price-watch-discovery-build.log. Disposable PostgreSQL: /tmp/price-watch-discovery-pg, порт 55443; БД price_watch_discovery_test и price_watch_discovery_cli_test. После проверок сервер остановлен. Desktop binary обновлён в frontend/src-tauri/target/release/price-watch; действующее приложение автоматически не перезапускалось. Приёмка получена 2026-11-03, sync/archive выполнены при закрытии.
+
+### Проверка закрытия
+
+Основные спецификации: openspec validate --specs — 16 passed, 0 failed. Есть предупреждение о длине существующего уточнённого требования collection-run-execution (>500 символов); смысл и сценарии при синхронизации сохранены. Delta change проверен до архивации; каждый добавленный/изменённый блок сопоставлен с основной спецификацией, удалённое требование формы тегов отсутствует. Для документационных правок тесты приложения повторно не запускались; результаты реализации приведены выше.
