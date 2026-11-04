@@ -91,3 +91,7 @@ Verification of this refinement:
 - Disposable PostgreSQL on55447 stopped cleanly after tests. No push/merge or user-data migration performed.
 
 Implementation and verification are committed together. Next: present the committed refinement for explicit user evaluation. Acceptance remains pending; do not sync/archive before user acceptance. Migration applies on next updated-app startup, setting existing extras off without deleting their data.
+
+
+## User acceptance and closure, 2026-11-04
+User accepted the completed refinement: «Все хорошо». Implementation commit: `4475899`; original family implementation: `293231e`. Tasks 4.3 and 5.6 complete. Product-variants main spec synchronized (two modified and five added requirements), preserving Purpose and unrelated requirements. Change archived to `openspec/changes/archive/2026-11-04-track-ozon-product-variants/`. ADR acceptance statuses updated; implementation unchanged. Target spec strict validation, all main specs normal validation, completed task counts, archive presence and staged whitespace checks verified before closure commit. Full main-spec strict validation also reports a pre-existing long-description warning in collection-run-execution; that unrelated spec was left unchanged. Prior implementation verification remains 265 Python, 92 frontend, 63 E2E, TypeScript and desktop build passed. No new application code or user DB operations during closure. No outstanding task work, push or merge.

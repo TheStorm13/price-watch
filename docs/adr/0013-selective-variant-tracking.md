@@ -1,6 +1,6 @@
 # 0013: Selective recurring variant tracking
 
-Status: Accepted design (implementation evaluation pending), 2026-11-04.
+Status: Accepted; implementation accepted by the user on 2026-11-04.
 
 The user approved initial discovery of every variant with recurring tracking disabled for extras on Ozon, Wildberries and AliExpress. The primary always tracks; individual and bulk controls preserve history.
 

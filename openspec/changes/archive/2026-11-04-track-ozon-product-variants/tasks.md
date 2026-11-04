@@ -24,7 +24,7 @@
 
 - [x] 4.1 Выполнить релевантные Python integration suites на disposable TEST_DATABASE_URL, frontend tests/lint и затронутые mock E2E; проверить diff, текущий Repowise risk и реальные Tauri/API пути. Сохранить результаты и ограничения в workflow record.
 - [x] 4.2 Проверить живой Ozon отдельно от mock UI на 2936650207 без пользовательской БД; сравнить множество и параметры с исследованием, явно отразить изменение ассортимента/блокировку, если они возникли.
-- [ ] 4.3 Создать и проверить коммиты всех относящихся к задаче изменений, представить хеши, файлы, проверки и риски; дождаться явной приёмки пользователя.
+- [x] 4.3 Создать и проверить коммиты всех относящихся к задаче изменений, представить хеши, файлы, проверки и риски; дождаться явной приёмки пользователя.
 
 ## Workflow follow-up
 
@@ -36,4 +36,4 @@
 - [x] 5.3 Atomically queue initial full discovery on creation; filter ordinary collection and preserve retry semantics across all three marketplaces.
 - [x] 5.4 Implement individual/bulk API, transfer, desktop/mock UI and creation feedback.
 - [x] 5.5 Verify migrations, history preservation, initial discovery, ordinary selection, primary change, toggles, queue/worker/direct and numeric modes; run relevant frontend/backend checks.
-- [ ] 5.6 Commit implementation and present evidence for user evaluation; await acceptance before archive.
+- [x] 5.6 Commit implementation and present evidence for user evaluation; await acceptance before archive.
