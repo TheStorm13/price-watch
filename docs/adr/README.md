@@ -16,6 +16,8 @@
 
 - [ADR 0008: AliExpress SKU и общий Chrome-сеанс](0008-aliexpress-sku-and-shared-browser.md) — Accepted.
 
+- [ADR 0012: Семейство Ozon с самостоятельными артикулами вариантов](0012-ozon-variant-family.md) — Accepted (design), реализация на приёмке.
+
 Наблюдаемое устройство системы описано в
 [обзоре архитектуры](../architecture/overview.md); обзор не заменяет запись
 о мотивах выбора и рассмотренных альтернативах.

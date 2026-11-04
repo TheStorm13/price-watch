@@ -19,3 +19,7 @@ class ConnectorNotAvailable(ValueError):
 
 class ImportDuringRun(ValueError):
     pass
+
+
+class VariantOwnershipConflict(ValueError):
+    pass

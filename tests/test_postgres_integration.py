@@ -104,7 +104,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_marketplaces_without_connectors_are_not_queued(self):
         repository = create_postgres_stores(self.async_database)
-        ozon = await repository.cards.add_card("ozon", f"test-{uuid4()}")
+        ozon = await repository.cards.add_card("ozon", str(uuid4().int))
         wildberries = await repository.cards.add_card("wildberries", f"{uuid4().int % 1000000000 + 1}:2")
         aliexpress = await repository.cards.add_card("aliexpress", f"{uuid4().int}:2")
         yandex_market = await repository.cards.add_card("yandex-market", f"test-{uuid4()}")

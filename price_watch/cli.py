@@ -75,7 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
     card_commands = card.add_subparsers(dest="card_command", required=True)
     add_card = card_commands.add_parser("add", help="добавить карточку")
     add_card.add_argument("--marketplace", required=True)
-    add_card.add_argument("--external-id", required=True)
+    add_card.add_argument("--external-id", required=True, help="артикул товара; для Ozon — SKU любого варианта, остальные добавятся при сборе")
     add_card.add_argument("--title")
     add_card.add_argument("--url")
     list_cards = card_commands.add_parser("list", help="показать карточки")
@@ -175,6 +175,8 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
         cards = [
             {
                 **_tracked_card_dict(item.card),
+                "primary_external_id": next((v['external_id'] for v in await stores.cards.get_variants(item.card.id)
+                                             if v['id'] == item.card.primary_variant_id), None),
                 "current_price": item.current_price,
                 "current_availability": item.current_availability,
                 "last_observed_at": item.last_observed_at,

@@ -2,10 +2,13 @@
 from ..connectors.aliexpress.identity import AliExpressRef
 from ..connectors.wildberries.identity import WildberriesRef
 from ..domain.errors import InvalidProductId
+from ..connectors.ozon.identity import validate_ozon_identity
 
 
 def validate_card_identity(marketplace: str, external_id: str, url: str | None = None) -> tuple[str, str | None]:
     external_id = external_id.strip()
+    if marketplace.strip().lower() == 'ozon':
+        return validate_ozon_identity(external_id, url)
     ref_type = {"aliexpress": AliExpressRef, "wildberries": WildberriesRef}.get(marketplace.strip().lower())
     if ref_type:
         ref = ref_type.parse(external_id)
@@ -18,3 +21,18 @@ def validate_card_identity(marketplace: str, external_id: str, url: str | None =
     if not external_id:
         raise InvalidProductId("ID карточки обязателен")
     return external_id, url
+
+
+def validate_variant_identity(marketplace: str, article: str, external_id: str,
+                              url: str | None = None) -> tuple[str, str | None]:
+    """Validate a declared member; Ozon membership is established by the caller.
+
+    Discovery supplies storefront edges; transfer supplies saved membership.
+    Neither may infer an Ozon family from numeric prefixes or product titles.
+    """
+    ref, url = validate_card_identity(marketplace, external_id, url)
+    if marketplace.lower() == 'ozon':
+        validate_ozon_identity(article)
+    elif (ref.split(':')[0] if marketplace.lower() in ('aliexpress', 'wildberries') else ref) != article:
+        raise InvalidProductId('Вариант принадлежит другому товару')
+    return ref, url

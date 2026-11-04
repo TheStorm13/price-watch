@@ -21,7 +21,7 @@ from ..schemas import (
 )
 from ...domain.models import TrackedCardOverview
 from ...domain.history_merge import ConflictingObservation
-from ...domain.errors import CardAlreadyExists, CardInActiveRun, ImportDuringRun
+from ...domain.errors import CardAlreadyExists, CardInActiveRun, ImportDuringRun, VariantOwnershipConflict
 
 
 router = APIRouter(prefix="/cards", tags=["cards"])
@@ -52,6 +52,8 @@ async def _import_cards(payload: ImportDocument, transfer: TransferDep, preview:
         raise ApiProblem(409, "conflicting_observation", str(exc)) from exc
     except ImportDuringRun as exc:
         raise ApiProblem(409, "import_during_run", str(exc)) from exc
+    except VariantOwnershipConflict as exc:
+        raise ApiProblem(409, 'variant_ownership_conflict', str(exc)) from exc
 
 
 @router.post("/import/preview", response_model=ImportSummary)

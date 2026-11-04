@@ -9,6 +9,7 @@ from urllib.parse import urljoin, urlparse
 
 from ...domain.errors import MarketplaceSchemaChanged
 from .models import OzonProductData, OzonPrice
+from .identity import validate_ozon_identity
 from ...domain.money import normalize_price
 from ...domain.models import (
     Attribute,
@@ -105,6 +106,7 @@ class OzonMapper:
             attributes=tuple(cls._characteristics(characteristics)),
             description=str(ld_product.get("description") or ""),
             variants=tuple(cls._variants(aspects, external_id)),
+            extensions=cls._discovery_status(aspects),
             collected_at=data.received_at,
         )
 
@@ -205,27 +207,60 @@ class OzonMapper:
     def _variants(
         cls, aspects: JsonObject, current_id: str
     ) -> Iterable[ProductVariant]:
-        seen = set()
-        for item in cls._walk_dicts(aspects):
-            external_id = str(item.get("sku") or "")
-            if not external_id or external_id in seen or not item.get("link"):
-                continue
-            data = item.get("data") if isinstance(item.get("data"), dict) else {}
-            seen.add(external_id)
-            option = str(data.get("searchableText") or "")
+        members = {}
+        rows = aspects.get('aspects', [])
+        if not isinstance(rows, list):
+            raise MarketplaceSchemaChanged('Некорректные аспекты Ozon')
+        for aspect in rows:
+            if not isinstance(aspect, dict) or not isinstance(aspect.get('variants'), list):
+                raise MarketplaceSchemaChanged('Некорректный список вариантов Ozon')
+            name = str(aspect.get('aspectName') or aspect.get('aspectKey') or 'Вариант')
+            for item in aspect['variants']:
+                if not isinstance(item, dict) or not item.get('sku') or not item.get('link'):
+                    raise MarketplaceSchemaChanged('Вариант Ozon не содержит sku/link')
+                external_id = str(item['sku'])
+                _, url = validate_ozon_identity(external_id, urljoin(cls.OZON_URL, str(item['link'])))
+                data = item.get('data') if isinstance(item.get('data'), dict) else {}
+                member = members.setdefault(external_id, {'data': data, 'url': url,
+                    'availability': item.get('availability'), 'options': {}})
+                option = str(data.get('searchableText') or '')
+                if option:
+                    member['options'][name] = option
+        for external_id, member in members.items():
+            data = member['data']
             yield ProductVariant(
                 ref=ProductRef(cls.marketplace, external_id),
                 title=str(data.get("title") or ""),
-                url=urljoin(cls.OZON_URL, str(item.get("link") or "")),
+                url=member['url'],
                 availability=(
                     Availability.IN_STOCK
-                    if cls._as_bool(item.get("availability"))
-                    else Availability.OUT_OF_STOCK
+                    if cls._as_bool(member['availability'])
+                    else Availability.OUT_OF_STOCK if member['availability'] is not None else Availability.UNKNOWN
                 ),
                 selected=external_id == current_id,
-                options={"option": option} if option else {},
+                options=member['options'],
                 image_url=data.get("coverImage"),
             )
+
+    @classmethod
+    def _discovery_status(cls, aspects):
+        """Fail visibly on unrecognised list/continuation controls, retaining price.
+
+        Size-table modals are informational, not variant pagination. The known
+        keys come from the inspected storefront responses, not a guessed API.
+        """
+        root_keys = {'aspects', 'lexemes', 'ringSizeTacticRs', 'cellTrackingInfo', 'sliceTrackingInfo'}
+        aspect_keys = {'aspectName', 'aspectKey', 'type', 'descriptionRs', 'additionalInfo', 'variants', 'index'}
+        unknown = set(aspects) - root_keys
+        for aspect in aspects.get('aspects', []):
+            unknown.update(set(aspect) - aspect_keys)
+            for item in cls._walk_dicts(aspect.get('additionalInfo', {})):
+                modal = item.get('linkModal')
+                if modal and not str(modal).startswith('/modal/size-table?'):
+                    unknown.add('linkModal')
+        if unknown:
+            return {'variant_discovery_error': 'Неподдерживаемое продолжение/структура вариантов Ozon: ' + ', '.join(sorted(unknown))}
+        return {}
 
     @staticmethod
     def _walk_dicts(value: Any) -> Iterable[JsonObject]:

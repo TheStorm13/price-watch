@@ -2,12 +2,13 @@
 from __future__ import annotations
 from sqlalchemy import select, text, tuple_
 from sqlalchemy.orm import defer
-from marketplace_connector.application.card_identity import validate_card_identity
+from marketplace_connector.application.card_identity import validate_variant_identity
 from ...domain.history_merge import HistoryEvent, merge_history
-from ...domain.errors import ImportDuringRun
+from ...domain.errors import ImportDuringRun, VariantOwnershipConflict
 from .database import AsyncDatabase
 from .models import CollectionRunRecord, MarketplaceCardRecord, CardVariantRecord, PriceHistoryRecord, ProductGroupRecord
 from .repository_common import _RUN_CREATION_LOCK
+from .variant_membership import OZON_MEMBERSHIP_LOCK, ozon_owner, ownership_conflict
 
 
 class TransferRepository:
@@ -39,24 +40,38 @@ class TransferRepository:
         summary = dict(cards_added=0, cards_merged=0, observations_added=0,
                        observations_removed=0, observations_skipped=0, groups_added=0)
         # Validate also at the storage boundary, including direct CLI callers.
+        ozon_members = {}
         for item in cards:
+            item['marketplace'] = item['marketplace'].strip().lower()
             refs = set()
             for v in item['variants']:
-                ref, url = validate_card_identity(item['marketplace'], v['external_id'], v.get('url'))
-                article = ref.split(':')[0] if item['marketplace'] in ('aliexpress', 'wildberries') else ref
-                if article != item['external_id'] or ref in refs:
+                ref, url = validate_variant_identity(item['marketplace'], item['external_id'], v['external_id'], v.get('url'))
+                if ref in refs:
                     raise ValueError('Повторный или чужой вариант')
+                if item['marketplace'] == 'ozon':
+                    if ref in ozon_members:
+                        raise ValueError(f'Ozon SKU {ref} указан в нескольких карточках')
+                    ozon_members[ref] = item['external_id']
                 v['external_id'], v['url'] = ref, url
                 refs.add(ref)
             if item['primary_external_id'] not in refs:
                 raise ValueError('Главный вариант отсутствует')
+            if item['marketplace'] == 'ozon' and item['external_id'] not in refs:
+                raise ValueError('Исходный SKU Ozon отсутствует в товаре')
         keys = [(c['marketplace'].lower(), c['external_id']) for c in cards]
         async with self._database.session() as s, s.begin():
             await s.execute(_RUN_CREATION_LOCK)
+            if ozon_members:
+                await s.execute(OZON_MEMBERSHIP_LOCK)
             if await s.scalar(select(CollectionRunRecord.id).where(CollectionRunRecord.status.in_(('queued','running','waiting_for_user'))).limit(1)):
                 raise ImportDuringRun('Дождитесь завершения текущего сбора перед импортом')
             existing = (await s.scalars(select(MarketplaceCardRecord).where(tuple_(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.external_id).in_(keys)).with_for_update())).all() if keys else []
             by_key = {(c.marketplace,c.external_id):c for c in existing}
+            for ref, article in ozon_members.items():
+                owner = await ozon_owner(s, ref)
+                product = by_key.get(('ozon', article))
+                if owner is not None and (product is None or product.id != owner):
+                    raise VariantOwnershipConflict(ownership_conflict(ref, owner, product.id if product else f'импорт {article}'))
             variants = (await s.scalars(select(CardVariantRecord).where(CardVariantRecord.card_id.in_([c.id for c in existing])))).all() if existing else []
             by_ref = {(v.card_id,v.external_id):v for v in variants}
             histories = {}

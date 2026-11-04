@@ -17,6 +17,7 @@ from ...domain.errors import CardAlreadyExists, CardInActiveRun
 from .repository_common import _tracked_card
 from .queries import overview_statement
 from .database import AsyncDatabase
+from .variant_membership import OZON_MEMBERSHIP_LOCK, ozon_owner
 
 
 class CardRepository:
@@ -39,6 +40,11 @@ class CardRepository:
         article = external_id.split(':')[0] if marketplace in ('aliexpress', 'wildberries') else external_id
         try:
             async with self._database.session() as session, session.begin():
+                if marketplace == 'ozon':
+                    await session.execute(OZON_MEMBERSHIP_LOCK)
+                    owner = await ozon_owner(session, external_id)
+                    if owner is not None:
+                        raise CardAlreadyExists(f'Ozon SKU {external_id} уже добавлен в карточку {owner}')
                 record = await session.scalar(select(MarketplaceCardRecord).where(
                     MarketplaceCardRecord.marketplace == marketplace, MarketplaceCardRecord.external_id == article).with_for_update())
                 if record is None:
@@ -85,7 +91,7 @@ class CardRepository:
                 if variant is None or variant.card_id != card_id:
                     raise ValueError("Вариант не принадлежит этому товару")
                 record.primary_variant_id = primary_variant_id
-            if update_url and record.marketplace in ("aliexpress", "wildberries") and url:
+            if update_url and record.marketplace in ("ozon", "aliexpress", "wildberries") and url:
                 validate_card_identity(record.marketplace, variant.external_id, url)
             if update_title:
                 variant.product_title = title

@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from marketplace_connector.application.card_identity import validate_card_identity
+from marketplace_connector.application.card_identity import validate_card_identity, validate_variant_identity
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, field_serializer, model_validator
 
@@ -214,16 +214,22 @@ class ImportDocument(TransferDocument):
     @field_validator("cards")
     @classmethod
     def validate_identities(cls, cards: list[TransferCard]) -> list[TransferCard]:
+        ozon_members = set()
         for card in cards:
             refs = set()
             for variant in card.variants:
-                variant.external_id, variant.url = validate_card_identity(card.marketplace, variant.external_id, variant.url)
-                article = variant.external_id.split(':')[0] if card.marketplace in ('aliexpress', 'wildberries') else variant.external_id
-                if article != card.external_id or variant.external_id in refs:
+                variant.external_id, variant.url = validate_variant_identity(card.marketplace, card.external_id, variant.external_id, variant.url)
+                if variant.external_id in refs:
                     raise ValueError("Вариант повторяется или принадлежит другому товару")
+                if card.marketplace.lower() == 'ozon':
+                    if variant.external_id in ozon_members:
+                        raise ValueError('Вариант Ozon указан в нескольких карточках')
+                    ozon_members.add(variant.external_id)
                 refs.add(variant.external_id)
             if card.primary_external_id not in refs:
                 raise ValueError("Главный вариант отсутствует в товаре")
+            if card.marketplace.lower() == 'ozon' and card.external_id not in refs:
+                raise ValueError('Исходный SKU Ozon отсутствует в товаре')
         return cards
 
 

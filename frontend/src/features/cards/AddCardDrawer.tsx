@@ -15,6 +15,7 @@ import { marketplaceLabel } from '../../utils/format'
 import { parseTags } from './tags'
 import { parseAliExpressUrl } from './aliexpressIdentity'
 import { isWildberriesId, parseWildberriesUrl } from './wildberriesIdentity'
+import { parseOzonUrl } from './ozonIdentity'
 
 export interface CardDrawerProps {
   open: boolean
@@ -90,6 +91,10 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
       try {
         const parsed = new URL(url)
         if (!['http:', 'https:'].includes(parsed.protocol)) next.url = 'Используйте абсолютный HTTP(S) URL'
+        if (marketplace === 'ozon') {
+          const sku = variants.find((v) => v.id === primaryVariantId)?.externalId ?? externalId.trim()
+          if (parseOzonUrl(url.trim()) !== sku) next.url = 'Ссылка не соответствует артикулу выбранного варианта Ozon'
+        }
         if (marketplace === 'wildberries') {
           const ref = parseWildberriesUrl(url.trim())
           if (ref.nmId !== externalId.trim() || (selectedSku && ref.optionId && selectedSku !== ref.optionId)) next.url = card ? 'Ссылка не соответствует артикулу и размеру WB' : 'Ссылка не соответствует артикулу WB'
@@ -158,7 +163,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
               <FieldLabel htmlFor="external-id">{marketplace === 'aliexpress' ? 'ID товара' : marketplace === 'wildberries' ? 'Артикул WB' : 'ID карточки'}</FieldLabel>
               <Input id="external-id" readOnly={Boolean(card)} data-initial-focus={card ? undefined : true} value={externalId} onChange={(event) => setExternalId(event.target.value)} inputMode="numeric"
                 placeholder={marketplace === 'ozon' ? '1604900984' : 'Введите ID товара'} aria-invalid={Boolean(errors.externalId)} aria-describedby="external-id-hint" />
-              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">{['wildberries', 'aliexpress'].includes(marketplace) ? 'Введите артикул товара. Все варианты будут найдены и добавлены при сборе.' : 'Введите числовой ID карточки товара'}</FieldDescription>}
+              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">{marketplace === 'ozon' ? 'Введите артикул любого варианта. При сборе добавятся связанные цвета, размеры и другие варианты. Исходный артикул карточки сохранится.' : ['wildberries', 'aliexpress'].includes(marketplace) ? 'Введите артикул товара. Все варианты будут найдены и добавлены при сборе.' : 'Введите числовой ID карточки товара'}</FieldDescription>}
             </Field>
             {card && variants.length > 1 ? <Field>
               <FieldLabel htmlFor="primary-variant">Главный вариант</FieldLabel>
@@ -185,6 +190,13 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
               <Input id="card-url" value={url} onChange={(event) => {
                 const value = event.target.value
                 setUrl(value)
+                if (marketplace === 'ozon') {
+                  try {
+                    const sku = parseOzonUrl(value.trim())
+                    if (!card) setExternalId(sku)
+                    setErrors({})
+                  } catch { /* Validate incomplete links on submit. */ }
+                }
                 if (marketplace === 'wildberries') {
                   try {
                     const ref = parseWildberriesUrl(value.trim())

@@ -510,7 +510,7 @@ test('плитки одинаковы при разных фото, а мета�
     version: 3,
     cards: [
       {
-        marketplace: 'ozon', externalId: 'portrait-test',
+        marketplace: 'ozon', externalId: '900000001',
         title: 'Очень длинное название вертикального товара, которое должно обрезаться внутри двух строк плитки',
         url: null, imageUrl: `data:image/svg+xml,${encodeURIComponent(portrait)}`,
         tags: ['длинный тег для проверки фиксированной области', 'ещё один тег'],
@@ -518,7 +518,7 @@ test('плитки одинаковы при разных фото, а мета�
         history: [{ price: '100.00', availability: 'in_stock', observedAt: new Date().toISOString() }],
       },
       {
-        marketplace: 'ozon', externalId: 'landscape-test', title: 'Горизонтальное фото',
+        marketplace: 'ozon', externalId: '900000002', title: 'Горизонтальное фото',
         url: null, imageUrl: `data:image/svg+xml,${encodeURIComponent(landscape)}`,
         dealsEnabled: true, createdAt: new Date().toISOString(), history: [],
       },

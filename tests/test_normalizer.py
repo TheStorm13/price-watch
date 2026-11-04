@@ -63,7 +63,8 @@ class NormalizerTests(unittest.TestCase):
                     }],
                 }),
                 "webAspects-1": widget({
-                    "groups": [{
+                    "aspects": [{
+                        "aspectName": "Название вкуса",
                         "variants": [{
                             "sku": "1604900984",
                             "link": "/product/item-1604900984/",

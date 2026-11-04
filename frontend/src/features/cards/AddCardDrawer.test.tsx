@@ -39,6 +39,7 @@ describe('AddCardDrawer', () => {
 
 
 it.each([
+  ['Ozon', 'ID карточки', '123', 'https://www.ozon.ru/product/123/', 'ozon'],
   ['Wildberries', 'Артикул WB', '123', 'https://www.wildberries.ru/catalog/123/detail.aspx', 'wildberries'],
   ['AliExpress', 'ID товара', '123', 'https://aliexpress.ru/item/123.html', 'aliexpress'],
 ])('добавляет %s по артикулу или товарной ссылке без SKU', async (label, field, article, url, marketplace) => {
@@ -58,6 +59,7 @@ it.each([
 })
 
 it.each([
+  ['Ozon', 'ID карточки', 'https://www.ozon.ru/product/kedy-123/', 'Ссылка не соответствует артикулу выбранного варианта Ozon'],
   ['Wildberries', 'Артикул WB', 'https://www.wildberries.ru/catalog/123/detail.aspx?size=456', 'Ссылка не соответствует артикулу WB'],
   ['AliExpress', 'ID товара', 'https://aliexpress.ru/item/123.html?sku_id=456', 'Ссылка не соответствует ID товара'],
 ])('извлекает артикул %s из ссылки с SKU и проверяет принадлежность товара', async (label, field, url, error) => {

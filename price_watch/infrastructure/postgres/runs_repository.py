@@ -18,6 +18,7 @@ from .database import AsyncDatabase
 from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
 from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, PriceHistoryRecord, CardVariantRecord
 from .repository_common import _RUN_CREATION_LOCK, _tracked_card, _run
+from .variant_membership import OZON_MEMBERSHIP_LOCK, MAX_OZON_VARIANTS, ozon_owner, ownership_conflict
 
 _DIAGNOSTIC_LOCK = text('SELECT pg_advisory_xact_lock_shared(578612392)')
 _DIAGNOSTIC_CREATION_LOCK = text('SELECT pg_advisory_xact_lock(578612392)')
@@ -35,6 +36,8 @@ class RunRepository:
         price = snapshot.price
         availability = snapshot.availability.value
         async with self._database.session() as session, session.begin():
+            if card.ref.marketplace == 'ozon':
+                await session.execute(OZON_MEMBERSHIP_LOCK)
             if not await self._begin_result(session, lease, card.variant_id, 'succeeded'):
                 return
             if (snapshot.ref.marketplace, snapshot.ref.external_id) != (card.ref.marketplace, card.ref.external_id):
@@ -63,18 +66,35 @@ class RunRepository:
             variant.updated_at = snapshot.collected_at
             if snapshot.url:
                 variant.url = snapshot.url
-            if card.ref.marketplace in ('aliexpress', 'wildberries'):
-                await self._discover_variants(session, lease, card_record, snapshot)
-            if latest is not None and (latest.price, latest.availability) == (price, availability):
-                return
-            session.add(PriceHistoryRecord(card_id=card.id, variant_id=variant.id,
-                collection_run_id=lease.run_id, price=price, availability=availability,
-                observed_at=snapshot.collected_at, snapshot=card_to_dict(snapshot)))
+            discovery_errors = []
+            if card.ref.marketplace in ('ozon', 'aliexpress', 'wildberries'):
+                discovery_errors = await self._discover_variants(session, lease, card_record, snapshot)
+            if latest is None or (latest.price, latest.availability) != (price, availability):
+                session.add(PriceHistoryRecord(card_id=card.id, variant_id=variant.id,
+                    collection_run_id=lease.run_id, price=price, availability=availability,
+                    observed_at=snapshot.collected_at, snapshot=card_to_dict(snapshot)))
+            if discovery_errors:
+                # The exact price is valid even when family discovery is incomplete.
+                # Keep it durable, but expose the failed discovery on this target.
+                await session.execute(text("UPDATE collection_run_targets SET status='failed' WHERE run_id=:run AND variant_id=:variant"),
+                                      {'run': lease.run_id, 'variant': variant.id})
+                await session.execute(text('UPDATE collection_runs SET success_count=success_count-1, failure_count=failure_count+1 WHERE id=:run'),
+                                      {'run': lease.run_id})
+                await self._append_error(session, lease.run_id, {'cardId': card.id, 'variantId': variant.id,
+                    'marketplace': card.ref.marketplace, 'externalId': card.ref.external_id,
+                    'at': snapshot.collected_at.isoformat(), 'type': 'VariantDiscoveryIncomplete',
+                    'message': '; '.join(discovery_errors), 'traceback': ''})
 
     async def _discover_variants(self, session, lease, product, snapshot, *, initial=False):
-        from marketplace_connector.application.card_identity import validate_card_identity
+        from marketplace_connector.application.card_identity import validate_variant_identity
 
         run = await session.get(CollectionRunRecord, lease.run_id)
+        ozon = product.marketplace == 'ozon'
+        if ozon and run.retry_of_run_id is not None:
+            return []
+        errors = []
+        if ozon and snapshot.extensions.get('variant_discovery_error'):
+            errors.append(str(snapshot.extensions['variant_discovery_error']))
         known = {v.external_id: v for v in (await session.scalars(
             select(CardVariantRecord).where(CardVariantRecord.card_id == product.id))).all()}
         target_ids = set((await session.scalars(select(CollectionRunTargetRecord.variant_id).where(
@@ -82,20 +102,32 @@ class RunRepository:
             CollectionRunTargetRecord.card_id == product.id))).all())
         discovered = []
         for candidate in snapshot.variants:
-            if (candidate.ref.marketplace != product.marketplace or
-                    candidate.ref.external_id.split(':')[0] != product.external_id):
+            if candidate.ref.marketplace != product.marketplace:
                 raise ValueError('Коннектор вернул вариант другого товара')
-            ref, url = validate_card_identity(product.marketplace, candidate.ref.external_id, candidate.url)
-            if ':' not in ref:
+            ref, url = validate_variant_identity(product.marketplace, product.external_id, candidate.ref.external_id, candidate.url)
+            if not ozon and ':' not in ref:
                 raise ValueError('Обнаруженный вариант не содержит код варианта')
+            if ozon:
+                owner = await ozon_owner(session, ref) if ref not in known else product.id
+                if owner is not None and owner != product.id:
+                    errors.append(ownership_conflict(ref, owner, product.id))
+                    continue
+                if ref not in known and len(known) >= MAX_OZON_VARIANTS:
+                    message = f'Обход Ozon неполон: достигнут предел {MAX_OZON_VARIANTS} SKU; запустите новый обычный сбор после проверки состава товара'
+                    if message not in errors:
+                        errors.append(message)
+                    continue
             variant = known.get(ref)
             if variant is None:
                 variant = CardVariantRecord(card_id=product.id, external_id=ref, url=url)
                 session.add(variant)
                 known[ref] = variant
-            variant.title = candidate.title
-            variant.image_url = candidate.image_url or variant.image_url
-            variant.options = dict(candidate.options)
+            # A neighbouring aspect only describes part of the SKU. Never
+            # overwrite an already collected SKU's exact parameters or image.
+            if not ozon or variant.updated_at is None:
+                variant.title = candidate.title
+                variant.image_url = candidate.image_url or variant.image_url
+                variant.options = dict(candidate.options)
             if not variant.url:
                 variant.url = url
             discovered.append(variant)
@@ -116,6 +148,7 @@ class RunRepository:
             await session.execute(text('UPDATE collection_runs SET total_count=total_count+:count WHERE id=:id'),
                                   {'count': len(new_targets), 'id': lease.run_id})
             await session.flush()
+        return errors
 
     async def _create_run(self, session, cards, *, card_id=None, full=False, owner=None, retry_of=None, now=None):
         await session.execute(_DIAGNOSTIC_CREATION_LOCK)

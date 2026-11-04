@@ -1,5 +1,6 @@
 import { parseAliExpressUrl } from '../features/cards/aliexpressIdentity'
 import { parseWildberriesUrl } from '../features/cards/wildberriesIdentity'
+import { parseOzonUrl } from '../features/cards/ozonIdentity'
 import { compareMoney, priceText } from '../utils/money'
 import { subtractMoney } from './mockMoney'
 import { historyMetrics, priceMetrics } from './mockPriceMetrics'
@@ -121,6 +122,10 @@ history = history.map((p) => ({ ...p, variantId: p.cardId }))
 let nextVariantId = 6
 
 function validateVariant(marketplace: Marketplace, externalId: string, url: string | null) {
+  if (marketplace === 'ozon') {
+    if (!/^[0-9]+$/.test(externalId) || (url && parseOzonUrl(url) !== externalId)) throw new Error('Ссылка не соответствует артикулу выбранного варианта Ozon')
+    return
+  }
   if (!['wildberries', 'aliexpress'].includes(marketplace)) return
   const [article, sku] = externalId.split(':')
   if (externalId.split(':').length > 2 || !/^[0-9]+$/.test(article) || (sku !== undefined && !/^[0-9]+$/.test(sku))) throw new Error('Укажите числовой артикул товара')
@@ -237,6 +242,17 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
   const available = new Set(document.cards.map((c) => `${c.marketplace}:${c.externalId}`))
   if (available.size !== document.cards.length) throw new Error('Повторные карточки')
   const assigned = new Set<string>()
+  const ozonOwners = new Map<string, string>()
+  for (const imported of document.cards.filter((c) => c.marketplace === 'ozon')) {
+    validateVariant('ozon', imported.externalId, null)
+    if (!imported.variants.some((v) => v.externalId === imported.externalId)) throw new Error('Исходный SKU Ozon отсутствует в товаре')
+    for (const v of imported.variants) {
+      validateVariant('ozon', v.externalId, v.url)
+      const localOwner = variants.find((member) => member.externalId === v.externalId && cards.some((c) => c.id === member.cardId && c.marketplace === 'ozon'))
+      if (ozonOwners.has(v.externalId) || (localOwner && cards.find((c) => c.id === localOwner.cardId)?.externalId !== imported.externalId)) throw new Error(`Ozon SKU ${v.externalId} уже принадлежит другой карточке`)
+      ozonOwners.set(v.externalId, imported.externalId)
+    }
+  }
   for (const g of document.groups ?? []) for (const ref of g.cards) {
     const key = `${ref.marketplace}:${ref.externalId}`
     if (!available.has(key) || assigned.has(key)) throw new Error('Некорректный состав групп')
@@ -248,7 +264,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     for (const v of imported.variants) {
       validateVariant(imported.marketplace as Marketplace, v.externalId, v.url)
       const article = ['aliexpress','wildberries'].includes(imported.marketplace) ? v.externalId.split(':')[0] : v.externalId
-      if (article !== imported.externalId || refs.has(v.externalId)) throw new Error('Повторный или чужой вариант')
+      if ((imported.marketplace !== 'ozon' && article !== imported.externalId) || refs.has(v.externalId)) throw new Error('Повторный или чужой вариант')
       refs.add(v.externalId)
     }
     if (!refs.has(imported.primaryExternalId)) throw new Error('Главный вариант отсутствует')
@@ -377,6 +393,9 @@ export const mockApi = {
 
   async createCard(input: CreateCardInput) {
     validateVariant(input.marketplace,input.externalId,input.url ?? null)
+    if (input.marketplace === 'ozon' && variants.some((v) => v.externalId === input.externalId && cards.some((c) => c.id === v.cardId && c.marketplace === 'ozon'))) {
+      throw Object.assign(new Error('Такой вариант уже добавлен'), { field: 'externalId' })
+    }
     const article = ['aliexpress','wildberries'].includes(input.marketplace) ? input.externalId.split(':')[0] : input.externalId
     let card = cards.find((c) => c.marketplace === input.marketplace && c.externalId === article)
     if (card && (input.externalId === article || variants.some((v) => v.cardId === card!.id && v.externalId === input.externalId))) {

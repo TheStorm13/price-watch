@@ -9,6 +9,17 @@ const card: TrackedCardView = { id:1, marketplace:'wildberries',externalId:'123'
 const variants: TrackedVariant[] = [{ id:10,cardId:1,externalId:'123:100',title:'Размер M',options:{Размер:'M'},url:card.url,currentPrice:null,currentAvailability:null,lastObservedAt:null,updatedAt:null }]
 afterEach(cleanup)
 
+it('edits the exact primary Ozon SKU while keeping the seed article fixed', async () => {
+  const save = vi.fn().mockResolvedValue({})
+  const user = userEvent.setup()
+  const ozon = { ...card, marketplace: 'ozon' as const, externalId: '100', url: 'https://www.ozon.ru/product/200/' }
+  const members = [{ ...variants[0], externalId: '200', url: ozon.url, options: { Цвет: 'Чёрный', Размер: '42' } }]
+  render(<CardDrawer open onClose={vi.fn()} card={ozon} variants={members} isPending={false} onSave={save} />)
+  expect(screen.getByLabelText('ID карточки')).toHaveValue('100')
+  await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({ externalId: '100', url: ozon.url, primaryVariantId: 10 }))
+})
+
 it('prefills product fields, locks the article and marketplace, and submits cleared fields', async () => {
   const save = vi.fn().mockResolvedValue({})
   const close = vi.fn()

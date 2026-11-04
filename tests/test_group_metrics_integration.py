@@ -31,7 +31,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def fixture(self):
         database = await AsyncDatabase(TEST_DATABASE_URL).open()
         repository = create_postgres_stores(database)
-        cards = [await repository.cards.add_card(marketplace, f'{uuid4().int % 1000000000 + 1}:2' if marketplace == 'wildberries' else f'test-{uuid4()}', title=f'Card {index}', tags=[f'tag{index}'])
+        cards = [await repository.cards.add_card(marketplace, f'{uuid4().int % 1000000000 + 1}:2' if marketplace == 'wildberries' else str(uuid4().int), title=f'Card {index}', tags=[f'tag{index}'])
                  for index, marketplace in enumerate(('ozon', 'wildberries'))]
         group_id = await repository.groups.create_group('Group', [card.id for card in cards], ['own'])
         try:
