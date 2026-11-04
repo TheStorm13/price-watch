@@ -90,8 +90,8 @@ class ProductDiscoveryTests(unittest.IsolatedAsyncioTestCase):
                 owned = await self.stores.runs.claim_next_run()
                 self.assertEqual(queued.id, owned.id)
                 second = await self.executor(connector).execute(owned)
-                self.assertEqual((second.total_count, second.failure_count),(len(ids),0))
-                self.assertEqual([c.args[0] for c in transport.fetch.await_args_list], ids)
+                self.assertEqual((second.total_count, second.failure_count),(1,0))
+                self.assertEqual([c.args[0] for c in transport.fetch.await_args_list], ids[:1])
                 self.assertEqual((await self.client.get(f'/api/cards/{card["id"]}/chart')).json(),chart)
                 exported = (await self.client.get('/api/cards/export')).json()
                 imported = await self.client.post('/api/cards/import',json=exported)
@@ -127,7 +127,10 @@ class ProductDiscoveryTests(unittest.IsolatedAsyncioTestCase):
             await session.execute(text("INSERT INTO price_history(card_id,variant_id,price,availability,observed_at,snapshot) VALUES (:card,:variant,500,'in_stock',now(),'{\"keep\": true}')"),{'card':card['id'],'variant':variant_id})
         with self.sync.engine.connect() as c:
             before=c.execute(text('SELECT * FROM price_history WHERE variant_id=:id'),{'id':variant_id}).all()
-        run = await self.stores.runs.start_direct_run(card['id'])
+        async with self.db.session() as session, session.begin():
+            run = await self.stores.runs._create_run(session,
+                await self.stores.runs._select_targets(session, card['id'], discover_all=True),
+                card_id=card['id'], owner='initial-fixture', discover_all=True)
         target = (await self.stores.runs.cards_for_run(run.id))[0]
         snapshot = await connector.get_product(article)
         with self.assertRaises(LeaseLost):
@@ -146,4 +149,4 @@ class ProductDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         # Scheduler uses only exact SKU targets once discovery succeeded.
         from datetime import timedelta
         due=await self.stores.runs.create_due_run(now=self.stores.runs._clock()+timedelta(days=10))
-        self.assertEqual({c.ref.external_id for c in await self.stores.runs.cards_for_run(due.id)},set(ids))
+        self.assertEqual({c.ref.external_id for c in await self.stores.runs.cards_for_run(due.id)},set(ids[:1]))

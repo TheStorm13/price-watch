@@ -12,7 +12,7 @@
 - **THEN** варианты принадлежат одной карточке, а исходный SKU остаётся главным до выбора пользователя
 
 ### Requirement: Сбор отслеживает все обнаруженные SKU
-Обычный сбор SHALL обновлять все известные и вновь обнаруженные варианты WB/AliExpress/Ozon. Цена SHALL соответствовать точному SKU. Ошибка SKU SHALL NOT уничтожать успешные результаты соседей. Retry SHALL повторять только неуспешные цели.
+Первоначальный сбор SHALL обновлять все обнаруженные варианты WB/AliExpress/Ozon. Обычный сбор SHALL обновлять главный и явно включённые варианты. Цена SHALL соответствовать точному SKU. Ошибка SKU SHALL NOT уничтожать успешные результаты соседей. Retry SHALL повторять только неуспешные цели.
 
 #### Scenario: Частичный сбой
 - **WHEN** один SKU успешно обновлён, а другой завершился ошибкой
@@ -20,12 +20,12 @@
 
 #### Scenario: Следующий обычный сбор
 - **WHEN** обычный сбор получает новые связи вариантов Ozon
-- **THEN** новые SKU добавляются в тот же запуск ровно один раз, а известные SKU сохраняют свои истории
+- **THEN** новые SKU сохраняются с выключенным отслеживанием, а известные SKU сохраняют свои истории
 
 ## ADDED Requirements
 
 ### Requirement: Ozon обнаруживает связанные сочетания параметров
-Обычный сбор Ozon SHALL обходить связи вариантов из ответов точных SKU до отсутствия новых SKU. Система SHALL NOT создавать сочетания параметров без подтверждённого артикула. Достижение ограничения обхода, ошибка доступа или неподдерживаемое продолжение списка SHALL NOT объявляться полным успешным обнаружением. Успешные результаты SHALL сохраняться.
+Первоначальный сбор Ozon SHALL обходить связи вариантов из ответов точных SKU до отсутствия новых SKU. Система SHALL NOT создавать сочетания параметров без подтверждённого артикула. Достижение ограничения обхода, ошибка доступа или неподдерживаемое продолжение списка SHALL NOT объявляться полным успешным обнаружением. Успешные результаты SHALL сохраняться.
 
 #### Scenario: Цвета и размеры
 - **WHEN** первый ответ содержит размеры одного цвета и один вариант другого, а его ответ раскрывает остальные размеры
@@ -59,3 +59,22 @@
 #### Scenario: Прежняя одиночная карточка
 - **WHEN** существующая Ozon-карточка впервые обновляется после изменения
 - **THEN** её ID, исходный вариант, история и настройки сохраняются, а найденные варианты дополняют карточку
+
+### Requirement: Selective recurring variant tracking
+Additional variants SHALL default to tracking disabled for new and existing cards on Ozon, Wildberries and AliExpress. The primary SHALL always be tracked. Disabling tracking SHALL preserve metadata and history.
+
+#### Scenario: Initial creation discovers all variants
+- **WHEN** a supported card is added
+- **THEN** initial full discovery and initial prices SHALL be queued atomically with card creation
+- **AND** additional variants SHALL remain disabled for recurring collection
+
+#### Scenario: Individual and bulk preferences
+- **WHEN** the user enables selected variants or all known additional variants
+- **THEN** subsequent ordinary runs SHALL collect the primary and explicitly enabled variants
+- **AND** disabling all SHALL retain the primary and all previously collected data
+
+#### Scenario: Primary and queued targets
+- **WHEN** the primary changes or preferences change after a run is queued
+- **THEN** that run SHALL retain its selected targets
+- **AND** subsequent runs SHALL apply the new primary and preferences
+- **AND** the former primary SHALL be tracked only if explicitly enabled

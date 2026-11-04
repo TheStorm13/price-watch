@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from './client'
+import { api, isDesktopMode } from './client'
+import { invoke } from '@tauri-apps/api/core'
 import type { CreateCardInput, UpdateCardInput, GroupInput } from '../types/domain'
 
 export const queryKeys = {
@@ -65,8 +66,14 @@ export function useCardChart(cardId: number, days: number) {
 export function useCreateCard() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (input: CreateCardInput) => api.createCard(input),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.catalog }),
+    mutationFn: async (input: CreateCardInput) => {
+      if (isDesktopMode && input.marketplace !== 'yandex-market') await invoke('prepare_collection')
+      return api.createCard(input)
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: queryKeys.catalog })
+      client.invalidateQueries({ queryKey: ['recent-runs'] })
+    },
   })
 }
 
@@ -101,6 +108,18 @@ export function useRun(runId: number | null, includeErrors = false) {
     refetchInterval: (query) => {
       const status = query.state.data?.status
       return status && ['completed', 'completed_with_errors', 'failed'].includes(status) ? false : 1_000
+    },
+  })
+}
+
+export function useVariantTracking() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ cardId, enabled, variantId }: { cardId: number; enabled: boolean; variantId?: number }) =>
+      api.setVariantTracking(cardId, enabled, variantId),
+    onSuccess: (variants, { cardId }) => {
+      client.setQueryData(queryKeys.variants(cardId), variants)
+      client.invalidateQueries({ queryKey: queryKeys.catalog })
     },
   })
 }

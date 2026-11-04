@@ -139,7 +139,10 @@ class RunRepository:
                     discovered[0].product_title = primary.product_title
                 product.primary_variant_id = discovered[0].id
         # Retrying failed discovery must expand its SKU targets; ordinary SKU retries stay exact.
-        new_targets = [v for v in discovered if v.id not in target_ids] if initial or run.retry_of_run_id is None else []
+        new_targets = [v for v in discovered if v.id not in target_ids
+                       and (run.discover_all or (initial and v.id == product.primary_variant_id))]
+        if run.retry_of_run_id is not None and not initial:
+            new_targets = []
         if new_targets:
             position = await session.scalar(select(func.coalesce(func.max(CollectionRunTargetRecord.position), -1))
                 .where(CollectionRunTargetRecord.run_id == lease.run_id))
@@ -150,13 +153,13 @@ class RunRepository:
             await session.flush()
         return errors
 
-    async def _create_run(self, session, cards, *, card_id=None, full=False, owner=None, retry_of=None, now=None):
+    async def _create_run(self, session, cards, *, card_id=None, full=False, owner=None, retry_of=None, now=None, discover_all=False):
         await session.execute(_DIAGNOSTIC_CREATION_LOCK)
         # All creators already own the exclusive creation lock. Expiry and the
         # new record commit together; old writers take its shared counterpart.
         await session.execute(text("UPDATE collection_runs SET errors='[]'::jsonb, diagnostics_status='expired' WHERE diagnostics_status <> 'expired'"))
         record = CollectionRunRecord(status='running' if owner else 'queued', total_count=len(cards),
-            requested_card_id=card_id, is_full_collection=full, retry_of_run_id=retry_of,
+            requested_card_id=card_id, is_full_collection=full, retry_of_run_id=retry_of, discover_all=discover_all,
             worker_id=owner, heartbeat_at=self._clock() if owner else None,
             targets_complete=True, started_at=now or self._clock())
         session.add(record)
@@ -166,7 +169,7 @@ class RunRepository:
         await session.flush()
         return _run(record)
 
-    async def _select_targets(self, session, card_id=None):
+    async def _select_targets(self, session, card_id=None, *, discover_all=False):
         query = select(MarketplaceCardRecord, CardVariantRecord).join(CardVariantRecord, CardVariantRecord.card_id == MarketplaceCardRecord.id)
         if card_id is not None:
             query = query.where(MarketplaceCardRecord.id == card_id)
@@ -175,7 +178,8 @@ class RunRepository:
         rows = (await session.execute(query.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id, CardVariantRecord.id)
                                       .with_for_update(read=True, of=MarketplaceCardRecord))).all()
         exact_products = {c.id for c, v in rows if c.marketplace in ('aliexpress', 'wildberries') and ':' in v.external_id}
-        cards = [_tracked_card(c, v, for_collection=True) for c, v in rows if c.id not in exact_products or ':' in v.external_id]
+        cards = [_tracked_card(c, v, for_collection=True) for c, v in rows if (c.id not in exact_products or ':' in v.external_id or v.id == c.primary_variant_id)
+                 and (discover_all or v.id == c.primary_variant_id or v.tracking_enabled)]
         if not cards:
             if card_id is not None:
                 raise LookupError(f'Карточка не найдена: {card_id}')
@@ -183,6 +187,10 @@ class RunRepository:
         if any(c.ref.marketplace in PENDING_CONNECTOR_MARKETPLACES for c in cards):
             raise ConnectorNotAvailable('Для этого маркетплейса коннектор ещё не подключён')
         return cards
+
+    async def enqueue_initial(self, session, card_id):
+        return await self._create_run(session, await self._select_targets(session, card_id, discover_all=True),
+                                      card_id=card_id, discover_all=True)
 
     async def create_queued_run(self, card_id=None):
         async with self._database.session() as s, s.begin():
@@ -240,7 +248,7 @@ class RunRepository:
             cards = [_tracked_card(c, v, for_collection=True) for c, v in rows]
             if not cards:
                 raise ValueError('Нет доступных карточек для повтора')
-            return await self._create_run(s, cards, retry_of=source_run_id)
+            return await self._create_run(s, cards, retry_of=source_run_id, discover_all=source.discover_all)
 
     async def cards_for_run(self, run_id, pending_only=False):
         async with self._database.session() as s:

@@ -4,7 +4,7 @@ import type { TrackedVariant } from '../../types/domain'
 import { VariantPriceChart } from './VariantPriceChart'
 
 afterEach(cleanup)
-const variants: TrackedVariant[] = [1, 2].map((id) => ({ id, cardId: 1, externalId: `123:${id}`,
+const variants: TrackedVariant[] = [1, 2].map((id) => ({ id, trackingEnabled: false, isTracked: false, cardId: 1, externalId: `123:${id}`,
   title: '', options: { Размер: String(id) }, url: null, imageUrl: null, currentPrice: null,
   currentAvailability: null, lastObservedAt: null, updatedAt: null }))
 

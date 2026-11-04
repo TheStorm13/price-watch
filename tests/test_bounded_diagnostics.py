@@ -1,3 +1,4 @@
+from tests.variant_tracking_support import manual_queue
 import asyncio
 from datetime import datetime, timezone
 import json
@@ -30,6 +31,7 @@ class BoundedDiagnosticsTests(unittest.IsolatedAsyncioTestCase):
             MigrationRunner(db).apply()
 
     async def asyncSetUp(self):
+        manual_queue(self)
         self.db = await AsyncDatabase(os.environ['TEST_DATABASE_URL']).open()
         self.stores = create_postgres_stores(self.db)
         self.cards = [await self.stores.cards.add_card('ozon',str(uuid4().int)) for _ in range(25)]

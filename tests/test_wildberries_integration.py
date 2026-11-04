@@ -1,4 +1,5 @@
 """API, storage, transfer and mixed execution in an isolated disposable schema."""
+from tests.variant_tracking_support import manual_queue
 import os
 import json
 import unittest
@@ -23,6 +24,7 @@ RAW = json.loads(FIXTURE.read_text())
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'),'requires disposable TEST_DATABASE_URL')
 class WildberriesIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        manual_queue(self)
         self.schema='wb_contract_'+uuid4().hex
         self.base=Database(os.environ['TEST_DATABASE_URL'])
         with self.base.engine.begin() as c:c.execute(text(f'CREATE SCHEMA {self.schema}'))

@@ -1,4 +1,5 @@
 """Product ownership, exact SKU collection and data-preserving migration."""
+from tests.variant_tracking_support import manual_queue
 import copy
 import os
 import unittest
@@ -51,6 +52,8 @@ class VariantConnector:
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'requires disposable TEST_DATABASE_URL')
 class ProductVariantTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        if not getattr(self, "automatic_initial_refresh", False):
+            manual_queue(self)
         self.schema = 'product_variants_' + uuid4().hex
         self.base = Database(os.environ['TEST_DATABASE_URL'])
         with self.base.engine.begin() as c:
@@ -73,7 +76,9 @@ class ProductVariantTests(unittest.IsolatedAsyncioTestCase):
     def executor(self, connector):
         async def factory(run):
             return ConnectorRegistry([connector])
-        return RunExecutor(self.stores.runs, factory)
+        from tests.variant_tracking_support import InitialDiscoveryExecutor
+        executor_type = RunExecutor if getattr(self, "automatic_initial_refresh", False) else InitialDiscoveryExecutor
+        return executor_type(self.stores.runs, factory)
 
     async def add(self, ref='123:10'):
         response = await self.client.post('/api/cards', json={'marketplace':'wildberries','externalId':ref,'tags':['тест']})

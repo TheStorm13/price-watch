@@ -118,9 +118,16 @@ class TransferHistoryPoint(ApiModel):
         return value
 
 
+class VariantTrackingUpdate(ApiModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+    enabled: bool
+    variant_id: int | None = Field(default=None, ge=1)
+
+
 class TransferVariant(ApiModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
     external_id: str
+    tracking_enabled: bool = False
     title: str = ""
     url: str | None = None
     image_url: str | None = None
@@ -292,6 +299,8 @@ class CardResponse(ApiModel):
 
 
 class VariantResponse(ApiModel):
+    tracking_enabled: bool
+    is_tracked: bool
     id: int
     card_id: int
     external_id: str

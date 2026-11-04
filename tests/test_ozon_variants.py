@@ -311,8 +311,9 @@ class OzonVariantIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(await self.variants(card)), 1)
         self.assertEqual((await self.client.get(f'/api/cards/{card["id"]}/chart')).json()['points'], [])
 
-    async def test_queue_and_schedule_use_same_discovery(self):
+    async def test_queue_schedule_and_direct_cli_use_same_primary_policy(self):
         card = await self.add_ozon()
+        await self.executor(OzonConnector(FixtureClient())).collect(card['id'])
         queued = await self.client.post('/api/runs', json={'cardId': card['id']})
         self.assertEqual(queued.status_code, 202, queued.text)
         from marketplace_connector import ConnectorRegistry
@@ -322,12 +323,12 @@ class OzonVariantIntegrationTests(unittest.IsolatedAsyncioTestCase):
         worker = CollectionWorker(self.stores.runs, factory, execution=self.stores.runs)
         self.assertTrue(await worker.run_once())
         result = await self.stores.runs.get_run(queued.json()['id'])
-        self.assertEqual((result.total_count, result.success_count), (12, 12))
+        self.assertEqual((result.total_count, result.success_count), (1, 1))
         # Schedule target selection is shared with queued and direct collection.
         from datetime import timedelta
         due = await self.stores.runs.create_due_run(datetime.now(timezone.utc) + timedelta(days=2))
         self.assertIsNotNone(due)
-        self.assertEqual(len(await self.stores.runs.cards_for_run(due.id)), 12)
+        self.assertEqual(len(await self.stores.runs.cards_for_run(due.id)), 1)
         self.assertTrue(await worker.run_once())
         # Exercise the direct CLI entry point against the same exact adapters.
         import io
@@ -338,5 +339,5 @@ class OzonVariantIntegrationTests(unittest.IsolatedAsyncioTestCase):
         output = io.StringIO()
         with patch.object(cli, '_build_connectors', return_value=ConnectorRegistry([OzonConnector(fixture)])), redirect_stdout(output):
             self.assertEqual(await cli._execute(args, self.db), 0)
-        self.assertEqual(json.loads(output.getvalue())['success_count'], 12)
-        self.assertEqual(len(fixture.calls), 12)
+        self.assertEqual(json.loads(output.getvalue())['success_count'], 1)
+        self.assertEqual(len(fixture.calls), 1)

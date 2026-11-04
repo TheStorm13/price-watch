@@ -24,3 +24,5 @@
 
 При изменении решения новый ADR должен ссылаться на прежний и объяснять,
 что именно его заменяет. Исторические записи не переписываются.
+
+- [ADR 0013: Selective recurring variant tracking](0013-selective-variant-tracking.md) — initial full discovery, default-off preferences and frozen ordinary targets.

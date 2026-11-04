@@ -14,6 +14,7 @@ vi.mock('../../api/queries', () => ({
   }),
   useCardChart: () => ({ data: { points: [] }, isLoading: state.chartLoading, isError: state.chartError, refetch: vi.fn() }),
   useCardVariants: () => ({ data: [], isLoading: false, isError: false }),
+  useVariantTracking: () => ({ isPending: false }),
   useUpdateCard: () => ({ isPending: false }), useDeleteCard: () => ({}),
 }))
 vi.mock('../collection/CollectionProvider', () => ({ useCollectionCommands: () => ({ isStarting: false, startError: null }) }))

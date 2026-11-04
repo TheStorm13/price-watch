@@ -115,7 +115,7 @@ let history: PriceHistoryPoint[] = [
 ]
 
 let variants: TrackedVariant[] = cards.map((c) => ({ id: c.id, cardId: c.id, externalId: c.externalId,
-  title: 'Основной вариант', productTitle: c.title, imageUrl: c.imageUrl, options: {}, url: c.url, currentPrice: c.currentPrice,
+  trackingEnabled: false, isTracked: true, title: 'Основной вариант', productTitle: c.title, imageUrl: c.imageUrl, options: {}, url: c.url, currentPrice: c.currentPrice,
   currentAvailability: c.currentAvailability, lastObservedAt: c.lastObservedAt, updatedAt: c.lastObservedAt ? c.updatedAt : null }))
 cards = cards.map((c) => ({ ...c, primaryVariantId: c.id }))
 history = history.map((p) => ({ ...p, variantId: p.cardId }))
@@ -231,6 +231,7 @@ runs[0] = {...runs[0],status:'completed_with_errors',successCount:3,failureCount
 const retryTargetIds = new Map(runs.map(run => [run.id, (run.errors ?? []).flatMap(error => error.cardId === null ? [] : [error.cardId])]))
 runs = runs.map((run,index) => index===0 ? run : {...run,errors:[],diagnosticsStatus:'expired'})
 const runTargetIds = new Map<number, number[]>()
+const runVariantIds = new Map<number, number[]>()
 const continuedRuns = new Set<number>()
 
 const delay = <T>(value: T, milliseconds = 180) =>
@@ -300,7 +301,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
       summary.observationsSkipped += incoming.history.length-added.length
       if (!apply || !card) continue
       if (!variant) {
-        variant = { id: nextVariantId++, cardId: card.id, externalId: incoming.externalId, title: incoming.title ?? '', productTitle: incoming.productTitle ?? (incoming.externalId === imported.primaryExternalId ? imported.title : null), imageUrl: incoming.imageUrl ?? (incoming.externalId === imported.primaryExternalId ? imported.imageUrl ?? null : null), options: incoming.options ?? {}, url: incoming.url,
+        variant = { id: nextVariantId++, cardId: card.id, trackingEnabled: incoming.trackingEnabled ?? false, isTracked: false, externalId: incoming.externalId, title: incoming.title ?? '', productTitle: incoming.productTitle ?? (incoming.externalId === imported.primaryExternalId ? imported.title : null), imageUrl: incoming.imageUrl ?? (incoming.externalId === imported.primaryExternalId ? imported.imageUrl ?? null : null), options: incoming.options ?? {}, url: incoming.url,
           updatedAt: incoming.updatedAt ?? null, currentPrice: null, currentAvailability: null, lastObservedAt: null }
         variants.push(variant)
       }
@@ -363,7 +364,7 @@ export const mockApi = {
       groups: groups.map((g) => ({ name: g.name, tags: g.tags, cards: cards.filter((c) => c.groupId === g.id).map((c) => ({ marketplace:c.marketplace,externalId:c.externalId })) })),
       cards: cards.map(cardView).map((c) => ({ marketplace:c.marketplace, externalId:c.externalId, title:c.title,url:c.url,imageUrl:c.imageUrl,tags:c.tags,
         dealsEnabled:c.dealsEnabled,createdAt:c.createdAt,primaryExternalId:variants.find((v) => v.id === c.primaryVariantId)!.externalId,
-        variants:variants.filter((v) => v.cardId === c.id).map((v) => ({ externalId:v.externalId,title:v.title,url:v.url,imageUrl:v.imageUrl ?? null,productTitle:v.productTitle ?? null,options:v.options,updatedAt:v.updatedAt,
+        variants:variants.filter((v) => v.cardId === c.id).map((v) => ({ externalId:v.externalId,trackingEnabled:v.trackingEnabled,title:v.title,url:v.url,imageUrl:v.imageUrl ?? null,productTitle:v.productTitle ?? null,options:v.options,updatedAt:v.updatedAt,
           history:history.filter((h) => h.variantId === v.id).toSorted((a,b) => Date.parse(a.observedAt)-Date.parse(b.observedAt)).map((h) => ({ price:h.price,availability:h.availability,observedAt:h.observedAt })) })) })),
     })
   },
@@ -380,9 +381,19 @@ export const mockApi = {
     catch (error) { ({ cards, variants, history, groups, nextCardId, nextVariantId, nextHistoryId, nextGroupId } = saved); throw error }
   },
 
+  async setVariantTracking(cardId: number, enabled: boolean, variantId?: number) {
+    const card = cards.find((c) => c.id === cardId)
+    if (!card) throw new Error('Карточка не найдена')
+    if (variantId !== undefined && (!variants.some((v) => v.id === variantId && v.cardId === cardId) || variantId === card.primaryVariantId)) throw new Error('Главный или чужой вариант нельзя изменить')
+    for (const v of variants) {
+      if (v.cardId === cardId && v.id !== card.primaryVariantId && (variantId === undefined || v.id === variantId)) v.trackingEnabled = enabled
+    }
+    return mockApi.getVariants(cardId)
+  },
+
   async getVariants(cardId: number) {
     if (!cards.some((c) => c.id === cardId)) throw new Error('Карточка не найдена')
-    return delay(variants.filter((v) => v.cardId === cardId).map(variantView))
+    return delay(variants.filter((v) => v.cardId === cardId).map((v) => ({ ...variantView(v), isTracked: v.trackingEnabled || v.id === cards.find((c) => c.id === cardId)?.primaryVariantId })))
   },
 
   async getCard(cardId: number) {
@@ -407,10 +418,11 @@ export const mockApi = {
         tags:input.tags ?? [],dealsEnabled:true,currentPrice:null,currentAvailability:null,lastObservedAt:null,createdAt:at,updatedAt:at }
       cards.push(card)
     }
-    const variant: TrackedVariant = { id:nextVariantId++,cardId:card.id,externalId:input.externalId,title:'',productTitle:input.title ?? null,imageUrl:null,options:{},url:input.url || null,
+    const variant: TrackedVariant = { id:nextVariantId++,cardId:card.id,trackingEnabled:false,isTracked:true,externalId:input.externalId,title:'',productTitle:input.title ?? null,imageUrl:null,options:{},url:input.url || null,
       currentPrice:null,currentAvailability:null,lastObservedAt:null,updatedAt:null }
     variants.push(variant)
     card.primaryVariantId ??= variant.id
+    if (card.marketplace !== 'yandex-market') await mockApi.startRun(card.id, true)
     return delay(cardView(card))
   },
 
@@ -482,16 +494,17 @@ export const mockApi = {
     return next
   },
 
-  async startRun(cardId?: number) {
+  async startRun(cardId?: number, discoverAll = false) {
     const selected = cardId ? cards.filter((card) => card.id === cardId) : cards.filter((card) => ['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace))
     if (!selected.length) throw new Error(cardId ? 'Карточка не найдена' : 'Нет карточек для сбора')
     if (selected.some((card) => !['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace))) throw new Error('Для этого маркетплейса коннектор ещё не подключён')
+    const selectedVariants = variants.filter((v) => selected.some((c) => c.id === v.cardId && (discoverAll || c.primaryVariantId === v.id || v.trackingEnabled)))
     const run: CollectionRun = {
       id: nextRunId++,
       retryableCount: 0,
       diagnosticsStatus: 'complete', retryScopeIncomplete: false,
       status: 'queued',
-      totalCount: variants.filter((v) => selected.some((c) => c.id === v.cardId)).length,
+      totalCount: selectedVariants.length,
       successCount: 0,
       failureCount: 0,
       current: selected[0]
@@ -504,6 +517,7 @@ export const mockApi = {
     runs = [run, ...runs.map(previous => ({...previous, errors: [], diagnosticsStatus: 'expired' as const}))]
     runCreatedAt.set(run.id, Date.now())
     runTargetIds.set(run.id, selected.map((card) => card.id))
+    runVariantIds.set(run.id, selectedVariants.map((v) => v.id))
     return delay(run)
   },
 
@@ -541,7 +555,7 @@ export const mockApi = {
           ? priceText(subtractMoney(card.currentPrice, '100')) : card.currentPrice,
         lastObservedAt: observedAt, updatedAt: observedAt,
       } : card)
-      variants=variants.map((v)=>targets.has(v.cardId)?{...v,updatedAt:observedAt}:v)
+      variants=variants.map((v)=>(runVariantIds.get(runId) ?? []).includes(v.id)?{...v,updatedAt:observedAt}:v)
       const first = cards[0]
       if (first?.id === run.current?.cardId && first.currentPrice !== null && history.at(-1)?.price !== first.currentPrice) {
         history = [...history, {

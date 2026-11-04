@@ -1,4 +1,5 @@
 """Group projections run only on an explicitly supplied disposable test database."""
+from tests.variant_tracking_support import manual_queue
 import os
 import unittest
 from contextlib import asynccontextmanager
@@ -29,6 +30,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     @asynccontextmanager
     async def fixture(self):
+        manual_queue(self)
         database = await AsyncDatabase(TEST_DATABASE_URL).open()
         repository = create_postgres_stores(database)
         cards = [await repository.cards.add_card(marketplace, f'{uuid4().int % 1000000000 + 1}:2' if marketplace == 'wildberries' else str(uuid4().int), title=f'Card {index}', tags=[f'tag{index}'])

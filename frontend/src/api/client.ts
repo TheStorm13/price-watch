@@ -87,6 +87,11 @@ export const api = {
       method: 'POST', body: JSON.stringify(document),
     }),
 
+  setVariantTracking: (cardId: number, enabled: boolean, variantId?: number): Promise<TrackedVariant[]> =>
+    isE2ETestMode ? mockApi.setVariantTracking(cardId, enabled, variantId) : request(`/api/cards/${cardId}/variant-tracking`, {
+      method: 'PATCH', body: JSON.stringify({ enabled, variantId }),
+    }),
+
   getVariants: (cardId: number): Promise<TrackedVariant[]> =>
     isE2ETestMode ? mockApi.getVariants(cardId) : request(`/api/cards/${cardId}/variants`),
 

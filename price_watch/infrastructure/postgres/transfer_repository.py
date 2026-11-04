@@ -23,7 +23,7 @@ class TransferRepository:
             histories = (await s.scalars(select(PriceHistoryRecord).options(defer(PriceHistoryRecord.snapshot)).order_by(PriceHistoryRecord.observed_at, PriceHistoryRecord.id))).all()
             groups = (await s.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
             by_variant = {v.id: dict(external_id=v.external_id, title=v.title, url=v.url, image_url=v.image_url, product_title=v.product_title, options=v.options,
-                                     updated_at=v.updated_at, history=[]) for v in variants}
+                                     tracking_enabled=v.tracking_enabled, updated_at=v.updated_at, history=[]) for v in variants}
             for h in histories:
                 by_variant[h.variant_id]['history'].append(dict(price=h.price, availability=h.availability, observed_at=h.observed_at))
             members = {}
@@ -109,6 +109,7 @@ class TransferRepository:
                         continue
                     if variant is None:
                         variant=CardVariantRecord(card_id=product.id,external_id=imported['external_id'],url=imported.get('url'),
+                            tracking_enabled=imported.get('tracking_enabled',False),
                             title=imported.get('title',''),product_title=imported.get('product_title'),image_url=imported.get('image_url'),options=imported.get('options',{}),updated_at=imported.get('updated_at'))
                         s.add(variant)
                         await s.flush()

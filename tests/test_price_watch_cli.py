@@ -1,3 +1,4 @@
+from tests.variant_tracking_support import manual_queue
 import unittest
 import json
 import os
@@ -68,6 +69,8 @@ with patch('marketplace_connector.connectors.ozon.cli.AsyncOzonClient'), patch(
 
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'), 'TEST_DATABASE_URL не задан')
 class CliCollectionIntegrationTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        manual_queue(self)
     async def test_direct_cli_and_queued_worker_save_the_same_decimal_contract(self):
         from uuid import uuid4
         from decimal import Decimal

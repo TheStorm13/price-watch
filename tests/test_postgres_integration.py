@@ -1,3 +1,4 @@
+from tests.variant_tracking_support import manual_queue
 import asyncio
 import os
 import unittest
@@ -40,6 +41,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         MigrationRunner(cls.database).apply()
 
     async def asyncSetUp(self):
+        manual_queue(self)
         self.async_database = await AsyncDatabase(TEST_DATABASE_URL).open()
         self.fixture_runs = []
 

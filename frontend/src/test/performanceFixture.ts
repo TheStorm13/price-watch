@@ -33,7 +33,7 @@ export function installPerformanceFixture() {
   }
   api.getVariants = async id => {
     const card=await api.getCard(id)
-    return [{id,cardId:id,externalId:card.externalId,title:'Основной вариант',url:null,options:{},currentPrice:card.currentPrice,currentAvailability:card.currentAvailability,lastObservedAt:now,updatedAt:now}]
+    return [{id,trackingEnabled: false, isTracked: true, cardId:id,externalId:card.externalId,title:'Основной вариант',url:null,options:{},currentPrice:card.currentPrice,currentAvailability:card.currentAvailability,lastObservedAt:now,updatedAt:now}]
   }
   api.getChart = async () => ({points:[]})
   api.getHistory = async (id,days,page=1,pageSize=50) => ({card:await api.getCard(id),history:[],days,page,pageSize,totalCount:0,

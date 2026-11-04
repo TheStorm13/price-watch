@@ -1,31 +1,12 @@
-# Proposal
-
 ## Why
-
-Пользователь хочет добавлять все варианты Ozon в одну отслеживаемую карточку. Сейчас Ozon сохраняет только введённый SKU; живой пример 2936650207 показал 12 сочетаний цвета/размера, хотя первый ответ содержит лишь 7 уникальных SKU.
+Ozon groups variants with different SKU IDs. Users need complete initial discovery and independent price histories, while controlling recurring requests for Ozon, Wildberries and AliExpress.
 
 ## What Changes
-
-- Добавление любого SKU Ozon создаёт карточку, обычный сбор автоматически обходит связанные варианты до исчерпания списка и получает каждый точный SKU отдельно.
-- Все параметры выбранного SKU сохраняются вместе: например, «Цвет: коричневый; рыжий · Размер: 42 RU / 42». Текущая потеря параметров при дедупликации устраняется.
-- Существующие таблица вариантов, независимые истории, главный вариант и график используются для Ozon.
-- **BREAKING**: Ozon-карточка становится контейнером связанных SKU; её исходный артикул остаётся стабильной точкой входа, а не ограничением идентичности всех вариантов. Обновляются discovery, проверка принадлежности, добавление и transfer; прежний путь хранения Ozon как единственного SKU заменяется.
-- Старые ID, история и главный SKU сохраняются. Обнаружение SKU, уже принадлежащего другой карточке, сообщает конфликт с ID карточек и не переносит/удаляет пользовательские данные автоматически.
-
-## Capabilities
-
-### New Capabilities
-
-Нет.
-
-### Modified Capabilities
-
-- `product-variants`: владение вариантами Ozon, полный обход связанных SKU, сохранение точных параметров, предотвращение дублирования и перенос данных.
+- Adding a supported card atomically queues initial discovery and initial prices for every reachable variant.
+- Additional variants default to tracking off, including existing data. The primary is always effectively tracked.
+- Individual and bulk controls change recurring tracking without deleting metadata or history.
+- Ordinary runs freeze their selected targets; initial discovery alone expands to all reachable variants. Newly discovered extras stay off.
+- Transfer preserves explicit preferences. Numeric database-free mode remains one exact request.
 
 ## Impact
-
-Ozon parser/mapper и метаданные аспектов; политика принадлежности SKU; PostgreSQL cards/runs/transfer repositories; API/CLI add, export/import; desktop variants/primary/chart и mock fixtures. Проверяются queued desktop/API/worker, schedule, direct collect и numeric JSON без DATABASE_URL. Новая зависимость не требуется. Изменение архитектурного правила описывается в предлагаемом ADR 0012.
-
-Приёмка: fixture живого товара даёт 12 SKU (2 цвета × 40–45), каждый собирается один раз за обычный запуск и имеет свои параметры/цену/историю; повтор ошибки точный; неполный обход не объявляется полным успехом; существующая история не меняет владельца; transfer round-trip сохраняет все варианты.
-
-Проверки: parser/mapper unit tests, существующие variant/collection/transfer integration tests на disposable TEST_DATABASE_URL, frontend tests и lint, затронутые mock E2E; реальные проверки отдельно от mock UI. Подробности исследования и ограничений — design.md и docs/workflow-runs/track-ozon-product-variants.md.
+Database migration adds variant preferences and initial-discovery run purpose. API, worker, CLI, desktop form, variant page, transfer and demo share these contracts. Existing IDs, primary selection and history are preserved.

@@ -1,36 +1,28 @@
-# Design
-
 ## Context
 
-См. proposal.md и запись исследования. Живой обход 2026-11-04: 2936650207, «Кеды Thomas Munz», 12 точных ответов; два цвета и размеры 40–45. Начальный webAspects содержит 7 уникальных SKU, сосед другого цвета открывает ещё 5. Полного списка сочетаний в первом ответе нет. OzonMapper._variants дедуплицирует SKU до объединения аспектов и теряет размер текущего SKU.
-
-RunRepository включает discovery только для WB/Ali; _discover_variants требует общий префикс артикула и двоеточие. CardsRepository и transfer применяют то же правило идентичности. Поэтому исправление только mapper или добавление 'ozon' в условие не решает задачу. CollectionService уже обрабатывает новые pending-цели до опустошения очереди; эту возможность следует переиспользовать.
+The original approved phase added Ozon family membership: separate SKU IDs share a card, linked webAspects are traversed through durable targets, and histories remain independent. The user subsequently approved selective recurring tracking and automatic initial discovery on 2026-11-04. ADR 0013 supersedes recurring-all scheduling from ADR 0012.
 
 ## Goals / Non-Goals
 
-**Goals:** полное множество SKU, достижимых по подтверждённым связям витрины; точная история каждого; единая карточка с существующим UI вариантов. Исходный SKU — стабильная точка входа и первоначальный главный.
-
-**Non-Goals:** поиск похожих моделей по названию, искусственное декартово произведение параметров, автоматическое объединение существующих отдельных карточек, получение вариантов, скрытых площадкой от текущего профиля/региона.
+Obtain every reachable Ozon/WB/AliExpress variant and initial prices on creation, then collect only the primary and explicit selections. Preserve identities, metadata and history. Provide individual and bulk controls, including existing variants defaulting off. No automatic merging of independently owned cards; no hidden full traversal in numeric database-free Ozon mode.
 
 ## Decisions
 
-1. **Локальная карточка с исходным SKU и отдельным членством вариантов.** Не выдумывать общий productId Ozon и не вычислять его из чисел артикулов. Владение Ozon проверяется по сохранённому членству/подтверждённой связи, а не по префиксу. Общую политику применить в discovery, add и transfer. См. предложенный ADR 0012.
-2. **Обход через текущие цели сбора.** Каждый точный ответ сохраняет цену и раскрывает соседей. Новые SKU добавляются атомарно с totalCount под lease, существующие target IDs предотвращают циклы и повторные запросы. Параллельные ответы одного товара сериализуются существующей блокировкой карточки. Следующий обычный запуск снова проверяет связи всех известных вариантов; исчезнувшие не удаляются.
-3. **Ограничение и неполнота видимы.** Предлагаемый предел — 500 уникальных SKU на карточку за запуск. Превышение и обнаруженный неподдерживаемый путь продолжения отмечаются ошибкой discovery, а не тихим усечением. До лимита результаты сохраняются. Ошибочный точный SKU повторяется без расширения успешных целей, как требует существующий retry; завершение полного обнаружения после неполноты выполняет новый обычный сбор. Сам лимит и ошибка проверяются на синтетических данных; универсальность webAspects за пределами примера не доказана. Если при реализации найдена иная схема списка, сначала уточнить план, не добавлять вымышленную ручку.
-4. **Параметры из точного ответа.** Parser сохраняет названия аспектов, mapper объединяет активные значения одного SKU. Соседям разрешены неполные метаданные до их точного сбора. Цена — только текущий webPrice.cardPrice, не цена миниатюры. Обновление параметров/фото при прежней цене не создаёт лишней истории.
-5. **Конфликты существующих карточек.** Проверять принадлежность Ozon SKU глобально в транзакции; использовать согласованную блокировку создания/привязки SKU в add, discovery и import. При другом владельце возвращать ошибку с обоими cardId и SKU, не дублировать вариант. Не объединять истории/группы/теги автоматически. Успешные независимые цели остаются сохранены.
-6. **Контракты и режимы.** API вариантов, главный вариант и график переиспользуются. Numeric JSON остаётся одним точным снимком с полными параметрами и непосредственно обнаруженными соседями, без БД и без скрытого обхода семейства; raw остаётся исходным ответом. Полный обход выполняет сценарий отслеживания в БД. CLI add/list и UI должны объяснять артикул точки входа и выбранный главный SKU. Экспорт сохраняет реальное членство Ozon; его валидаторы больше не требуют равенства SKU корневому артикулу. Проверять уникальность, площадку и соответствие ссылки точному SKU; импорт декларативно переносит сохранённое членство без сетевых запросов.
+1. Store `tracking_enabled=false` independently on each variant. Effective tracking is primary OR preference. The primary control is locked. Changing primary preserves preferences, so the former primary remains tracked only if explicitly enabled. WB/Ali unresolved pre-SKU records retain their history but cannot replace an available exact primary or become a recurring target.
+2. Bulk actions affect known non-primary exact variants only. Newly discovered extras always default off; there is no persistent enable-future mode.
+3. Persist `discover_all` on runs. Initial jobs expand reachable links and obtain exact prices for every discovered SKU; regular jobs freeze primary/enabled targets when enqueued. Discovery from regular responses retains metadata without adding disabled targets. WB/Ali unresolved bootstrap selects an exact primary and schedules it even outside an initial job. Retry preserves discovery purpose for root bootstrap; exact SKU retries remain bounded to failed targets.
+4. Card creation and initial queue insertion commit atomically in the same PostgreSQL transaction. CardRepository delegates queue insertion to the injected RunRepository, sharing composition-root clock and policy. Creators acquire run-creation before membership, diagnostic and card locks. No network in the request and no frontend-only refresh. Desktop prepares the collector before creation and existing run polling observes the job. API and CLI creation enqueue without a frontend.
+5. Preserve exact membership validation and Ozon global ownership checks across add/discovery/import. Merge named aspects per SKU. Never synthesize unconfirmed option combinations, overwrite exact metadata with partial neighbor data, or transfer history across variants. Ozon initial traversal is bounded to 500 SKU with explicit incomplete diagnostics; valid prices survive partial failures. Unknown continuation is reported. One browser session and existing concurrency/cooldowns are reused.
+6. Transfer v3 exports explicit preferences. Newly imported variants restore them, missing values default false; merging preserves local preferences. Existing history merge rules remain unchanged. Numeric Ozon JSON/raw performs one exact request without DATABASE_URL.
 
-Альтернативы: ручное добавление всех артикулов в визуальную группу сохраняет разрозненные карточки; разовый разбор первого webAspects пропускает 5/12 SKU в примере; полный обход внутри каждого get_product умножает запросы и усложняет точный retry. Выбран обход через существующие цели.
+## Alternatives
 
-## Risks / Trade-offs
+A card-wide boolean cannot express selected sizes/colors. Synchronous remote fetching during creation blocks requests on Chrome checks; frontend-only refresh can be lost after creation. Reuse the existing queue/executor rather than adding another queue or crawling inside every connector call.
 
-- Изменение webAspects/обрезанный список → детектировать известные признаки продолжения, не обещать недоступные площадкой варианты; fixture полного обхода и live-проверка отдельно от UI mock.
-- Больше запросов → один браузерный сеанс, текущий concurrency=5 и cooldown/Retry-After, дедупликация целей.
-- Циклы и ошибки → конечное множество target IDs, предел, сохранение успешных SKU, точный retry, stale-lease тесты.
-- Один пример не доказывает универсальность → отдельно проверить одноаспектный товар и товар с большим списком; неизвестная обязательная схема приводит к пересмотру плана до кода.
-- Старые разрозненные карточки → явный конфликт; объединение потребует отдельного согласования данных.
+## Migration and verification
 
-## Migration Plan
+Forward-only `0020_variant_tracking` backfills false for all existing preferences and adds default-false run purpose. It does not change IDs, primary, histories, metadata or existing queued targets. Deploy schema with new writers together; tests run only on disposable TEST_DATABASE_URL. Verify initial all-variant discovery for all three marketplaces; worker/API/CLI queueing; ordinary and scheduled target selection; primary changes, individual/bulk controls, frozen queued targets, retry, ownership and transfer. Frontend unit/lint/mock E2E and desktop build complement PostgreSQL connector integration. Mock UI is not evidence of live marketplace availability.
 
-Существующие одиночные Ozon-карточки уже имеют card_variants; массовая группировка или перенос истории при обновлении не нужны. Сохранить cardId/variantId, исходный артикул и главный вариант. Новые связи заполняются при обычном сборе. Если для гарантии владения требуется дополнительное ограничение БД, добавить только forward-only миграцию с preflight коллизий, без догадок о семействах и без удаления записей. Исторические snapshot не переписывать. Остановить старые writers перед обновлением. Старый одно-SKU путь не сохраняется как fallback. На пользовательской БД миграции и проверки не запускать.
+## Risks
+
+Ozon storefront structure and visible assortment vary by category/profile. Discovery covers confirmed reachable links, not an unavailable storefront catalog. Unknown structure and ownership conflicts remain explicit errors. Existing run diagnostics retention applies to creation jobs as well. User history must never be deleted by tracking changes.

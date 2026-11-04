@@ -6,7 +6,7 @@ import type { TrackedCardView, TrackedVariant } from '../../types/domain'
 import { CardDrawer } from './AddCardDrawer'
 
 const card: TrackedCardView = { id:1, marketplace:'wildberries',externalId:'123',primaryVariantId:10,title:'Товар',url:'https://www.wildberries.ru/catalog/123/detail.aspx?size=100',tags:['кухня'],imageUrl:null,dealsEnabled:true,currentPrice:null,currentAvailability:null,lastObservedAt:null,createdAt:'2026-11-01',updatedAt:'2026-11-01' }
-const variants: TrackedVariant[] = [{ id:10,cardId:1,externalId:'123:100',title:'Размер M',options:{Размер:'M'},url:card.url,currentPrice:null,currentAvailability:null,lastObservedAt:null,updatedAt:null }]
+const variants: TrackedVariant[] = [{ id:10,trackingEnabled: false, isTracked: false, cardId:1,externalId:'123:100',title:'Размер M',options:{Размер:'M'},url:card.url,currentPrice:null,currentAvailability:null,lastObservedAt:null,updatedAt:null }]
 afterEach(cleanup)
 
 it('edits the exact primary Ozon SKU while keeping the seed article fixed', async () => {

@@ -87,6 +87,7 @@ class CardVariantRecord(Base):
     url: Mapped[str | None] = mapped_column(Text)
     product_title: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
+    tracking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     options: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -124,6 +125,7 @@ class CollectionRunRecord(Base):
     total_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     success_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     failure_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    discover_all: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     is_full_collection: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     requested_card_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("marketplace_cards.id", ondelete="SET NULL")

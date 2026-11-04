@@ -32,6 +32,8 @@ export interface TrackedCardView {
 }
 
 export interface TrackedVariant {
+  trackingEnabled: boolean
+  isTracked: boolean
   imageUrl?: string | null
   productTitle?: string | null
   id: number
@@ -180,6 +182,7 @@ export interface TransferCard {
 }
 
 export interface TransferVariant {
+  trackingEnabled?: boolean
   imageUrl?: string | null
   productTitle?: string | null
   externalId: string

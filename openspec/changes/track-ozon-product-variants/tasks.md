@@ -29,3 +29,11 @@
 ## Workflow follow-up
 
 - После приёмки синхронизировать delta specs, архивировать change, обновить только затронутую документацию и закоммитить follow-up. Не push/merge без отдельного разрешения.
+
+## 5. Approved selective tracking refinement
+- [x] 5.1 Update planning and document approved revised policy.
+- [x] 5.2 Migrate default-off preferences and discovery run purpose; preserve existing data and frozen targets.
+- [x] 5.3 Atomically queue initial full discovery on creation; filter ordinary collection and preserve retry semantics across all three marketplaces.
+- [x] 5.4 Implement individual/bulk API, transfer, desktop/mock UI and creation feedback.
+- [x] 5.5 Verify migrations, history preservation, initial discovery, ordinary selection, primary change, toggles, queue/worker/direct and numeric modes; run relevant frontend/backend checks.
+- [ ] 5.6 Commit implementation and present evidence for user evaluation; await acceptance before archive.

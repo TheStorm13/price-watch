@@ -39,6 +39,7 @@ def create_postgres_stores(database: AsyncDatabase, *, policy: CollectionPolicy 
                            clock: Clock = utc_now) -> PostgresStores:
     if policy is None:
         policy = CollectionPolicy(stale_after=timedelta(seconds=float(os.environ.get('RUN_STALE_SECONDS', '30'))))
-    return PostgresStores(CardRepository(database), RunRepository(database, policy, clock),
+    runs = RunRepository(database, policy, clock)
+    return PostgresStores(CardRepository(database, runs), runs,
                           HistoryRepository(database), GroupRepository(database), TransferRepository(database),
                           CatalogService(PostgresCatalogReader(database)))

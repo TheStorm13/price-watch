@@ -1,4 +1,5 @@
 """Behavioral checks for owned execution on an explicitly disposable database."""
+from tests.variant_tracking_support import manual_queue
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
@@ -25,6 +26,7 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
             MigrationRunner(db).apply()
 
     async def asyncSetUp(self):
+        manual_queue(self)
         self.db = await AsyncDatabase(URL).open()
         self.repo = create_postgres_stores(self.db)
         self.cards = [await self.repo.cards.add_card('ozon', str(uuid4().int), title=f'Card {i}') for i in range(3)]

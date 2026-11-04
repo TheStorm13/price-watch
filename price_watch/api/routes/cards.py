@@ -11,6 +11,7 @@ from ..schemas import (
     CardResponse,
     CardUpdate,
     VariantResponse,
+    VariantTrackingUpdate,
     HistoryPointResponse,
     HistoryResponse,
     ChartResponse,
@@ -163,3 +164,14 @@ async def get_history(
         page_size=page_size,
         total_count=await history.count_history(card_id, days, **options),
     )
+
+
+@router.patch('/{card_id}/variant-tracking', response_model=list[VariantResponse])
+async def set_variant_tracking(card_id: int, payload: VariantTrackingUpdate, cards: CardDep):
+    try:
+        found = await cards.set_variant_tracking(card_id, payload.enabled, payload.variant_id)
+    except ValueError as exc:
+        raise ApiProblem(422, 'invalid_variant_tracking', str(exc), 'variantId') from exc
+    if not found:
+        raise ApiProblem(404, 'card_not_found', 'Карточка не найдена')
+    return await cards.get_variants(card_id)

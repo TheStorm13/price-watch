@@ -146,6 +146,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
             <SheetDescription>{card ? 'Измените поля карточки. Маркетплейс и артикул изменить нельзя.' : 'Добавьте товар для отслеживания цены.'}</SheetDescription>
           </SheetHeader>
           <FieldGroup className="min-h-0 flex-1 overflow-y-auto px-4 py-2" inert={isPending}>
+            {!card && marketplace !== 'yandex-market' ? <FieldDescription>После добавления получим все варианты и начальные цены. Затем отслеживается главный; другие размеры и цвета по умолчанию выключены. Включить их можно на странице товара.</FieldDescription> : null}
             <FieldSet>
               <FieldLegend>Маркетплейс</FieldLegend>
               <RadioGroup disabled={Boolean(card) || isPending} value={marketplace} onValueChange={(value) => { setMarketplace(value as Marketplace); setErrors({}) }}>
