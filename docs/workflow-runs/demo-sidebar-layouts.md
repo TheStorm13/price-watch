@@ -8,7 +8,7 @@ User message: «Хорошо, реализуй демо версию как эт
 
 ## State
 
-First iteration committed as `1d1663e`; selected-layout refinement committed as `58324da`. User approved another demo revision: heading and revised multi-selection controls. Implementation and checks passed; preparing its commit for evaluation. OpenSpec: `demo-sidebar-layouts`. Explicit acceptance of the current revision and production adoption are pending. Do not sync/archive yet.
+First iteration committed as `1d1663e`; selected-layout refinement as `58324da`; heading/selection revision as `9fe3ade`. User requested narrower popups and a left-aligned outlined action button. This styling correction is implemented and verified; preparing its commit for evaluation. OpenSpec: `demo-sidebar-layouts`. Explicit acceptance of the current revision and production adoption are pending. Do not sync/archive yet.
 
 ## Approved revision
 
@@ -73,3 +73,9 @@ Verification of this revision:
 - Repowise live-diff review flags MultipleChoice complexity; manually reviewed required/optional selection branches and URL normalization against the passing unit/E2E cases. Its stale dependency recommendation remains inapplicable: no dependency changes occurred. This is a localized demo revision; the prior 52-case production catalog regression evidence is retained above, not claimed as rerun for this revision.
 
 Remaining boundary: mock-only preview, no live service/native WebView testing or data migration. Stage only this revision, inspect the staged diff, commit and present for evaluation; do not archive yet.
+
+## Popup styling correction
+
+User requested that the lists fit within the sidebar and their bulk action sit on the left, styled like «Создать группу». The standard Popover width and ghost/self-end button caused the prior appearance. Changed only the preview's popup width to the Radix trigger-width variable and the bulk button to the shared default-size outline variant, full width with left-aligned text.
+
+Validation: seven existing sidebar-demo E2E cases passed; `npm --prefix frontend run build:desktop` passed, including TypeScript. Playwright measured both popups at 212 px, matching their triggers and remaining inside the 260 px sidebar, at 1440×900 and 1024×768. Buttons measured 192 px inside popup padding, used the outline variant and computed `justify-content: flex-start`; clicking retained the existing selection behavior. No page or console errors. Inspected `/tmp/sidebar-popup-*.png` using `view_image`; screenshots/scripts remain outside committed source. The temporary geometry script was corrected to wait for opening animations and scope to the open popup rather than its closing predecessor. Selection logic and production desktop controls are unchanged. Unit and full native builds were not repeated for this two-line presentation correction.
