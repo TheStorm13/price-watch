@@ -45,9 +45,11 @@ export function priceText(value: DecimalString): DecimalString {
 
 export function formatMoney(value: DecimalString | null | undefined): string {
   if (value == null) return '—'
-  const rounded = priceText(value)
-  const [whole, fraction] = rounded.split('.')
-  const grouped = BigInt(whole).toLocaleString('ru-RU')
-  const sign = rounded.startsWith('-') && BigInt(whole) === 0n ? '−' : ''
-  return `${sign}${grouped}${fraction === '00' ? '' : `,${fraction}`} ₽`
+  // Round the original decimal once; wire values and calculations retain their precision.
+  const [coefficient, scale] = decimalParts(value)
+  const divisor = 10n ** BigInt(scale)
+  const magnitude = coefficient < 0n ? -coefficient : coefficient
+  const rounded = magnitude / divisor + (magnitude % divisor * 2n >= divisor ? 1n : 0n)
+  const rubles = coefficient < 0n ? -rounded : rounded
+  return `${rubles.toLocaleString('ru-RU')} ₽`
 }

@@ -10,6 +10,7 @@ import { priceDomain } from './priceDomain'
 
 interface Props { history: PriceHistoryPoint[]; variants: TrackedVariant[]; primaryVariantId?: number | null }
 const dateLabel = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })
+const priceLabel = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
 
 export function VariantPriceChart({ history, variants, primaryVariantId }: Props) {
   const [hidden, setHidden] = useState<Set<number>>(() => new Set(variants.filter((v) => v.id !== (primaryVariantId ?? variants[0]?.id)).map((v) => v.id)))
@@ -45,7 +46,7 @@ export function VariantPriceChart({ history, variants, primaryVariantId }: Props
         <ResponsiveContainer width="100%" height="100%"><LineChart margin={{ top: 20, right: 24, bottom: 14, left: 8 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis ticks={ticks} type="number" dataKey="time" domain={['dataMin', 'dataMax']} tickFormatter={(time: number) => formatShortDate(new Date(time).toISOString())} tickLine={false} minTickGap={48} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
-          <YAxis type="number" domain={domain} width={76} tickFormatter={(price: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(price)} tickLine={false} axisLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+          <YAxis type="number" domain={domain} width={76} allowDecimals={false} tickFormatter={(price: number) => priceLabel.format(price)} tickLine={false} axisLine={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
           <Tooltip labelFormatter={(time) => typeof time === 'number' ? dateLabel.format(new Date(time)) : ''} formatter={(_value, name, entry) => [formatPrice(entry.payload.price), name]} contentStyle={{ background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)', borderRadius: 8 }} />
           {series.filter(({ variant }) => !hidden.has(variant.id)).map(({ variant, data }) => <Line key={variant.id} data={data} name={variantLabel(variant)} type="linear" dataKey="value" stroke={variantColor(variant.externalId)} strokeWidth={variant.id === primaryVariantId ? 3 : 2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive={false} />)}
         </LineChart></ResponsiveContainer>
