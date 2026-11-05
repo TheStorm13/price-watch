@@ -15,6 +15,8 @@ import { useCollectionCommands } from '../collection/CollectionProvider'
 import type { TrackedCardView } from '../../types/domain'
 import { formatDateTime, formatPrice, formatRelativeTime } from '../../utils/format'
 import type { DecimalString } from '../../utils/money'
+import { catalogSavings } from './catalogSavings'
+import { CatalogSavings } from './CatalogSavings'
 
 export function dealStatus(card: TrackedCardView) {
     return <>
@@ -40,7 +42,8 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
   }
 
   function saving(card: TrackedCardView) {
-    return savings !== null ? <span className="deal-savings">{formatPrice(savings)}</span> : 'Сейчас не выгодно'
+    const value = catalogSavings(card, savings)
+    return value !== null ? <span className="deal-savings">{formatPrice(value)}</span> : 'Сейчас не выгодно'
   }
 
   function tile(card: TrackedCardView) {
@@ -69,7 +72,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
       <TableCell className="price-cell py-1">{formatPrice(card.currentPrice)}</TableCell>
       <TableCell className="price-cell py-1">{formatPrice(card.minimumPrice)}</TableCell>
       <TableCell className="price-cell py-1">{formatPrice(card.averagePrice)}</TableCell>
-      <TableCell className="py-1">{saving(card)}</TableCell>
+      <TableCell className="py-1"><CatalogSavings savings={catalogSavings(card, savings)} average={card.averagePrice} minimum={card.minimumPrice} /></TableCell>
       <TableCell className="py-1"><AvailabilityStatus value={card.currentAvailability} /></TableCell>
       <TableCell className="py-1">{actions(card)}</TableCell>
     </TableRow>

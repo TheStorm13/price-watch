@@ -1,8 +1,9 @@
 import { compareMoney, type DecimalString } from '../../utils/money'
 import type { Deal, TrackedCardView, ProductGroup } from '../../types/domain'
 import { availabilityLabel, marketplaceLabel } from '../../utils/format'
+import { catalogSavings } from './catalogSavings'
 
-export const columnLabels = { title:'Карточка',marketplace:'Маркетплейс',price:'Цена',minimum:'Минимальная',average:'Средняя',savings:'Выгода',availability:'Наличие' }
+export const columnLabels = { title:'Карточка',marketplace:'Маркетплейс',price:'Цена',minimum:'Минимальная',average:'Средняя',savings:'Выгода / Максимальная выгода',availability:'Наличие' }
 export const columnSortKeys = ['title', 'marketplace', 'price', 'minimum', 'average', 'savings', 'availability'] as const
 export type ColumnSortKey = typeof columnSortKeys[number]
 export type Sort = { key: ColumnSortKey | 'updated'; direction: 'asc' | 'desc' } | null
@@ -18,14 +19,14 @@ const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
 export function cardItem(card: TrackedCardView, deals: Map<number, Deal>): DisplayItem {
   const deal = deals.get(card.id)
   return { kind: 'card', id: card.id, title: card.title ?? card.externalId, card,
-    savings: deal?.savings ?? null, priority: !!deal }
+    savings: catalogSavings(card, deal?.savings ?? null), priority: !!deal }
 }
 
 export function catalogItems(cards: TrackedCardView[], groups: ProductGroup[], deals: Map<number, Deal>): DisplayItem[] {
   const groupIds = new Set(groups.map((group) => group.id))
   return [
     ...groups.map((group): DisplayItem => ({ kind: 'group', id: group.id, title: group.name, group,
-      card: group.representativeCard, savings: group.savings, priority: group.isDeal || group.hasMemberDeals })),
+      card: group.representativeCard, savings: catalogSavings(group.representativeCard, group.savings), priority: group.isDeal || group.hasMemberDeals })),
     ...cards.filter((card) => !groupIds.has(card.groupId ?? -1)).map((card) => cardItem(card, deals)),
   ]
 }
@@ -50,7 +51,7 @@ export function matchesItem(item: DisplayItem, filters: {
   if (filters.query && !text.includes(filters.query)) return false
   if (filters.marketplace !== 'all' && card?.marketplace !== filters.marketplace) return false
   if (filters.tag && !card?.tags?.includes(filters.tag)) return false
-  if (filters.dealsOnly && item.savings === null) return false
+  if (filters.dealsOnly && !(item.kind === 'group' ? item.group.isDeal : item.priority)) return false
   if (filters.status === 'deals_disabled') return !(card?.dealsEnabled ?? false)
   if (filters.status === 'no_data') return !card?.lastObservedAt
   return filters.status === 'all' || card?.currentAvailability === filters.status

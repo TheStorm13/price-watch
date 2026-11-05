@@ -62,6 +62,26 @@ describe('catalog objects', () => {
     expect(matchesItem(object, { ...filters, marketplace: 'ozon' })).toBe(false)
     expect(matchesItem(object, { ...filters, dealsOnly: true })).toBe(false)
   })
+
+  it('shows and sorts disabled savings without including them in the deal filter', () => {
+    const source = card(1, { dealsEnabled: false, averagePrice: '100.25', currentPrice: '70.10' })
+    const regular = cardItem(source, new Map())
+    const grouped = groupItem(source)
+    for (const item of [regular, grouped]) {
+      expect(item.savings).toBe('30.15')
+      expect(item.priority).toBe(false)
+      expect(matchesItem(item, { ...filters, dealsOnly: true })).toBe(false)
+      const smaller = cardItem(card(2, { dealsEnabled: false }), new Map())
+      expect(compareItems(item, smaller, { key: 'savings', direction: 'desc' })).toBeLessThan(0)
+    }
+  })
+
+  it('keeps missing prices, unavailable products and nonpositive savings out of displayed deals', () => {
+    for (const patch of [{ averagePrice: null }, { currentPrice: null }, { currentAvailability: 'out_of_stock' as const },
+      { currentPrice: '100.00' }, { currentPrice: '110.00' }]) {
+      expect(cardItem(card(1, { dealsEnabled: false, ...patch }), new Map()).savings).toBeNull()
+    }
+  })
 })
 
 describe('common sort', () => {

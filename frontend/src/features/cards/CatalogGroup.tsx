@@ -9,11 +9,14 @@ import { TagList } from '../../components/product/TagList'
 import { dealStatus } from './CatalogProduct'
 import { formatPrice } from '../../utils/format'
 import type { ProductGroup } from '../../types/domain'
+import { catalogSavings } from './catalogSavings'
+import { CatalogSavings } from './CatalogSavings'
 
 const productPlural = new Intl.PluralRules('ru')
 
 function groupSaving(group: ProductGroup) {
-  return group.savings !== null ? <span className="deal-savings">{formatPrice(group.savings)}</span> : 'Сейчас не выгодно'
+  const value = catalogSavings(group.representativeCard, group.savings)
+  return value !== null ? <span className="deal-savings">{formatPrice(value)}</span> : 'Сейчас не выгодно'
 }
 
 function groupDetails(group: ProductGroup) {
@@ -69,7 +72,7 @@ export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed,
     <TableCell className="price-cell py-0">{formatPrice(group.currentPrice)}</TableCell>
     <TableCell className="price-cell py-0">{formatPrice(group.minimumPrice)}</TableCell>
     <TableCell className="price-cell py-0">{formatPrice(card?.averagePrice)}</TableCell>
-    <TableCell className="py-0">{groupSaving(group)}</TableCell>
+    <TableCell className="py-0"><CatalogSavings savings={catalogSavings(card, group.savings)} average={card?.averagePrice} minimum={group.minimumPrice} /></TableCell>
     <TableCell className="py-0"><AvailabilityStatus value={card?.currentAvailability ?? null} /></TableCell>
     <TableCell className="py-0">{edit}</TableCell>
   </TableRow>

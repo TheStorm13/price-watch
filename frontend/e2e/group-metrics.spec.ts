@@ -23,6 +23,42 @@ async function importFixture(page: Page, document: object) {
 }
 const members = [{ marketplace: 'ozon', externalId: '901' }, { marketplace: 'wildberries', externalId: '902' }]
 
+test('выгода и максимум видны после отключения участия, фильтр исключает товар', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/cards')
+  await expect(page).toHaveTitle('price-watch')
+  await importFixture(page, { version: 3, groups: [], cards: [fixtureCard('901', 'ozon', [100, 60, 70], 'savings'),
+    fixtureCard('903', 'ozon', [100, 110], 'zero'), fixtureCard('904', 'ozon', [100], 'no-baseline')] })
+  await page.getByLabel('Поиск карточек').fill('Fixture')
+  await expect(page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 903' }).locator('.catalog-savings__maximum')).toHaveText('0 ₽')
+  await expect(page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 904' }).locator('.catalog-savings__maximum')).toHaveText('—')
+  const row = page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 901' })
+  await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
+  await expect(row.locator('.catalog-savings__maximum')).toHaveText('20 ₽')
+  const sizes = await row.locator('.catalog-savings > span').evaluateAll(elements => elements.map(element => ({
+    font: parseFloat(getComputedStyle(element).fontSize), top: element.getBoundingClientRect().top,
+  })))
+  expect(sizes[1].font).toBeLessThan(sizes[0].font)
+  expect(sizes[1].top).toBeGreaterThan(sizes[0].top)
+  const heading = page.getByRole('columnheader', { name: /Выгода \/\s*Максимальная выгода/ })
+  await heading.getByRole('button').click()
+  await expect(heading).toHaveAttribute('aria-sort', 'ascending')
+  await row.getByRole('button', { name: /Действия с карточкой/ }).click()
+  await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
+  await expect(row).toContainText('Не участвует в выгодных')
+  await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
+  await expect(row.locator('.catalog-savings__maximum')).toHaveText('20 ₽')
+  await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
+  await expect(row).toHaveCount(0)
+  await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
+  await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
 test('границы папки, теги и одинаковые интервалы сохраняются при раскрытии и смене вида', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -154,7 +190,7 @@ test('выгодный участник даёт приоритет без по�
   const rows = page.locator('.cards-table__group, .cards-table__product:not(.cards-table__nested)')
   await expect(rows.nth(0)).toContainText('Fixture A') // priority beats the cheaper standalone
   await expect(rows.nth(0)).toContainText('Есть выгодный товар внутри')
-  await expect(rows.nth(0).locator('td').nth(6)).toHaveText('Сейчас не выгодно')
+  await expect(rows.nth(0).locator('td').nth(6).locator('.catalog-savings > span').first()).toHaveText('Сейчас не выгодно')
   await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
   await expect(page.getByRole('checkbox', { name: 'Выгодные предложения' })).toBeChecked()
   await expect(page.getByText('По выбранным условиям ничего не найдено')).toBeVisible()
@@ -170,19 +206,19 @@ test('изменение участия и удаление представит
     groups: [{ name: 'Fixture A', cards: members }] })
   await page.getByLabel('Поиск карточек').fill('Fixture')
   const group = page.locator('.cards-table__group')
-  await expect(group.locator('td').nth(6)).toHaveText('30 ₽')
+  await expect(group.locator('td').nth(6).locator('.deal-savings')).toHaveText('30 ₽')
   const representative = page.locator('.cards-table__nested').filter({ hasText: 'Fixture товар 901' })
   await representative.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
   await expect(group).toContainText('Не участвует в выгодных')
   await expect(group).toContainText('Есть выгодный товар внутри')
-  await expect(group.locator('td').nth(6)).toHaveText('Сейчас не выгодно')
+  await expect(group.locator('td').nth(6).locator('.deal-savings')).toHaveText('30 ₽')
   await representative.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Удалить карточку' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Удалить', exact: true }).click()
   await expect(group.locator('td').nth(3)).toHaveText('110 ₽')
   await expect(group.locator('td').nth(5)).toHaveText('200 ₽')
-  await expect(group.locator('td').nth(6)).toHaveText('90 ₽')
+  await expect(group.locator('td').nth(6).locator('.deal-savings')).toHaveText('90 ₽')
   await expect(group.locator('td').nth(2)).toContainText('Wildberries')
   await expect(group).not.toContainText('Не участвует в выгодных')
 })

@@ -83,7 +83,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
          return <TableHead key={key} scope="col" aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>
            <Button variant="ghost" type="button" className={cn('cards-table__sort h-11.5 px-0',direction&&'is-active')} onClick={()=>onSort(key)}
              title={direction==='asc'?'Сортировать по убыванию':direction==='desc'?'Сбросить сортировку':'Сортировать по возрастанию'}>
-             {label}<span className="cards-table__sort-icon" aria-hidden="true">{direction==='desc'?<ArrowDown />:<ArrowUp />}</span>
+             {key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}<span className="cards-table__sort-icon" aria-hidden="true">{direction==='desc'?<ArrowDown />:<ArrowUp />}</span>
            </Button></TableHead>
        })}<TableHead><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
      <TableBody data-virtual-start>{body}{tail>0?<tr aria-hidden="true" className="virtual-spacer"><td colSpan={9} style={{height:tail}} /></tr>:null}</TableBody>

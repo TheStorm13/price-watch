@@ -71,6 +71,9 @@ h2 { font-size: 20px; line-height: 28px; letter-spacing: -0.015em; font-weight: 
 .card-actions-menu { position: relative; display: inline-flex; }
 .history-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 16px 0; color: var(--text-muted); }
 .deal-savings { color: var(--green); font-weight: 650; }
+.catalog-savings { display: inline-flex; flex-direction: column; gap: 2px; }
+.catalog-savings__maximum { color: var(--muted-foreground); font-size: 12px; line-height: 16px; }
+.catalog-savings-heading { white-space: nowrap; text-align: left; line-height: 16px; }
 
 .filters { display: grid; grid-template-columns: minmax(220px, 250px) minmax(0, 1fr); align-items: start; gap: 12px; margin-bottom: 18px; }
 .filters__search { width: 100%; }
@@ -96,6 +99,7 @@ input::placeholder { color: #98a2b3; }
 .cards-table__sort.is-active .cards-table__sort-icon { visibility: visible; }
 .cards-table__sort-icon svg { display: block; width: 14px; height: 14px; stroke-width: 2; }
 .cards-table th:nth-child(2) { width: 27%; }
+.cards-table th:nth-child(7) { width: 184px; }
 .cards-table td:nth-child(2) { white-space: normal; }
 .cards-table th:last-child, .cards-table td:last-child { position: relative; width: 48px; padding-inline: 4px; }
 .cards-table th.cards-table__selection, .cards-table td.cards-table__selection { width: 42px; padding-inline: 8px 4px; text-align: center; }
