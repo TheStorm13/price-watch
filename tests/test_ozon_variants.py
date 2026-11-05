@@ -44,11 +44,12 @@ def payload(sku, family=FAMILY):
 
 
 class FixtureClient:
-    def __init__(self, fail=(), missing=()):
+    def __init__(self, fail=(), missing=(), unavailable=()):
         self.calls = []
         self.opens = 0
         self.fail = set(fail)
         self.missing = set(missing)
+        self.unavailable = set(unavailable)
         self.family = copy.deepcopy(FAMILY)
         self.incomplete = False
         self.image_revision = ''
@@ -65,6 +66,8 @@ class FixtureClient:
         if sku in self.missing:
             raise ProductNotFound(sku)
         raw = payload(sku, self.family)
+        if sku in self.unavailable:
+            raw['widgetStates']['webPrice-1'] = {'price': '1 563 ₽', 'cardPrice': 1563, 'isAvailable': False}
         if self.image_revision:
             raw['widgetStates']['webGallery-1'] = {'images': [f'https://img.test/{sku}-{self.image_revision}.jpg']}
         if self.incomplete:
@@ -114,6 +117,28 @@ class OzonVariantParserTests(unittest.TestCase):
 
 
 class OzonNumericCliTests(unittest.IsolatedAsyncioTestCase):
+    async def test_unavailable_numeric_and_raw_keep_image_and_skus_without_database(self):
+        import io
+        from contextlib import redirect_stdout
+        from marketplace_connector.connectors.ozon import cli
+        for raw in (False, True):
+            fixture = FixtureClient(unavailable=[SEED])
+            fixture.image_revision = 'unavailable'
+            args = cli.build_parser().parse_args([SEED, *(['--raw'] if raw else [])])
+            output = io.StringIO()
+            with patch.dict(os.environ, {}, clear=True), patch.object(cli, 'AsyncOzonClient', return_value=fixture), redirect_stdout(output):
+                self.assertEqual(await cli._run(args), 0)
+            self.assertEqual(fixture.calls, [SEED])
+            result = json.loads(output.getvalue())
+            if raw:
+                self.assertIn('webGallery-1', result['widgetStates'])
+                self.assertIn('webAspects-1', result['widgetStates'])
+            else:
+                self.assertEqual(result['availability'], 'out_of_stock')
+                self.assertIsNone(result['price'])
+                self.assertEqual(result['image_url'], f'https://img.test/{SEED}-unavailable.jpg')
+                self.assertEqual(len(result['variants']), 7)
+
     async def test_numeric_and_raw_cli_make_one_exact_request_without_database(self):
         import io
         from contextlib import redirect_stdout

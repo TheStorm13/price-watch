@@ -1,0 +1,66 @@
+{
+  "pageInfo": {
+    "pageType": "pdp",
+    "url": "/product/2056350478/?oos_search=false",
+    "analyticsInfo": {
+      "sku": 2056350478
+    }
+  },
+  "seo": {
+    "link": [
+      {
+        "href": "https://www.ozon.ru/product/polo-galala-bazovaya-kollektsiya-2056350478/",
+        "rel": "canonical"
+      }
+    ],
+    "script": [
+      {
+        "type": "application/ld+json",
+        "innerHTML": "{\"@type\": \"Product\", \"name\": \"Поло Galala базовая коллекция\", \"offers\": {\"@type\": \"Offer\", \"url\": \"https://www.ozon.ru/product/polo-galala-bazovaya-kollektsiya-2056350478/\", \"availability\": \"http://schema.org/OutOfStock\", \"price\": \"1563\", \"priceCurrency\": \"RUB\"}, \"sku\": \"2056350478\"}"
+      }
+    ]
+  },
+  "widgetStates": {
+    "webProductHeading-1": {
+      "title": "Поло Galala базовая коллекция"
+    },
+    "webPrice-1": {
+      "price": "1 563 ₽"
+    },
+    "webGallery-1": {
+      "coverImage": "https://ir.ozone.ru/s3/multimedia-1-j/12632755375.jpg",
+      "images": [
+        {"src": "https://ir.ozone.ru/s3/multimedia-1-j/12632755375.jpg"}
+      ]
+    },
+    "webAspects-1": {
+      "aspects": [
+        {
+          "aspectName": "Размер",
+          "variants": [
+            {
+              "sku": "2056350478",
+              "availability": "outOfStock",
+              "link": "/product/2056350478/?oos_search=false",
+              "data": {
+                "searchableText": "48–50 RU / L",
+                "title": "Поло Galala базовая коллекция",
+                "coverImage": "https://ir.ozone.ru/s3/multimedia-1-j/wc140/12632755375.jpg"
+              }
+            },
+            {
+              "sku": "2056350515",
+              "availability": "outOfStock",
+              "link": "/product/2056350515/?oos_search=false",
+              "data": {
+                "searchableText": "50–52 RU / XL",
+                "title": "Поло Galala базовая коллекция",
+                "coverImage": "https://ir.ozone.ru/s3/multimedia-1-j/wc140/12632755375.jpg"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

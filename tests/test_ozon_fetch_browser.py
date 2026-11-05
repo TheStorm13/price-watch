@@ -31,6 +31,7 @@ class FetchBrowserTests(unittest.IsolatedAsyncioTestCase):
                         await route.fulfill(status=200, content_type='text/html', body='<html>storefront</html>')
                         return
                     path = parse_qs(urlsplit(request.url).query)['url'][0]
+                    self.assertEqual(parse_qs(urlsplit(path).query), {'oos_search': ['false']})
                     sku = path.split('/')[2]
                     headers = await request.all_headers()
                     requests.append((sku, request.method, headers.get('cookie', '')))

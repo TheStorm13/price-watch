@@ -164,7 +164,9 @@ class OzonJsonTransport:
                 self._bootstrap = asyncio.create_task(self._start())
                 self._bootstrap.add_done_callback(self._retrieve_exception)
             await asyncio.shield(self._bootstrap)
-            url = HOME_URL.rstrip("/") + API_PATH + "?url=" + quote(f"/product/{article}/", safe="")
+            # Keep the product page (gallery/aspects) even when the SKU is sold
+            # out; Ozon otherwise redirects it to a search/recommendations page.
+            url = HOME_URL.rstrip("/") + API_PATH + "?url=" + quote(f"/product/{article}/?oos_search=false", safe="")
             for attempt in range(self.max_attempts):
                 result, generation = await self._attempt(url)
                 recovering = self._needs_recovery(result)

@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
 from tempfile import TemporaryDirectory
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from marketplace_connector.connectors.ozon.async_client import AsyncOzonClient
@@ -13,6 +15,9 @@ from marketplace_connector.connectors.ozon.json_transport import (
     ABORT_SCRIPT, API_PATH, FETCH_SCRIPT, HOME_URL, OzonJsonTransport, retry_after_seconds,
 )
 from marketplace_connector.domain.errors import MarketplaceSchemaChanged, MarketplaceUnavailable, RateLimited
+from marketplace_connector.connectors.ozon.mapper import OzonMapper
+from marketplace_connector.connectors.ozon.parser import OzonProductParser
+from marketplace_connector.domain.models import Availability
 
 
 def response(status=200, text=None, **kwargs):
@@ -60,6 +65,31 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
         self.addAsyncCleanup(transport.close)
         return transport, page, context, prepare
 
+    async def test_unavailable_product_keeps_metadata_instead_of_search_redirect(self):
+        # Reduced observed 2056350478 response: two size links, no tracking/profile data.
+        raw = (Path(__file__).parent / 'fixtures/ozon/unavailable-product.json').read_text()
+        async def fetch(arg):
+            product_url = parse_qs(urlsplit(arg['url']).query)['url'][0]
+            if parse_qs(urlsplit(product_url).query).get('oos_search') == ['false']:
+                return response(text=raw)
+            return response(text=json.dumps({'widgetStates': {}, 'pageInfo': {
+                'pageType': 'search', 'url': '/search/?product_id=2056350478'}}))
+        transport, page, _, _ = await self.make_transport(fetch)
+        received = await transport.fetch('2056350478')
+        card = OzonMapper.to_card(OzonProductParser.parse(received, expected_external_id='2056350478'))
+        self.assertEqual(received, raw)
+        self.assertEqual(len(page.calls), 1)
+        self.assertEqual(card.title, 'Поло Galala базовая коллекция')
+        self.assertEqual(card.availability, Availability.OUT_OF_STOCK)
+        self.assertIsNone(card.price)  # SEO still displays the old 1563 RUB price.
+        self.assertEqual(card.image_url, 'https://ir.ozone.ru/s3/multimedia-1-j/12632755375.jpg')
+        self.assertEqual({v.ref.external_id for v in card.variants}, {'2056350478', '2056350515'})
+        own = next(v for v in card.variants if v.selected)
+        self.assertEqual(dict(own.options), {'Размер': '48–50 RU / L'})
+        self.assertIsNotNone(own.image_url)
+        with self.assertRaises(MarketplaceSchemaChanged):
+            OzonMapper.to_card(OzonProductParser.parse(received, expected_external_id='999'))
+
     async def test_five_overlap_and_sixth_waits_shared_bootstrap_exact_raw(self):
         release = asyncio.Event()
         five = asyncio.Event()
@@ -80,7 +110,7 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 6)
         context.new_page.assert_awaited_once()
         prepare.assert_awaited_once_with(page)
-        self.assertEqual(page.calls[0]['url'], HOME_URL.rstrip('/') + API_PATH + '?url=%2Fproduct%2F0%2F')
+        self.assertEqual(page.calls[0]['url'], HOME_URL.rstrip('/') + API_PATH + '?url=%2Fproduct%2F0%2F%3Foos_search%3Dfalse')
         self.assertEqual(page.calls[0]['timeoutMs'], 30000)
         self.assertNotEqual(page.calls[0]['id'], page.calls[1]['id'])
         page.close.assert_not_awaited()

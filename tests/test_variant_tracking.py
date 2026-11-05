@@ -1,5 +1,6 @@
 """Initial discovery is independent from retained recurring preferences."""
 import os
+import json
 import unittest
 from dataclasses import replace
 from unittest.mock import patch
@@ -74,6 +75,52 @@ class VariantTrackingTests(unittest.IsolatedAsyncioTestCase):
         await self.client.patch(f'/api/cards/{card["id"]}', json={'primaryVariantId': extra['id']})
         selected = await self.stores.cards.list_collection_cards(card['id'])
         self.assertEqual({c.variant_id for c in selected}, {old, extra['id']})
+
+    async def test_unavailable_ozon_initial_discovery_then_queued_and_direct_refresh(self):
+        import io
+        from contextlib import redirect_stdout
+        from marketplace_connector.application.product_service import ConnectorRegistry
+        from price_watch import cli
+        from price_watch.worker import CollectionWorker
+
+        card = await self.add()
+        fixture = FixtureClient(unavailable=[SEED])
+        fixture.image_revision = 'unavailable'
+        async def factory(run):
+            return ConnectorRegistry([OzonConnector(fixture)])
+        worker = CollectionWorker(self.stores.runs, factory, execution=self.stores.runs)
+        self.assertTrue(await worker.run_once())  # Actual initial job created by API.
+        self.assertEqual(set(fixture.calls), set(FAMILY))
+        variants = await self.variants(card)
+        self.assertEqual(len(variants), len(FAMILY))
+        own = next(v for v in variants if v['externalId'] == SEED)
+        self.assertEqual((own['currentPrice'], own['currentAvailability']), (None, 'out_of_stock'))
+        self.assertEqual(own['options'], FAMILY[SEED]['options'])
+        self.assertEqual(own['imageUrl'], f'https://img.test/{SEED}-unavailable.jpg')
+        self.assertTrue(all(not v['trackingEnabled'] for v in variants))
+        before = (await self.client.get(f'/api/cards/{card["id"]}/chart')).json()
+        self.assertEqual(len(before['points']), len(FAMILY))
+
+        fixture.calls.clear()
+        queued = await self.client.post('/api/runs', json={'cardId': card['id']})
+        self.assertEqual(queued.status_code, 202, queued.text)
+        self.assertTrue(await worker.run_once())
+        self.assertEqual(fixture.calls, [SEED])
+        finished = await self.stores.runs.get_run(queued.json()['id'])
+        self.assertEqual((finished.success_count, finished.failure_count), (1, 0))
+
+        fixture.calls.clear()
+        fixture.image_revision = 'refreshed'
+        args = cli.build_parser().parse_args(['collect', '--card-id', str(card['id'])])
+        output = io.StringIO()
+        with patch.object(cli, '_build_connectors', return_value=ConnectorRegistry([OzonConnector(fixture)])), redirect_stdout(output):
+            self.assertEqual(await cli._execute(args, self.db), 0)
+        self.assertEqual(json.loads(output.getvalue())['success_count'], 1)
+        self.assertEqual(fixture.calls, [SEED])
+        self.assertEqual((await self.client.get(f'/api/cards/{card["id"]}/chart')).json(), before)
+        own = next(v for v in await self.variants(card) if v['externalId'] == SEED)
+        self.assertEqual(own['imageUrl'], f'https://img.test/{SEED}-refreshed.jpg')
+        self.assertEqual((own['currentPrice'], own['currentAvailability']), (None, 'out_of_stock'))
 
     async def test_wb_and_ali_root_bootstrap_all_then_primary_only(self):
         for marketplace in ('wildberries', 'aliexpress'):
