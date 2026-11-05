@@ -15,14 +15,14 @@ import { Button } from '../../components/ui/button'
 import { LoadingRows } from '../../components/product/LoadingRows'
 import { useCollectionCommands } from '../collection/CollectionProvider'
 import { AddCardDrawer } from './AddCardDrawer'
-import { cardItem, columnLabels, parseSort, type ColumnSortKey } from './catalogItems'
+import { columnLabels, parseSort, type ColumnSortKey } from './catalogItems'
 import { ImportExportControls } from './ImportExportControls'
 import { GroupDialog } from './GroupDialog'
 import { BulkCardActions } from './BulkCardActions'
 import { useCardSelection } from './useCardSelection'
 import { SidebarDemoSlot, useSidebarDemo } from '../sidebar-demo/SidebarDemoSlot'
 import { PreviewFilters } from '../sidebar-demo/PreviewFilters'
-import { comparePreviewItems, hasPreviewFilters, selectPreviewItems } from '../sidebar-demo/previewCatalog'
+import { buildPreviewCatalog, hasPreviewFilters } from '../sidebar-demo/previewCatalog'
 
 export function CardsPage() {
   const sidebarDemo = useSidebarDemo()
@@ -50,10 +50,9 @@ export function CardsPage() {
   const hasFilters = sidebarDemo ? hasPreviewFilters(params) : Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealFilter !== 'all' || selectedTag)
   const model = useCatalogModel(catalogQuery.data,
     deferredQuery, marketplace, status, selectedTag, dealFilter, sort)
-  const { deals, allItems, availableTags } = model
-  const orderedItems = useMemo(() => sidebarDemo ? selectPreviewItems(allItems, params) : model.orderedItems, [sidebarDemo, allItems, params, model.orderedItems])
-  const groupedCards = useMemo(() => !sidebarDemo ? model.groupedCards : new Map([...model.groupedCards].map(([id, cards]) => [id,
-    cards.toSorted((a, b) => comparePreviewItems(cardItem(a, deals), cardItem(b, deals), sortParam))])), [sidebarDemo, model.groupedCards, deals, sortParam])
+  const { deals, allItems } = model
+  const preview = useMemo(() => sidebarDemo ? buildPreviewCatalog(catalogQuery.data, params, deals) : null, [sidebarDemo, catalogQuery.data, params, deals])
+  const { orderedItems, groupedCards, availableTags } = preview ?? model
   const returnTo = useDeferredValue(location.pathname + location.search)
 
   function openCreateGroup(ids: number[]) {
@@ -108,7 +107,7 @@ export function CardsPage() {
       {sidebarDemo ? <>
         <div className="mb-5 flex items-center gap-4">
           <h1>Карточки товаров</h1>
-          <span className="whitespace-nowrap text-sm text-muted-foreground">Выбрано {orderedItems.length} из {allItems.length} товаров</span>
+          <span className="whitespace-nowrap text-sm text-muted-foreground">Выбрано {preview?.matchingCount ?? 0} из {preview?.totalCount ?? 0} товаров</span>
         </div>
         <InputGroup className="sidebar-demo__search">
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
@@ -218,7 +217,7 @@ export function CardsPage() {
           <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</EmptyTitle><EmptyDescription>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</EmptyDescription></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : () => setDrawerOpen(true)}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></EmptyContent></Empty>
         ) : <CatalogResults view={view} items={orderedItems} groupedCards={groupedCards} deals={deals}
           selectedIds={selection.selectedIds} onSelect={selection.toggle} collapsedGroups={collapsedGroups}
-          onToggleGroup={toggleGroup} onEditGroup={setEditingGroup} sort={sort} onSort={toggleSort} sortable={!sidebarDemo} returnTo={returnTo} />
+          onToggleGroup={toggleGroup} onEditGroup={(group) => setEditingGroup(catalogQuery.data?.groups.find((original) => original.id === group.id) ?? group)} sort={sort} onSort={toggleSort} sortable={!sidebarDemo} returnTo={returnTo} />
         }
       </div>
       <AddCardDrawer side={sidebarDemo ? 'left' : 'right'} open={drawerOpen} onClose={() => setDrawerOpen(false)} />

@@ -373,6 +373,8 @@ input::placeholder { color: #98a2b3; }
 .product-group__metrics dl { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 0; }
 .product-group__metrics dt { font-size: 12px; color: var(--muted-foreground); }
 .product-group__metrics dd { margin: 3px 0 0; font-weight: 600; }
+.sidebar-demo .product-group__metrics dd { font-size: 14px; }
+.sidebar-demo .product-group__metrics dl > div:last-child dd:not(:has(.deal-savings)) { font-size: 13px; font-weight: 400; color: var(--muted-foreground); }
 .product-group__availability { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .cards-grid__group > .product-group__header { border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: var(--catalog-radius) var(--catalog-radius) 0 0; background: var(--accent); }
 .cards-grid__group[data-block-end] { padding-bottom: var(--catalog-gap); }

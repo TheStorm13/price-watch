@@ -1,6 +1,6 @@
 ## Purpose
 
-Allow users to evaluate the chosen sidebar arrangement of a single price catalog on isolated sample data before adopting it in the desktop application. Group/count/navigation requirements approved on 2026-11-06 are a pending follow-up, not current implementation evidence.
+Allow users to evaluate the chosen sidebar arrangement of a single price catalog on isolated sample data before adopting it in the desktop application. Group/count/navigation requirements approved on 2026-11-06 are implemented in the isolated demo; production adoption and user acceptance remain separate.
 
 ## ADDED Requirements
 

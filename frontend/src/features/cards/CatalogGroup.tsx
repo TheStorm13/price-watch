@@ -32,9 +32,10 @@ interface Props {
   group: ProductGroup; view: 'list' | 'grid'; collapsed: boolean; blockEnd: boolean
   onToggle: (id: number) => void; onEdit: (group: ProductGroup) => void
   index: number; measure?: (element: HTMLTableRowElement | null) => void
+  matchingCardCount?: number
 }
 
-export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed, blockEnd, onToggle, onEdit, index, measure }: Props) {
+export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed, blockEnd, onToggle, onEdit, index, measure, matchingCardCount }: Props) {
   const card = group.representativeCard
   const plural = productPlural.select(group.cardIds.length)
   const productWord = plural === 'one' ? 'товар' : plural === 'few' ? 'товара' : 'товаров'
@@ -42,7 +43,7 @@ export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed,
     <Button variant="ghost" type="button" className="product-group__toggle" aria-expanded={!collapsed} onClick={() => onToggle(group.id)}>
       {collapsed ? <ChevronRight data-icon="inline-start" /> : <ChevronDown data-icon="inline-start" />}
       <span className="product-group__heading">
-        <span className="product-group__label"><Folders aria-hidden="true" />Группа · {group.cardIds.length} {productWord}</span>
+        <span className="product-group__label"><Folders aria-hidden="true" />Группа · {matchingCardCount === undefined ? `${group.cardIds.length} ${productWord}` : `${matchingCardCount} из ${group.cardIds.length} товаров`}</span>
         <strong>{group.name}</strong>
       </span>
     </Button>

@@ -13,7 +13,7 @@ Refine the selected second sidebar layout on isolated sample data before choosin
 - Replace common-selection checkboxes and repeated popup headings with a bulk-action button and individual options. Require at least one marketplace; an empty tag choice means «Без тегов» and shows untagged products.
 - Anchor the existing collection panel to the bottom of the sidebar, with independent scrolling above it.
 - Keep catalog interactions functional and simulate desktop-only Chrome/settings actions explicitly.
-- Approved follow-up, not yet implemented: treat groups as containers of individual products, filter their members, derive their displayed representative from the current sort and count individual products.
+- Implemented approved follow-up: treat groups as containers of individual products, filter their members, derive their displayed representative from the current sort and count individual products.
 - Make Price watch a noninteractive name; return from product details through «К карточкам» with catalog context preserved.
 
 ## Capabilities
@@ -30,4 +30,4 @@ None. The production desktop layout and contracts remain unchanged during evalua
 
 Frontend shell, catalog controls/results, demo-only filtering and fixture, scoped CSS, unit/E2E coverage. No new dependencies, API changes, database migration, CLI/worker execution changes or access to user data. Acceptance: requested controls work together and survive reload/return from details; price order includes all matching products without deal-priority overrides; null prices are last; group/add dialogs work; bottom progress remains accessible at 1440 and 1024 px; desktop retains its existing layout.
 
-The approved group/count/navigation follow-up is documented for implementation; the existing demo still has representative-based group filtering, entry counts and a clickable brand. Tasks for this delta remain open.
+The approved group/count/navigation follow-up is implemented in the isolated demo. Production activation remains a separate change; user evaluation is pending.

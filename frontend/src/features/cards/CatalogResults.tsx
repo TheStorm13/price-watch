@@ -53,7 +53,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  const rendered=windowed.items
  function content(index:number) {
    const row=rows[index]
-   if(row.kind==='group') return <CatalogGroup group={row.item.group} view={view} collapsed={collapsedGroups.includes(row.item.id)}
+   if(row.kind==='group') return <CatalogGroup group={row.item.group} matchingCardCount={row.item.matchingCardCount} view={view} collapsed={collapsedGroups.includes(row.item.id)}
      onToggle={onToggleGroup} onEdit={onEditGroup} index={index} blockEnd={endsBlock(rows[index+1])} measure={virtual && view==='list'?virtualizer.measureElement:undefined} />
    const cards=row.cards.map(({card,nested})=><CatalogProduct key={card.id} card={card} nested={nested} view={view}
      selected={selectedIds.has(card.id)} onToggle={onSelect} savings={deals.get(card.id)?.savings ?? null} returnTo={returnTo}

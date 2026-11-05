@@ -12,7 +12,7 @@ export type DisplayItem = {
   kind: 'card'; id: number; title: string; card: TrackedCardView; savings: DecimalString | null; priority: boolean
 } | {
   kind: 'group'; id: number; title: string; card: TrackedCardView | null; group: ProductGroup
-  savings: DecimalString | null; priority: boolean
+  savings: DecimalString | null; priority: boolean; matchingCardCount?: number
 }
 const availabilityRanks = { in_stock: 0, out_of_stock: 1, unknown: 2 }
 const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
