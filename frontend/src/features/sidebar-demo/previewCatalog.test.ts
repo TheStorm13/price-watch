@@ -4,13 +4,14 @@ import { mockApi } from '../../api/mockApi'
 import { selectPreviewItems } from './previewCatalog'
 
 describe('sidebar preview catalog semantics', () => {
-  it('defaults to all including untagged products, handles empty selection and OR tags', async () => {
+  it('defaults to all, matches untagged products on empty tags and preserves nonempty marketplaces', async () => {
     const snapshot = await mockApi.getCatalog()
     const cards = snapshot.cards.slice(0, 3).map((card, index) => ({ ...card, tags: index === 0 ? ['Дом'] : index === 1 ? ['Подарки'] : [] }))
     const items = catalogItems(cards, [], new Map())
     expect(selectPreviewItems(items, new URLSearchParams())).toHaveLength(3)
-    expect(selectPreviewItems(items, new URLSearchParams('tags='))).toHaveLength(0)
-    expect(selectPreviewItems(items, new URLSearchParams('markets='))).toHaveLength(0)
+    expect(selectPreviewItems(items, new URLSearchParams('tags=')).map(item => item.id)).toEqual([3])
+    expect(selectPreviewItems(items, new URLSearchParams('markets='))).toHaveLength(3)
+    expect(selectPreviewItems(items, new URLSearchParams('markets=invalid'))).toHaveLength(3)
     expect(selectPreviewItems(items, new URLSearchParams('tags=Дом&tags=Подарки')).map(item => item.id).sort()).toEqual([1, 2])
     expect(selectPreviewItems(items, new URLSearchParams('markets=wildberries&markets=aliexpress'))).toHaveLength(0)
   })

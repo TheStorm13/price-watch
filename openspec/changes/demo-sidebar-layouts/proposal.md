@@ -7,9 +7,10 @@ Refine the selected second sidebar layout on isolated sample data before choosin
 ## What Changes
 
 - Provide one opt-in, mock-data-only demo of the selected sidebar layout; remove the superseded comparison switcher.
-- Remove the catalog title/subtitle and place name/article search above results.
+- Show «Карточки товаров» above name/article search, with no subtitle.
 - Keep actions, group creation and filters in the sidebar. Sorting is the first filter, with deal-first default and pure ascending/descending price choices.
 - Allow multiple marketplaces and OR-matched tags, all selected by default; provide one availability checkbox and clear deal-filter labels.
+- Replace common-selection checkboxes and repeated popup headings with a bulk-action button and individual options. Require at least one marketplace; an empty tag choice means «Без тегов» and shows untagged products.
 - Anchor the existing collection panel to the bottom of the sidebar, with independent scrolling above it.
 - Keep catalog interactions functional and simulate desktop-only Chrome/settings actions explicitly.
 

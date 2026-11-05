@@ -8,7 +8,7 @@ User message: «Хорошо, реализуй демо версию как эт
 
 ## State
 
-First iteration committed as `1d1663e`. The user selected layout 2 and authorized a revised demo. Revision implementation and checks passed; preparing the checked revision commit for evaluation. OpenSpec: `demo-sidebar-layouts`. Explicit acceptance of the revision and production adoption are pending. Do not sync/archive yet.
+First iteration committed as `1d1663e`; selected-layout refinement committed as `58324da`. User approved another demo revision: heading and revised multi-selection controls. Implementation and checks passed; preparing its commit for evaluation. OpenSpec: `demo-sidebar-layouts`. Explicit acceptance of the current revision and production adoption are pending. Do not sync/archive yet.
 
 ## Approved revision
 
@@ -22,7 +22,7 @@ Type check, frontend unit suite, relevant catalog/layout E2E plus new variant/co
 
 ## Entry
 
-Run `npm --prefix frontend run dev:demo`. Open `http://127.0.0.1:5176/cards?sidebar=2`. Data and desktop-only dialogs are simulated. The mock collection pauses for verification; use «Проверка пройдена» to continue. Marketplace/tag popovers default to all; clear the general checkbox before selecting a subset. An explicitly empty subset matches nothing.
+Run `npm --prefix frontend run dev:demo`. Open `http://127.0.0.1:5176/cards?sidebar=2`. Data and desktop-only dialogs are simulated. The mock collection pauses for verification; use «Проверка пройдена» to continue. Marketplace/tag popovers default to all. Bulk buttons select all or clear tags/keep one marketplace; the last marketplace checkbox is disabled until another is selected. Empty tags display «Без тегов» and show untagged products (LEGO in the sample).
 
 ## Next action
 
@@ -58,3 +58,18 @@ The initial new E2E run passed three cases and found an ambiguous close-button l
 - Live API/worker/database/native WebView behavior is outside this mock-only revision. No migrations or changes to desktop production controls.
 
 Broader regression command `npm --prefix frontend run test:e2e -- sidebar-demo.spec.ts app.spec.ts layout.spec.ts usability.spec.ts`: 52 passed (3.4 minutes). Existing lazy-route HydrateFallback warnings remain as in the first iteration; no new runtime errors were found. `openspec validate demo-sidebar-layouts --strict` and `git diff --check` passed. Review the staged diff and commit before presenting the revision for evaluation.
+
+## Heading and selection revision
+
+User authorization: «Обязательно хотя бы 1 маркеплейс, можно не выбирать теги (тогда подпись - без тегов). Остальное верно. Поправь демо». Add heading «Карточки товаров» above search. Popups retain individual checkboxes and one bulk button, without repeated visible headings or common-selection checkboxes. Tags use «Снять выбор / Выбрать все»; marketplaces use «Оставить один / Выбрать все» to describe the required minimum honestly. Empty/invalid marketplace URL selections normalize to all. Empty tags filter untagged products; the sample LEGO card now has no tags. These changes remain inside the mock preview.
+
+Verification of this revision:
+
+- `npm --prefix frontend test`: 113 tests / 22 files passed, including updated empty-tag and invalid/empty marketplace semantics.
+- `npm --prefix frontend run test:e2e -- sidebar-demo.spec.ts`: 7 passed. Covers heading, multi-selection, bulk actions, last-marketplace protection and re-enabling, «Без тегов» filtering/reload, filter combinations, dialogs, sorting and collection verification at 1440×900 / 1024×768.
+- `npm --prefix frontend run desktop:build`: passed (includes TypeScript check and frontend build), release binary built.
+- `openspec validate demo-sidebar-layouts --strict` and `git diff --check`: passed.
+- Playwright visual inspection at both desktop sizes: heading above search, individual checkboxes, no repeated popup headings, honest bulk button labels, protected last marketplace and one LEGO result for «Без тегов». Page identity/content/overlay/console checks passed, with no page or console errors. Images were inspected with `view_image` and remain in `/tmp/sidebar-selection-*.png` outside the repository. Browser/IAB unavailability is unchanged from prior verification.
+- Repowise live-diff review flags MultipleChoice complexity; manually reviewed required/optional selection branches and URL normalization against the passing unit/E2E cases. Its stale dependency recommendation remains inapplicable: no dependency changes occurred. This is a localized demo revision; the prior 52-case production catalog regression evidence is retained above, not claimed as rerun for this revision.
+
+Remaining boundary: mock-only preview, no live service/native WebView testing or data migration. Stage only this revision, inspect the staged diff, commit and present for evaluation; do not archive yet.

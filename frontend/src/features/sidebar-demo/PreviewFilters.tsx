@@ -6,24 +6,22 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { readPreviewSelection } from './previewCatalog'
+import { previewMarketplaceOptions, readPreviewMarketplaces, readPreviewSelection } from './previewCatalog'
 
-const marketplaces = [
-  { value: 'ozon', label: 'Ozon' }, { value: 'wildberries', label: 'Wildberries' },
-  { value: 'aliexpress', label: 'AliExpress' }, { value: 'yandex-market', label: 'Яндекс Маркет' },
-]
-
-function MultipleChoice({ name, allLabel, options, value, onChange }: {
+function MultipleChoice({ name, allLabel, options, value, onChange, required = false }: {
   name: string; allLabel: string; options: { value: string; label: string }[]
   value: string[] | null; onChange: (values: string[] | null) => void
+  required?: boolean
 }) {
   const id = useId()
   const selected = value ?? options.map((option) => option.value)
-  const summary = value === null ? allLabel : !selected.length ? 'Не выбраны'
+  const allSelected = options.every((option) => selected.includes(option.value)) && value === null
+  const summary = value === null ? allLabel : !selected.length ? 'Без тегов'
     : selected.length === 1 ? options.find((option) => option.value === selected[0])?.label ?? selected[0]
       : `Выбрано: ${selected.length}`
   function toggle(option: string, checked: boolean) {
     const next = checked ? [...new Set([...selected, option])] : selected.filter((entry) => entry !== option)
+    if (required && !next.length) return
     onChange(options.every((entry) => next.includes(entry.value)) ? null : next)
   }
   return <Field>
@@ -33,15 +31,16 @@ function MultipleChoice({ name, allLabel, options, value, onChange }: {
         <span className="min-w-0 truncate">{summary}</span><ChevronDown data-icon="inline-end" aria-hidden="true" />
       </Button></PopoverTrigger>
       <PopoverContent align="start" className="max-h-[min(400px,70dvh)] overflow-y-auto">
-        <FieldSet>
-          <FieldLegend variant="label">{name}</FieldLegend>
+        <FieldSet aria-label={name}>
+          <Button type="button" size="sm" variant="ghost" className="self-end" disabled={!options.length || required && options.length === 1}
+            onClick={() => onChange(allSelected ? required ? [selected[0]] : [] : null)}>
+            {allSelected ? required ? 'Оставить один' : 'Снять выбор' : 'Выбрать все'}
+          </Button>
           <FieldGroup data-slot="checkbox-group">
-            <Field orientation="horizontal">
-              <Checkbox id={`${id}-all`} checked={value === null ? true : selected.length ? 'indeterminate' : false} onCheckedChange={(checked) => onChange(checked === true ? null : [])} />
-              <FieldLabel htmlFor={`${id}-all`}>{allLabel}</FieldLabel>
-            </Field>
-            {options.map((option, index) => <Field orientation="horizontal" key={option.value}>
-              <Checkbox id={`${id}-${index}`} checked={selected.includes(option.value)} onCheckedChange={(checked) => toggle(option.value, checked === true)} />
+            {options.map((option, index) => <Field orientation="horizontal" key={option.value} data-disabled={required && selected.length === 1 && selected.includes(option.value) || undefined}>
+              <Checkbox id={`${id}-${index}`} checked={selected.includes(option.value)} disabled={required && selected.length === 1 && selected.includes(option.value)}
+                title={required && selected.length === 1 && selected.includes(option.value) ? 'Выберите хотя бы один маркетплейс' : undefined}
+                onCheckedChange={(checked) => toggle(option.value, checked === true)} />
               <FieldLabel htmlFor={`${id}-${index}`}>{option.label}</FieldLabel>
             </Field>)}
           </FieldGroup>
@@ -78,7 +77,7 @@ export function PreviewFilters({ tags }: { tags: string[] }) {
         </SelectGroup></SelectContent>
       </Select>
     </Field>
-    <MultipleChoice name="Маркетплейсы" allLabel="Все маркетплейсы" options={marketplaces} value={readPreviewSelection(params, 'markets')} onChange={(values) => setValues('markets', values)} />
+    <MultipleChoice name="Маркетплейсы" allLabel="Все маркетплейсы" options={previewMarketplaceOptions} value={readPreviewMarketplaces(params)} required onChange={(values) => setValues('markets', values)} />
     <FieldSet className="gap-2">
       <FieldLegend variant="label">Наличие</FieldLegend>
       <Field orientation="horizontal">

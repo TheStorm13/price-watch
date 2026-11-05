@@ -106,6 +106,7 @@ export function CardsPage() {
       {catalogQuery.isError && catalogQuery.data ? <Alert variant="destructive"><AlertDescription>Не удалось обновить каталог. <Button variant="link" type="button" onClick={() => void catalogQuery.refetch()}>Повторить</Button></AlertDescription></Alert> : null}
 
       {sidebarDemo ? <>
+        <h1 className="mb-5">Карточки товаров</h1>
         <InputGroup className="sidebar-demo__search">
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
           <InputGroupInput value={query} onChange={(event) => setParam('q', event.target.value, '')} placeholder="Название или артикул" aria-label="Поиск по названию или артикулу" />

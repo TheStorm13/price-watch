@@ -15,7 +15,7 @@ export async function installPreviewFixture() {
     mockApi.updateCard(2, { tags: ['Электроника', 'Подарки'] }),
     mockApi.updateCard(3, { tags: ['Электроника'] }),
     mockApi.updateCard(4, { tags: ['Для дома'] }),
-    mockApi.updateCard(5, { tags: ['Подарки'] }),
+    mockApi.updateCard(5, { tags: [] }),
   ])
   await mockApi.importCards({ version: 3, cards: [
     sample(exported.cards[1], 'wildberries', '234567890', 'Наушники Sony WH-1000XM5', ['Электроника', 'Для себя'], '27990.00'),

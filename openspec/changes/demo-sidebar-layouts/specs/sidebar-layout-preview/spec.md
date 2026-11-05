@@ -12,18 +12,33 @@ The preview SHALL use mock data and the selected second layout. It SHALL NOT inv
 - **THEN** the selected sidebar layout is visible and the interface identifies the data as demo data
 
 ### Requirement: Single catalog with search above results
-The catalog SHALL omit its title/subtitle and show name/marketplace-article search above list or grid results. Group creation and filters SHALL be in the sidebar. Filters and view SHALL survive reload and return from details.
+The catalog SHALL show «Карточки товаров» above name/marketplace-article search, with no subtitle. Search SHALL remain above list or grid results. Group creation and filters SHALL be in the sidebar. Filters and view SHALL survive reload and return from details.
 
 #### Scenario: Search by article
 - **WHEN** a user enters a marketplace article in the search field above results
 - **THEN** matching products are shown without searching internal database identifiers
 
 ### Requirement: Multiple marketplace and tag selection
-Marketplace and tag controls SHALL allow multiple selections and default to all. Selected tags SHALL match at least one tag on the product. All tags SHALL include untagged products. An explicitly empty selection SHALL show no matches.
+Marketplace and tag controls SHALL allow multiple selections and default to all. At least one marketplace SHALL remain selected. Nonempty selected tags SHALL match at least one product tag. All tags SHALL include untagged products. Empty tags SHALL display «Без тегов» and match only untagged products.
 
 #### Scenario: Two distinct tags
 - **WHEN** two tags are selected
 - **THEN** products with either tag are included and products with neither are excluded
+
+#### Scenario: Last marketplace
+- **WHEN** only one marketplace is selected
+- **THEN** it cannot be unchecked until another is selected
+
+#### Scenario: Untagged products
+- **WHEN** the user clears all tag checkboxes and reloads the page
+- **THEN** the field displays «Без тегов» and only untagged products match
+
+### Requirement: Compact multi-selection popups
+The closed controls SHALL display «Все маркетплейсы» or «Все теги» when all options are selected. Popups SHALL show only individual option checkboxes and a bulk button, without repeated visible headings. The button SHALL select all when partial; when all are selected, it SHALL clear tags or keep one marketplace, with labels describing those actions.
+
+#### Scenario: Bulk actions
+- **WHEN** all tags or marketplaces are selected
+- **THEN** the buttons display «Снять выбор» for tags and «Оставить один» for marketplaces, and change to «Выбрать все» after use
 
 ### Requirement: Availability and deal filters
 Availability SHALL be one checkbox labelled «Только в наличии». Unchecked SHALL include all availability states; checked SHALL exclude unavailable and unknown products. Deal choices SHALL be «Все предложения», «Выгодные», «Невыгодные».

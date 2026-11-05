@@ -18,6 +18,12 @@
 - [x] 3.3 Verify combined filters, reload/detail return, group creation, keyboard interaction and bottom progress in E2E at supported desktop sizes.
 - [x] 3.4 Run relevant unit/type/build/regression checks, review rendered UI and diff, update workflow evidence and prepare the checked revision commit for evaluation.
 
+## 4. Selection controls and catalog heading (approved by user)
+
+- [x] 4.1 Add «Карточки товаров», replace common checkboxes/headings with bulk actions and enforce a nonempty marketplace selection.
+- [x] 4.2 Make empty tags display «Без тегов» and match untagged products; include a sample and update unit/E2E coverage for bulk, last-choice and reload behavior.
+- [x] 4.3 Run relevant checks, inspect popup/layout states at supported sizes, update workflow evidence and prepare the verified revision commit for user evaluation.
+
 ## Workflow follow-up
 
 - Wait for explicit user acceptance before syncing specs and archiving this change.
