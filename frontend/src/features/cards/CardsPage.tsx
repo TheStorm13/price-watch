@@ -197,7 +197,7 @@ export function CardsPage() {
 
       }
 
-      <div className={cn('cards-view-bar', sidebarDemo && 'justify-end')}>
+      <div className={cn('cards-view-bar', sidebarDemo && 'justify-start')}>
         {!sidebarDemo ? <span>{orderedItems.length} из {allItems.length}</span> : null}
         <div className="flex items-center gap-2">
           {hasFilters ? <Button variant="ghost" size="sm" onClick={resetFilters}><RotateCcw data-icon="inline-start" />Сбросить</Button> : null}

@@ -9,6 +9,7 @@ import { catalogRows, type CatalogRow } from './catalogRows'
 import { CatalogProduct } from './CatalogProduct'
 import { CatalogGroup } from './CatalogGroup'
 import { useVirtualRows } from './useVirtualRows'
+import { useSidebarDemo } from '../sidebar-demo/SidebarDemoSlot'
 
 type Measurements = ReturnType<typeof useVirtualRows>['virtualizer']['measurementsCache']
 function endsBlock(next:CatalogRow | undefined) {
@@ -23,6 +24,7 @@ interface Props {
 }
 export const CatalogResults = memo(function CatalogResults(props:Props) {
  const {view,items,groupedCards,deals,selectedIds,onSelect,collapsedGroups,onToggleGroup,onEditGroup,sort,onSort,returnTo,sortable=true}=props
+ const sidebarDemo=useSidebarDemo()
  const [columns,setColumns]=useState(1)
  const rows=useMemo(()=>catalogRows(items,groupedCards,collapsedGroups,view==='grid'?columns:1),[items,groupedCards,collapsedGroups,view,columns])
  const keys=useMemo(()=>rows.map(row=>row.key),[rows])
@@ -76,7 +78,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  return <div ref={root} onFocusCapture={windowed.focus} onPointerDownCapture={windowed.focus} onBlurCapture={windowed.blur} data-catalog-results>
    {view==='grid'?<ul className="virtual-grid" data-virtual-start aria-label="Отслеживаемые карточки маркетплейсов">
      {body}{tail>0?<li aria-hidden="true" style={{height:tail}} />:null}
-   </ul>:<Table className="cards-table" aria-rowcount={rows.length+1}>
+   </ul>:<Table className={cn('cards-table',sidebarDemo && 'w-[1012px]')} aria-rowcount={rows.length+1}>
      <TableCaption className="sr-only">Отслеживаемые карточки маркетплейсов</TableCaption>
      <TableHeader><TableRow><TableHead className="cards-table__selection py-0"><span className="sr-only">Выбор</span></TableHead>
        {(Object.entries(columnLabels) as [ColumnSortKey,string][]).map(([key,label])=>{

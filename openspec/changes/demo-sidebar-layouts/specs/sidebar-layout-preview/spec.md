@@ -22,6 +22,13 @@ The catalog SHALL show «Карточки товаров» above name/marketplac
 - **WHEN** catalog filters change the matching results
 - **THEN** one counter beside the heading updates and no duplicate count appears below the search
 
+### Requirement: Compact uniform catalog rows
+The preview SHALL place list/grid controls at the left above results. Its list SHALL use a shared compact column grid without stretching rows to fill wide screens. All product and group rows SHALL have the same width. Selection checkboxes SHALL precede product photos between the row's left edge and photo. The marketplace column SHALL show only its mark, retaining an accessible name and hover title.
+
+#### Scenario: Wide and narrow screens
+- **WHEN** the user views the catalog at different desktop widths
+- **THEN** rows keep equal widths and aligned columns, with horizontal scrolling contained within the list when necessary
+
 ### Requirement: Multiple marketplace and tag selection
 Marketplace and tag controls SHALL allow multiple selections and default to all. At least one marketplace SHALL remain selected. Nonempty selected tags SHALL match at least one product tag. All tags SHALL include untagged products. Empty tags SHALL display «Без тегов» and match only untagged products.
 
