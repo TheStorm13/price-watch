@@ -37,6 +37,13 @@ Marketplace and tag controls SHALL allow multiple selections and default to all.
 - **WHEN** the user clears all tag checkboxes and reloads the page
 - **THEN** the field displays «Без тегов» and only untagged products match
 
+### Requirement: Left-side card creation
+The preview's add-card action SHALL open its form from the left edge, including when invoked from product details. Closing SHALL restore focus to the invoking control.
+
+#### Scenario: Add from product details
+- **WHEN** a user invokes «Добавить карточку» from product details in the preview
+- **THEN** the form opens at the left edge and closing it returns focus to the action
+
 ### Requirement: Compact multi-selection popups
 The closed controls SHALL display «Все маркетплейсы» or «Все теги» when all options are selected. Popups SHALL show only individual option checkboxes and a bulk button, without repeated visible headings. The button SHALL select all when partial; when all are selected, it SHALL clear tags or keep one marketplace, with labels describing those actions.
 

@@ -51,7 +51,7 @@ export default function SidebarDemo({ children }: { children: ReactNode }) {
             {children}
           </main>
         </div>
-        <AddCardDrawer open={adding} onClose={() => setAdding(false)} />
+        <AddCardDrawer side="left" open={adding} onClose={() => setAdding(false)} />
         <Dialog open={dialog !== null} onOpenChange={(open) => { if (!open) setDialog(null) }}>
           <DialogContent>
             <DialogHeader>

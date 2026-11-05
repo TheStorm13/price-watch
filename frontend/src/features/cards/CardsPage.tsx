@@ -221,7 +221,7 @@ export function CardsPage() {
           onToggleGroup={toggleGroup} onEditGroup={setEditingGroup} sort={sort} onSort={toggleSort} sortable={!sidebarDemo} returnTo={returnTo} />
         }
       </div>
-      <AddCardDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <AddCardDrawer side={sidebarDemo ? 'left' : 'right'} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       {editingGroup ? <GroupDialog key={editingGroup === 'new' ? 'new' : editingGroup.id} group={editingGroup === 'new' ? null : editingGroup}
         cards={catalogQuery.data?.cards ?? []} initialCardIds={editingGroup === 'new' ? initialGroupCardIds : []}
         onSaved={editingGroup === 'new' ? selection.clearProcessed : undefined} onClose={() => setEditingGroup(null)} /> : null}

@@ -20,6 +20,7 @@ import { parseOzonUrl } from './ozonIdentity'
 export interface CardDrawerProps {
   open: boolean
   onClose: () => void
+  side?: 'left' | 'right'
 }
 
 interface Errors {
@@ -52,11 +53,11 @@ export function AddCardDrawer(props: CardDrawerProps) {
   })} />
 }
 
-export function CardDrawer({ open, onClose, ...formProps }: FormProps) {
+export function CardDrawer({ open, onClose, side = 'right', ...formProps }: FormProps) {
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   return <Sheet open={open} onOpenChange={(next) => { if (!next && !formProps.isPending) onClose() }}>
-    <SheetContent ref={contentRef} className="w-[420px] sm:max-w-[420px]" showCloseButton={!formProps.isPending}
+    <SheetContent ref={contentRef} side={side} className="w-[420px] sm:max-w-[420px] data-[side=left]:w-[420px] data-[side=left]:sm:max-w-[420px]" showCloseButton={!formProps.isPending}
       onOpenAutoFocus={(event) => {
         event.preventDefault()
         returnFocusRef.current = document.activeElement as HTMLElement | null
