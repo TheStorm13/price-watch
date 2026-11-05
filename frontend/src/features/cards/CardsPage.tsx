@@ -3,7 +3,6 @@ import { useCatalogModel } from './useCatalogModel'
 import { CatalogResults } from './CatalogResults'
 import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Checkbox } from '@/components/ui/checkbox'
 import { InputGroup, InputGroupInput, InputGroupAddon } from '@/components/ui/input-group'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -40,12 +39,13 @@ export function CardsPage() {
   const sortParam = params.get('sort')
   const sort = useMemo(() => parseSort(sortParam), [sortParam])
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
-  const dealsOnly = params.get('deals') === '1'
+  const dealParam = params.get('deals')
+  const dealFilter = dealParam === 'deals' || dealParam === 'non_deals' ? dealParam : 'all'
   const selectedTag = params.get('tag') ?? ''
   const selectedIds = [...selection.selectedIds]
-  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealsOnly || selectedTag)
+  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealFilter !== 'all' || selectedTag)
   const { deals, allItems, availableTags, orderedItems, groupedCards } = useCatalogModel(catalogQuery.data,
-    deferredQuery, marketplace, status, selectedTag, dealsOnly, sort)
+    deferredQuery, marketplace, status, selectedTag, dealFilter, sort)
   const returnTo = useDeferredValue(location.pathname + location.search)
 
   function openCreateGroup(ids: number[]) {
@@ -160,7 +160,18 @@ export function CardsPage() {
             </Select>
 
           </span>
-          <div className="flex items-center gap-2"><Checkbox id="deals-only" checked={dealsOnly} onCheckedChange={(checked) => setParam('deals', checked === true ? '1' : '', '')} /><label htmlFor="deals-only" className="filters__checkbox">Выгодные предложения</label></div>
+          <span className={cn('filter-select', dealFilter !== 'all' && 'filter-select--active')}>
+            <Select value={dealFilter} onValueChange={(value) => setParam('deals', value)}>
+              <SelectTrigger className="w-full" aria-label="Выгодность"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">Все</SelectItem>
+                  <SelectItem value="deals">Выгодные</SelectItem>
+                  <SelectItem value="non_deals">Не выгодные</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </span>
         </div>
       </div>
 

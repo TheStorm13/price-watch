@@ -51,9 +51,9 @@ test('выгода и максимум видны после отключени�
   await expect(row).toContainText('Не участвует в выгодных')
   await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
   await expect(row.locator('.catalog-savings__maximum')).toHaveText('20 ₽')
-  await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
+  await choose(page, 'Выгодность', 'Выгодные')
   await expect(row).toHaveCount(0)
-  await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
+  await choose(page, 'Выгодность', 'Все')
   await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   expect(errors).toEqual([])
@@ -191,9 +191,12 @@ test('выгодный участник даёт приоритет без по�
   await expect(rows.nth(0)).toContainText('Fixture A') // priority beats the cheaper standalone
   await expect(rows.nth(0)).toContainText('Есть выгодный товар внутри')
   await expect(rows.nth(0).locator('td').nth(6).locator('.catalog-savings > span').first()).toHaveText('Сейчас не выгодно')
-  await page.getByRole('checkbox', { name: 'Выгодные предложения' }).click()
-  await expect(page.getByRole('checkbox', { name: 'Выгодные предложения' })).toBeChecked()
+  await choose(page, 'Выгодность', 'Выгодные')
+  await expect(page.getByRole('combobox', { name: 'Выгодность' })).toHaveText('Выгодные')
   await expect(page.getByText('По выбранным условиям ничего не найдено')).toBeVisible()
+  await choose(page, 'Выгодность', 'Не выгодные')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.nth(0)).toContainText('Fixture A')
 })
 
 test('изменение участия и удаление представителя сразу обновляют поля группы', async ({ page }) => {

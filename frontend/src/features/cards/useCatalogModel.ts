@@ -1,17 +1,17 @@
 import { useMemo } from 'react'
 import type { CatalogSnapshot, TrackedCardView } from '../../types/domain'
-import { cardItem, catalogItems, compareItems, matchesItem, type Sort } from './catalogItems'
+import { cardItem, catalogItems, compareItems, matchesItem, type DealFilter, type Sort } from './catalogItems'
 const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' })
-export function useCatalogModel(snapshot: CatalogSnapshot | undefined, deferredQuery: string, marketplace: string, status: string, selectedTag: string, dealsOnly: boolean, sort: Sort) {
+export function useCatalogModel(snapshot: CatalogSnapshot | undefined, deferredQuery: string, marketplace: string, status: string, selectedTag: string, dealFilter: DealFilter, sort: Sort) {
   const deals = useMemo(() => new Map((snapshot?.deals ?? []).map((deal) => [deal.card.id, deal])), [snapshot?.deals])
   const allItems = useMemo(() => catalogItems(snapshot?.cards ?? [], snapshot?.groups ?? [], deals),
     [snapshot?.cards, snapshot?.groups, deals])
   const availableTags = useMemo(() => [...new Set(allItems.flatMap((item) => item.card?.tags ?? []))].sort(collator.compare), [allItems])
 
   const orderedItems = useMemo(() => allItems.filter((item) => matchesItem(item, {
-    query: deferredQuery, marketplace, status, tag: selectedTag, dealsOnly,
+    query: deferredQuery, marketplace, status, tag: selectedTag, dealFilter,
   })).toSorted((left, right) => compareItems(left, right, sort)),
-  [allItems, deferredQuery, marketplace, status, selectedTag, dealsOnly, sort])
+  [allItems, deferredQuery, marketplace, status, selectedTag, dealFilter, sort])
 
   const groupedCards = useMemo(() => {
     const byGroup = new Map<number, TrackedCardView[]>()

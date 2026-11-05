@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Deal, TrackedCardView, ProductGroup } from '../../types/domain'
-import { cardItem, catalogItems, compareItems, matchesItem, parseSort, type DisplayItem, type Sort } from './catalogItems'
+import { cardItem, catalogItems, compareItems, matchesItem, parseSort, type DealFilter, type DisplayItem, type Sort } from './catalogItems'
 
 function card(id: number, overrides: Partial<TrackedCardView> = {}): TrackedCardView {
   return { id, title: `Card ${id}`, externalId: String(id), marketplace: 'ozon', currentPrice: "90.00",
@@ -14,7 +14,7 @@ function group(representative: TrackedCardView | null, overrides: Partial<Produc
     representativeCard: representative, representativeCardId: representative?.id ?? null,
     savings: null, baselineDays: 1, isDeal: false, hasMemberDeals: false, ...overrides }
 }
-const filters = { query: '', marketplace: 'all', status: 'all', tag: '', dealsOnly: false }
+const filters = { query: '', marketplace: 'all', status: 'all', tag: '', dealFilter: 'all' as DealFilter }
 function groupItem(representative: TrackedCardView | null, overrides: Partial<ProductGroup> = {}): DisplayItem {
   return catalogItems([], [group(representative, overrides)], new Map())[0]
 }
@@ -41,7 +41,7 @@ describe('catalog objects', () => {
       const regular = cardItem(source, new Map())
       const grouped = groupItem(source)
       for (const patch of [{ status: 'in_stock' }, { status: 'out_of_stock' }, { status: 'no_data' },
-        { status: 'deals_disabled' }, { dealsOnly: true }, { marketplace: 'wildberries' }, { tag: 'representative' }]) {
+        { status: 'deals_disabled' }, { dealFilter: 'deals' as const }, { marketplace: 'wildberries' }, { tag: 'representative' }]) {
         expect(matchesItem(grouped, { ...filters, ...patch })).toBe(matchesItem(regular, { ...filters, ...patch }))
       }
     }
@@ -51,7 +51,7 @@ describe('catalog objects', () => {
     const object = groupItem(card(1), { hasMemberDeals: true })
     expect(object.priority).toBe(true)
     expect(object.savings).toBeNull()
-    expect(matchesItem(object, { ...filters, dealsOnly: true })).toBe(false)
+    expect(matchesItem(object, { ...filters, dealFilter: 'deals' })).toBe(false)
     expect(compareItems(object, cardItem(card(2), new Map()), { key: 'price', direction: 'desc' })).toBeLessThan(0)
   })
 
@@ -60,7 +60,7 @@ describe('catalog objects', () => {
     expect(matchesItem(object, filters)).toBe(true)
     expect(matchesItem(object, { ...filters, status: 'no_data' })).toBe(true)
     expect(matchesItem(object, { ...filters, marketplace: 'ozon' })).toBe(false)
-    expect(matchesItem(object, { ...filters, dealsOnly: true })).toBe(false)
+    expect(matchesItem(object, { ...filters, dealFilter: 'deals' })).toBe(false)
   })
 
   it('shows and sorts disabled savings without including them in the deal filter', () => {
@@ -70,7 +70,7 @@ describe('catalog objects', () => {
     for (const item of [regular, grouped]) {
       expect(item.savings).toBe('30.15')
       expect(item.priority).toBe(false)
-      expect(matchesItem(item, { ...filters, dealsOnly: true })).toBe(false)
+      expect(matchesItem(item, { ...filters, dealFilter: 'deals' })).toBe(false)
       const smaller = cardItem(card(2, { dealsEnabled: false }), new Map())
       expect(compareItems(item, smaller, { key: 'savings', direction: 'desc' })).toBeLessThan(0)
     }
@@ -82,6 +82,20 @@ describe('catalog objects', () => {
       expect(cardItem(card(1, { dealsEnabled: false, ...patch }), new Map()).savings).toBeNull()
     }
   })
+})
+
+it('partitions all catalog objects into deals and non-deals, including empty and disabled objects', () => {
+  const source = card(1)
+  const deal: Deal = { card: source, averagePrice: '100.00', savings: '10.00', baselineDays: 1, lastCollectionRunId: null }
+  const items = [cardItem(source, new Map([[1, deal]])), groupItem(source, { isDeal: true }),
+    cardItem(card(2), new Map()), groupItem(source, { hasMemberDeals: true }), groupItem(null),
+    cardItem(card(3, { dealsEnabled: false }), new Map()),
+    cardItem(card(4, { lastObservedAt: null, currentPrice: null }), new Map())]
+  const selected = (dealFilter: DealFilter) => items.filter(item => matchesItem(item, { ...filters, dealFilter }))
+  expect(selected('all')).toEqual(items)
+  expect(selected('deals')).toEqual(items.slice(0, 2))
+  expect(selected('non_deals')).toEqual(items.slice(2))
+  expect(matchesItem(items[2], { ...filters, dealFilter: 'non_deals', marketplace: 'wildberries' })).toBe(false)
 })
 
 describe('common sort', () => {

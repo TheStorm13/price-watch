@@ -6,6 +6,7 @@ import { catalogSavings } from './catalogSavings'
 export const columnLabels = { title:'Карточка',marketplace:'Маркетплейс',price:'Цена',minimum:'Минимальная',average:'Средняя',savings:'Выгода / Максимальная выгода',availability:'Наличие' }
 export const columnSortKeys = ['title', 'marketplace', 'price', 'minimum', 'average', 'savings', 'availability'] as const
 export type ColumnSortKey = typeof columnSortKeys[number]
+export type DealFilter = 'all' | 'deals' | 'non_deals'
 export type Sort = { key: ColumnSortKey | 'updated'; direction: 'asc' | 'desc' } | null
 export type DisplayItem = {
   kind: 'card'; id: number; title: string; card: TrackedCardView; savings: DecimalString | null; priority: boolean
@@ -44,14 +45,16 @@ export function parseSort(value: string | null): Sort {
 }
 
 export function matchesItem(item: DisplayItem, filters: {
-  query: string; marketplace: string; status: string; tag: string; dealsOnly: boolean
+  query: string; marketplace: string; status: string; tag: string; dealFilter: DealFilter
 }): boolean {
   const card = item.card
   const text = `${item.title} ${card?.title ?? ''} ${card?.externalId ?? ''}`.toLowerCase()
   if (filters.query && !text.includes(filters.query)) return false
   if (filters.marketplace !== 'all' && card?.marketplace !== filters.marketplace) return false
   if (filters.tag && !card?.tags?.includes(filters.tag)) return false
-  if (filters.dealsOnly && !(item.kind === 'group' ? item.group.isDeal : item.priority)) return false
+  const isDeal = item.kind === 'group' ? item.group.isDeal : item.priority
+  if (filters.dealFilter === 'deals' && !isDeal) return false
+  if (filters.dealFilter === 'non_deals' && isDeal) return false
   if (filters.status === 'deals_disabled') return !(card?.dealsEnabled ?? false)
   if (filters.status === 'no_data') return !card?.lastObservedAt
   return filters.status === 'all' || card?.currentAvailability === filters.status
