@@ -20,8 +20,10 @@ import { ImportExportControls } from './ImportExportControls'
 import { GroupDialog } from './GroupDialog'
 import { BulkCardActions } from './BulkCardActions'
 import { useCardSelection } from './useCardSelection'
+import { SidebarDemoSlot, useSidebarDemo } from '../sidebar-demo/SidebarDemoSlot'
 
 export function CardsPage() {
+  const sidebarDemo = useSidebarDemo()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -75,7 +77,9 @@ export function CardsPage() {
 
   function resetFilters() {
     // Commit the reset before another control can reuse the previous search params.
-    setParams(view === 'grid' ? { view: 'grid' } : {}, { replace: true, flushSync: true })
+    const next = new URLSearchParams(view === 'grid' ? { view: 'grid' } : {})
+    if (sidebarDemo && params.has('sidebar')) next.set('sidebar', params.get('sidebar')!)
+    setParams(next, { replace: true, flushSync: true })
   }
 
 
@@ -84,10 +88,12 @@ export function CardsPage() {
       <header className="page-header">
         <div><h1>Карточки</h1><p>Текущие цены и история отслеживаемых карточек</p></div>
         <div className="page-actions">
-          <ImportExportControls onStatus={(message, kind) => setTransferStatus({ message, kind })} />
-          <Button variant="outline" onClick={() => openCreateGroup([])}><FolderPlus data-icon="inline-start" />Создать группу</Button>
+          {!sidebarDemo ? <ImportExportControls onStatus={(message, kind) => setTransferStatus({ message, kind })} /> : null}
+          <SidebarDemoSlot name="group"><Button className={sidebarDemo ? 'justify-start' : undefined} variant="outline" onClick={() => openCreateGroup([])}><FolderPlus data-icon="inline-start" />Создать группу</Button></SidebarDemoSlot>
+          {!sidebarDemo ? <>
           <Button variant="outline" onClick={() => collection.start()} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить цены</Button>
           <Button variant="default" onClick={() => setDrawerOpen(true)}><Plus data-icon="inline-start" />Добавить карточку</Button>
+          </> : null}
         </div>
       </header>
       {transferStatus ? <Alert variant={transferStatus.kind === 'error' ? 'destructive' : 'default'}
@@ -95,13 +101,13 @@ export function CardsPage() {
       {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
       {catalogQuery.isError && catalogQuery.data ? <Alert variant="destructive"><AlertDescription>Не удалось обновить каталог. <Button variant="link" type="button" onClick={() => void catalogQuery.refetch()}>Повторить</Button></AlertDescription></Alert> : null}
 
-      <div className="filters">
+      <SidebarDemoSlot name="filters"><div className="filters">
         <InputGroup className="filters__search">
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
           <InputGroupInput value={query} onChange={(event) => setParam('q', event.target.value, '')} placeholder="Название или ID" aria-label="Поиск карточек" />
         </InputGroup>
         <div className="filters__selects">
-          <span className={cn('filter-select', marketplace !== 'all' && 'filter-select--active')}>
+          <span data-label="Маркетплейс" className={cn('filter-select', marketplace !== 'all' && 'filter-select--active')}>
             <Select value={marketplace} onValueChange={(value) => setParam('marketplace', value)}>
               <SelectTrigger className="w-full" aria-label="Маркетплейс"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -116,7 +122,7 @@ export function CardsPage() {
             </Select>
 
           </span>
-          <span className={cn('filter-select filter-select--status', status !== 'all' && 'filter-select--active')}>
+          <span data-label="Состояние" className={cn('filter-select filter-select--status', status !== 'all' && 'filter-select--active')}>
             <Select value={status} onValueChange={(value) => setParam('status', value)}>
               <SelectTrigger className="w-full" aria-label="Состояние"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -131,7 +137,7 @@ export function CardsPage() {
             </Select>
 
           </span>
-          <span className={cn('filter-select filter-select--sort', sort && 'filter-select--active')}>
+          <span data-label="Сортировка" className={cn('filter-select filter-select--sort', sort && 'filter-select--active')}>
             <Select value={sort ? `${sort.key}-${sort.direction}` : 'default'} onValueChange={(value) => setParam('sort', value, 'default')}>
               <SelectTrigger className="w-full" aria-label="Сортировка"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -147,7 +153,7 @@ export function CardsPage() {
             </Select>
 
           </span>
-          <span className={cn('filter-select', selectedTag && 'filter-select--active')}>
+          <span data-label="Тег" className={cn('filter-select', selectedTag && 'filter-select--active')}>
             <Select value={selectedTag ? `tag:${selectedTag}` : 'all'} onValueChange={(value) => setParam('tag', value === 'all' ? '' : value.slice(4), '')}>
               <SelectTrigger className="w-full" aria-label="Тег"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -160,7 +166,7 @@ export function CardsPage() {
             </Select>
 
           </span>
-          <span className={cn('filter-select', dealFilter !== 'all' && 'filter-select--active')}>
+          <span data-label="Выгодность" className={cn('filter-select', dealFilter !== 'all' && 'filter-select--active')}>
             <Select value={dealFilter} onValueChange={(value) => setParam('deals', value)}>
               <SelectTrigger className="w-full" aria-label="Выгодность"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -174,6 +180,8 @@ export function CardsPage() {
           </span>
         </div>
       </div>
+
+      </SidebarDemoSlot>
 
       <div className="cards-view-bar">
         <span>{orderedItems.length} из {allItems.length}</span>

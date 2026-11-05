@@ -17,10 +17,11 @@ function summaryText(summary: ImportSummary) {
 }
 
 interface Props {
+  label?: string
   onStatus: (message: string, kind: 'success' | 'error') => void
 }
 
-export function ImportExportControls({ onStatus }: Props) {
+export function ImportExportControls({ onStatus, label }: Props) {
   const queryClient = useQueryClient()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
@@ -109,9 +110,9 @@ export function ImportExportControls({ onStatus }: Props) {
 
   return (
     <>
-      <div className="order-1">
+      <div className={label ? undefined : 'order-1'}>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button ref={triggerRef} variant="outline" size="icon" aria-label="Дополнительные действия" title="Дополнительные действия"><MoreHorizontal aria-hidden="true" /></Button></DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild><Button ref={triggerRef} className={label ? 'w-full justify-start' : undefined} variant={label ? 'ghost' : 'outline'} size={label ? 'sm' : 'icon'} aria-label={label ?? 'Дополнительные действия'} title={label ?? 'Дополнительные действия'}><MoreHorizontal data-icon="inline-start" aria-hidden="true" />{label}</Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end" onCloseAutoFocus={(event) => { if (open) event.preventDefault() }}>
             <DropdownMenuGroup>
               <DropdownMenuItem onSelect={() => void exportCards()} disabled={exportBusy}><Download />{exportBusy ? 'Экспорт…' : 'Экспорт'}</DropdownMenuItem>

@@ -1,16 +1,21 @@
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { BarChart3, Globe2 } from 'lucide-react'
 import { Link, Outlet } from 'react-router-dom'
-import { apiModeLabel, isDesktopMode } from '../../api/client'
+import { apiModeLabel, isDesktopMode, isE2ETestMode } from '../../api/client'
 import { ActiveCollectionPanel } from '../../features/collection/ActiveCollectionPanel'
 import { useCollection } from '../../features/collection/CollectionProvider'
 import { BackgroundSettings } from '../../features/background/BackgroundSettings'
 import { useDesktopRuntime } from '../../app/desktopRuntime'
 
+const SidebarDemo = import.meta.env.DEV ? lazy(() => import('../../features/sidebar-demo/SidebarDemo')) : null
+
 export function AppShell() {
+  const [sidebarDemo] = useState(() => import.meta.env.DEV && isE2ETestMode && !isDesktopMode && (
+    import.meta.env.VITE_SIDEBAR_DEMO === 'true' || ['1', '2'].includes(new URLSearchParams(window.location.search).get('sidebar') ?? '')
+  ))
   const { run, isStarting } = useCollection()
   const { serviceError, retryServices } = useDesktopRuntime()
   const [browserError, setBrowserError] = useState<string | null>(null)
@@ -28,6 +33,8 @@ export function AppShell() {
       setOpeningBrowser(false)
     }
   }
+
+  if (sidebarDemo && SidebarDemo) return <Suspense fallback={null}><SidebarDemo><Outlet /></SidebarDemo></Suspense>
 
   return (
     <div className="app-shell">
