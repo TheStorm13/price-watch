@@ -78,17 +78,17 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  return <div ref={root} onFocusCapture={windowed.focus} onPointerDownCapture={windowed.focus} onBlurCapture={windowed.blur} data-catalog-results>
    {view==='grid'?<ul className="virtual-grid" data-virtual-start aria-label="Отслеживаемые карточки маркетплейсов">
      {body}{tail>0?<li aria-hidden="true" style={{height:tail}} />:null}
-   </ul>:<Table className={cn('cards-table',sidebarDemo && 'w-[1012px]')} aria-rowcount={rows.length+1}>
+   </ul>:<Table className={cn('cards-table',sidebarDemo && 'w-[1060px] max-[1200px]:w-[980px]')} aria-rowcount={rows.length+1}>
      <TableCaption className="sr-only">Отслеживаемые карточки маркетплейсов</TableCaption>
      <TableHeader><TableRow><TableHead className="cards-table__selection py-0"><span className="sr-only">Выбор</span></TableHead>
        {(Object.entries(columnLabels) as [ColumnSortKey,string][]).map(([key,label])=>{
          const direction=sort?.key===key?sort.direction:null
-         return <TableHead key={key} scope="col" aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>
+         return <TableHead key={key} className={sidebarDemo && key !== 'title' ? 'text-center' : undefined} scope="col" aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>
            {sortable ? <Button variant="ghost" type="button" className={cn('cards-table__sort h-11.5 px-0',direction&&'is-active')} onClick={()=>onSort(key)}
              title={direction==='asc'?'Сортировать по убыванию':direction==='desc'?'Сбросить сортировку':'Сортировать по возрастанию'}>
              {key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}<span className="cards-table__sort-icon" aria-hidden="true">{direction==='desc'?<ArrowDown />:<ArrowUp />}</span>
            </Button> : key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}</TableHead>
-       })}<TableHead><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
+       })}<TableHead className={sidebarDemo ? 'text-center' : undefined}><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
      <TableBody data-virtual-start>{body}{tail>0?<tr aria-hidden="true" className="virtual-spacer"><td colSpan={9} style={{height:tail}} /></tr>:null}</TableBody>
    </Table>}
  </div>
