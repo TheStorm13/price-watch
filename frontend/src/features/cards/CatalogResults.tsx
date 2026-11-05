@@ -19,9 +19,10 @@ interface Props {
  view:'list'|'grid';items:DisplayItem[];groupedCards:Map<number,TrackedCardView[]>;deals:Map<number,Deal>
  selectedIds:Set<number>;onSelect:(id:number)=>void;collapsedGroups:number[]
  onToggleGroup:(id:number)=>void;onEditGroup:(group:ProductGroup)=>void;sort:Sort;onSort:(key:ColumnSortKey)=>void;returnTo:string
+ sortable?:boolean
 }
 export const CatalogResults = memo(function CatalogResults(props:Props) {
- const {view,items,groupedCards,deals,selectedIds,onSelect,collapsedGroups,onToggleGroup,onEditGroup,sort,onSort,returnTo}=props
+ const {view,items,groupedCards,deals,selectedIds,onSelect,collapsedGroups,onToggleGroup,onEditGroup,sort,onSort,returnTo,sortable=true}=props
  const [columns,setColumns]=useState(1)
  const rows=useMemo(()=>catalogRows(items,groupedCards,collapsedGroups,view==='grid'?columns:1),[items,groupedCards,collapsedGroups,view,columns])
  const keys=useMemo(()=>rows.map(row=>row.key),[rows])
@@ -81,10 +82,10 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
        {(Object.entries(columnLabels) as [ColumnSortKey,string][]).map(([key,label])=>{
          const direction=sort?.key===key?sort.direction:null
          return <TableHead key={key} scope="col" aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>
-           <Button variant="ghost" type="button" className={cn('cards-table__sort h-11.5 px-0',direction&&'is-active')} onClick={()=>onSort(key)}
+           {sortable ? <Button variant="ghost" type="button" className={cn('cards-table__sort h-11.5 px-0',direction&&'is-active')} onClick={()=>onSort(key)}
              title={direction==='asc'?'Сортировать по убыванию':direction==='desc'?'Сбросить сортировку':'Сортировать по возрастанию'}>
              {key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}<span className="cards-table__sort-icon" aria-hidden="true">{direction==='desc'?<ArrowDown />:<ArrowUp />}</span>
-           </Button></TableHead>
+           </Button> : key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}</TableHead>
        })}<TableHead><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
      <TableBody data-virtual-start>{body}{tail>0?<tr aria-hidden="true" className="virtual-spacer"><td colSpan={9} style={{height:tail}} /></tr>:null}</TableBody>
    </Table>}

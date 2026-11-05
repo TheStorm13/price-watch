@@ -14,7 +14,7 @@ const SidebarDemo = import.meta.env.DEV ? lazy(() => import('../../features/side
 
 export function AppShell() {
   const [sidebarDemo] = useState(() => import.meta.env.DEV && isE2ETestMode && !isDesktopMode && (
-    import.meta.env.VITE_SIDEBAR_DEMO === 'true' || ['1', '2'].includes(new URLSearchParams(window.location.search).get('sidebar') ?? '')
+    import.meta.env.VITE_SIDEBAR_DEMO === 'true' || new URLSearchParams(window.location.search).get('sidebar') === '2'
   ))
   const { run, isStarting } = useCollection()
   const { serviceError, retryServices } = useDesktopRuntime()

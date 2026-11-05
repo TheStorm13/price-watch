@@ -1,11 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { BarChart3, Globe2, Settings2, Plus, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ActiveCollectionPanel } from '../collection/ActiveCollectionPanel'
 import { useCollection } from '../collection/CollectionProvider'
@@ -14,8 +13,6 @@ import { AddCardDrawer } from '../cards/AddCardDrawer'
 import { ImportExportControls } from '../cards/ImportExportControls'
 
 export default function SidebarDemo({ children }: { children: ReactNode }) {
-  const [params, setParams] = useSearchParams()
-  const [variant, setVariant] = useState(() => params.get('sidebar') === '2' ? '2' : '1')
   const [filters, setFilters] = useState<HTMLDivElement | null>(null)
   const [group, setGroup] = useState<HTMLDivElement | null>(null)
   const [adding, setAdding] = useState(false)
@@ -24,34 +21,21 @@ export default function SidebarDemo({ children }: { children: ReactNode }) {
   const [backgroundEnabled, setBackgroundEnabled] = useState(false)
   const { run, isStarting, start, startError } = useCollection()
   const collecting = isStarting || !!run && ['queued', 'running', 'waiting_for_user'].includes(run.status)
-  const slots = useMemo(() => ({ filters: variant === '2' ? filters : null, group: variant === '2' ? group : null }), [filters, group, variant])
-
-  function switchVariant(value: string) {
-    if (!value) return
-    setVariant(value)
-    setParams((current) => {
-      const next = new URLSearchParams(current)
-      next.set('sidebar', value)
-      return next
-    }, { replace: true })
-  }
+  const slots = useMemo(() => ({ filters, group }), [filters, group])
 
   return (
     <SidebarDemoContext.Provider value={slots}>
-      <div className="sidebar-demo" data-variant={variant}>
+      <div className="sidebar-demo">
         <aside className="sidebar-demo__sidebar" aria-label="Боковая панель">
-          <Link className="brand sidebar-demo__brand" to={`/cards?sidebar=${variant}`}><BarChart3 aria-hidden="true" /><span>price-watch</span></Link>
+          <Link className="brand sidebar-demo__brand" to="/cards?sidebar=2"><BarChart3 aria-hidden="true" /><span>price-watch</span></Link>
           <div className="sidebar-demo__scroll">
             <div className="sidebar-demo__primary">
               <Button className="justify-start" onClick={() => setAdding(true)}><Plus data-icon="inline-start" />Добавить карточку</Button>
               <Button className="justify-start" variant="outline" disabled={collecting} onClick={() => start()}><RefreshCw data-icon="inline-start" />Обновить все цены</Button>
               {startError ? <Alert variant="destructive"><AlertDescription>{startError}</AlertDescription></Alert> : null}
             </div>
-            {variant === '2' ? <>
-              <div ref={setGroup} className="sidebar-demo__group" />
-              <div className="sidebar-demo__section-label">Каталог</div>
-              <div ref={setFilters} className="sidebar-demo__filters" />
-            </> : null}
+            <div ref={setGroup} className="sidebar-demo__group" />
+            <div ref={setFilters} className="sidebar-demo__filters" />
           </div>
           <div className="sidebar-demo__tools">
             <Button className="justify-start" size="sm" variant="ghost" disabled={collecting} onClick={() => setDialog('chrome')}><Globe2 data-icon="inline-start" />Открыть Chrome</Button>
@@ -62,13 +46,6 @@ export default function SidebarDemo({ children }: { children: ReactNode }) {
           <div className="sidebar-demo__progress"><ActiveCollectionPanel /></div>
         </aside>
         <div className="sidebar-demo__workspace">
-          <div className="sidebar-demo__comparison" aria-label="Сравнение компоновок">
-            <ToggleGroup type="single" value={variant} onValueChange={switchVariant} variant="outline" spacing={0} aria-label="Вариант боковой панели">
-              <ToggleGroupItem value="1">Вариант 1</ToggleGroupItem>
-              <ToggleGroupItem value="2">Вариант 2</ToggleGroupItem>
-            </ToggleGroup>
-            <span>{variant === '1' ? 'Фильтры над каталогом' : 'Фильтры в боковой панели'}</span>
-          </div>
           <main className="main-content">
             {transferStatus ? <Alert variant={transferStatus.kind === 'error' ? 'destructive' : 'default'} role={transferStatus.kind === 'error' ? 'alert' : 'status'}><AlertDescription>{transferStatus.message}</AlertDescription></Alert> : null}
             {children}

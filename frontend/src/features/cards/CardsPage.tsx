@@ -15,12 +15,14 @@ import { Button } from '../../components/ui/button'
 import { LoadingRows } from '../../components/product/LoadingRows'
 import { useCollectionCommands } from '../collection/CollectionProvider'
 import { AddCardDrawer } from './AddCardDrawer'
-import { columnLabels, parseSort, type ColumnSortKey } from './catalogItems'
+import { cardItem, columnLabels, parseSort, type ColumnSortKey } from './catalogItems'
 import { ImportExportControls } from './ImportExportControls'
 import { GroupDialog } from './GroupDialog'
 import { BulkCardActions } from './BulkCardActions'
 import { useCardSelection } from './useCardSelection'
 import { SidebarDemoSlot, useSidebarDemo } from '../sidebar-demo/SidebarDemoSlot'
+import { PreviewFilters } from '../sidebar-demo/PreviewFilters'
+import { comparePreviewItems, hasPreviewFilters, selectPreviewItems } from '../sidebar-demo/previewCatalog'
 
 export function CardsPage() {
   const sidebarDemo = useSidebarDemo()
@@ -39,15 +41,19 @@ export function CardsPage() {
   const marketplace = params.get('marketplace') ?? 'all'
   const status = params.get('status') ?? 'all'
   const sortParam = params.get('sort')
-  const sort = useMemo(() => parseSort(sortParam), [sortParam])
+  const sort = useMemo(() => sidebarDemo && sortParam !== 'price-asc' && sortParam !== 'price-desc' ? null : parseSort(sortParam), [sortParam, sidebarDemo])
   const view = params.get('view') === 'grid' ? 'grid' : 'list'
   const dealParam = params.get('deals')
   const dealFilter = dealParam === 'deals' || dealParam === 'non_deals' ? dealParam : 'all'
   const selectedTag = params.get('tag') ?? ''
   const selectedIds = [...selection.selectedIds]
-  const hasFilters = Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealFilter !== 'all' || selectedTag)
-  const { deals, allItems, availableTags, orderedItems, groupedCards } = useCatalogModel(catalogQuery.data,
+  const hasFilters = sidebarDemo ? hasPreviewFilters(params) : Boolean(query || marketplace !== 'all' || status !== 'all' || sort || dealFilter !== 'all' || selectedTag)
+  const model = useCatalogModel(catalogQuery.data,
     deferredQuery, marketplace, status, selectedTag, dealFilter, sort)
+  const { deals, allItems, availableTags } = model
+  const orderedItems = useMemo(() => sidebarDemo ? selectPreviewItems(allItems, params) : model.orderedItems, [sidebarDemo, allItems, params, model.orderedItems])
+  const groupedCards = useMemo(() => !sidebarDemo ? model.groupedCards : new Map([...model.groupedCards].map(([id, cards]) => [id,
+    cards.toSorted((a, b) => comparePreviewItems(cardItem(a, deals), cardItem(b, deals), sortParam))])), [sidebarDemo, model.groupedCards, deals, sortParam])
   const returnTo = useDeferredValue(location.pathname + location.search)
 
   function openCreateGroup(ids: number[]) {
@@ -85,23 +91,27 @@ export function CardsPage() {
 
   return (
     <section className="page cards-page">
-      <header className="page-header">
+      {!sidebarDemo ? <header className="page-header">
         <div><h1>Карточки</h1><p>Текущие цены и история отслеживаемых карточек</p></div>
         <div className="page-actions">
-          {!sidebarDemo ? <ImportExportControls onStatus={(message, kind) => setTransferStatus({ message, kind })} /> : null}
-          <SidebarDemoSlot name="group"><Button className={sidebarDemo ? 'justify-start' : undefined} variant="outline" onClick={() => openCreateGroup([])}><FolderPlus data-icon="inline-start" />Создать группу</Button></SidebarDemoSlot>
-          {!sidebarDemo ? <>
+          <ImportExportControls onStatus={(message, kind) => setTransferStatus({ message, kind })} />
+          <Button variant="outline" onClick={() => openCreateGroup([])}><FolderPlus data-icon="inline-start" />Создать группу</Button>
           <Button variant="outline" onClick={() => collection.start()} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить цены</Button>
           <Button variant="default" onClick={() => setDrawerOpen(true)}><Plus data-icon="inline-start" />Добавить карточку</Button>
-          </> : null}
         </div>
-      </header>
+      </header> : <SidebarDemoSlot name="group"><Button className="w-full justify-start" variant="outline" onClick={() => openCreateGroup([])}><FolderPlus data-icon="inline-start" />Создать группу</Button></SidebarDemoSlot>}
       {transferStatus ? <Alert variant={transferStatus.kind === 'error' ? 'destructive' : 'default'}
         role={transferStatus.kind === 'error' ? 'alert' : 'status'}><AlertDescription>{transferStatus.message}</AlertDescription></Alert> : null}
-      {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
+      {!sidebarDemo && collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
       {catalogQuery.isError && catalogQuery.data ? <Alert variant="destructive"><AlertDescription>Не удалось обновить каталог. <Button variant="link" type="button" onClick={() => void catalogQuery.refetch()}>Повторить</Button></AlertDescription></Alert> : null}
 
-      <SidebarDemoSlot name="filters"><div className="filters">
+      {sidebarDemo ? <>
+        <InputGroup className="sidebar-demo__search">
+          <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
+          <InputGroupInput value={query} onChange={(event) => setParam('q', event.target.value, '')} placeholder="Название или артикул" aria-label="Поиск по названию или артикулу" />
+        </InputGroup>
+        <SidebarDemoSlot name="filters"><PreviewFilters tags={availableTags} /></SidebarDemoSlot>
+      </> : <div className="filters">
         <InputGroup className="filters__search">
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
           <InputGroupInput value={query} onChange={(event) => setParam('q', event.target.value, '')} placeholder="Название или ID" aria-label="Поиск карточек" />
@@ -181,7 +191,7 @@ export function CardsPage() {
         </div>
       </div>
 
-      </SidebarDemoSlot>
+      }
 
       <div className="cards-view-bar">
         <span>{orderedItems.length} из {allItems.length}</span>
@@ -204,7 +214,7 @@ export function CardsPage() {
           <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</EmptyTitle><EmptyDescription>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</EmptyDescription></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : () => setDrawerOpen(true)}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></EmptyContent></Empty>
         ) : <CatalogResults view={view} items={orderedItems} groupedCards={groupedCards} deals={deals}
           selectedIds={selection.selectedIds} onSelect={selection.toggle} collapsedGroups={collapsedGroups}
-          onToggleGroup={toggleGroup} onEditGroup={setEditingGroup} sort={sort} onSort={toggleSort} returnTo={returnTo} />
+          onToggleGroup={toggleGroup} onEditGroup={setEditingGroup} sort={sort} onSort={toggleSort} sortable={!sidebarDemo} returnTo={returnTo} />
         }
       </div>
       <AddCardDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
