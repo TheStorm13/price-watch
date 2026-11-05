@@ -1,6 +1,6 @@
 ## Purpose
 
-Allow users to evaluate the chosen sidebar arrangement of a single price catalog on isolated sample data before adopting it in the desktop application.
+Allow users to evaluate the chosen sidebar arrangement of a single price catalog on isolated sample data before adopting it in the desktop application. Group/count/navigation requirements approved on 2026-11-06 are a pending follow-up, not current implementation evidence.
 
 ## ADDED Requirements
 
@@ -85,3 +85,35 @@ During collection the preview SHALL show the existing collection state at the ve
 #### Scenario: Verification in the narrow layout
 - **WHEN** collection requests user verification at 1024×768 in layout 2
 - **THEN** the panel remains inside the sidebar, its actions are reachable and continuation can complete the simulated run
+
+### Requirement: Groups contain individually filtered products
+Filters SHALL evaluate each card, including group members, against all active conditions. A group SHALL appear only when at least one member matches; expansion SHALL show only matching members with a matching/total label such as «2 из 5 товаров». Tag choices SHALL include tags from all cards.
+
+#### Scenario: Match outside the previous representative
+- **WHEN** a member other than the previous representative satisfies all active conditions
+- **THEN** the group remains visible and its matching members are available on expansion
+
+#### Scenario: Conditions split across members
+- **WHEN** one member matches the chosen marketplace and a different member matches availability but neither matches both
+- **THEN** that group is excluded unless another member satisfies the complete predicate
+
+### Requirement: Group summaries follow the selected order
+The summary representative SHALL be the first matching member under the selected sort. It SHALL NOT be treated as a fixed best product independent of filters and sort.
+
+#### Scenario: Change price direction
+- **WHEN** the user changes from cheapest-first to most-expensive-first
+- **THEN** the group's representative changes from its cheapest matching member to its most expensive matching member; unknown prices stay last
+
+### Requirement: Counts measure individual products
+«Выбрано n из m товаров» SHALL count each card once, including group members. The numerator SHALL count matching cards and the denominator all catalog cards. Group headers, collapsed state and bulk-selection checkboxes SHALL NOT alter these counts.
+
+#### Scenario: Group matching products
+- **WHEN** 8 of 20 cards match the filters, including cards inside collapsed groups
+- **THEN** the counter displays «Выбрано 8 из 20 товаров», regardless of grouping or checkbox selection
+
+### Requirement: Application name has no navigation action
+Price watch SHALL be plain noninteractive text without navigation or filter reset. Product details SHALL provide an explicit «К карточкам» link preserving search, filters and list/grid view.
+
+#### Scenario: Return from product details
+- **WHEN** a user opens a product from a filtered grid and follows «К карточкам»
+- **THEN** the same search, filters and grid view are restored
