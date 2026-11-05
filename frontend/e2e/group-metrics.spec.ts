@@ -29,7 +29,7 @@ test('выгода и максимум видны после отключени�
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/cards')
-  await expect(page).toHaveTitle('price-watch')
+  await expect(page).toHaveTitle('Price watch')
   await importFixture(page, { version: 3, groups: [], cards: [fixtureCard('901', 'ozon', [100, 60, 70], 'savings'),
     fixtureCard('903', 'ozon', [100, 110], 'zero'), fixtureCard('904', 'ozon', [100], 'no-baseline')] })
   await page.getByLabel('Поиск карточек').fill('Fixture')
@@ -127,7 +127,7 @@ test('группа фильтруется по представителю и ч�
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
   await page.setViewportSize({ width: 1536, height: 1000 })
   await page.goto('/cards')
-  await expect(page).toHaveTitle('price-watch')
+  await expect(page).toHaveTitle('Price watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 3, cards: [fixtureCard('901', 'ozon', [60, 70], 'cheap'),
@@ -179,7 +179,7 @@ test('группа фильтруется по представителю и ч�
 
 test('выгодный участник даёт приоритет без подмены полей и фильтра выгодности группы', async ({ page }) => {
   await page.goto('/cards')
-  await expect(page).toHaveTitle('price-watch')
+  await expect(page).toHaveTitle('Price watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 3,
@@ -201,7 +201,7 @@ test('выгодный участник даёт приоритет без по�
 
 test('изменение участия и удаление представителя сразу обновляют поля группы', async ({ page }) => {
   await page.goto('/cards')
-  await expect(page).toHaveTitle('price-watch')
+  await expect(page).toHaveTitle('Price watch')
   await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 3,

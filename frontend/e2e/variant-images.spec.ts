@@ -27,7 +27,7 @@ test('варианты показывают свои фото, а карточк
   await dialog.getByRole('button', { name: 'Импортировать' }).click()
   await page.getByRole('link', { name: titles[0], exact: true }).click()
   await expect(page).toHaveURL(/\/cards\/\d+$/)
-  await expect(page).toHaveTitle('price-watch')
+  await expect(page).toHaveTitle('Price watch')
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   const variants = page.getByRole('region', { name: 'Варианты товара' })
   await expect(variants.locator('.product-placeholder')).toHaveCount(3)

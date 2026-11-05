@@ -921,7 +921,7 @@ fn install_tray(app: &mut tauri::App) -> tauri::Result<()> {
         tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     };
 
-    let open = MenuItemBuilder::with_id("open", "Открыть price-watch").build(app)?;
+    let open = MenuItemBuilder::with_id("open", "Открыть Price watch").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Выход").build(app)?;
     let menu = MenuBuilder::new(app).items(&[&open, &quit]).build()?;
     let mut tray = TrayIconBuilder::new()

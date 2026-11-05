@@ -18,7 +18,7 @@ test('Ozon: разные артикулы образуют одну карточ
     })),
   }] }
   await page.goto('/cards')
-  await expect(page).toHaveTitle('price-watch')
+  await expect(page).toHaveTitle('Price watch')
   await page.getByLabel('Дополнительные действия').click()
   await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })

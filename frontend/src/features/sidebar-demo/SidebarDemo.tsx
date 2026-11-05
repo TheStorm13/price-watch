@@ -27,7 +27,7 @@ export default function SidebarDemo({ children }: { children: ReactNode }) {
     <SidebarDemoContext.Provider value={slots}>
       <div className="sidebar-demo">
         <aside className="sidebar-demo__sidebar" aria-label="Боковая панель">
-          <Link className="brand sidebar-demo__brand" to="/cards?sidebar=2"><BarChart3 aria-hidden="true" /><span>price-watch</span></Link>
+          <Link className="brand sidebar-demo__brand" to="/cards?sidebar=2"><BarChart3 aria-hidden="true" /><span>Price watch</span></Link>
           <div className="sidebar-demo__scroll">
             <div className="sidebar-demo__primary">
               <Button className="justify-start" onClick={() => setAdding(true)}><Plus data-icon="inline-start" />Добавить карточку</Button>

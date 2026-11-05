@@ -86,7 +86,7 @@ function DesktopBootstrap({ children }: { children: ReactNode }) {
       {ready ? children : (
         <main className="desktop-bootstrap">
           <div className="desktop-bootstrap__mark">PW</div>
-          <h1>{error ? 'Не удалось запустить приложение' : 'Запускаем price-watch'}</h1>
+          <h1>{error ? 'Не удалось запустить приложение' : 'Запускаем Price watch'}</h1>
           <p>{error ?? 'Поднимаем PostgreSQL и API, затем запускаем браузерный агент…'}</p>
           {error
             ? <Button onClick={() => { setError(null); setAttempt((value) => value + 1) }}>Повторить</Button>

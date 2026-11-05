@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "price-watch",
+  "productName": "Price watch",
   "identifier": "dev.price-watch.desktop",
   "build": {
     "beforeDevCommand": "npm run dev:desktop",
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "price-watch",
+        "title": "Price watch",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,

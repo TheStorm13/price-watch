@@ -223,7 +223,7 @@ impl NativeServices {
             .open(state_dir.join("native.lock"))
             .map_err(|error| format!("Не удалось открыть блокировку приложения: {error}"))?;
         if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
-            return Err("Нативные службы уже используются другим окном price-watch".to_string());
+            return Err("Нативные службы уже используются другим окном Price watch".to_string());
         }
 
         let pg_data = data_dir.join("postgres");
