@@ -12,11 +12,15 @@ The preview SHALL use mock data and the selected second layout. It SHALL NOT inv
 - **THEN** the selected sidebar layout is visible and the interface identifies the data as demo data
 
 ### Requirement: Single catalog with search above results
-The catalog SHALL show «Карточки товаров» above name/marketplace-article search, with no subtitle. Search SHALL remain above list or grid results. Group creation and filters SHALL be in the sidebar. Filters and view SHALL survive reload and return from details.
+The catalog SHALL show «Карточки товаров» above name/marketplace-article search, with no subtitle. Its matching/total count SHALL appear only to the right of that heading as «Выбрано n из m товаров». Search SHALL remain above list or grid results. Group creation and filters SHALL be in the sidebar. Filters and view SHALL survive reload and return from details.
 
 #### Scenario: Search by article
 - **WHEN** a user enters a marketplace article in the search field above results
 - **THEN** matching products are shown without searching internal database identifiers
+
+#### Scenario: Count beside heading
+- **WHEN** catalog filters change the matching results
+- **THEN** one counter beside the heading updates and no duplicate count appears below the search
 
 ### Requirement: Multiple marketplace and tag selection
 Marketplace and tag controls SHALL allow multiple selections and default to all. At least one marketplace SHALL remain selected. Nonempty selected tags SHALL match at least one product tag. All tags SHALL include untagged products. Empty tags SHALL display «Без тегов» and match only untagged products.

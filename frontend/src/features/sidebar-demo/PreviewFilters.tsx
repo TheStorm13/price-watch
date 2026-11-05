@@ -32,7 +32,7 @@ function MultipleChoice({ name, allLabel, options, value, onChange, required = f
       </Button></PopoverTrigger>
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] max-h-[min(400px,70dvh)] overflow-y-auto">
         <FieldSet aria-label={name}>
-          <Button type="button" variant="outline" className="w-full justify-start" disabled={!options.length || required && options.length === 1}
+          <Button type="button" size="sm" variant="outline" className="self-start" disabled={!options.length || required && options.length === 1}
             onClick={() => onChange(allSelected ? required ? [selected[0]] : [] : null)}>
             {allSelected ? required ? 'Оставить один' : 'Снять выбор' : 'Выбрать все'}
           </Button>

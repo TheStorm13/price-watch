@@ -106,7 +106,10 @@ export function CardsPage() {
       {catalogQuery.isError && catalogQuery.data ? <Alert variant="destructive"><AlertDescription>Не удалось обновить каталог. <Button variant="link" type="button" onClick={() => void catalogQuery.refetch()}>Повторить</Button></AlertDescription></Alert> : null}
 
       {sidebarDemo ? <>
-        <h1 className="mb-5">Карточки товаров</h1>
+        <div className="mb-5 flex items-center gap-4">
+          <h1>Карточки товаров</h1>
+          <span className="whitespace-nowrap text-sm text-muted-foreground">Выбрано {orderedItems.length} из {allItems.length} товаров</span>
+        </div>
         <InputGroup className="sidebar-demo__search">
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
           <InputGroupInput value={query} onChange={(event) => setParam('q', event.target.value, '')} placeholder="Название или артикул" aria-label="Поиск по названию или артикулу" />
@@ -194,8 +197,8 @@ export function CardsPage() {
 
       }
 
-      <div className="cards-view-bar">
-        <span>{orderedItems.length} из {allItems.length}</span>
+      <div className={cn('cards-view-bar', sidebarDemo && 'justify-end')}>
+        {!sidebarDemo ? <span>{orderedItems.length} из {allItems.length}</span> : null}
         <div className="flex items-center gap-2">
           {hasFilters ? <Button variant="ghost" size="sm" onClick={resetFilters}><RotateCcw data-icon="inline-start" />Сбросить</Button> : null}
           <ToggleGroup type="single" value={view} onValueChange={(value) => { if (value) setParam('view', value, 'list') }} variant="outline" spacing={0} aria-label="Вид карточек">

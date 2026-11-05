@@ -8,7 +8,7 @@ User message: «Хорошо, реализуй демо версию как эт
 
 ## State
 
-First iteration committed as `1d1663e`; selected-layout refinement as `58324da`; heading/selection revision as `9fe3ade`. User requested narrower popups and a left-aligned outlined action button. This styling correction is implemented and verified; preparing its commit for evaluation. OpenSpec: `demo-sidebar-layouts`. Explicit acceptance of the current revision and production adoption are pending. Do not sync/archive yet.
+First iteration committed as `1d1663e`; selected-layout refinement as `58324da`; heading/selection revision as `9fe3ade`; popup-width revision as `77ffa59`. User requested a single count beside the heading and compact content-width bulk buttons. This correction is implemented and verified; preparing its commit for evaluation. OpenSpec: `demo-sidebar-layouts`. Explicit acceptance of the current revision and production adoption are pending. Do not sync/archive yet.
 
 ## Approved revision
 
@@ -79,3 +79,9 @@ Remaining boundary: mock-only preview, no live service/native WebView testing or
 User requested that the lists fit within the sidebar and their bulk action sit on the left, styled like «Создать группу». The standard Popover width and ghost/self-end button caused the prior appearance. Changed only the preview's popup width to the Radix trigger-width variable and the bulk button to the shared default-size outline variant, full width with left-aligned text.
 
 Validation: seven existing sidebar-demo E2E cases passed; `npm --prefix frontend run build:desktop` passed, including TypeScript. Playwright measured both popups at 212 px, matching their triggers and remaining inside the 260 px sidebar, at 1440×900 and 1024×768. Buttons measured 192 px inside popup padding, used the outline variant and computed `justify-content: flex-start`; clicking retained the existing selection behavior. No page or console errors. Inspected `/tmp/sidebar-popup-*.png` using `view_image`; screenshots/scripts remain outside committed source. The temporary geometry script was corrected to wait for opening animations and scope to the open popup rather than its closing predecessor. Selection logic and production desktop controls are unchanged. Unit and full native builds were not repeated for this two-line presentation correction.
+
+## Counter and compact bulk buttons
+
+User corrected the prior interpretation: the bulk button must not fill the popup. It now uses the shared small outline variant with `self-start`, sizing to its text. The catalog's existing matching/total count moved beside the heading with exact wording «Выбрано n из m товаров» and was removed from the demo view bar below search; normal desktop rendering/counting is preserved.
+
+Validation: seven existing sidebar-demo E2E cases passed; `npm --prefix frontend run build:desktop` passed including TypeScript. Playwright confirmed one counter on the heading's right, vertically centered, absent below search, updating from «Выбрано 7 из 7 товаров» to «Выбрано 1 из 7 товаров» on search. At 1440×900 and 1024×768 popups remain 212 px, action buttons are 28 px high and about 110 px / 99 px wide, left aligned. No page or console errors or horizontal document overflow. Inspected `/tmp/sidebar-compact-*.png` with `view_image`; QA scripts/images stay outside committed source. No selection logic, API, persistence or production desktop behavior changed; no unit/native build rerun was needed for this presentation-only correction. Commit the reviewed task files before user evaluation; acceptance/archive remain pending.
