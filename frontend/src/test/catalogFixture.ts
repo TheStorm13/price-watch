@@ -1,8 +1,8 @@
-import { mockApi } from '../../api/mockApi'
-import type { TransferCard } from '../../types/domain'
+import { mockApi } from '../api/mockApi'
+import type { TransferCard } from '../types/domain'
 
 /** Populate only the isolated mock preview, using the same transfer contract as the UI. */
-export async function installPreviewFixture() {
+export async function installCatalogFixture() {
   const exported = await mockApi.exportCards()
   const at = new Date().toISOString()
   function sample(source: TransferCard, marketplace: string, article: string, title: string, tags: string[], price: string): TransferCard {

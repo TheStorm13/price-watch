@@ -1,12 +1,11 @@
 import { useId } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { previewMarketplaceOptions, readPreviewMarketplaces, readPreviewSelection } from './previewCatalog'
+import { marketplaceOptions, readMarketplaces, readSelection } from './catalogModel'
 
 function MultipleChoice({ name, allLabel, options, value, onChange, required = false }: {
   name: string; allLabel: string; options: { value: string; label: string }[]
@@ -50,19 +49,19 @@ function MultipleChoice({ name, allLabel, options, value, onChange, required = f
   </Field>
 }
 
-export function PreviewFilters({ tags }: { tags: string[] }) {
-  const [params, setParams] = useSearchParams()
+export function CatalogFilters({ tags, params, onChange }: {
+  tags: string[]; params: URLSearchParams; onChange: (params: URLSearchParams) => void
+}) {
   const id = useId()
-  const selectedTags = readPreviewSelection(params, 'tags')
+  const selectedTags = readSelection(params, 'tags')
   const availableTags = [...new Set([...tags, ...(selectedTags ?? [])])].sort((a, b) => a.localeCompare(b, 'ru'))
   function setValues(key: string, values: string[] | null) {
-    setParams((current) => {
-      const next = new URLSearchParams(current)
-      next.delete(key)
-      if (values !== null) for (const value of values.length ? values : ['']) next.append(key, value)
-      return next
-    }, { replace: true, flushSync: true })
+    const next = new URLSearchParams(params)
+    next.delete(key)
+    if (values !== null) for (const value of values.length ? values : ['']) next.append(key, value)
+    onChange(next)
   }
+
   const sort = params.get('sort')
   const deal = params.get('deals')
   return <FieldGroup className="gap-5">
@@ -77,7 +76,7 @@ export function PreviewFilters({ tags }: { tags: string[] }) {
         </SelectGroup></SelectContent>
       </Select>
     </Field>
-    <MultipleChoice name="Маркетплейсы" allLabel="Все маркетплейсы" options={previewMarketplaceOptions} value={readPreviewMarketplaces(params)} required onChange={(values) => setValues('markets', values)} />
+    <MultipleChoice name="Маркетплейсы" allLabel="Все маркетплейсы" options={marketplaceOptions} value={readMarketplaces(params)} required onChange={(values) => setValues('markets', values)} />
     <FieldSet className="gap-2">
       <FieldLegend variant="label">Наличие</FieldLegend>
       <Field orientation="horizontal">

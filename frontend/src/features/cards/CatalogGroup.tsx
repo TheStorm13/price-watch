@@ -12,8 +12,6 @@ import type { ProductGroup } from '../../types/domain'
 import { catalogSavings } from './catalogSavings'
 import { CatalogSavings } from './CatalogSavings'
 
-const productPlural = new Intl.PluralRules('ru')
-
 function groupSaving(group: ProductGroup) {
   const value = catalogSavings(group.representativeCard, group.savings)
   return value !== null ? <span className="deal-savings">{formatPrice(value)}</span> : 'Сейчас не выгодно'
@@ -32,18 +30,16 @@ interface Props {
   group: ProductGroup; view: 'list' | 'grid'; collapsed: boolean; blockEnd: boolean
   onToggle: (id: number) => void; onEdit: (group: ProductGroup) => void
   index: number; measure?: (element: HTMLTableRowElement | null) => void
-  matchingCardCount?: number
+  matchingCardCount: number
 }
 
 export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed, blockEnd, onToggle, onEdit, index, measure, matchingCardCount }: Props) {
   const card = group.representativeCard
-  const plural = productPlural.select(group.cardIds.length)
-  const productWord = plural === 'one' ? 'товар' : plural === 'few' ? 'товара' : 'товаров'
   const identity = <div className="product-group__identity">
     <Button variant="ghost" type="button" className="product-group__toggle" aria-expanded={!collapsed} onClick={() => onToggle(group.id)}>
       {collapsed ? <ChevronRight data-icon="inline-start" /> : <ChevronDown data-icon="inline-start" />}
       <span className="product-group__heading">
-        <span className="product-group__label"><Folders aria-hidden="true" />Группа · {matchingCardCount === undefined ? `${group.cardIds.length} ${productWord}` : `${matchingCardCount} из ${group.cardIds.length} товаров`}</span>
+        <span className="product-group__label"><Folders aria-hidden="true" />Группа · {matchingCardCount} из {group.cardIds.length} товаров</span>
         <strong>{group.name}</strong>
       </span>
     </Button>

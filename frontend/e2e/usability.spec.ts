@@ -6,7 +6,7 @@ async function catalog(page: Page) {
 }
 
 test('контекст каталога, скрытые артикулы и клавиатурная ссылка сохраняются', async ({ page }) => {
-  const url = '/cards?q=1604900984&marketplace=ozon&sort=price-desc&view=grid'
+  const url = '/cards?q=1604900984&markets=ozon&sort=price-desc&view=grid'
   await page.goto(url)
   const tile = page.locator('.cards-grid__item')
   await expect(tile).toHaveCount(1)
@@ -178,7 +178,10 @@ test('названия и зоны плиток выровнены, теги ц�
     }
     for (const tile of await tiles.all()) {
       expect((await tile.boundingBox())!.width).toBeLessThanOrEqual(280)
-      for (const price of await tile.locator('dd').all()) expect(await price.evaluate((e) => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(14)
+      for (const price of await tile.locator('dd').all()) {
+        const font = await price.evaluate((e) => parseFloat(getComputedStyle(e).fontSize))
+        expect(font).toBe((await price.innerText()) === 'Сейчас не выгодно' ? 13 : 14)
+      }
     }
     await expect(page.locator('.cards-grid__id')).toHaveCount(0)
   }

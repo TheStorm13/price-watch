@@ -14,5 +14,5 @@ test('WB: ссылка с размером добавляет товар без 
   await expect(page.locator('.cards-table')).not.toContainText('179224846:296499716')
   await page.getByRole('link', { name: 'WB товар', exact: true }).click()
   await expect(page.getByText('ID 179224846', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Обновить/ }).first()).toBeEnabled()
+  await expect(page.getByRole('main').getByRole('button', { name: 'Обновить эту карточку', exact: true })).toBeEnabled()
 })

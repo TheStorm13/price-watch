@@ -9,7 +9,7 @@ test('варианты имеют отдельные линии, главный 
   const card={marketplace:'wildberries',externalId:'179224846',title:'Куртка с вариантами',url:'https://www.wildberries.ru/catalog/179224846/detail.aspx?size=100',imageUrl:null,tags:['одежда'],dealsEnabled:true,createdAt:new Date(now-86400000*5).toISOString(),primaryExternalId:'179224846:100',
     variants:['S','M','L'].map((size,i)=>({externalId:`179224846:${100+i}`,title:`Размер ${size}`,productTitle:'Куртка с вариантами',url:`https://www.wildberries.ru/catalog/179224846/detail.aspx?size=${100+i}`,options:{Размер:size},updatedAt:new Date(now-60000).toISOString(),
       history:[0,1,2].map((day)=>({price: i===1 && day===1 ? null : `${1000+i*100-day*50}.00`,availability:i===1 && day===1 ? 'out_of_stock' : 'in_stock',observedAt:new Date(now-(3-day)*86400000).toISOString()}))}))}
-  await page.getByLabel('Дополнительные действия').click()
+  await page.getByLabel('Импорт / экспорт').click()
   await page.getByRole('menuitem',{name:'Импорт',exact:true}).click()
   const dialog=page.getByRole('dialog',{name:'Импорт карточек и истории'})
   await dialog.locator('input[type=file]').setInputFiles({name:'variants.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({version:3,cards:[card],groups:[]}))})

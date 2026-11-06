@@ -19,7 +19,7 @@ test('варианты показывают свои фото, а карточк
     })),
   }] }
   await page.goto('/cards')
-  await page.getByLabel('Дополнительные действия').click()
+  await page.getByLabel('Импорт / экспорт').click()
   await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await dialog.locator('input[type="file"]').setInputFiles({ name: 'variants.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(transfer)) })

@@ -1,15 +1,12 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCaption } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import type { Deal, ProductGroup, TrackedCardView } from '../../types/domain'
-import { columnLabels, type ColumnSortKey, type DisplayItem, type Sort } from './catalogItems'
+import { columnLabels, type DisplayItem } from './catalogItems'
 import { catalogRows, type CatalogRow } from './catalogRows'
 import { CatalogProduct } from './CatalogProduct'
 import { CatalogGroup } from './CatalogGroup'
 import { useVirtualRows } from './useVirtualRows'
-import { useSidebarDemo } from '../sidebar-demo/SidebarDemoSlot'
 
 type Measurements = ReturnType<typeof useVirtualRows>['virtualizer']['measurementsCache']
 function endsBlock(next:CatalogRow | undefined) {
@@ -19,12 +16,10 @@ const positions = new Map<string,{offset:number;width:number;measurements:Measur
 interface Props {
  view:'list'|'grid';items:DisplayItem[];groupedCards:Map<number,TrackedCardView[]>;deals:Map<number,Deal>
  selectedIds:Set<number>;onSelect:(id:number)=>void;collapsedGroups:number[]
- onToggleGroup:(id:number)=>void;onEditGroup:(group:ProductGroup)=>void;sort:Sort;onSort:(key:ColumnSortKey)=>void;returnTo:string
- sortable?:boolean
+ onToggleGroup:(id:number)=>void;onEditGroup:(group:ProductGroup)=>void;returnTo:string
 }
 export const CatalogResults = memo(function CatalogResults(props:Props) {
- const {view,items,groupedCards,deals,selectedIds,onSelect,collapsedGroups,onToggleGroup,onEditGroup,sort,onSort,returnTo,sortable=true}=props
- const sidebarDemo=useSidebarDemo()
+ const {view,items,groupedCards,deals,selectedIds,onSelect,collapsedGroups,onToggleGroup,onEditGroup,returnTo}=props
  const [columns,setColumns]=useState(1)
  const rows=useMemo(()=>catalogRows(items,groupedCards,collapsedGroups,view==='grid'?columns:1),[items,groupedCards,collapsedGroups,view,columns])
  const keys=useMemo(()=>rows.map(row=>row.key),[rows])
@@ -78,17 +73,13 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  return <div ref={root} onFocusCapture={windowed.focus} onPointerDownCapture={windowed.focus} onBlurCapture={windowed.blur} data-catalog-results>
    {view==='grid'?<ul className="virtual-grid" data-virtual-start aria-label="Отслеживаемые карточки маркетплейсов">
      {body}{tail>0?<li aria-hidden="true" style={{height:tail}} />:null}
-   </ul>:<Table className={cn('cards-table',sidebarDemo && 'w-[1060px] max-[1200px]:w-[980px]')} aria-rowcount={rows.length+1}>
+   </ul>:<Table className={'cards-table w-[1060px] max-[1200px]:w-[980px]'} aria-rowcount={rows.length+1}>
      <TableCaption className="sr-only">Отслеживаемые карточки маркетплейсов</TableCaption>
      <TableHeader><TableRow><TableHead className="cards-table__selection py-0"><span className="sr-only">Выбор</span></TableHead>
-       {(Object.entries(columnLabels) as [ColumnSortKey,string][]).map(([key,label])=>{
-         const direction=sort?.key===key?sort.direction:null
-         return <TableHead key={key} className={sidebarDemo && key !== 'title' ? 'text-center' : undefined} scope="col" aria-sort={direction==='asc'?'ascending':direction==='desc'?'descending':'none'}>
-           {sortable ? <Button variant="ghost" type="button" className={cn('cards-table__sort h-11.5 px-0',direction&&'is-active')} onClick={()=>onSort(key)}
-             title={direction==='asc'?'Сортировать по убыванию':direction==='desc'?'Сбросить сортировку':'Сортировать по возрастанию'}>
-             {key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}<span className="cards-table__sort-icon" aria-hidden="true">{direction==='desc'?<ArrowDown />:<ArrowUp />}</span>
-           </Button> : key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}</TableHead>
-       })}<TableHead className={sidebarDemo ? 'text-center' : undefined}><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
+       {(Object.entries(columnLabels) as [string,string][]).map(([key,label])=>{
+         return <TableHead key={key} className={key !== 'title' ? 'text-center' : undefined} scope="col">
+           {key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}</TableHead>
+       })}<TableHead className="text-center"><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
      <TableBody data-virtual-start>{body}{tail>0?<tr aria-hidden="true" className="virtual-spacer"><td colSpan={9} style={{height:tail}} /></tr>:null}</TableBody>
    </Table>}
  </div>

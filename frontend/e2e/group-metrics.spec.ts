@@ -1,3 +1,4 @@
+import { selectMany } from './catalog-controls'
 import { expect, test, type Page } from '@playwright/test'
 
 async function choose(page: Page, name: string, value: string) {
@@ -13,7 +14,7 @@ function fixtureCard(externalId: string, marketplace: string, prices: number[], 
     variants:[{externalId:marketplace==='wildberries'?`${externalId}:1`:externalId,url:null,history: prices.map((price, index) => ({ price: String(price), availability: 'in_stock', observedAt: `2026-10-0${index + 1}T12:00:00Z` })) }] }
 }
 async function importFixture(page: Page, document: object) {
-  await page.getByLabel('Дополнительные действия').click()
+  await page.getByLabel('Импорт / экспорт').click()
   await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await dialog.locator('input[type="file"]').setInputFiles({ name: 'fixture.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(document)) })
@@ -32,7 +33,7 @@ test('выгода и максимум видны после отключени�
   await expect(page).toHaveTitle('Price watch')
   await importFixture(page, { version: 3, groups: [], cards: [fixtureCard('901', 'ozon', [100, 60, 70], 'savings'),
     fixtureCard('903', 'ozon', [100, 110], 'zero'), fixtureCard('904', 'ozon', [100], 'no-baseline')] })
-  await page.getByLabel('Поиск карточек').fill('Fixture')
+  await page.getByLabel('Поиск по названию или артикулу').fill('Fixture')
   await expect(page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 903' }).locator('.catalog-savings__maximum')).toHaveText('0 ₽')
   await expect(page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 904' }).locator('.catalog-savings__maximum')).toHaveText('—')
   const row = page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 901' })
@@ -44,8 +45,7 @@ test('выгода и максимум видны после отключени�
   expect(sizes[1].font).toBeLessThan(sizes[0].font)
   expect(sizes[1].top).toBeGreaterThan(sizes[0].top)
   const heading = page.getByRole('columnheader', { name: /Выгода \/\s*Максимальная выгода/ })
-  await heading.getByRole('button').click()
-  await expect(heading).toHaveAttribute('aria-sort', 'ascending')
+  await expect(heading.getByRole('button')).toHaveCount(0)
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
   await expect(row).toContainText('Не участвует в выгодных')
@@ -53,7 +53,7 @@ test('выгода и максимум видны после отключени�
   await expect(row.locator('.catalog-savings__maximum')).toHaveText('20 ₽')
   await choose(page, 'Выгодность', 'Выгодные')
   await expect(row).toHaveCount(0)
-  await choose(page, 'Выгодность', 'Все')
+  await choose(page, 'Выгодность', 'Все предложения')
   await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   expect(errors).toEqual([])
@@ -72,15 +72,15 @@ test('границы папки, теги и одинаковые интерва
     fixtureCard('903', 'ozon', [60, 80], 'standalone'),
     fixtureCard('904', 'ozon', [60, 90], 'standalone')],
     groups: [{ name, cards: members }, { name: 'Fixture пустая группа', cards: [] }] })
-  await page.getByLabel('Поиск карточек').fill('Fixture')
+  await page.getByLabel('Поиск по названию или артикулу').fill('Fixture')
+  await choose(page, 'Сортировка', 'Сначала дешёвые')
   const group = page.locator('.cards-table__group').filter({ hasText: name })
   const toggle = group.locator('.product-group__toggle')
-  await expect(group).toContainText('Группа · 2 товара')
+  await expect(group).toContainText('Группа · 2 из 2 товаров')
   await expect(group.locator('time')).toHaveCount(0)
   await expect(group.locator('.tag')).toHaveText(representative.tags)
   const empty = page.locator('.cards-table__group').filter({ hasText: 'Fixture пустая группа' })
-  await expect(empty).toHaveAttribute('data-block-end', 'true')
-  await expect(empty).toContainText('Группа · 0 товаров')
+  await expect(empty).toHaveCount(0)
   for (const width of [1536, 1024]) {
     await page.setViewportSize({ width, height: 1000 })
     await expect(group.locator('td').first()).toHaveCSS('border-top-width', '8px')
@@ -121,14 +121,14 @@ test('границы папки, теги и одинаковые интерва
   expect(errors).toEqual([])
 })
 
-test('группа фильтруется по представителю и чередуется с карточками в обоих видах', async ({ page }) => {
+test('группа фильтруется по участникам и чередуется с карточками в обоих видах', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
   await page.setViewportSize({ width: 1536, height: 1000 })
   await page.goto('/cards')
   await expect(page).toHaveTitle('Price watch')
-  await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Карточки товаров', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 3, cards: [fixtureCard('901', 'ozon', [60, 70], 'cheap'),
     fixtureCard('902', 'wildberries', [40, 110], 'other'), fixtureCard('903', 'ozon', [60, 80], 'standalone'),
@@ -136,8 +136,8 @@ test('группа фильтруется по представителю и ч�
     { name: 'Fixture A', tags: ['own'], cards: members },
     { name: 'Fixture B', cards: [{ marketplace: 'wildberries', externalId: '904' }] },
   ] })
-  await page.getByLabel('Поиск карточек').fill('Fixture')
-  await choose(page, 'Сортировка', 'Сначала дешевле')
+  await page.getByLabel('Поиск по названию или артикулу').fill('Fixture')
+  await choose(page, 'Сортировка', 'Сначала дешёвые')
   const topRows = page.locator('.cards-table__group, .cards-table__product:not(.cards-table__nested)')
   await expect(topRows).toHaveCount(3)
   await expect(topRows.nth(0)).toContainText('Fixture A')
@@ -146,30 +146,32 @@ test('группа фильтруется по представителю и ч�
   const a = page.locator('.cards-table__group').filter({ hasText: 'Fixture A' })
   await expect(a.locator('td').nth(4)).toHaveText('60 ₽') // not the other member's historical 40
   await expect(a.locator('td').nth(5)).toHaveText('60 ₽')
-  await choose(page, 'Маркетплейс', 'Wildberries')
-  await expect(page.locator('.cards-table__group')).toHaveCount(1)
-  await expect(page.locator('.cards-table__group')).toContainText('Fixture B')
-  await choose(page, 'Маркетплейс', 'Все маркетплейсы')
-  await page.getByRole('combobox', { name: 'Тег', exact: true }).click()
-  await expect(page.getByRole('option', { name: 'other', exact: true })).toHaveCount(0)
-  await expect(page.getByRole('option', { name: 'own', exact: true })).toHaveCount(0)
+  await selectMany(page, 'Маркетплейсы', ['Wildberries'])
+  await expect(page.locator('.cards-table__group')).toHaveCount(2)
+  await expect(a).toContainText('1 из 2 товаров')
+  await expect(a.locator('td').nth(3)).toHaveText('110 ₽')
+  await selectMany(page, 'Маркетплейсы', null)
+  await page.getByRole('button', { name: 'Теги', exact: true }).click()
+  await expect(page.getByRole('checkbox', { name: 'other', exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'own', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await page.getByLabel('Поиск карточек').fill('Fixture товар 902')
-  await expect(page.getByText('По выбранным условиям ничего не найдено')).toBeVisible()
-  await page.getByLabel('Поиск карточек').fill('Fixture')
-  await choose(page, 'Тег', 'cheap')
+  await page.getByLabel('Поиск по названию или артикулу').fill('Fixture товар 902')
+  await expect(a).toContainText('1 из 2 товаров')
+  await expect(page.locator('.cards-table__nested')).toHaveCount(1)
+  await page.getByLabel('Поиск по названию или артикулу').fill('Fixture')
+  await selectMany(page, 'Теги', ['cheap'])
   await expect(page.locator('.cards-table__group')).toHaveCount(1)
-  await expect(page.locator('.cards-table__nested')).toHaveCount(2) // complete membership
-  await choose(page, 'Тег', 'Все теги')
+  await expect(page.locator('.cards-table__nested')).toHaveCount(1)
+  await selectMany(page, 'Теги', null)
   await page.getByRole('radio', { name: 'Сетка' }).click()
   const grid = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' })
   await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item')).toHaveCount(3)
   await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item').nth(0)).toContainText('Fixture A')
   await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item').nth(1)).toContainText('Fixture товар 903')
   await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item').nth(2)).toContainText('Fixture B')
-  await choose(page, 'Сортировка', 'Сначала дороже')
-  await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item').nth(0)).toContainText('Fixture B')
-  await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item').nth(2)).toContainText('Fixture A')
+  await choose(page, 'Сортировка', 'Сначала дорогие')
+  await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item').nth(0)).toContainText('Fixture A')
+  await expect(grid.locator(':scope > .cards-grid__group, :scope > .virtual-grid-row:not([data-group-member]) .cards-grid__item').nth(2)).toContainText('Fixture товар 903')
   for (const width of [1024, 1536]) {
     await page.setViewportSize({ width, height: 1000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
@@ -177,37 +179,41 @@ test('группа фильтруется по представителю и ч�
   expect(errors).toEqual([])
 })
 
-test('выгодный участник даёт приоритет без подмены полей и фильтра выгодности группы', async ({ page }) => {
+test('фильтр выгодности меняет участника и представитель зависит от сортировки', async ({ page }) => {
   await page.goto('/cards')
   await expect(page).toHaveTitle('Price watch')
-  await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Карточки товаров', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 3,
     cards: [fixtureCard('901', 'ozon', [60, 70], 'cheap'), fixtureCard('902', 'wildberries', [200, 110], 'other'),
       fixtureCard('903', 'ozon', [10, 20], 'standalone')], groups: [{ name: 'Fixture A', cards: members }] })
-  await page.getByLabel('Поиск карточек').fill('Fixture')
-  await choose(page, 'Сортировка', 'Сначала дешевле')
+  await page.getByLabel('Поиск по названию или артикулу').fill('Fixture')
+  await choose(page, 'Сортировка', 'Сначала дешёвые')
   const rows = page.locator('.cards-table__group, .cards-table__product:not(.cards-table__nested)')
-  await expect(rows.nth(0)).toContainText('Fixture A') // priority beats the cheaper standalone
-  await expect(rows.nth(0)).toContainText('Есть выгодный товар внутри')
-  await expect(rows.nth(0).locator('td').nth(6).locator('.catalog-savings > span').first()).toHaveText('Сейчас не выгодно')
+  await expect(rows.nth(0)).toContainText('Fixture товар 903')
+  await expect(rows.nth(1)).toContainText('Fixture A')
+  await expect(rows.nth(1)).toContainText('Есть выгодный товар внутри')
+  await expect(rows.nth(1).locator('td').nth(6).locator('.catalog-savings > span').first()).toHaveText('Сейчас не выгодно')
   await choose(page, 'Выгодность', 'Выгодные')
-  await expect(page.getByRole('combobox', { name: 'Выгодность' })).toHaveText('Выгодные')
-  await expect(page.getByText('По выбранным условиям ничего не найдено')).toBeVisible()
-  await choose(page, 'Выгодность', 'Не выгодные')
+  await expect(rows).toHaveCount(1)
+  await expect(rows.first()).toContainText('1 из 2 товаров')
+  await expect(rows.first().locator('td').nth(3)).toHaveText('110 ₽')
+  await choose(page, 'Выгодность', 'Невыгодные')
   await expect(rows).toHaveCount(2)
-  await expect(rows.nth(0)).toContainText('Fixture A')
+  await expect(rows.nth(1)).toContainText('1 из 2 товаров')
+
 })
 
 test('изменение участия и удаление представителя сразу обновляют поля группы', async ({ page }) => {
   await page.goto('/cards')
   await expect(page).toHaveTitle('Price watch')
-  await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Карточки товаров', exact: true })).toBeVisible()
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await importFixture(page, { version: 3,
     cards: [fixtureCard('901', 'ozon', [100, 70], 'cheap'), fixtureCard('902', 'wildberries', [200, 110], 'other')],
     groups: [{ name: 'Fixture A', cards: members }] })
-  await page.getByLabel('Поиск карточек').fill('Fixture')
+  await page.getByLabel('Поиск по названию или артикулу').fill('Fixture')
+  await choose(page, 'Сортировка', 'Сначала дешёвые')
   const group = page.locator('.cards-table__group')
   await expect(group.locator('td').nth(6).locator('.deal-savings')).toHaveText('30 ₽')
   const representative = page.locator('.cards-table__nested').filter({ hasText: 'Fixture товар 901' })
@@ -231,7 +237,7 @@ test('десятичные цены сортируются точно и ото�
   page.on('pageerror', (error) => errors.push(error.message))
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
   await page.goto('/cards')
-  await expect(page.getByRole('heading', { name: 'Карточки', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Карточки товаров', exact: true })).toBeVisible()
   const createdAt = new Date().toISOString()
   await importFixture(page, { version: 3, groups: [], cards: [
     { marketplace: 'ozon', externalId: '9901', title: 'Decimal A', url: null, dealsEnabled: true, createdAt,
@@ -239,17 +245,17 @@ test('десятичные цены сортируются точно и ото�
     { marketplace: 'wildberries', externalId: '9902', title: 'Decimal B', url: null, dealsEnabled: true, createdAt,
       primaryExternalId:'9902:1',variants:[{externalId:'9902:1',url:null,history: [{ price: '10.00', availability: 'in_stock', observedAt: createdAt }]}] },
   ] })
-  await page.getByLabel('Поиск карточек').fill('Decimal')
-  await choose(page, 'Сортировка', 'Сначала дешевле')
+  await page.getByLabel('Поиск по названию или артикулу').fill('Decimal')
+  await choose(page, 'Сортировка', 'Сначала дешёвые')
   const rows = page.locator('.cards-table__product:not(.cards-table__nested)')
   await expect(rows).toHaveCount(2)
   await expect(rows.nth(0)).toContainText('Decimal A')
   await expect(rows.nth(0)).toContainText('10 ₽')
   await expect(rows.nth(1)).toContainText('Decimal B')
   await expect(rows.nth(1)).toContainText('10 ₽')
-  await choose(page, 'Сортировка', 'Сначала дороже')
+  await choose(page, 'Сортировка', 'Сначала дорогие')
   await expect(rows.nth(0)).toContainText('Decimal B')
-  await choose(page, 'Сортировка', 'Сначала дешевле')
+  await choose(page, 'Сортировка', 'Сначала дешёвые')
   await page.getByRole('radio', { name: 'Сетка' }).click()
   const tiles = page.getByRole('list', { name: 'Отслеживаемые карточки маркетплейсов' }).locator('.cards-grid__item')
   await expect(tiles.nth(0)).toContainText('Decimal A')

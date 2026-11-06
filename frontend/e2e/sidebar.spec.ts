@@ -18,7 +18,7 @@ async function selectMany(page: import('@playwright/test').Page, control: string
 test('группы фильтруют участников, меняют представителя и считают товары независимо от сворачивания и галочек', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto('/cards?sidebar=2')
+  await page.goto('/cards?fixture=catalog')
   const main = page.getByRole('main')
   await expect(main).toContainText('Выбрано 7 из 7 товаров')
   await page.getByRole('button', { name: 'Создать группу', exact: true }).click()
@@ -68,7 +68,7 @@ test('группы фильтруют участников, меняют пре�
 })
 
 test('название не интерактивно, возврат из деталей сохраняет весь контекст фильтрованной сетки', async ({ page }) => {
-  await page.goto('/cards?sidebar=2')
+  await page.goto('/cards?fixture=catalog')
   const main = page.getByRole('main')
   const sidebar = page.getByRole('complementary', { name: 'Боковая панель', exact: true })
   await expect(sidebar.getByText('Price watch', { exact: true })).toBeVisible()
@@ -85,8 +85,8 @@ test('название не интерактивно, возврат из дет
   await main.getByRole('link', { name: 'Наушники Sony WH-1000XM5', exact: true }).click()
   await expect(page).toHaveURL(/\/cards\/\d+$/)
   const detailsUrl = page.url()
-  await sidebar.getByRole('button', { name: 'Настройки', exact: true }).click()
-  await page.getByRole('button', { name: 'Готово', exact: true }).click()
+  await sidebar.getByRole('button', { name: 'Создать группу', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Создать группу', exact: true }).getByRole('button', { name: 'Отмена', exact: true }).click()
   await expect(page).toHaveURL(detailsUrl)
   await page.getByRole('link', { name: /К карточкам/ }).click()
   await expect(page).toHaveURL(catalogUrl)
@@ -100,10 +100,10 @@ test('название не интерактивно, возврат из дет
 test('поиск над результатами работает по артикулу; группы, сетка и контекст сохраняются', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto('/cards?sidebar=2')
+  await page.goto('/cards?fixture=catalog')
   const sidebar = page.getByRole('complementary', { name: 'Боковая панель', exact: true })
   const main = page.getByRole('main')
-  await expect(main.getByRole('heading', { name: 'Карточки', exact: true })).toHaveCount(0)
+  await expect(main.getByRole('heading', { name: 'Карточки товаров', exact: true })).toHaveCount(0)
   await expect(main.getByRole('heading', { name: 'Карточки товаров', exact: true })).toBeVisible()
   await expect(page.getByText('Текущие цены и история отслеживаемых карточек', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('radio', { name: 'Вариант 1', exact: true })).toHaveCount(0)
@@ -129,7 +129,7 @@ test('поиск над результатами работает по арти�
 })
 
 test('несколько площадок и OR-теги работают вместе и сохраняются после перезагрузки', async ({ page }) => {
-  await page.goto('/cards?sidebar=2')
+  await page.goto('/cards?fixture=catalog')
   const main = page.getByRole('main')
   await expect(main).toContainText('7 из 7')
   await selectMany(page, 'Маркетплейсы', ['Wildberries', 'AliExpress'])
@@ -153,7 +153,7 @@ test('несколько площадок и OR-теги работают вме
 })
 
 test('кнопки общего выбора не позволяют снять последний маркетплейс; пустые теги показывают товары без тегов', async ({ page }) => {
-  await page.goto('/cards?sidebar=2')
+  await page.goto('/cards?fixture=catalog')
   const main = page.getByRole('main')
   const marketsButton = page.getByRole('button', { name: 'Маркетплейсы', exact: true })
   const tagsButton = page.getByRole('button', { name: 'Теги', exact: true })
@@ -198,7 +198,7 @@ test('кнопки общего выбора не позволяют снять 
 })
 
 test('наличие исключает неизвестные данные; цена сортируется без приоритета выгодных', async ({ page }) => {
-  await page.goto('/cards?sidebar=2')
+  await page.goto('/cards?fixture=catalog')
   const main = page.getByRole('main')
   await expect(main).toContainText('7 из 7')
   await expect(page.getByRole('combobox', { name: 'Сортировка', exact: true })).toContainText('Сначала выгодные')
@@ -226,7 +226,7 @@ test('наличие исключает неизвестные данные; ц�
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }]) {
   test(`прогресс закреплён снизу и проверка завершается при ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport)
-    await page.goto('/cards?sidebar=2')
+    await page.goto('/cards?fixture=catalog')
     const sidebar = page.getByRole('complementary', { name: 'Боковая панель', exact: true })
     await sidebar.getByRole('button', { name: 'Обновить все цены', exact: true }).click()
     const panel = sidebar.getByRole('complementary', { name: 'Состояние обновления цен', exact: true })
@@ -244,7 +244,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768
     }
 
     await expectAnchored()
-    await sidebar.locator('.sidebar-demo__scroll').evaluate((element) => { element.scrollTop = element.scrollHeight })
+    await sidebar.locator('.catalog-sidebar__scroll').evaluate((element) => { element.scrollTop = element.scrollHeight })
     await expectAnchored()
     await expect(panel.getByRole('button', { name: 'Проверка пройдена', exact: true })).toBeVisible({ timeout: 12000 })
     await expectAnchored()
@@ -255,18 +255,22 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768
   })
 }
 
-test('общие действия доступны в деталях товара, desktop-действия явно симулируются', async ({ page }) => {
-  await page.goto('/cards?sidebar=2')
+test('действия из деталей сохраняют страницу, изменение фильтра открывает каталог', async ({ page }) => {
+  await page.goto('/cards?fixture=catalog&view=grid&sort=price-desc')
   await page.getByRole('link', { name: 'Смартфон Samsung Galaxy S24', exact: true }).click()
+  await expect(page).toHaveURL(/\/cards\/1$/)
   const sidebar = page.getByRole('complementary', { name: 'Боковая панель', exact: true })
-  await expect(sidebar).toBeVisible()
   await sidebar.getByRole('button', { name: 'Добавить карточку', exact: true }).click()
-  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Добавить карточку' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await sidebar.getByRole('button', { name: 'Открыть Chrome', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Браузер магазина' })).toContainText('В демо браузер не запускается')
-  await page.getByRole('button', { name: 'Готово', exact: true }).click()
-  await sidebar.getByRole('button', { name: 'Настройки', exact: true }).click()
-  await page.getByRole('checkbox', { name: 'Запускать после входа в систему', exact: true }).check()
-  await expect(page.getByRole('dialog')).toContainText('Закрытие окна оставляет сбор работающим в фоне')
+  await expect(page).toHaveURL(/\/cards\/1$/)
+  await expect(sidebar.getByRole('button', { name: 'Добавить карточку', exact: true })).toBeFocused()
+  await expect(sidebar.getByRole('button', { name: 'Открыть Chrome', exact: true })).toHaveCount(0)
+  await expect(sidebar.getByRole('button', { name: 'Настройки', exact: true })).toHaveCount(0)
+  await sidebar.getByRole('checkbox', { name: 'Только в наличии', exact: true }).check()
+  await expect(page).toHaveURL(/\/cards\?/)
+  await expect(page).toHaveURL(/view=grid/)
+  await expect(page).toHaveURL(/sort=price-desc/)
+  await expect(page).toHaveURL(/stock=1/)
+  await expect(page.getByRole('heading', { name: 'Карточки товаров' })).toBeVisible()
 })

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:demo": "VITE_E2E_TEST_MODE=true VITE_SIDEBAR_DEMO=true vite --host 127.0.0.1 --port 5176 --strictPort",
+    "dev:demo": "VITE_E2E_TEST_MODE=true vite --host 127.0.0.1 --port 5176 --strictPort",
     "dev:desktop": "VITE_DESKTOP_MODE=true vite --host 127.0.0.1 --port 1420 --strictPort",
     "dev:e2e": "VITE_E2E_TEST_MODE=true vite --host 127.0.0.1 --port 5175 --strictPort",
     "build:desktop": "tsc -b && VITE_DESKTOP_MODE=true vite build",

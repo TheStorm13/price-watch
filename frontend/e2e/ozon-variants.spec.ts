@@ -19,7 +19,7 @@ test('Ozon: разные артикулы образуют одну карточ
   }] }
   await page.goto('/cards')
   await expect(page).toHaveTitle('Price watch')
-  await page.getByLabel('Дополнительные действия').click()
+  await page.getByLabel('Импорт / экспорт').click()
   await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
   await dialog.locator('input[type="file"]').setInputFiles({ name: 'ozon.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(document)) })
