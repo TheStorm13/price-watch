@@ -65,6 +65,13 @@ export function CatalogFilters({ tags, params, onChange }: {
   const sort = params.get('sort')
   const deal = params.get('deals')
   return <FieldGroup className="gap-5">
+    <FieldSet className="gap-2">
+      <FieldLegend variant="label">Наличие</FieldLegend>
+      <Field orientation="horizontal">
+        <Checkbox id={`${id}-stock`} checked={params.get('stock') === '1'} onCheckedChange={(checked) => setValues('stock', checked === true ? ['1'] : null)} />
+        <FieldLabel htmlFor={`${id}-stock`}>Только в наличии</FieldLabel>
+      </Field>
+    </FieldSet>
     <Field>
       <FieldLabel htmlFor={`${id}-sort`}>Сортировка</FieldLabel>
       <Select value={sort === 'price-asc' || sort === 'price-desc' ? sort : 'default'} onValueChange={(value) => setValues('sort', value === 'default' ? null : [value])}>
@@ -76,15 +83,6 @@ export function CatalogFilters({ tags, params, onChange }: {
         </SelectGroup></SelectContent>
       </Select>
     </Field>
-    <MultipleChoice name="Маркетплейсы" allLabel="Все маркетплейсы" options={marketplaceOptions} value={readMarketplaces(params)} required onChange={(values) => setValues('markets', values)} />
-    <FieldSet className="gap-2">
-      <FieldLegend variant="label">Наличие</FieldLegend>
-      <Field orientation="horizontal">
-        <Checkbox id={`${id}-stock`} checked={params.get('stock') === '1'} onCheckedChange={(checked) => setValues('stock', checked === true ? ['1'] : null)} />
-        <FieldLabel htmlFor={`${id}-stock`}>Только в наличии</FieldLabel>
-      </Field>
-    </FieldSet>
-    <MultipleChoice name="Теги" allLabel="Все теги" options={availableTags.map((tag) => ({ value: tag, label: tag }))} value={selectedTags} onChange={(values) => setValues('tags', values)} />
     <Field>
       <FieldLabel htmlFor={`${id}-deals`}>Выгодность</FieldLabel>
       <Select value={deal === 'deals' || deal === 'non_deals' ? deal : 'all'} onValueChange={(value) => setValues('deals', value === 'all' ? null : [value])}>
@@ -96,5 +94,7 @@ export function CatalogFilters({ tags, params, onChange }: {
         </SelectGroup></SelectContent>
       </Select>
     </Field>
+    <MultipleChoice name="Маркетплейсы" allLabel="Все маркетплейсы" options={marketplaceOptions} value={readMarketplaces(params)} required onChange={(values) => setValues('markets', values)} />
+    <MultipleChoice name="Теги" allLabel="Все теги" options={availableTags.map((tag) => ({ value: tag, label: tag }))} value={selectedTags} onChange={(values) => setValues('tags', values)} />
   </FieldGroup>
 }

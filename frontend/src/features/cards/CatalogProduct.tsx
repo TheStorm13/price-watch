@@ -68,11 +68,11 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
       <TableCell className="cards-table__selection py-1"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
         checked={selected} onClick={(event) => event.stopPropagation()} onCheckedChange={() => onToggle(card.id)} /></TableCell>
       <TableCell className="py-1"><div className="card-identity"><ProductImage card={card} /><span><Link to={`/cards/${card.id}`} state={cardLocationState} className="card-identity__link"><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong></Link>{Object.keys(card.options ?? {}).length ? <span className="text-sm text-muted-foreground">{Object.values(card.options ?? {}).join(' · ')}</span> : null}<TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
-      <TableCell className="py-1"><MarketplaceMark marketplace={card.marketplace} /></TableCell>
+      <TableCell className="py-1"><CatalogSavings savings={catalogSavings(card, savings)} average={card.averagePrice} minimum={card.minimumPrice} /></TableCell>
       <TableCell className="price-cell py-1">{formatPrice(card.currentPrice)}</TableCell>
       <TableCell className="price-cell py-1">{formatPrice(card.minimumPrice)}</TableCell>
       <TableCell className="price-cell py-1">{formatPrice(card.averagePrice)}</TableCell>
-      <TableCell className="py-1"><CatalogSavings savings={catalogSavings(card, savings)} average={card.averagePrice} minimum={card.minimumPrice} /></TableCell>
+      <TableCell className="py-1"><MarketplaceMark marketplace={card.marketplace} /></TableCell>
       <TableCell className="py-1"><AvailabilityStatus value={card.currentAvailability} /></TableCell>
       <TableCell className="py-1">{actions(card)}</TableCell>
     </TableRow>

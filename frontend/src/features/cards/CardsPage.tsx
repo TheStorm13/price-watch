@@ -73,11 +73,11 @@ export function CardsPage() {
       </InputGroup>
       <div className="cards-view-bar justify-start">
         <div className="flex items-center gap-2">
-          {hasFilters ? <Button variant="ghost" size="sm" onClick={resetFilters}><RotateCcw data-icon="inline-start" />Сбросить</Button> : null}
           <ToggleGroup type="single" value={view} onValueChange={(value) => { if (value) setParam('view', value, 'list') }} variant="outline" spacing={0} aria-label="Вид карточек">
             <ToggleGroupItem value="list" aria-label="Список" title="Список"><List aria-hidden="true" /></ToggleGroupItem>
             <ToggleGroupItem value="grid" aria-label="Сетка" title="Сетка"><LayoutGrid aria-hidden="true" /></ToggleGroupItem>
           </ToggleGroup>
+          {hasFilters ? <Button variant="ghost" size="sm" onClick={resetFilters}><RotateCcw data-icon="inline-start" />Сбросить</Button> : null}
         </div>
       </div>
 

@@ -29,3 +29,10 @@ No persisted data or technical identifiers change. Remove demo toggle/env, porta
 ## Verification
 
 Typecheck, unit tests, relevant mock E2E (including large catalog/navigation, collection, import/export), production Tauri build; inspect list/grid and dialogs at 1024/1440. Use disposable mock data only. Review final diff and commit before user evaluation.
+
+## User review adjustments
+
+- Swap the marketplace and savings columns in headers, product rows and group rows, preserving each column width.
+- Left-align the settings trigger with the other sidebar tools.
+- Restore collection progress to the bottom right of the window: 490 px wide, 28 px right/bottom insets, maximum height calc(100dvh - 56px). Remove sidebar-specific progress overrides.
+- Order sidebar filters as stock, sorting, deal status, marketplaces, tags; show reset to the right of the view switcher when filters are active.

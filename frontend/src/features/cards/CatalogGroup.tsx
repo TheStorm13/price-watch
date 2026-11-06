@@ -65,11 +65,11 @@ export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed,
     data-block-start data-block-end={blockEnd || undefined} className="cards-table__group">
     <TableCell className="cards-table__selection py-0" />
     <TableCell className="py-0">{identity}</TableCell>
-    <TableCell className="py-0">{card ? <MarketplaceMark marketplace={card.marketplace} /> : '—'}</TableCell>
+    <TableCell className="py-0"><CatalogSavings savings={catalogSavings(card, group.savings)} average={card?.averagePrice} minimum={group.minimumPrice} /></TableCell>
     <TableCell className="price-cell py-0">{formatPrice(group.currentPrice)}</TableCell>
     <TableCell className="price-cell py-0">{formatPrice(group.minimumPrice)}</TableCell>
     <TableCell className="price-cell py-0">{formatPrice(card?.averagePrice)}</TableCell>
-    <TableCell className="py-0"><CatalogSavings savings={catalogSavings(card, group.savings)} average={card?.averagePrice} minimum={group.minimumPrice} /></TableCell>
+    <TableCell className="py-0">{card ? <MarketplaceMark marketplace={card.marketplace} /> : '—'}</TableCell>
     <TableCell className="py-0"><AvailabilityStatus value={card?.currentAvailability ?? null} /></TableCell>
     <TableCell className="py-0">{edit}</TableCell>
   </TableRow>

@@ -741,7 +741,7 @@ test('фильтр предложений показывает цену, мин�
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toContainText('72 990 ₽')
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })).toContainText('77 879 ₽')
   await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ }).locator('td').nth(4)).toContainText('72 990 ₽')
-  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ }).locator('td').nth(6)).toContainText('4 889 ₽')
+  await expect(page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ }).locator('td').nth(2)).toContainText('4 889 ₽')
   await page.getByRole('radio', { name: 'Сетка' }).click()
   await expect(page.locator('.cards-grid__item')).toHaveCount(1)
   await expect(page.locator('.cards-grid__item')).toContainText(['77 879 ₽'])

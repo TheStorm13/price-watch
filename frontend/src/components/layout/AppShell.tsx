@@ -71,7 +71,6 @@ export function AppShell() {
             <ImportExportControls label="Импорт / экспорт" onStatus={(message, kind) => setTransferStatus({ message, kind })} />
             {isDesktopMode ? <BackgroundSettings /> : <span className="catalog-sidebar__mode">{apiModeLabel}</span>}
           </div>
-          <div className="catalog-sidebar__progress"><ActiveCollectionPanel /></div>
         </aside>
         <div className="catalog-sidebar__workspace">
           <main className="main-content">
@@ -81,6 +80,7 @@ export function AppShell() {
             <Outlet />
           </main>
         </div>
+        <ActiveCollectionPanel />
         <AddCardDrawer side="left" open={adding} onClose={() => setAdding(false)} />
         {creatingGroup ? <GroupDialog group={null} cards={catalog.data?.cards ?? []} onClose={() => setCreatingGroup(false)} /> : null}
       </div>

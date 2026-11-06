@@ -48,3 +48,18 @@ The tool server restarted after the final E2E run completed the first 54 scenari
 - Visual Playwright QA: list/grid, 1440x900 and 1024x768, uniform widths and group fonts, no page/console errors or framework overlay; screenshots inspected.
 
 Preview server is running at http://127.0.0.1:5176/cards (normal mock catalog) or /cards?fixture=catalog (expanded test fixture). Both use the permanent UI. No live API/database/worker or native WebView/Chrome/OS registration was launched. Scope is frontend only, no migration. Preserve the unrelated `docs/workflow-runs/whole-ruble-display.md` working-tree edit. Commit all task changes before evaluation; do not push, sync or archive pending user acceptance.
+
+## User review adjustments: columns, settings, progress and filter order
+
+The user requested swapping Marketplace and Savings columns, aligning Settings with the sidebar tools, restoring the collection panel to its former bottom-right location and dimensions, then ordering filters as stock → sorting → deal status → marketplaces → tags and moving Reset to the right of the view switcher. These are authorized localized UI revisions; implementation acceptance remains pending.
+
+Changed table headers, product/group cells and corresponding widths together. Settings now explicitly uses `justify-start`, overriding the Button default utility that previously beat the sidebar CSS. Removed the sidebar progress wrapper and all of its sizing overrides; the existing fixed collection panel once again uses 490 px width, 28 px right/bottom insets and viewport-limited height. Reset remains conditional and preserves the selected view. No service, persistence or API changes.
+
+Verification:
+- Typecheck and all 95 unit tests passed; typecheck also passed after the final filter/reset rearrangement.
+- Initial relevant E2E selection: 17/19 passed; two group tests still used the former savings column index. Updated these and the equivalent app assertion. Targeted rerun of both group scenarios plus the app offers scenario: 3/3 passed.
+- Browser plugin not available; used installed Playwright with mock data. Visual QA at 1440×900 and 1024×900 verifies header/cell order, filter order, conditional Reset placement and view preservation, Settings/Chrome icon alignment (both x=23), settings popup, and panel width=490 with 28 px right/bottom insets. No page errors. Screenshots `/tmp/sidebar-review-1440.png` and `/tmp/sidebar-review-1024.png` inspected. Desktop tools exposed only through temporary Playwright route interception, Tauri invoke mocked; no production/demo mock branch added.
+- Repowise live diff analysis found no introduced structural findings. Its 12-day-old index still names historical dependency changes and skips CSS; reviewed current diff and CSS manually rather than treating that test-selection inference as current evidence.
+- Strict OpenSpec validation and whitespace checks passed. Specification/checklist updated; no sync or archive.
+
+Final verification after the filter/reset adjustment: desktop release build passed (40.31 s Rust compile). Sidebar E2E rerun: 8/9 passed; the bulk-tags scenario timed out while an animated popup detached during click. The same scenario passed unchanged in an isolated rerun (1/1, 8.2 s); direct Playwright reproduction at 1280×720 also passed. This remains an intermittent browser timing observation, not a reproduced functional defect. Across the selections, all 20 relevant distinct E2E scenarios passed (19 sidebar/layout/group scenarios plus the app offers scenario), with the reruns described above. No live desktop services or user data were used. Final changes are ready for user evaluation; no push, spec sync or archive.

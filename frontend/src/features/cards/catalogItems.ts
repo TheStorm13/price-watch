@@ -2,7 +2,7 @@ import { compareMoney, type DecimalString } from '../../utils/money'
 import type { Deal, TrackedCardView, ProductGroup } from '../../types/domain'
 import { catalogSavings } from './catalogSavings'
 
-export const columnLabels = { title:'Карточка',marketplace:'Маркетплейс',price:'Цена',minimum:'Минимальная',average:'Средняя',savings:'Выгода / Максимальная выгода',availability:'Наличие' }
+export const columnLabels = { title:'Карточка',savings:'Выгода / Максимальная выгода',price:'Цена',minimum:'Минимальная',average:'Средняя',marketplace:'Маркетплейс',availability:'Наличие' }
 export type DisplayItem = {
   kind: 'card'; id: number; title: string; card: TrackedCardView; savings: DecimalString | null; priority: boolean
 } | {

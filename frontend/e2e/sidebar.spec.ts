@@ -224,22 +224,21 @@ test('наличие исключает неизвестные данные; ц�
 })
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }]) {
-  test(`прогресс закреплён снизу и проверка завершается при ${viewport.width}px`, async ({ page }) => {
+  test(`прогресс закреплён справа снизу и проверка завершается при ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await page.goto('/cards?fixture=catalog')
     const sidebar = page.getByRole('complementary', { name: 'Боковая панель', exact: true })
     await sidebar.getByRole('button', { name: 'Обновить все цены', exact: true }).click()
-    const panel = sidebar.getByRole('complementary', { name: 'Состояние обновления цен', exact: true })
+    const panel = page.getByRole('complementary', { name: 'Состояние обновления цен', exact: true })
     await expect(panel).toBeVisible()
     await expect(sidebar.getByRole('button', { name: 'Обновить все цены', exact: true })).toBeDisabled()
 
     async function expectAnchored() {
-      const parent = await sidebar.boundingBox()
       const box = await panel.boundingBox()
       expect(box).not.toBeNull()
-      expect(box!.x).toBe(parent!.x)
-      expect(Math.abs(box!.width - parent!.width)).toBeLessThanOrEqual(1)
-      expect(Math.abs(box!.y + box!.height - viewport.height)).toBeLessThanOrEqual(1)
+      expect(box!.width).toBe(490)
+      expect(Math.abs(box!.x + box!.width - (viewport.width - 28))).toBeLessThanOrEqual(1)
+      expect(Math.abs(box!.y + box!.height - (viewport.height - 28))).toBeLessThanOrEqual(1)
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
     }
 

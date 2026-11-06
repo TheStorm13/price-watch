@@ -49,7 +49,7 @@ export function BackgroundSettings() {
 
   return (
     <Popover>
-      <PopoverTrigger asChild><Button variant="ghost" size="sm" aria-label="Настройки" title="Настройки фонового сбора"><Settings2 data-icon="inline-start" aria-hidden="true" />Настройки</Button></PopoverTrigger>
+      <PopoverTrigger asChild><Button className="justify-start" variant="ghost" size="sm" aria-label="Настройки" title="Настройки фонового сбора"><Settings2 data-icon="inline-start" aria-hidden="true" />Настройки</Button></PopoverTrigger>
       <PopoverContent align="start" side="right" className="flex w-[340px] flex-col gap-3">
         <strong>Фоновый сбор цен</strong>
         <p>Автоматический полный сбор — каждые 6 часов, пока приложение работает.</p>

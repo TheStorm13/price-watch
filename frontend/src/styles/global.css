@@ -47,11 +47,11 @@
   .catalog-sidebar .cards-table th.cards-table__selection, .catalog-sidebar .cards-table td.cards-table__selection { width: 32px; padding-inline: 8px; }
   .catalog-sidebar .cards-table__selection [role=checkbox] { margin-inline: auto; }
   .catalog-sidebar .cards-table th:nth-child(2) { width: 300px; }
-  .catalog-sidebar .cards-table th:nth-child(3) { width: 100px; }
+  .catalog-sidebar .cards-table th:nth-child(3) { width: 156px; }
   .catalog-sidebar .cards-table th:nth-child(4) { width: 88px; }
   .catalog-sidebar .cards-table th:nth-child(5) { width: 96px; }
   .catalog-sidebar .cards-table th:nth-child(6) { width: 88px; }
-  .catalog-sidebar .cards-table th:nth-child(7) { width: 156px; }
+  .catalog-sidebar .cards-table th:nth-child(7) { width: 100px; }
   .catalog-sidebar .cards-table tr:not(.virtual-spacer) > :nth-last-child(2) { width: 144px; right: 56px; }
   .catalog-sidebar .cards-table th:last-child, .catalog-sidebar .cards-table td:last-child { width: 56px; padding-inline: 8px; }
   .catalog-sidebar .cards-table th:nth-child(n+3), .catalog-sidebar .cards-table td:nth-child(n+3) { text-align: center; }
@@ -67,12 +67,6 @@
   .catalog-sidebar__tools { display: flex; flex-direction: column; flex-shrink: 0; gap: 2px; padding: 12px 16px; border-top: 1px solid var(--border); }
   .catalog-sidebar__tools button { width: 100%; justify-content: flex-start; }
   .catalog-sidebar__mode { padding: 10px 8px 0; color: var(--text-muted); font-size: 11px; }
-  .catalog-sidebar__progress { flex-shrink: 0; width: 100%; }
-  .catalog-sidebar__progress:empty { display: none; }
-  .catalog-sidebar__progress .collection-panel { position: static; width: 100%; max-width: none; max-height: 38dvh; margin: 0; border-radius: 0; box-shadow: none; border: 0; border-top: 1px solid var(--border); }
-  .catalog-sidebar__progress .collection-panel [data-slot=card-header] { align-items: flex-start; }
-  .catalog-sidebar__progress .collection-panel__challenge-actions { flex-wrap: wrap; }
-  .catalog-sidebar__progress .collection-panel__progress-row { gap: 10px; font-size: 12px; }
   .catalog-sidebar__workspace { min-width: 0; }
   .catalog-sidebar .page { min-height: 100vh; padding: 28px 28px 48px; }
   .catalog-sidebar .main-content { min-height: 100vh; }
