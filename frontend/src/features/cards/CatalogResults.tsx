@@ -29,8 +29,8 @@ function CatalogColumnHeaders({ sort: value, onSort }: Pick<Props, 'sort' | 'onS
    const Icon = active ? sort.direction === 'asc' ? ArrowUp : ArrowDown : ArrowUpDown
    return <TableHead key={key} scope="col" className={key !== 'title' ? 'text-center' : undefined}
      aria-sort={active ? sort.direction === 'asc' ? 'ascending' : 'descending' : undefined}>
-     <Button variant="ghost" size="sm" className="h-auto max-w-full flex-col gap-0 px-0 py-1 whitespace-normal" aria-label={label} onClick={() => onSort(`${key}-${direction}`)}>
-       {key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}<Icon aria-hidden="true" />
+     <Button variant="ghost" size="sm" className="h-auto max-w-full gap-1 px-0 py-1 text-xs whitespace-normal" aria-label={label} onClick={() => onSort(`${key}-${direction}`)}>
+       <Icon aria-hidden="true" className="size-3" /><span className={cn('min-w-0', key === 'savings' && 'catalog-savings-heading')}>{key === 'savings' ? <>Выгода /<br />Максимальная выгода</> : key === 'minimum' ? 'Мини\u00adмальная' : key === 'marketplace' ? 'Маркет\u00adплейс' : label}</span>
      </Button>
    </TableHead>
  })}</>

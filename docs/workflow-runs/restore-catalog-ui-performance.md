@@ -82,3 +82,9 @@ All 189 per-action budgets passed across nine datasets; paired after command exi
 | list | 233.0 / 280.1 | 49.3 / 50.5 |
 
 All tracked tasks verified. Staged source diff reviewed; no unrelated edits, dependency changes, backend/API/worker/CLI changes, migrations or persisted-data operations. Strict OpenSpec and staged whitespace validation passed. Commit the verified implementation before evaluation. Await explicit user acceptance; only then sync specs/archive and commit closure. Native WebView p95 remains unmeasured; browser release timing and desktop build are separate evidence. No push/merge.
+
+## User evaluation revision: sort arrows on the left
+
+User requested arrows to the left of each column name. Updated CatalogColumnHeaders to a horizontal icon/label layout, with compact 12 px icons and labels. Added optional Russian soft-hyphen breaks for the two long single-word labels so arrows and text remain separate in the existing compact widths. Accessible button names, aria-sort and sorting behavior are preserved. This is an explicitly authorized local presentation revision; acceptance of the overall performance change remains pending.
+
+Validation: typecheck, all 103 unit tests and the existing seven-column ascending/descending/sidebar/URL E2E passed. Playwright mock visual QA at 1440x900 and 1024x900 verified icons geometrically left of every label and no page errors; screenshots /tmp/price-watch-sort-left-{1440,1024}.png, 1440 screenshot inspected. Browser plugin unavailable; used installed Playwright. Final header-wrap checks passed: typecheck, 103/103 unit tests, 1/1 E2E covering every column in both directions, and desktop release build (24.92 s Rust compile). No performance model or persisted data changes; no rerun of the full benchmark matrix for this presentation-only adjustment.
