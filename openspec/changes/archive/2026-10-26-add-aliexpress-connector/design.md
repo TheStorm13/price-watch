@@ -2,7 +2,7 @@
 
 ## Context
 
-См. proposal.md, ADR 0008 и docs/workflow-runs/add-aliexpress-connector/research.md.
+См. proposal.md, ADR 0008 и docs/tasks/add-aliexpress-connector/research.md.
 CodeGraph показал текущий исходник: ConnectorRegistry/get_product принимает
 только external_id; CollectionService открывает сессии всех площадок через
 AsyncExitStack и собирает до пяти карточек. Chrome/CDP lifecycle сейчас в

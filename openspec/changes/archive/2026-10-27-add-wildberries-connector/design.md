@@ -8,7 +8,7 @@
 WB входит в PENDING_CONNECTOR_MARKETPLACES, а UI разрешает обновление только
 Ozon/Ali в CardsPage, CardDetailsPage и связанных действиях.
 
-Live evidence — docs/workflow-runs/add-wildberries-connector/research.md.
+Live evidence — docs/tasks/add-wildberries-connector/research.md.
 Прямые HTTP не работают. JSON с профилем и заголовками витрины работает.
 Runtime главной `wb.xnm` нормализует per-size price; обычный fetch без полного
 контекста возвращает 403. После явной готовности условий кошелька нормализатор

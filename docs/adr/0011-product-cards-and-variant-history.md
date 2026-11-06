@@ -2,7 +2,7 @@
 
 - Статус: Accepted (design) — архитектура и план согласованы пользователем 2026-11-02; реализация ожидает отдельной приёмки.
 - Дата: 2026-11-02.
-- План: [product-variants-plan](../workflow-runs/product-variants-plan.md).
+- План: [product-variants-plan](../tasks/product-variants-plan.md).
 - Уточняет решения об отслеживании одного варианта в ADR 0008 и 0009; исходные ADR не переписываются.
 
 ## Контекст

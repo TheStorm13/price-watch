@@ -8,8 +8,11 @@
 купонная → акционная → обычная. [Ввод AliExpress и переход старых карточек](docs/guide/ALIEXPRESS.md).
 
 Подробности: [спецификация](docs/SPECIFICATION.md) и
-[план реализации](docs/IMPLEMENTATION_PLAN.md). Найденные задачи для следующих
+[план реализации](docs/tasks/initial-implementation/plan.md). Найденные задачи для следующих
 версий записаны в [backlog](docs/BACKLOG.md).
+
+Рабочий процесс разработки: [vibe-flow](docs/guide/WORKFLOW.md).
+[Планы и отчёты задач](docs/tasks/README.md) сохранены вместе с вложениями.
 
 Руководство по текущему коду, запуску и известным ограничениям находится в
 [docs/guide](docs/guide/README.md).

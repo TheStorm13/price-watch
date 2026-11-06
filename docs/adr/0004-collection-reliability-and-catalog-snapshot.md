@@ -52,7 +52,7 @@ API/mock/UI. История цен сохраняется; полные исто
 
 ## Проверка принятого решения
 
-[Отчёт](../workflow-runs/harden-collection-reliability/verification.md) содержит
+[Отчёт](../tasks/harden-collection-reliability/verification.md) содержит
 результаты тестов, live smoke и baseline/after. Все согласованные пороги пройдены;
 HTTP p95 быстрее на 23–45%, SQL 9→3. Скорость фиксации результатов на M/L
 снизилась на 18.4%/16.8%, в пределах согласованного порога 20%.

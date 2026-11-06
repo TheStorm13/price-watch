@@ -47,7 +47,7 @@ The tool server restarted after the final E2E run completed the first 54 scenari
 - `openspec validate adopt-catalog-sidebar --strict` and staged whitespace checks: passed.
 - Visual Playwright QA: list/grid, 1440x900 and 1024x768, uniform widths and group fonts, no page/console errors or framework overlay; screenshots inspected.
 
-Preview server is running at http://127.0.0.1:5176/cards (normal mock catalog) or /cards?fixture=catalog (expanded test fixture). Both use the permanent UI. No live API/database/worker or native WebView/Chrome/OS registration was launched. Scope is frontend only, no migration. Preserve the unrelated `docs/workflow-runs/whole-ruble-display.md` working-tree edit. Commit all task changes before evaluation; do not push, sync or archive pending user acceptance.
+Preview server is running at http://127.0.0.1:5176/cards (normal mock catalog) or /cards?fixture=catalog (expanded test fixture). Both use the permanent UI. No live API/database/worker or native WebView/Chrome/OS registration was launched. Scope is frontend only, no migration. Preserve the unrelated `docs/tasks/whole-ruble-display.md` working-tree edit. Commit all task changes before evaluation; do not push, sync or archive pending user acceptance.
 
 ## User review adjustments: columns, settings, progress and filter order
 

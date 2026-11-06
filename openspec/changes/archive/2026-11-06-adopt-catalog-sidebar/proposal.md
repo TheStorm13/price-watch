@@ -6,7 +6,7 @@ The approved sidebar demo must become the actual desktop interface. The current 
 
 ## What Changes
 
-- Replace the header with the approved permanent 260 px sidebar and compact catalog UI documented in `docs/guide/SIDEBAR_IMPLEMENTATION_CHECKLIST.md`.
+- Replace the header with the approved permanent 260 px sidebar and compact catalog UI documented in `docs/tasks/adopt-catalog-sidebar/implementation-checklist.md`.
 - Move global add, refresh, create-group, import/export, Chrome and real background settings into the shell; keep one collection panel at the sidebar bottom.
 - **BREAKING**: replace single marketplace/tag filters and update sorting with multiple choices, stock checkbox and three primary sorts and clickable column sorting. Remove demo gates and old UI branches.
 - Filter individual group members, project their sorted representative and count individual products.

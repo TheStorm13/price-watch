@@ -84,7 +84,7 @@ runtime WB может измениться. Авторизованный lifecyc
 Transfer v3 сохраняет варианты и независимые истории; товарный JSON остаётся 2.0.
 
 Решение: [ADR 0011](../adr/0011-product-cards-and-variant-history.md).
-Проверки: [отчёт](../workflow-runs/add-wildberries-connector/verification.md).
+Проверки: [отчёт](../tasks/add-wildberries-connector/verification.md).
 
 
 При добавлении первоначальное обновление всех вариантов ставится в очередь

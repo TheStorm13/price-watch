@@ -13,9 +13,28 @@ Chrome collection, CLI, and database-free single-product JSON mode.
   verify critical findings in current source, especially Tauri `invoke` paths.
 - Keep changes focused and preserve required product behavior unless the approved
   plan changes it. Do not invent contracts or add needless dependencies.
-- Use `$vibe-flow` for substantial features, cross-component work, and architecture
-  changes. Small isolated fixes can use a direct workflow without OpenSpec. Keep
-  human review before implementation and before completion.
+- Use the selected `vibe-flow` for implementation tasks. New tasks use the
+  `vibe-flow` OpenSpec schema and one `spec.md`; small fixes use a short spec
+  with the same two review gates. A direct path is not an exemption from the
+  spec or review gates in this project. Existing changes keep their recorded schema.
+- Commit verified task changes before presenting work for acceptance, including
+  checked corrections requested during evaluation. The selected skill defines
+  the acceptance and completion lifecycle.
+
+## Backlog and project documentation
+
+- `docs/BACKLOG.md` is the project's independent list of future work, outside
+  the flow's spec/archive lifecycle. Read entries relevant to the current task;
+  an entry is not authorization to implement it. After acceptance, update only
+  the entry for the completed task. Add new ideas when the user requests it.
+  Preserve unrelated user edits and keep them out of task commits.
+- Existing plans, reports and their attachments live in `docs/tasks/`. Preserve
+  their contents and agreed decisions; do not rewrite them into the new format
+  or re-audit them as part of workflow setup. New task context and tracking live
+  in `openspec/changes/<name>/spec.md`, then its accepted archive.
+- Keep durable guides, architecture, ADRs and behavior specs in their existing
+  locations. Update affected documents with implementation before acceptance;
+  the single-file schema does not automatically sync permanent specifications.
 
 ## Architecture and compatibility
 
@@ -48,4 +67,14 @@ Chrome collection, CLI, and database-free single-product JSON mode.
   compatibility or migration concerns, and remaining risks. Never claim a check
   passed without running it.
 
-@RTK.md
+<!-- agent-kit:workflow:start -->
+<!-- flow: vibe-flow -->
+## Workflow
+
+Use $vibe-flow for substantial implementation tasks. Small isolated fixes may use
+its direct path. An explicitly selected installed workflow governs the current
+task. Do not combine lifecycle rules from different workflows.
+
+CodeGraph, Repowise, Context7 and RTK are the baseline for this project.
+Keep project-specific checks, architecture and data constraints outside this block.
+<!-- agent-kit:workflow:end -->

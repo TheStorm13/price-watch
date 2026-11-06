@@ -110,7 +110,7 @@ Mock E2E `frontend/e2e/ozon-variants.spec.ts` проверяет UI импорт
 ```
 
 Результаты ARCH-03, сравнение с исходным HTTP-каталогом и baseline/after:
-[отчёт проверки](../workflow-runs/separate-business-rules-from-postgres/verification.md).
+[отчёт проверки](../tasks/separate-business-rules-from-postgres/verification.md).
 
 `tests.test_run_reliability`, `tests.test_reliability_migration` и
 `tests.test_group_metrics_integration` тоже требуют отдельной disposable
@@ -133,25 +133,25 @@ dbus-run-session -- xvfb-run -a -s '-screen 0 1440x1000x24' \
 Нужны system Python с gi/Atspi и ImageMagick. Скрипт создаёт собственные
 временные XDG/БД/профили, нажимает повтор через настоящий WebView и перезапускает
 только свой дочерний API. Он не проверяет текущий Ozon или реальную CAPTCHA.
-Результаты принятого REL-блока: [отчёт и снимки](../workflow-runs/harden-collection-reliability/verification.md).
+Результаты принятого REL-блока: [отчёт и снимки](../tasks/harden-collection-reliability/verification.md).
 
 Для смешанного native smoke с синтетическими Ozon/Ali карточками задайте
 `PRICE_SMOKE_ALI=1` перед той же командой. `tests.test_aliexpress_migration`
 и `tests.test_aliexpress_integration` требуют disposable TEST_DATABASE_URL;
 создают и удаляют только свои приватные схемы. Полная проверка Ali, native и
-отдельный live результат: [отчёт](../workflow-runs/add-aliexpress-connector/verification.md).
+отдельный live результат: [отчёт](../tasks/add-aliexpress-connector/verification.md).
 
 Для WB PostgreSQL-проверок используйте `tests.test_wildberries_migration` и
 `tests.test_wildberries_integration` с disposable TEST_DATABASE_URL. Native
 smoke только WB: `PRICE_SMOKE_WB=1 PRICE_SMOKE_ONLY_WB=1`; смешанный Ozon/Ali/WB:
 `PRICE_SMOKE_WB=1 PRICE_SMOKE_ALI=1` перед той же командой desktop smoke.
-[Отчёт WB](../workflow-runs/add-wildberries-connector/verification.md).
+[Отчёт WB](../tasks/add-wildberries-connector/verification.md).
 
 
 ## Проверка производительности
 
 Результаты PERF-02/03/04/05, окружение, ограничения и сырые before/after:
-[отчёт](../workflow-runs/improve-ui-and-data-performance/verification.md).
+[отчёт](../tasks/improve-ui-and-data-performance/verification.md).
 Release Chromium p95 и функциональный native smoke приведены отдельно.
 
 Для UI соберите отдельный mock release с `VITE_E2E_TEST_MODE=true`, поднимите

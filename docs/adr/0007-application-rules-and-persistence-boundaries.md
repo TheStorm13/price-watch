@@ -38,7 +38,7 @@ ADR 0004 закрепляет lease, атомарный результат це�
 ## Принятие
 
 План и реализация приняты отдельными сообщениями «Да» 2026-10-26 по vibe-flow.
-[Проверки](../workflow-runs/separate-business-rules-from-postgres/verification.md):
+[Проверки](../tasks/separate-business-rules-from-postgres/verification.md):
 149 Python, 60 frontend unit и 39 E2E тестов; 8 Rust тестов passed, 3 ignored;
 desktop build и изолированный native smoke passed. На одном снимке тестовой БД
 HTTP-каталог исходной и новой версий идентичен. Все согласованные пороги

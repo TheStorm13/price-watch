@@ -63,5 +63,5 @@ SKU пропускаются без изменений и не блокирую�
 Тесты и probe не обращаются к пользовательской БД; миграция готовится и
 проверяется на disposable БД.
 
-Evidence: [исследование](../../../../docs/workflow-runs/add-aliexpress-connector/research.md).
+Evidence: [исследование](../../../../docs/tasks/add-aliexpress-connector/research.md).
 План и ADR одобрены пользователем 2026-10-26: «Приступай к реализации».

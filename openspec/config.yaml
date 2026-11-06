@@ -1,4 +1,4 @@
-schema: spec-driven
+schema: vibe-flow
 
 context: |
   price-watch: React/Tauri desktop UI, FastAPI, Python worker,
@@ -7,6 +7,14 @@ context: |
   Preserve existing behavior unless the approved change says otherwise.
 
 rules:
+  task:
+    - Define observable acceptance criteria, affected consumers and a focused verification plan.
+    - Record required interfaces, invariants, edge cases and data effects precisely.
+    - Compare alternatives and propose an ADR for significant architecture changes.
+    - Cover queued desktop/API/worker, direct CLI and database-free JSON mode when collection changes.
+    - Use only a separate disposable TEST_DATABASE_URL for PostgreSQL integration tests.
+    - Keep docs/BACKLOG.md outside task tracking; preserve unrelated edits and follow AGENTS.md.
+    - Update affected permanent documentation before acceptance; commit verified changes before evaluation.
   proposal:
     - State the goal, affected components, acceptance criteria, and compatibility risks.
   design:
