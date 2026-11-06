@@ -1,3 +1,7 @@
+## Purpose
+
+Defines the permanent application sidebar, unified catalog controls, product counts and access to global desktop actions.
+
 ## ADDED Requirements
 
 ### Requirement: Permanent application sidebar

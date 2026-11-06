@@ -12,7 +12,7 @@ Typecheck, unit tests, mock E2E, desktop production build and list/grid visual c
 
 ## State
 
-Implemented and verified; committing for user evaluation. Acceptance, spec sync and archive pending.
+Accepted and closed on 2026-11-06. Specs synchronized; change archived at `openspec/changes/archive/2026-11-06-adopt-catalog-sidebar/`. Verification history follows.
 
 ## Implemented changes
 
@@ -71,3 +71,9 @@ User requested restoring clicks on column headings and changing the matching cou
 Verification: all 96 unit tests passed; final targeted mock E2E selection passed 2/2 (all seven headings in both directions, URL/reload/sidebar synchronization, stock and deal filters, price ordering). Typecheck and strict OpenSpec validation passed. Browser plugin not available; used installed Playwright. Inspected `/tmp/price-watch-column-sorting.png`, moved arrows below labels to prevent overlap in compact columns; final screenshot inspected, no page errors. Repowise live-diff complexity findings reviewed: extracted column-header rendering and sort-value projection to keep added branching out of the main results component and comparator. Its historical index remains 12 days stale; dependency/test-selection hints refer to prior commits, with no dependency changes in this task. No live API, database or native runtime tested. Planning artifacts updated to current user instruction; no sync/archive pending acceptance.
 
 Final desktop release build passed (TypeScript/Vite/Rust; 1m07s Rust compile). Post-extraction Repowise review of sorting/results/parser reports only a medium complexity advisory for the small column-header renderer; no remaining high/critical new findings in those files. Reviewed its finite column/direction branches against the passing browser scenario. Changes ready for user evaluation.
+
+## Acceptance and closure — 2026-11-06
+
+User accepted the implementation with «Окей эту задачу закрывай» after commit `db343c2`. Synchronized catalog-sidebar (new capability with authored Purpose) and group-card-metrics (all six updated requirements, retaining established Purpose and scenario names). Corrected the remaining obsolete savings-sort scenario to match the accepted clickable headers. Verified every delta requirement against main specs before moving the change to `openspec/changes/archive/2026-11-06-adopt-catalog-sidebar/`.
+
+`openspec validate --specs`: 17/17 passed, with description-length advisories in collection-run-execution (pre-existing) and group-card-metrics. Strict change validation passed before archive. Application code is unchanged since the accepted implementation and its recorded checks; no repeat runtime tests needed for this documentation-only closure. No push or merge. Task complete.
