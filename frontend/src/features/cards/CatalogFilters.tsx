@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { columnLabels, parseColumnSort } from './catalogItems'
 import { marketplaceOptions, readMarketplaces, readSelection } from './catalogModel'
 
 function MultipleChoice({ name, allLabel, options, value, onChange, required = false }: {
@@ -63,6 +64,8 @@ export function CatalogFilters({ tags, params, onChange }: {
   }
 
   const sort = params.get('sort')
+  const columnSort = parseColumnSort(sort)
+  const customSort = columnSort && columnSort.key !== 'price' ? sort : null
   const deal = params.get('deals')
   return <FieldGroup className="gap-5">
     <FieldSet className="gap-2">
@@ -74,9 +77,10 @@ export function CatalogFilters({ tags, params, onChange }: {
     </FieldSet>
     <Field>
       <FieldLabel htmlFor={`${id}-sort`}>Сортировка</FieldLabel>
-      <Select value={sort === 'price-asc' || sort === 'price-desc' ? sort : 'default'} onValueChange={(value) => setValues('sort', value === 'default' ? null : [value])}>
+      <Select value={customSort ?? (sort === 'price-asc' || sort === 'price-desc' ? sort! : 'default')} onValueChange={(value) => setValues('sort', value === 'default' ? null : [value])}>
         <SelectTrigger id={`${id}-sort`} className="w-full"><SelectValue /></SelectTrigger>
         <SelectContent><SelectGroup>
+          {customSort && columnSort ? <SelectItem value={customSort}>{columnLabels[columnSort.key]} · {columnSort.direction === 'asc' ? 'по возрастанию' : 'по убыванию'}</SelectItem> : null}
           <SelectItem value="default">Сначала выгодные</SelectItem>
           <SelectItem value="price-asc">Сначала дешёвые</SelectItem>
           <SelectItem value="price-desc">Сначала дорогие</SelectItem>

@@ -12,7 +12,7 @@ Make the approved UI permanent and retain real functionality. No service, data s
 
 - Replace AppShell markup directly, keeping DesktopRuntimeContext, CollectionProvider and existing invoke commands. Move one add drawer and global group creation dialog to the shell. Keep bulk creation and group editing in CardsPage; use original full group membership when editing.
 - Render catalog filter controls in the shell without portals. On details they display the saved catalog context; changing a filter opens its catalog results. Closing settings/add/group overlays leaves the detail route intact. Search remains exclusively over catalog results.
-- Move preview filter/model code into cards features; use one memoized catalog model with deferred search. Keep exact-decimal comparison and null prices last. Remove obsolete single-filter and column-sort implementation/tests.
+- Move preview filter/model code into cards features; use one memoized catalog model with deferred search. Keep exact-decimal comparison and null prices last. Remove obsolete single-filter implementation/tests.
 - Rename demo CSS to permanent sidebar classes and remove replaced header/filter rules. Keep compact fixed table widths, sticky trailing cells, virtualization and grid typography.
 - Keep sample data in an explicit test fixture only, enabled by an E2E-only test parameter. No sidebar UI gate or fixture in desktop runtime.
 
@@ -24,7 +24,7 @@ Existing mock E2E tests encode old labels, sorting, empty-group visibility and g
 
 ## Migration Plan
 
-No persisted data or technical identifiers change. Remove demo toggle/env, portal and fake dialogs after replacing consumers. Catalog URL uses markets/tags/stock and default/price sorts only; old query keys are unsupported.
+No persisted data or technical identifiers change. Remove demo toggle/env, portal and fake dialogs after replacing consumers. Catalog URL uses markets/tags/stock and default or column sorts; old query keys are unsupported.
 
 ## Verification
 
@@ -36,3 +36,5 @@ Typecheck, unit tests, relevant mock E2E (including large catalog/navigation, co
 - Left-align the settings trigger with the other sidebar tools.
 - Restore collection progress to the bottom right of the window: 490 px wide, 28 px right/bottom insets, maximum height calc(100dvh - 56px). Remove sidebar-specific progress overrides.
 - Order sidebar filters as stock, sorting, deal status, marketplaces, tags; show reset to the right of the view switcher when filters are active.
+
+- Restore clickable column headers with ascending/descending indicators and sidebar/URL synchronization. Count label is Показано n из m товаров. Explicit sorts override deal priority; missing money stays last and unknown stock equals out of stock.

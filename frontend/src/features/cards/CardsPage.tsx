@@ -65,7 +65,7 @@ export function CardsPage() {
 
       <div className="mb-5 flex items-center gap-4">
         <h1>Карточки товаров</h1>
-        <span className="whitespace-nowrap text-sm text-muted-foreground">Выбрано {matchingCount} из {totalCount} товаров</span>
+        <span className="whitespace-nowrap text-sm text-muted-foreground">Показано {matchingCount} из {totalCount} товаров</span>
       </div>
       <InputGroup className="catalog-search">
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
@@ -89,7 +89,7 @@ export function CardsPage() {
           <Empty><EmptyHeader><EmptyTitle>Не удалось загрузить каталог</EmptyTitle><EmptyDescription>Проверьте соединение с API и повторите.</EmptyDescription></EmptyHeader><EmptyContent><Button onClick={() => { void catalogQuery.refetch() }}>Повторить</Button></EmptyContent></Empty>
         ) : orderedItems.length === 0 ? (
           <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</EmptyTitle><EmptyDescription>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</EmptyDescription></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : openAdd}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></EmptyContent></Empty>
-        ) : <CatalogResults view={view} items={orderedItems} groupedCards={groupedCards} deals={deals}
+        ) : <CatalogResults sort={params.get('sort')} onSort={(value) => setParam('sort', value)} view={view} items={orderedItems} groupedCards={groupedCards} deals={deals}
           selectedIds={selection.selectedIds} onSelect={selection.toggle} collapsedGroups={collapsedGroups}
           onToggleGroup={toggleGroup} onEditGroup={(group) => setEditingGroup(catalogQuery.data?.groups.find((original) => original.id === group.id) ?? group)} returnTo={returnTo} />
         }

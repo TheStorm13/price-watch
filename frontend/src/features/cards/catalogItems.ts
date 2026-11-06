@@ -3,6 +3,15 @@ import type { Deal, TrackedCardView, ProductGroup } from '../../types/domain'
 import { catalogSavings } from './catalogSavings'
 
 export const columnLabels = { title:'Карточка',savings:'Выгода / Максимальная выгода',price:'Цена',minimum:'Минимальная',average:'Средняя',marketplace:'Маркетплейс',availability:'Наличие' }
+export type ColumnSortKey = keyof typeof columnLabels
+export function parseColumnSort(value: string | null): { key: ColumnSortKey; direction: 'asc' | 'desc' } | null {
+  const parts = (value ?? '').split('-')
+  if (parts.length !== 2) return null
+  const [key, direction] = parts
+  if (!Object.hasOwn(columnLabels, key)) return null
+  if (direction !== 'asc' && direction !== 'desc') return null
+  return { key: key as ColumnSortKey, direction }
+}
 export type DisplayItem = {
   kind: 'card'; id: number; title: string; card: TrackedCardView; savings: DecimalString | null; priority: boolean
 } | {

@@ -16,7 +16,11 @@ The application SHALL use the approved 260 px left sidebar on the normal catalog
 - **THEN** the existing desktop commands run and errors remain visible without replacing the current route
 
 ### Requirement: Unified catalog filters
-The sidebar SHALL offer default deals-first or ascending/descending price sorting, multiple marketplaces (at least one), an only-in-stock checkbox, OR tags and all/deals/non-deals selection. Defaults SHALL include all marketplaces and products; no selected tags SHALL mean untagged products. Missing stock SHALL be excluded by only-in-stock. Search SHALL match names/external articles; internal ID and column/update sorting SHALL be excluded.
+The sidebar SHALL offer default deals-first or ascending/descending price sorting, multiple marketplaces (at least one), an only-in-stock checkbox, OR tags and all/deals/non-deals selection. Defaults SHALL include all marketplaces and products; no selected tags SHALL mean untagged products. Missing stock SHALL be excluded by only-in-stock. Search SHALL match names/external articles; internal ID and update sorting SHALL be excluded.
+
+#### Scenario: Column sorting
+- **WHEN** the user clicks a data column header
+- **THEN** that column toggles ascending/descending sorting with a visible direction and synchronized sidebar/URL; explicit sorts have no deal priority and missing money stays last
 
 #### Scenario: Filter layout
 - **WHEN** the user views the catalog
@@ -42,7 +46,7 @@ Checkbox popovers SHALL match their trigger width, contain individual options wi
 - **THEN** the catalog opens with the saved context plus the changed filter
 
 ### Requirement: Catalog heading and counts
-The heading SHALL be Карточки товаров with one adjacent Выбрано n из m товаров count of matching and total individual cards, including members once. Bulk checkboxes and collapsed groups SHALL NOT affect it. View controls SHALL be left aligned. The compact equal-width list and tile typography SHALL follow the approved implementation checklist.
+The heading SHALL be Карточки товаров with one adjacent Показано n из m товаров count of matching and total individual cards, including members once. Bulk checkboxes and collapsed groups SHALL NOT affect it. View controls SHALL be left aligned. The compact equal-width list and tile typography SHALL follow the approved implementation checklist.
 
 #### Scenario: Collapse and selection
 - **WHEN** the user collapses a group or selects cards for bulk operations

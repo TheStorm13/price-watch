@@ -1,5 +1,5 @@
 import { compareMoney } from '../../utils/money'
-import { cardItem, compareItems, type DisplayItem } from './catalogItems'
+import { cardItem, compareItems, parseColumnSort, type ColumnSortKey, type DisplayItem } from './catalogItems'
 import type { CatalogSnapshot, Deal, TrackedCardView } from '../../types/domain'
 
 export const marketplaceOptions = [
@@ -18,11 +18,26 @@ export function readMarketplaces(params: URLSearchParams): string[] | null {
   return valid?.length && valid.length < marketplaceOptions.length ? valid : null
 }
 
+function columnValue(item: DisplayItem, key: ColumnSortKey): string | null {
+  if (key === 'title') return item.title
+  if (key === 'savings') return item.savings
+  if (key === 'price') return item.card?.currentPrice ?? null
+  if (key === 'minimum') return item.card?.minimumPrice ?? null
+  if (key === 'average') return item.card?.averagePrice ?? null
+  if (key === 'marketplace') return marketplaceOptions.find(option => option.value === item.card?.marketplace)?.label ?? null
+  return item.card?.currentAvailability === 'in_stock' ? '0' : '1'
+}
+
 export function compareCatalogItems(left: DisplayItem, right: DisplayItem, sort: string | null): number {
-  if (sort !== 'price-asc' && sort !== 'price-desc') return compareItems(left, right)
-  const a = left.card?.currentPrice, b = right.card?.currentPrice
-  if (a == null || b == null) return a == null ? (b == null ? left.kind.localeCompare(right.kind) || left.id - right.id : 1) : -1
-  return compareMoney(a, b) * (sort === 'price-asc' ? 1 : -1) || left.kind.localeCompare(right.kind) || left.id - right.id
+  const parsed = parseColumnSort(sort)
+  if (!parsed) return compareItems(left, right)
+  const { key, direction } = parsed
+  const a = columnValue(left, key), b = columnValue(right, key)
+  const tie = left.kind.localeCompare(right.kind) || left.id - right.id
+  if (a === null || b === null) return a === null ? (b === null ? tie : 1) : -1
+  const order = ['price', 'minimum', 'average', 'savings'].includes(key)
+    ? compareMoney(a, b) : a.localeCompare(b, 'ru', { numeric: true, sensitivity: 'base' })
+  return order * (direction === 'asc' ? 1 : -1) || tie
 }
 
 export function selectCatalogItems(items: DisplayItem[], params: URLSearchParams): DisplayItem[] {

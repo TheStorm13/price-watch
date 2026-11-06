@@ -2,7 +2,9 @@ import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCaption } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import type { Deal, ProductGroup, TrackedCardView } from '../../types/domain'
-import { columnLabels, type DisplayItem } from './catalogItems'
+import { Button } from '@/components/ui/button'
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
+import { columnLabels, parseColumnSort, type ColumnSortKey, type DisplayItem } from './catalogItems'
 import { catalogRows, type CatalogRow } from './catalogRows'
 import { CatalogProduct } from './CatalogProduct'
 import { CatalogGroup } from './CatalogGroup'
@@ -14,9 +16,24 @@ function endsBlock(next:CatalogRow | undefined) {
 }
 const positions = new Map<string,{offset:number;width:number;measurements:Measurements}>()
 interface Props {
+ sort:string|null;onSort:(value:string)=>void
  view:'list'|'grid';items:DisplayItem[];groupedCards:Map<number,TrackedCardView[]>;deals:Map<number,Deal>
  selectedIds:Set<number>;onSelect:(id:number)=>void;collapsedGroups:number[]
  onToggleGroup:(id:number)=>void;onEditGroup:(group:ProductGroup)=>void;returnTo:string
+}
+function CatalogColumnHeaders({ sort: value, onSort }: Pick<Props, 'sort' | 'onSort'>) {
+ const sort = parseColumnSort(value)
+ return <>{(Object.entries(columnLabels) as [ColumnSortKey, string][]).map(([key, label]) => {
+   const active = sort?.key === key
+   const direction = active && sort.direction === 'asc' ? 'desc' : 'asc'
+   const Icon = active ? sort.direction === 'asc' ? ArrowUp : ArrowDown : ArrowUpDown
+   return <TableHead key={key} scope="col" className={key !== 'title' ? 'text-center' : undefined}
+     aria-sort={active ? sort.direction === 'asc' ? 'ascending' : 'descending' : undefined}>
+     <Button variant="ghost" size="sm" className="h-auto max-w-full flex-col gap-0 px-0 py-1 whitespace-normal" aria-label={label} onClick={() => onSort(`${key}-${direction}`)}>
+       {key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}<Icon aria-hidden="true" />
+     </Button>
+   </TableHead>
+ })}</>
 }
 export const CatalogResults = memo(function CatalogResults(props:Props) {
  const {view,items,groupedCards,deals,selectedIds,onSelect,collapsedGroups,onToggleGroup,onEditGroup,returnTo}=props
@@ -76,10 +93,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
    </ul>:<Table className={'cards-table w-[1060px] max-[1200px]:w-[980px]'} aria-rowcount={rows.length+1}>
      <TableCaption className="sr-only">Отслеживаемые карточки маркетплейсов</TableCaption>
      <TableHeader><TableRow><TableHead className="cards-table__selection py-0"><span className="sr-only">Выбор</span></TableHead>
-       {(Object.entries(columnLabels) as [string,string][]).map(([key,label])=>{
-         return <TableHead key={key} className={key !== 'title' ? 'text-center' : undefined} scope="col">
-           {key === 'savings' ? <span className="catalog-savings-heading">Выгода /<br />Максимальная выгода</span> : label}</TableHead>
-       })}<TableHead className="text-center"><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
+       <CatalogColumnHeaders sort={props.sort} onSort={props.onSort} /><TableHead className="text-center"><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>
      <TableBody data-virtual-start>{body}{tail>0?<tr aria-hidden="true" className="virtual-spacer"><td colSpan={9} style={{height:tail}} /></tr>:null}</TableBody>
    </Table>}
  </div>

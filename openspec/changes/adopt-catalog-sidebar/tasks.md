@@ -6,7 +6,7 @@
 ## 2. Catalog
 
 - [x] 2.1 Consolidate model and controls with approved multi-selection, stock, search, sorting, per-member grouping and product counts.
-- [x] 2.2 Adopt compact list/grid styles, remove column sorting and demo UI/portal/toggle branches.
+- [x] 2.2 Adopt compact list/grid styles, restore column sorting and remove demo UI/portal/toggle branches.
 - [x] 2.3 Preserve details context, full group editing, selection and virtualization.
 
 ## 3. Verification and handoff

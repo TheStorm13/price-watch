@@ -85,6 +85,24 @@ describe('catalog filtering and grouping', () => {
     expect(selectCatalogItems(items, new URLSearchParams('sort=price-desc')).map(item => item.id)).toEqual([1, 2, 3])
   })
 
+  it('sorts all column values in both directions with missing money last', async () => {
+    const snapshot = await mockApi.getCatalog()
+    const cards = snapshot.cards.slice(0, 3).map((card, index) => ({ ...card,
+      title: ['Б', 'А', 'В'][index], minimumPrice: ['100.00', '9.99', null][index],
+      averagePrice: ['100.00', '9.99', null][index],
+      marketplace: (['ozon', 'aliexpress', 'wildberries'] as const)[index],
+      currentAvailability: (['out_of_stock', 'in_stock', 'unknown'] as const)[index] }))
+    const items = cards.map(card => cardItem(card, new Map()))
+    for (const key of ['title', 'minimum', 'average', 'marketplace', 'availability']) {
+      expect(selectCatalogItems(items, new URLSearchParams(`sort=${key}-asc`)).map(item => item.id)).toEqual([2, 1, 3])
+      const descending = key === 'minimum' || key === 'average' ? [1, 2, 3] : key === 'availability' ? [1, 3, 2] : [3, 1, 2]
+      expect(selectCatalogItems(items, new URLSearchParams(`sort=${key}-desc`)).map(item => item.id)).toEqual(descending)
+    }
+    const savings = items.map((item, index) => ({ ...item, savings: ['100.00', '9.99', null][index] }))
+    expect(selectCatalogItems(savings, new URLSearchParams('sort=savings-asc')).map(item => item.id)).toEqual([2, 1, 3])
+    expect(selectCatalogItems(savings, new URLSearchParams('sort=savings-desc')).map(item => item.id)).toEqual([1, 2, 3])
+  })
+
   it('searches marketplace articles rather than internal IDs, and stock excludes unknown availability', async () => {
     const snapshot = await mockApi.getCatalog()
     const cards = snapshot.cards.slice(0, 3).map((card, index) => ({ ...card, id: 123 + index, title: 'Товар', externalId: `9876${index}`,
