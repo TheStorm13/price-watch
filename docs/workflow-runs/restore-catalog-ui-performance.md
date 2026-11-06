@@ -33,7 +33,7 @@ Planning-only validation results and commit are reported in the conversation. Ru
 
 ## Next action
 
-Wait for user evaluation of the verified implementation commit. After implementation and commits, request acceptance; sync/archive only after acceptance.
+Completed and accepted. No remaining work for this change.
 
 ## Implementation progress
 
@@ -101,3 +101,10 @@ Repowise live diff examined the current application edits. Two structural comple
 
 
 Final revision checks: full mock E2E initially 74/79 passed. Four assertions required adjustment: old tests assumed global column ordering, and the first new test wrongly assumed Dyson was excluded (the fixture actually excludes LEGO). Corrected expected list/grid/member order and test inputs; group E2E now verifies immediate participating-representative replacement, then the previous representative when the prefix is disabled. The fifth failure was a transient 1024-width measurement in unchanged variant-images; it passed without source changes. Targeted rerun of all five scenarios passed 5/5 (25.2 s), exercising all 79 final scenarios across these runs against unchanged application source. No claim of a single clean full run. Final typecheck, strict OpenSpec and whitespace validation passed. Revision ready for commit and user evaluation; do not sync/archive until acceptance. No push/merge.
+
+
+## Acceptance and closure — 2026-11-06
+
+User accepted the verified revision 8376052 with «Хорошо». Synced all three delta capabilities (catalog-sidebar, catalog-snapshot and group-card-metrics): seven modified requirements total; retained existing Purpose sections, unrelated requirements and scenario names. Verified each merged block matches its delta. All 17 tracked tasks and all planning artifacts were complete before archive.
+
+Archived change to `openspec/changes/archive/2026-11-06-restore-catalog-ui-performance`. `openspec validate --specs` passed all 17 main specs; it reports nonblocking long-requirement warnings, including the two modified participation requirements. Preserved whole MODIFIED blocks under the sync rules rather than introducing an unrelated requirement-splitting change. Strict change validation and whitespace checks passed before archive. This closure changes documentation/specs only; runtime checks and their limits remain recorded above. No push or merge.
