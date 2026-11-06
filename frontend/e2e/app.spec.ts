@@ -617,7 +617,7 @@ test('меню карточки управляет показом в выгод�
   await expect(row.getByText('Не участвует в выгодных')).toBeHidden()
 })
 
-test('исключённые карточки идут последними по умолчанию и используют общий ключ при ручной сортировке', async ({ page }) => {
+test('исключённые карточки идут последними по умолчанию и при ручной сортировке с приоритетом участия', async ({ page }) => {
   await page.goto('/cards')
   const row = page.getByRole('row', { name: /Смартфон Samsung Galaxy S24/ })
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
@@ -627,15 +627,15 @@ test('исключённые карточки идут последними по
   await expect(rows.nth(4)).toContainText('Не участвует в выгодных')
   await chooseOption(page.getByRole('combobox', { name: 'Сортировка' }), 'Сначала дешёвые')
   await expect(rows.nth(0)).toContainText('Умные часы Xiaomi Watch S3')
-  await expect(rows.nth(2)).toContainText('Конструктор LEGO Technic McLaren P1')
-  await expect(rows.nth(3)).toContainText('Смартфон Samsung Galaxy S24')
-  await expect(rows.nth(4)).toContainText('Пылесос Dyson V12 Detect Slim')
+  await expect(rows.nth(2)).toContainText('Пылесос Dyson V12 Detect Slim')
+  await expect(rows.nth(3)).toContainText('Конструктор LEGO Technic McLaren P1')
+  await expect(rows.nth(4)).toContainText('Смартфон Samsung Galaxy S24')
   await page.getByRole('radio', { name: 'Сетка' }).click()
   const tiles = page.locator('.cards-grid__item')
   await expect(tiles.nth(0)).toContainText('Умные часы Xiaomi Watch S3')
-  await expect(tiles.nth(2)).toContainText('Конструктор LEGO Technic McLaren P1')
-  await expect(tiles.nth(3)).toContainText('Смартфон Samsung Galaxy S24')
-  await expect(tiles.nth(4)).toContainText('Пылесос Dyson V12 Detect Slim')
+  await expect(tiles.nth(2)).toContainText('Пылесос Dyson V12 Detect Slim')
+  await expect(tiles.nth(3)).toContainText('Конструктор LEGO Technic McLaren P1')
+  await expect(tiles.nth(4)).toContainText('Смартфон Samsung Galaxy S24')
 })
 
 test('исключённая карточка обновляется, но не попадает в выгодные предложения', async ({ page }) => {

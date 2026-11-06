@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cardItem } from './catalogItems'
 import { mockApi } from '../../api/mockApi'
-import { buildCatalog, selectCatalogItems, prepareCatalog, catalogTags, catalogComparator } from './catalogModel'
+import { buildCatalog, selectCatalogItems, prepareCatalog, catalogTags, catalogComparator, catalogFilterKey, hasCatalogFilters } from './catalogModel'
 import type { CatalogSnapshot, ProductGroup } from '../../types/domain'
 
 async function groupedSnapshot(): Promise<CatalogSnapshot> {
@@ -128,4 +128,44 @@ it('orders numeric Cyrillic names and retains ID ties, group names and snapshot 
  expect(JSON.stringify(original)).toBe(frozen)
  const items=cards.map(card=>cardItem(card,new Map()))
  expect(items.toSorted(catalogComparator('title-asc')).map(item=>item.id)).toEqual([cards[1].id,cards[2].id,cards[0].id])
+})
+
+
+it('applies participation before every column, supports opting out, and filters group members by participation', async () => {
+  const snapshot = await groupedSnapshot()
+  const cards = snapshot.cards.map((card, index) => ({ ...card, dealsEnabled: index === 1 }))
+  const prepared = prepareCatalog({ ...snapshot, cards }, new Map())
+  for (const key of ['title', 'savings', 'price', 'minimum', 'average', 'marketplace', 'availability']) {
+    for (const direction of ['asc', 'desc']) {
+      const sort = `${key}-${direction}`
+      const model = buildCatalog(prepared, new URLSearchParams({ sort }))
+      expect(model.orderedItems[0].card?.id).toBe(cards[1].id)
+      expect(model.groupedCards.get(42)?.[0].id).toBe(cards[1].id)
+      const global = buildCatalog(prepared, new URLSearchParams({ sort, participationFirst: '0' }))
+      const expected = prepared.items.toSorted(catalogComparator(sort, false)).map(item => item.id)
+      expect(global.groupedCards.get(42)?.map(card => card.id)).toEqual(expected)
+      expect(global.orderedItems[0].card?.id).toBe(expected[0])
+    }
+  }
+  const onlyParticipating = buildCatalog(prepared, new URLSearchParams('deals=participating'))
+  expect(onlyParticipating.groupedCards.get(42)?.map(card => card.id)).toEqual([cards[1].id])
+  expect(onlyParticipating.orderedItems[0].priority).toBe(false)
+  expect(onlyParticipating.matchingCount).toBe(1)
+  expect(catalogFilterKey(new URLSearchParams('deals=participating&participationFirst=0'))).toBe('participationFirst=0&deals=participating')
+  expect(catalogFilterKey(new URLSearchParams('participationFirst=1'))).toBe('')
+  expect(hasCatalogFilters(new URLSearchParams('participationFirst=0'))).toBe(true)
+  expect(hasCatalogFilters(new URLSearchParams())).toBe(false)
+})
+
+it('keeps missing money last within participation blocks and globally when the prefix is off', async () => {
+  const snapshot = await mockApi.getCatalog()
+  const items = snapshot.cards.slice(0, 4).map((card, index) => cardItem({ ...card,
+    dealsEnabled: index < 2, currentPrice: ['10.01', null, '100.00', null][index],
+  }, new Map()))
+  for (const direction of ['asc', 'desc']) {
+    expect(selectCatalogItems(items, new URLSearchParams(`sort=price-${direction}`)).map(item => item.id))
+      .toEqual(items.map(item => item.id))
+    expect(selectCatalogItems(items, new URLSearchParams(`sort=price-${direction}&participationFirst=0`)).map(item => item.id))
+      .toEqual((direction === 'asc' ? [0, 2, 1, 3] : [2, 0, 1, 3]).map(index => items[index].id))
+  }
 })

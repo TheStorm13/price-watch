@@ -29,8 +29,14 @@
 - [x] 5.3 Verify rendered list/grid, sorting, filters, drawer focus and progress at 1440x900 and 1024x768; inspect screenshots/console and preserve bounded scrolling, last-item access and position restoration, with evidence outside the repo.
 - [x] 5.4 Review current diff/affected tests with Repowise (state index limitations), run strict OpenSpec and whitespace validation, update the workflow record with verification and risks, then create and verify task commits before requesting user acceptance.
 
+## 6. User-approved participation controls
+
+- [x] 6.1 Add the second participating filter option and default-on participation-first checkbox with URL/reset/model-key integration; verify semantic tests distinguish participation from actual profitability and default ordering is participation then savings.
+- [x] 6.2 Verify checkbox overrides column sorts when enabled, disabling restores global ordering, and grouped members/representatives share the comparator; cover defaults, opt-out, exact money/nulls, reload/reset/details and visual layout in unit/mock E2E.
+- [x] 6.3 Update affected UI/spec/workflow documentation, run typecheck/unit/relevant E2E and desktop build, review live diff, and commit this evaluation revision before requesting acceptance.
+
 ## Workflow follow-up
 
 - Wait for explicit approval of this plan before application/test/harness implementation.
 - After implementation commits, wait for explicit user acceptance; commit any reviewed revisions before requesting evaluation again.
-- After acceptance, sync the catalog-snapshot delta, archive this change, update the relevant workflow/testing documentation and commit closure changes. Do not push or merge without separate authorization.
+- After acceptance, sync the catalog-snapshot, catalog-sidebar and group-card-metrics deltas, archive this change, update the relevant workflow/testing documentation and commit closure changes. Do not push or merge without separate authorization.

@@ -81,6 +81,11 @@ export function CatalogFilters({ tags, params, onChange }: {
         <FieldLabel htmlFor={`${id}-stock`}>Только в наличии</FieldLabel>
       </Field>
     </FieldSet>
+    <Field orientation="horizontal">
+      <Checkbox id={`${id}-participation-first`} checked={params.get('participationFirst') !== '0'}
+        onCheckedChange={(checked) => setValues('participationFirst', checked === true ? null : ['0'])} />
+      <FieldLabel htmlFor={`${id}-participation-first`}>Сначала товары, участвующие в выгодных предложениях</FieldLabel>
+    </Field>
     <Field>
       <FieldLabel htmlFor={`${id}-sort`}>Сортировка</FieldLabel>
       <Select value={customSort ?? (sort === 'price-asc' || sort === 'price-desc' ? sort! : 'default')} onValueChange={(value) => setValues('sort', value === 'default' ? null : [value])}>
@@ -95,10 +100,11 @@ export function CatalogFilters({ tags, params, onChange }: {
     </Field>
     <Field>
       <FieldLabel htmlFor={`${id}-deals`}>Выгодность</FieldLabel>
-      <Select value={deal === 'deals' || deal === 'non_deals' ? deal : 'all'} onValueChange={(value) => setValues('deals', value === 'all' ? null : [value])}>
+      <Select value={deal === 'deals' || deal === 'non_deals' || deal === 'participating' ? deal : 'all'} onValueChange={(value) => setValues('deals', value === 'all' ? null : [value])}>
         <SelectTrigger id={`${id}-deals`} className="w-full"><SelectValue /></SelectTrigger>
         <SelectContent><SelectGroup>
           <SelectItem value="all">Все предложения</SelectItem>
+          <SelectItem value="participating">Участвуют в выгодных предложениях</SelectItem>
           <SelectItem value="deals">Выгодные</SelectItem>
           <SelectItem value="non_deals">Невыгодные</SelectItem>
         </SelectGroup></SelectContent>

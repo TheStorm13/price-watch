@@ -27,14 +27,17 @@ export function cardItem(card: TrackedCardView, deals: Map<number, Deal>): Displ
     savings: catalogSavings(card, deal?.savings ?? null), priority: !!deal }
 }
 
-/** Default deals-first ordering, shared by individual cards and projected groups. */
-export function compareItems(left: DisplayItem, right: DisplayItem): number {
-  if (left.priority !== right.priority) return left.priority ? -1 : 1
+export function compareParticipation(left: DisplayItem, right: DisplayItem): number {
+  return Number(right.card?.dealsEnabled ?? false) - Number(left.card?.dealsEnabled ?? false)
+}
+
+/** Participation first by default, then exact savings; shared by cards and groups. */
+export function compareItems(left: DisplayItem, right: DisplayItem, participationFirst = true): number {
   const availability = (item: DisplayItem) => item.card?.currentAvailability
     ? availabilityRanks[item.card.currentAvailability] : 3
-  const order = Number(right.card?.dealsEnabled ?? false) - Number(left.card?.dealsEnabled ?? false)
-    || availability(left) - availability(right)
+  const order = (participationFirst ? compareParticipation(left, right) : 0)
     || compareNullableMoney(left.savings, right.savings, 'desc')
+    || availability(left) - availability(right)
     || compareNullableMoney(left.card?.currentPrice ?? null, right.card?.currentPrice ?? null, 'asc')
   return order || collator.compare(left.kind, right.kind) || left.id - right.id
 }

@@ -14,7 +14,7 @@ See proposal.md for measurements and scope. Current `buildCatalog` filters/sorts
 
 ### Prepare comparison and snapshot data once
 
-Create a comparator per effective sort using one module-level Russian numeric collator. Keep exact decimal money comparisons, stable kind/ID ties, missing money last in both directions, and existing availability semantics. Prepare card projections, group lookup and available tags when snapshot data changes. Parse stock/sort/filter options outside item loops. Remove the unused duplicate tag preparation in the model or share the existing pure preparation with the sidebar, leaving one owner per consumer.
+Create a comparator per effective sort using one module-level Russian numeric collator. Keep exact decimal money comparisons, stable kind/ID ties, missing money last in both directions within the selected participation scope, and availability semantics as refined below. Prepare card projections, group lookup and available tags when snapshot data changes. Parse stock/sort/filter options outside item loops. Remove the unused duplicate tag preparation in the model or share the existing pure preparation with the sidebar, leaving one owner per consumer.
 
 Filter cards before grouping so conditions cannot be satisfied by different group members. Sort the matching sequence once. For each group, its first matching member remains the representative and members retain sorted order. Build the final sequence by ordering group headers and ungrouped cards only when required: a flat ungrouped catalog must reuse the first sorted sequence instead of sorting it again. Preserve the final group-name/column comparison semantics and kind/ID tie order; simply replacing a group at its first member position is not sufficient for title sorting.
 
@@ -22,7 +22,7 @@ Alternative: only replace localeCompare. The experiment proves its value, but it
 
 ### Depend on effective model inputs
 
-Use explicit primitive values or a stable semantic key for q/markets/tags/stock/deals/sort rather than full URLSearchParams identity. Exclude view, performance fixture parameters and other unrelated URL state. Snapshot preparation and projection have separate memo boundaries; tag/market selections keep their accepted empty/default meaning. Replace superseded helpers and update their consumers/tests rather than keeping duplicate pipelines.
+Use explicit primitive values or a stable semantic key for q/markets/tags/stock/deals/participationFirst/sort rather than full URLSearchParams identity. Exclude view, performance fixture parameters and other unrelated URL state. Snapshot preparation and projection have separate memo boundaries; tag/market selections keep their accepted empty/default meaning. Replace superseded helpers and update their consumers/tests rather than keeping duplicate pipelines.
 
 Alternative: debounce all filters. It changes interaction timing and leaves unnecessary calculations, so retain React's existing deferred rendering model.
 
@@ -57,3 +57,11 @@ Use semantic tests for sorting/group representatives and hook/render-count tests
 ## Migration Plan
 
 No persisted migration or compatibility layer. Replace affected frontend internals and migrate their consumers/tests in the same implementation. Shared live/mock catalog UI uses the new path; fixtures remain absent from desktop release assets. API, worker, queued collection, `main.py collect` and numeric database-free Ozon mode retain their contracts because backend code is untouched. Validate via frontend lint/unit/E2E, release benchmarks and desktop build; report native runtime smoke availability separately. On acceptance sync this delta, archive the change and commit closure documentation. Do not retain an old implementation as a fallback.
+
+## User-approved participation refinement
+
+During evaluation the user requested a second option in the deal filter that selects dealsEnabled products regardless of whether they are currently profitable, and a checkbox immediately after Availability. The user confirmed explicit labels: «Участвуют в выгодных предложениях» and «Сначала товары, участвующие в выгодных предложениях».
+
+Use `deals=participating` for filtering. Existing all/deals/non_deals meanings remain. The checkbox is on by default; `participationFirst=0` opts out. Its ordering prefix applies before the selected column comparator, to cards, group representatives and members. With the checkbox on, unknown prices are last within each participation block; with it off, existing exact column/null ordering spans all products. Default sort is participation then descending exact savings, followed by availability/price and stable kind/ID ties; actual deal eligibility is not an extra earlier rank. Without the checkbox prefix default sorting is savings-first. Reset restores the checked default and retains view; URL, reload and details navigation preserve both new settings. Include both settings in the semantic model key.
+
+This explicitly requested evaluation revision supersedes the earlier participation/availability/default-priority order and unconditional cross-participation column ordering. Backend/API representatives, persisted dealsEnabled flags, migrations and collection behavior are unchanged. Verify contradictory inputs: disabled high-savings product versus enabled nondeal, profitable versus participating filter, every column with prefix off, group membership/representative and zero/null savings.

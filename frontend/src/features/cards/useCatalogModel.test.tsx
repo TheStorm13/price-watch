@@ -19,3 +19,14 @@ it('reuses projection across view/unrelated params and equivalent filters, refre
  expect(result.current.totalCount).toBe(50)
  expect(result.current.orderedItems).not.toBe(changed.orderedItems)
 })
+
+it('refreshes projection when participation controls change', () => {
+ const snapshot=performanceData(100,'plain',true)
+ const {result,rerender}=renderHook(({search})=>useCatalogModel(snapshot,new URLSearchParams(search)),{initialProps:{search:''}})
+ const original=result.current.orderedItems
+ rerender({search:'participationFirst=0'})
+ expect(result.current.orderedItems).not.toBe(original)
+ rerender({search:'deals=participating'})
+ expect(result.current.orderedItems.every(item=>item.card?.dealsEnabled)).toBe(true)
+ expect(result.current.matchingCount).toBe(snapshot.cards.filter(card=>card.dealsEnabled).length)
+})

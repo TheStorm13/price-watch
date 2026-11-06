@@ -1,5 +1,5 @@
 import { compareMoney } from '../../utils/money'
-import { cardItem, compareItems, parseColumnSort, type ColumnSortKey, type DisplayItem } from './catalogItems'
+import { cardItem, compareItems, compareParticipation, parseColumnSort, type ColumnSortKey, type DisplayItem } from './catalogItems'
 import type { CatalogSnapshot, Deal, TrackedCardView } from '../../types/domain'
 
 export const marketplaceOptions = [
@@ -34,13 +34,15 @@ export function catalogTags(cards: readonly TrackedCardView[]) {
   return [...new Set(cards.flatMap(card => card.tags ?? []))].sort(collator.compare)
 }
 
-export function catalogComparator(sort: string | null) {
+export function catalogComparator(sort: string | null, participationFirst = true) {
   const parsed = parseColumnSort(sort)
-  if (!parsed) return compareItems
+  if (!parsed) return (left: DisplayItem, right: DisplayItem) => compareItems(left, right, participationFirst)
   const { key, direction } = parsed
   const sign = direction === 'asc' ? 1 : -1
   const money = ['price', 'minimum', 'average', 'savings'].includes(key)
   return (left: DisplayItem, right: DisplayItem): number => {
+    const participation = participationFirst ? compareParticipation(left, right) : 0
+    if (participation) return participation
     const a = columnValue(left, key), b = columnValue(right, key)
     const tie = (left.kind === right.kind ? 0 : left.kind === 'card' ? -1 : 1) || left.id - right.id
     if (a === null || b === null) return a === null ? (b === null ? tie : 1) : -1
@@ -58,20 +60,22 @@ export function catalogFilterKey(params: URLSearchParams) {
   const tags = readSelection(params, 'tags')
   if (tags !== null) for (const value of tags.length ? tags.toSorted() : ['']) next.append('tags', value)
   if (params.get('stock') === '1') next.set('stock', '1')
+  if (params.get('participationFirst') === '0') next.set('participationFirst', '0')
   const deal = params.get('deals')
-  if (deal === 'deals' || deal === 'non_deals') next.set('deals', deal)
+  if (deal === 'deals' || deal === 'non_deals' || deal === 'participating') next.set('deals', deal)
   const sort = params.get('sort')
   if (parseColumnSort(sort)) next.set('sort', sort!)
   return next.toString()
 }
 
-export function selectCatalogItems(items: DisplayItem[], params: URLSearchParams, compare = catalogComparator(params.get('sort'))): DisplayItem[] {
+export function selectCatalogItems(items: DisplayItem[], params: URLSearchParams, compare = catalogComparator(params.get('sort'), params.get('participationFirst') !== '0')): DisplayItem[] {
   const marketplaces = readMarketplaces(params)
   const tags = readSelection(params, 'tags')
   const deal = params.get('deals')
   const query = (params.get('q') ?? '').trim().toLowerCase()
   const stock = params.get('stock') === '1'
   return items.filter((item) => (!query || `${item.card?.title ?? ''} ${item.card?.externalId ?? ''}`.toLowerCase().includes(query))
+    && (deal !== 'participating' || item.card?.dealsEnabled === true)
     && (deal !== 'deals' || item.priority) && (deal !== 'non_deals' || !item.priority)
     && (marketplaces === null || marketplaces.includes(item.card?.marketplace ?? ''))
     && (tags === null || (tags.length ? tags.some((tag) => item.card?.tags?.includes(tag)) : !item.card?.tags?.length))
@@ -88,7 +92,7 @@ export function prepareCatalog(snapshot: CatalogSnapshot | undefined, deals: Map
 
 export function buildCatalog(prepared: ReturnType<typeof prepareCatalog>, params: URLSearchParams) {
   const { items, groups, groupIds, deals } = prepared
-  const compare = catalogComparator(params.get('sort'))
+  const compare = catalogComparator(params.get('sort'), params.get('participationFirst') !== '0')
   const matching = selectCatalogItems(items, params, compare)
   const groupedCards = new Map<number, TrackedCardView[]>()
   const orderedItems = groupIds.size === 0 ? matching : matching.filter((item) => !groupIds.has(item.card?.groupId ?? -1))
@@ -116,5 +120,5 @@ export function buildCatalog(prepared: ReturnType<typeof prepareCatalog>, params
 }
 
 export function hasCatalogFilters(params: URLSearchParams) {
-  return ['q', 'markets', 'tags', 'stock', 'deals', 'sort'].some((key) => params.has(key))
+  return params.get('participationFirst') === '0' || ['q', 'markets', 'tags', 'stock', 'deals', 'sort'].some((key) => params.has(key))
 }

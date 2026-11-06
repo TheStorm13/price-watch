@@ -12,6 +12,8 @@ The accepted sidebar redesign introduced expensive locale-aware sorting and unne
 - Isolate collection progress subscriptions from sidebar filters and closed forms; preserve immediate collection locks, errors and terminal snapshot invalidation.
 - Repair the existing benchmark selectors and add seeded heterogeneous data, all column sorts, timing budgets and render-isolation coverage.
 
+- User review refinement: add the participating-products filter, a default-on participation-first checkbox, and participation then savings default ordering; explicit column sorts honor the checkbox.
+
 ## Capabilities
 
 ### New Capabilities
@@ -20,12 +22,14 @@ None.
 
 ### Modified Capabilities
 
+- `catalog-sidebar`: participating-products option and participation-first control, with URL/reset behavior.
+- `group-card-metrics`: shared participation/savings ordering and member-level participation filtering.
 - `catalog-snapshot`: extend existing responsiveness verification to heterogeneous data and require progress-only isolation for unchanged sidebar filters/forms as well as catalog rows.
 
 ## Impact
 
 Frontend catalog model/hooks/results, sidebar shell, collection context boundary, mock-only performance fixtures, frontend tests, `scripts/benchmark_ui.mjs`, and the performance testing guide. No new dependency, backend contract, Tauri command, migration or persisted data change. Desktop UI and mock UI share the optimized implementation; API, worker, collection CLI and database-free numeric Ozon mode are unaffected.
 
-Acceptance: preserve all accepted catalog semantics and layout; keep virtualized DOM bounded; unchanged filters/forms/results do not render on progress-only updates; view-only changes do not recompute the catalog projection. Release before/after measurements use identical seeded 100/1000/5000-card plain/mixed/group datasets, 5 warmups and 30 samples, reporting p50/p95, DOM, memory and environment. Existing p95 <=200 ms / >=30% improvement when baseline exceeds 200 ms applies per measured action; failures remain blockers and are reported explicitly.
+Acceptance: preserve catalog semantics and layout except the explicitly requested participation/filter ordering refinement; keep virtualized DOM bounded; unchanged filters/forms/results do not render on progress-only updates; view-only changes do not recompute the catalog projection. Release before/after measurements use identical seeded 100/1000/5000-card plain/mixed/group datasets, 5 warmups and 30 samples, reporting p50/p95, DOM, memory and environment. Existing p95 <=200 ms / >=30% improvement when baseline exceeds 200 ms applies per measured action; failures remain blockers and are reported explicitly.
 
 Main risks: changing group tie order/representatives, stale return context during rapid typing and navigation, stale collection locks, lost drawer focus/form state, and noisy performance measurements. Cover these with semantic tests, render-count tests, mock E2E and paired release benchmarks; native runtime evidence is reported separately.

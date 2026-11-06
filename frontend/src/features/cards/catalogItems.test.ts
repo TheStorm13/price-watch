@@ -9,12 +9,15 @@ function card(id: number, overrides: Partial<TrackedCardView> = {}): TrackedCard
     imageUrl: null, url: null, tags: ['representative'], ...overrides }
 }
 describe('default catalog ordering and savings', () => {
-  it('prioritizes eligible deals, then tracking and availability', () => {
-    const regular = cardItem(card(1), new Map())
-    const deal = { ...cardItem(card(2), new Map()), priority: true }
-    const disabled = cardItem(card(3, { dealsEnabled: false }), new Map())
+  it('puts participation before savings and savings before availability or deal eligibility', () => {
+    const regular = { ...cardItem(card(1), new Map()), savings: '10.01' }
+    const eligible = { ...cardItem(card(2), new Map()), priority: true, savings: '10.00' }
+    const disabled = { ...cardItem(card(3, { dealsEnabled: false }), new Map()), savings: '100.00' }
     const missing = cardItem(card(4, { currentAvailability: null, currentPrice: null }), new Map())
-    expect([disabled, missing, regular, deal].toSorted(compareItems).map(item => item.id)).toEqual([2, 1, 4, 3])
+    const unavailable = { ...cardItem(card(5, { currentAvailability: 'out_of_stock' }), new Map()), savings: '20.00' }
+    const items = [disabled, missing, eligible, regular, unavailable]
+    expect(items.toSorted((a, b) => compareItems(a, b)).map(item => item.id)).toEqual([5, 1, 2, 4, 3])
+    expect(items.toSorted((a, b) => compareItems(a, b, false)).map(item => item.id)).toEqual([3, 5, 1, 2, 4])
   })
 
   it('shows disabled savings without marking the card as an eligible deal', () => {
