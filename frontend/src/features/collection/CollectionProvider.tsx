@@ -20,6 +20,8 @@ interface CollectionContextValue {
 }
 
 type CollectionCommands = Pick<CollectionContextValue, 'start' | 'isStarting' | 'startError'>
+type CollectionActions = CollectionCommands & { collecting: boolean }
+const CollectionActionsContext = createContext<CollectionActions | null>(null)
 const CollectionCommandsContext = createContext<CollectionCommands | null>(null)
 const CollectionContext = createContext<CollectionContextValue | null>(null)
 const ACTIVE_RUN_KEY = 'price-watch-active-run'
@@ -117,6 +119,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const retry = useCallback(() => { if (runId !== null) retryRun(runId) }, [runId, retryRun])
   const commands = useMemo(() => ({ start, isStarting, startError: startReason?.message ?? null }), [start, isStarting, startReason])
 
+  const collecting = isStarting || !!run && ['queued', 'running', 'waiting_for_user'].includes(run.status)
+  const actions = useMemo(() => ({ ...commands, collecting }), [commands, collecting])
+
   const value = useMemo<CollectionContextValue>(() => ({
     ...commands, run, continueRun: resume, isContinuing: isContinuing && continuingId === runId,
     continueError: continuingId === runId ? continueReason?.message ?? null : null,
@@ -124,7 +129,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     dismiss,
   }), [commands, run, resume, isContinuing, continuingId, runId, continueReason, retry, isRetrying, retryingId, retryReason, dismiss])
 
-  return <CollectionCommandsContext.Provider value={commands}><CollectionContext.Provider value={value}>{children}</CollectionContext.Provider></CollectionCommandsContext.Provider>
+  return <CollectionCommandsContext.Provider value={commands}><CollectionActionsContext.Provider value={actions}><CollectionContext.Provider value={value}>{children}</CollectionContext.Provider></CollectionActionsContext.Provider></CollectionCommandsContext.Provider>
 }
 
 export function useCollection() {
@@ -136,5 +141,12 @@ export function useCollection() {
 export function useCollectionCommands() {
   const value = useContext(CollectionCommandsContext)
   if (!value) throw new Error('useCollectionCommands должен использоваться внутри CollectionProvider')
+  return value
+}
+
+/** Global action locks change with run state, independently of progress counters. */
+export function useCollectionActions() {
+  const value = useContext(CollectionActionsContext)
+  if (!value) throw new Error('useCollectionActions должен использоваться внутри CollectionProvider')
   return value
 }

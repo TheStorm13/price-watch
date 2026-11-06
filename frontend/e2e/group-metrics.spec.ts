@@ -45,7 +45,7 @@ test('выгода и максимум видны после отключени�
   expect(sizes[1].font).toBeLessThan(sizes[0].font)
   expect(sizes[1].top).toBeGreaterThan(sizes[0].top)
   const heading = page.getByRole('columnheader', { name: /Выгода \/\s*Максимальная выгода/ })
-  await expect(heading.getByRole('button')).toHaveCount(0)
+  await expect(heading.getByRole('button')).toHaveCount(1)
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Не учитывать в выгодных предложениях' }).click()
   await expect(row).toContainText('Не участвует в выгодных')

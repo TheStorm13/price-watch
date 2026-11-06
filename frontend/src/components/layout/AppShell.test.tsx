@@ -12,7 +12,7 @@ const state = vi.hoisted(() => ({
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('../../api/client', () => ({ isDesktopMode: true, apiModeLabel: 'Desktop' }))
 vi.mock('../../api/queries', () => ({ useCatalog: () => ({ data: { cards: [], groups: [] } }) }))
-vi.mock('../../features/collection/CollectionProvider', () => ({ useCollection: () => ({ ...state, start: vi.fn() }) }))
+vi.mock('../../features/collection/CollectionProvider', () => ({ useCollectionActions: () => ({ ...state, collecting: state.isStarting || !!state.run && ['queued', 'running', 'waiting_for_user'].includes(state.run.status), start: vi.fn() }) }))
 vi.mock('../../app/desktopRuntime', () => ({ useDesktopRuntime: () => state }))
 vi.mock('../../features/background/BackgroundSettings', () => ({ BackgroundSettings: () => <button>Настройки</button> }))
 vi.mock('../../features/collection/ActiveCollectionPanel', () => ({ ActiveCollectionPanel: () => <div data-testid="progress" /> }))

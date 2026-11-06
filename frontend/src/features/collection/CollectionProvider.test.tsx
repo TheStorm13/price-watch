@@ -2,7 +2,7 @@ import { act, render, screen, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { CollectionRun, CatalogSnapshot } from '../../types/domain'
-import { CollectionProvider, useCollection, useCollectionCommands } from './CollectionProvider'
+import { CollectionProvider, useCollection, useCollectionCommands, useCollectionActions } from './CollectionProvider'
 import { api } from '../../api/client'
 import { queryKeys, useCatalog } from '../../api/queries'
 
@@ -119,4 +119,45 @@ it('exposes continuation failure, disables duplicate requests, and clears failur
   await waitFor(() => expect(screen.getByRole('button')).toBeEnabled())
   expect(screen.getByRole('status')).toBeEmptyDOMElement()
   cleanup(); client.clear()
+})
+
+it('isolates action consumers from counters but updates locks for every run state', async () => {
+ vi.useFakeTimers()
+ localStorage.setItem('price-watch-active-run','99')
+ const run:CollectionRun={id:99,status:'queued',totalCount:100,successCount:0,failureCount:0,current:null,challenge:null,
+   startedAt:new Date().toISOString(),finishedAt:null,retryableCount:0,retryScopeIncomplete:false,diagnosticsStatus:'complete'}
+ vi.mocked(api.getRun).mockResolvedValue(run)
+ vi.mocked(api.listRuns).mockResolvedValue([])
+ let renders=0
+ function Actions(){const state=useCollectionActions();renders++;return <button disabled={state.collecting}>Refresh</button>}
+ const client=new QueryClient({defaultOptions:{queries:{retry:false}}})
+ render(<QueryClientProvider client={client}><CollectionProvider><Actions/><Observer/></CollectionProvider></QueryClientProvider>)
+ await act(async()=>{await vi.advanceTimersByTimeAsync(20)})
+ expect(screen.getByRole('button')).toBeDisabled()
+ const before=renders
+ for(const status of ['running','waiting_for_user'] as const) await act(async()=>{
+   client.setQueryData(queryKeys.run(99),{...run,status,successCount:2});await vi.advanceTimersByTimeAsync(20)
+ })
+ expect(renders).toBe(before)
+ expect(screen.getByRole('button')).toBeDisabled()
+ await act(async()=>{client.setQueryData(queryKeys.run(99),{...run,status:'completed'});await vi.advanceTimersByTimeAsync(20)})
+ expect(screen.getByRole('button')).toBeEnabled()
+ expect(renders).toBe(before+1)
+ cleanup();client.clear()
+})
+
+it('publishes pending and start errors through the action boundary', async () => {
+ const {fireEvent,waitFor}=await import('@testing-library/react')
+ vi.mocked(api.listRuns).mockResolvedValue([])
+ let fail!:(reason:Error)=>void
+ vi.mocked(api.startRun).mockImplementation(()=>new Promise((_resolve,reject)=>{fail=reject}))
+ function Actions(){const state=useCollectionActions();return <><button disabled={state.collecting} onClick={()=>state.start()}>Refresh</button><span role="status">{state.startError}</span></>}
+ const client=new QueryClient({defaultOptions:{queries:{retry:false}}})
+ render(<QueryClientProvider client={client}><CollectionProvider><Actions/></CollectionProvider></QueryClientProvider>)
+ fireEvent.click(screen.getByRole('button'))
+ await waitFor(()=>expect(screen.getByRole('button')).toBeDisabled())
+ await act(async()=>fail(new Error('Start failed')))
+ await waitFor(()=>expect(screen.getByRole('button')).toBeEnabled())
+ expect(screen.getByRole('status')).toHaveTextContent('Start failed')
+ cleanup();client.clear()
 })

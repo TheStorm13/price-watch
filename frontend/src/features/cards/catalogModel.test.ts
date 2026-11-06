@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cardItem } from './catalogItems'
 import { mockApi } from '../../api/mockApi'
-import { buildCatalog, selectCatalogItems } from './catalogModel'
+import { buildCatalog, selectCatalogItems, prepareCatalog, catalogTags, catalogComparator } from './catalogModel'
 import type { CatalogSnapshot, ProductGroup } from '../../types/domain'
 
 async function groupedSnapshot(): Promise<CatalogSnapshot> {
@@ -20,14 +20,14 @@ async function groupedSnapshot(): Promise<CatalogSnapshot> {
 describe('catalog filtering and grouping', () => {
   it('finds nonrepresentative members and all tags; hides members that fail any condition', async () => {
     const snapshot = await groupedSnapshot()
-    const model = buildCatalog(snapshot, new URLSearchParams('markets=wildberries&tags=Скрытый&stock=1&q=article-1&deals=non_deals'), new Map())
+    const model = buildCatalog(prepareCatalog(snapshot, new Map()), new URLSearchParams('markets=wildberries&tags=Скрытый&stock=1&q=article-1&deals=non_deals'))
     expect(model.orderedItems).toHaveLength(1)
     expect(model.groupedCards.get(42)?.map(card => card.id)).toEqual([snapshot.cards[1].id])
     const item = model.orderedItems[0]
     expect(item.card?.id).toBe(snapshot.cards[1].id)
     expect(item.kind === 'group' && item.matchingCardCount).toBe(1)
     expect(item.kind === 'group' && item.group.cardIds).toHaveLength(3)
-    expect(model.availableTags).toEqual(['Первый', 'Скрытый'])
+    expect(catalogTags(snapshot.cards)).toEqual(['Первый', 'Скрытый'])
     expect([model.matchingCount, model.totalCount]).toEqual([1, 3])
     expect(snapshot.groups[0].representativeCardId).toBe(snapshot.cards[0].id)
   })
@@ -35,12 +35,12 @@ describe('catalog filtering and grouping', () => {
   it('does not combine conditions across members and removes groups without matches', async () => {
     const snapshot = await groupedSnapshot()
     for (const query of ['markets=ozon&stock=1', 'markets=ozon&tags=Скрытый', 'q=missing']) {
-      const model = buildCatalog(snapshot, new URLSearchParams(query), new Map())
+      const model = buildCatalog(prepareCatalog(snapshot, new Map()), new URLSearchParams(query))
       expect(model.orderedItems).toEqual([])
       expect(model.groupedCards.size).toBe(0)
       expect([model.matchingCount, model.totalCount]).toEqual([0, 3])
     }
-    const untagged = buildCatalog(snapshot, new URLSearchParams('tags='), new Map())
+    const untagged = buildCatalog(prepareCatalog(snapshot, new Map()), new URLSearchParams('tags='))
     expect(untagged.groupedCards.get(42)?.map(card => card.id)).toEqual([snapshot.cards[2].id])
   })
 
@@ -48,7 +48,7 @@ describe('catalog filtering and grouping', () => {
     const snapshot = await groupedSnapshot()
     const deals = new Map(snapshot.deals.map(deal => [deal.card.id, deal]))
     for (const [sort, representativeId] of [['price-asc', snapshot.cards[1].id], ['price-desc', snapshot.cards[0].id], ['', snapshot.cards[0].id]] as const) {
-      const model = buildCatalog(snapshot, new URLSearchParams({ sort }), deals)
+      const model = buildCatalog(prepareCatalog(snapshot, deals), new URLSearchParams({ sort }))
       const item = model.orderedItems[0]
       expect(item.card?.id).toBe(representativeId)
       expect(item.kind === 'group' && item.group.currentPrice).toBe(item.card?.currentPrice)
@@ -57,10 +57,10 @@ describe('catalog filtering and grouping', () => {
       expect(model.groupedCards.get(42)?.at(-1)?.currentPrice).toBeNull()
       expect([model.matchingCount, model.totalCount]).toEqual([3, 3])
     }
-    const ungrouped = buildCatalog({ ...snapshot, groups: [] }, new URLSearchParams(), deals)
+    const ungrouped = buildCatalog(prepareCatalog({ ...snapshot, groups: [] }, deals), new URLSearchParams())
     expect(ungrouped.orderedItems).toHaveLength(3)
     expect([ungrouped.matchingCount, ungrouped.totalCount]).toEqual([3, 3])
-    const onlyDeals = buildCatalog(snapshot, new URLSearchParams('deals=deals'), deals)
+    const onlyDeals = buildCatalog(prepareCatalog(snapshot, deals), new URLSearchParams('deals=deals'))
     expect(onlyDeals.groupedCards.get(42)?.map(card => card.id)).toEqual([snapshot.cards[0].id])
   })
 
@@ -113,4 +113,19 @@ describe('catalog filtering and grouping', () => {
     expect(selectCatalogItems(items, new URLSearchParams('stock=1')).map(item => item.id)).toEqual([123])
     expect(selectCatalogItems(items, new URLSearchParams())).toHaveLength(3)
   })
+})
+
+it('orders numeric Cyrillic names and retains ID ties, group names and snapshot data', async () => {
+ const snapshot = await groupedSnapshot()
+ const cards = snapshot.cards.map((card,i)=>({...card,title:['Товар 10','товар 2','ТОВАР 2'][i],groupId:i===0?42:null}))
+ const original={...snapshot,cards,groups:[{...snapshot.groups[0],name:'Адаптер 1'}]}
+ const frozen=JSON.stringify(original)
+ const prepared=prepareCatalog(original,new Map())
+ for(const direction of ['asc','desc']) {
+  const model=buildCatalog(prepared,new URLSearchParams({sort:`title-${direction}`}))
+  expect(model.orderedItems.map(item=>item.id)).toEqual(direction==='asc'?[42,cards[1].id,cards[2].id]:[cards[1].id,cards[2].id,42])
+ }
+ expect(JSON.stringify(original)).toBe(frozen)
+ const items=cards.map(card=>cardItem(card,new Map()))
+ expect(items.toSorted(catalogComparator('title-asc')).map(item=>item.id)).toEqual([cards[1].id,cards[2].id,cards[0].id])
 })

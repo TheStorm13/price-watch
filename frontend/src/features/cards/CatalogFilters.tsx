@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useMemo } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -7,6 +7,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { columnLabels, parseColumnSort } from './catalogItems'
 import { marketplaceOptions, readMarketplaces, readSelection } from './catalogModel'
+
+const tagCollator = new Intl.Collator('ru')
 
 function MultipleChoice({ name, allLabel, options, value, onChange, required = false }: {
   name: string; allLabel: string; options: { value: string; label: string }[]
@@ -55,7 +57,11 @@ export function CatalogFilters({ tags, params, onChange }: {
 }) {
   const id = useId()
   const selectedTags = readSelection(params, 'tags')
-  const availableTags = [...new Set([...tags, ...(selectedTags ?? [])])].sort((a, b) => a.localeCompare(b, 'ru'))
+  const selectedTagsKey = JSON.stringify(selectedTags)
+  const availableTags = useMemo(() => {
+    const selected = JSON.parse(selectedTagsKey) as string[] | null
+    return [...new Set([...tags, ...(selected ?? [])])].sort(tagCollator.compare)
+  }, [tags, selectedTagsKey])
   function setValues(key: string, values: string[] | null) {
     const next = new URLSearchParams(params)
     next.delete(key)

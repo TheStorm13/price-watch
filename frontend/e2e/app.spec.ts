@@ -376,17 +376,18 @@ test('фильтры панели сохраняют положение при �
   }
 })
 
-test('сортировка из панели пересекает приоритет выгодности, заголовки без кнопок', async ({ page }) => {
+test('сортировка из панели пересекает приоритет выгодности и синхронизирует заголовок', async ({ page }) => {
   await page.goto('/cards')
   const rows = page.locator('.cards-table tbody tr')
   await expect(rows).toHaveCount(5)
   await expect(rows.first()).toContainText('Смартфон Samsung Galaxy S24')
-  await expect(page.getByRole('columnheader').getByRole('button')).toHaveCount(0)
+  await expect(page.getByRole('columnheader').getByRole('button')).toHaveCount(7)
   const sort = page.getByRole('combobox', { name: 'Сортировка' })
   await expect(sort).toHaveText('Сначала выгодные')
   await chooseOption(sort, 'Сначала дешёвые')
   await expect(rows.first()).toContainText('Умные часы Xiaomi Watch S3')
   await expect(page).toHaveURL(/sort=price-asc/)
+  await expect(page.getByRole('columnheader', { name: 'Цена', exact: true })).toHaveAttribute('aria-sort', 'ascending')
   await chooseOption(sort, 'Сначала дорогие')
   await expect(rows.first()).toContainText('Смартфон Samsung Galaxy S24')
   await chooseOption(sort, 'Сначала выгодные')

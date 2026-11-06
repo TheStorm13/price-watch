@@ -7,12 +7,13 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { apiModeLabel, isDesktopMode } from '../../api/client'
 import { useCatalog } from '../../api/queries'
 import { ActiveCollectionPanel } from '../../features/collection/ActiveCollectionPanel'
-import { useCollection } from '../../features/collection/CollectionProvider'
+import { useCollectionActions } from '../../features/collection/CollectionProvider'
 import { BackgroundSettings } from '../../features/background/BackgroundSettings'
 import { useDesktopRuntime } from '../../app/desktopRuntime'
 import { AddCardDrawer } from '../../features/cards/AddCardDrawer'
 import { GroupDialog } from '../../features/cards/GroupDialog'
 import { ImportExportControls } from '../../features/cards/ImportExportControls'
+import { catalogTags } from '../../features/cards/catalogModel'
 import { CatalogFilters } from '../../features/cards/CatalogFilters'
 import { CatalogActionsContext } from './catalogActions'
 
@@ -20,7 +21,7 @@ export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const catalog = useCatalog()
-  const { run, isStarting, start, startError } = useCollection()
+  const { collecting, start, startError } = useCollectionActions()
   const { serviceError, retryServices } = useDesktopRuntime()
   const [browserError, setBrowserError] = useState<string | null>(null)
   const [openingBrowser, setOpeningBrowser] = useState(false)
@@ -28,12 +29,11 @@ export function AppShell() {
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [transferStatus, setTransferStatus] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
   const actions = useMemo(() => ({ openAdd: () => setAdding(true) }), [])
-  const collecting = isStarting || !!run && ['queued', 'running', 'waiting_for_user'].includes(run.status)
   const requestedReturn: unknown = location.state?.returnTo
   const catalogSearch = location.pathname === '/cards' ? location.search
     : typeof requestedReturn === 'string' && /^\/cards(?:\?[^#]*)?$/.test(requestedReturn) ? requestedReturn.slice('/cards'.length) : ''
   const params = useMemo(() => new URLSearchParams(catalogSearch), [catalogSearch])
-  const tags = useMemo(() => [...new Set((catalog.data?.cards ?? []).flatMap((card) => card.tags ?? []))], [catalog.data?.cards])
+  const tags = useMemo(() => catalogTags(catalog.data?.cards ?? []), [catalog.data?.cards])
 
   async function openBrowser() {
     setBrowserError(null)

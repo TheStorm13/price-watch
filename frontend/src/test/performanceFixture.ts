@@ -1,7 +1,7 @@
 // Loaded only in the mock build, never in the desktop runtime.
 import { api } from '../api/client'
 import { queryClient } from '../app/providers'
-import type { CatalogSnapshot, TrackedCardView } from '../types/domain'
+import { performanceData } from './performanceData'
 
 export function installPerformanceFixture() {
   const params = new URLSearchParams(location.search)
@@ -9,22 +9,8 @@ export function installPerformanceFixture() {
   if (![100, 1000, 5000].includes(count)) return
   const shape = params.get('shape') ?? 'plain'
   const now = new Date().toISOString()
-  const cards: TrackedCardView[] = Array.from({ length: count }, (_, i) => ({
-    id: 10000 + i, primaryVariantId: 10000 + i, externalId: String(10000 + i), marketplace: 'ozon', title: `Тестовый товар ${String(i).padStart(5, '0')}`,
-    groupId: shape === 'group' ? 1 : shape === 'mixed' && i % 2 === 0 ? Math.floor(i / 10) + 1 : null,
-    tags: [], url: null, imageUrl: null, dealsEnabled: true, currentPrice: '100.00', minimumPrice: '90.00',
-    averagePrice: '110.00', currentAvailability: 'in_stock', lastObservedAt: now, lastCollectedAt: now, createdAt: now, updatedAt: now,
-  }))
-  const members = new Map<number, TrackedCardView[]>()
-  for (const card of cards) if (card.groupId != null) {
-    const group = members.get(card.groupId) ?? []
-    group.push(card); members.set(card.groupId, group)
-  }
-  const snapshot: CatalogSnapshot = { cards, deals: [], groups: [...members].map(([id, group]) => ({
-    id, name: `Тестовая группа ${id}`, tags: [], cardIds: group.map(card => card.id),
-    representativeCardId: group[0].id, representativeCard: group[0], currentPrice: '100.00', minimumPrice: '90.00',
-    savings: null, baselineDays: 30, isDeal: false, hasMemberDeals: false,
-  })) }
+  const snapshot = performanceData(count, shape, params.get('dataset') === 'varied', now)
+  const cards = snapshot.cards
   api.getCatalog = async () => snapshot
   api.getCard = async id => {
     const card = cards.find(card=>card.id===id)

@@ -157,6 +157,42 @@ Release Chromium p95 и функциональный native smoke приведе
 Для UI соберите отдельный mock release с `VITE_E2E_TEST_MODE=true`, поднимите
 loopback preview и выполните `node scripts/benchmark_ui.mjs <URL> <output.json>`.
 Harness использует 100/1000/5000 in-memory карточек, 5 прогревов и 30 измерений.
+Для воспроизводимых замеров после sidebar-переработки (команды из корня):
+
+```sh
+cd frontend
+VITE_E2E_TEST_MODE=true npx vite build --outDir /tmp/price-watch-ui-before
+npx vite preview --outDir /tmp/price-watch-ui-before --host 127.0.0.1 --port 5177 --strictPort
+```
+
+В другом терминале из корня:
+
+```sh
+node --test scripts/benchmark_ui_metrics.test.mjs
+node scripts/benchmark_ui.mjs http://127.0.0.1:5177 /tmp/price-watch-ui-before.json
+```
+
+До правок runtime сохраните исходники и baseline; после правок соберите отдельный
+`/tmp/price-watch-ui-after`, поднимите preview на 5178 и выполните:
+
+```sh
+node scripts/benchmark_ui.mjs http://127.0.0.1:5178 /tmp/price-watch-ui-after.json --baseline=/tmp/price-watch-ui-before.json
+```
+
+Обе сборки должны использовать одинаковые обновлённые benchmark и mock fixture.
+Стенд использует `dataset=varied`, seed 42, 100/1000/5000 товаров, plain/mixed/group,
+5 прогревов и 30 замеров каждого действия, оба направления семи колонок и поиск
+при сортировке названий. Отчёт содержит p50/p95, DOM, доступную heap-память,
+long tasks, параметры окружения и пороги для каждого действия. Время включает
+автоматизацию, реальные DOM-события и ожидание двух кадров/отложенных результатов;
+это release Chromium mock, не измерение native WebView. Нет данных памяти — null.
+Код выхода 1 означает ошибки приложения или превышение p95: 200 мс, либо снижение
+минимум на 30%, если соответствующий baseline >200 мс. Рост относительно baseline
+показывается отдельно даже при прохождении порога. `--resume` продолжает тот же
+прерванный запуск; для новой сборки/окружения нужен новый отчёт. Сравнение требует
+совпадения браузера, машины и параметров данных. Не запускать параллельно сборки
+и другие тяжёлые проверки во время измерений. Артефакты хранить вне репозитория.
+
 Desktop production build не содержит performance fixture.
 
 `scripts/benchmark_diagnostics_export.py --schema perf_<name> --case
