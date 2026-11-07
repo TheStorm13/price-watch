@@ -3,7 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { BarChart3, FolderPlus, Globe2, Plus, RefreshCw } from 'lucide-react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { apiModeLabel, isDesktopMode } from '../../api/client'
 import { useCatalog } from '../../api/queries'
 import { ActiveCollectionPanel } from '../../features/collection/ActiveCollectionPanel'
@@ -16,10 +16,12 @@ import { ImportExportControls } from '../../features/cards/ImportExportControls'
 import { catalogTags } from '../../features/cards/catalogModel'
 import { CatalogFilters } from '../../features/cards/CatalogFilters'
 import { CatalogActionsContext } from './catalogActions'
+import { useCatalogPreferences } from '../../features/cards/useCatalogPreferences'
 
 export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { restoreTo, savedSearch, rememberSearch } = useCatalogPreferences()
   const catalog = useCatalog()
   const { collecting, start, startError } = useCollectionActions()
   const { serviceError, retryServices } = useDesktopRuntime()
@@ -31,7 +33,7 @@ export function AppShell() {
   const actions = useMemo(() => ({ openAdd: () => setAdding(true) }), [])
   const requestedReturn: unknown = location.state?.returnTo
   const catalogSearch = location.pathname === '/cards' ? location.search
-    : typeof requestedReturn === 'string' && /^\/cards(?:\?[^#]*)?$/.test(requestedReturn) ? requestedReturn.slice('/cards'.length) : ''
+    : typeof requestedReturn === 'string' && /^\/cards(?:\?[^#]*)?$/.test(requestedReturn) ? requestedReturn.slice('/cards'.length) : savedSearch
   const params = useMemo(() => new URLSearchParams(catalogSearch), [catalogSearch])
   const tags = useMemo(() => catalogTags(catalog.data?.cards ?? []), [catalog.data?.cards])
 
@@ -48,9 +50,12 @@ export function AppShell() {
   }
 
   function changeFilters(next: URLSearchParams) {
+    rememberSearch(next)
     const search = next.toString()
     void navigate(`/cards${search ? `?${search}` : ''}`, { replace: location.pathname === '/cards', flushSync: true })
   }
+
+  if (restoreTo) return <Navigate to={restoreTo} replace state={location.state} />
 
   return (
     <CatalogActionsContext.Provider value={actions}>

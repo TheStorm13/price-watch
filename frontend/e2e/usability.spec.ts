@@ -30,7 +30,9 @@ test('контекст каталога, скрытые артикулы и кл
   const direct = await page.context().newPage()
   await direct.goto('/cards/1')
   await direct.getByRole('link', { name: 'К карточкам', exact: true }).click()
-  await expect(direct).toHaveURL('/cards')
+  await expect(direct).toHaveURL(url.replace('&view=grid', ''))
+  await expect(direct.getByRole('radio', { name: 'Список', exact: true })).toBeChecked()
+  await expect(direct.getByLabel('Поиск по названию или артикулу')).toHaveValue('1604900984')
   await direct.close()
 })
 

@@ -17,6 +17,7 @@ import { BulkCardActions } from './BulkCardActions'
 import { useCardSelection } from './useCardSelection'
 import { hasCatalogFilters } from './catalogModel'
 import { useCatalogActions } from '../../components/layout/catalogActions'
+import { readCatalogPreferences, writeCatalogPreferences } from './catalogPreferences'
 
 export function CardsPage() {
   const { openAdd } = useCatalogActions()
@@ -27,7 +28,8 @@ export function CardsPage() {
   useLayoutEffect(() => { paramsSetter.current = setParams }, [setParams])
   const [editingGroup, setEditingGroup] = useState<ProductGroup | 'new' | null>(null)
   const [initialGroupCardIds, setInitialGroupCardIds] = useState<number[]>([])
-  const [collapsedGroups, setCollapsedGroups] = useState<number[]>([])
+  const [collapsedGroups, setCollapsedGroups] = useState(() => readCatalogPreferences().collapsedGroupIds)
+  useLayoutEffect(() => { writeCatalogPreferences({ collapsedGroupIds: collapsedGroups }) }, [collapsedGroups])
   const catalogQuery = useCatalog()
   const selection = useCardSelection(catalogQuery.data?.cards)
   const query = params.get('q') ?? ''

@@ -747,7 +747,9 @@ test('фильтр предложений показывает цену, мин�
   await expect(page.locator('.cards-grid__item')).toHaveCount(1)
   await expect(page.locator('.cards-grid__item')).toContainText(['77 879 ₽'])
   await page.goto('/deals')
-  await expect(page).toHaveURL(/\/cards$/)
+  await expect(page).toHaveURL(/\/cards\?deals=deals&view=grid$/)
+  await expect(page.getByRole('combobox', { name: 'Выгодность' })).toHaveText('Выгодные')
+  await expect(page.getByRole('radio', { name: 'Сетка' })).toBeChecked()
 })
 
 test('после повторного открытия видны сохранённые предложения и результат запуска', async ({ page }) => {
