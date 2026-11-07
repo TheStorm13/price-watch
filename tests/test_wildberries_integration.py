@@ -68,7 +68,7 @@ class WildberriesIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_wrong_discovery_response_preserves_history_and_neighbor_success(self):
         with self.sync.engine.begin() as c:
             c.execute(text("INSERT INTO marketplace_cards(marketplace,external_id) VALUES ('wildberries','999999999')"))
-            c.execute(text("INSERT INTO card_variants(card_id,external_id,product_title) VALUES (1,'999999999','Legacy')"))
+            c.execute(text("INSERT INTO card_variants(card_id,marketplace,external_id,product_title) VALUES (1,'wildberries','999999999','Legacy')"))
             c.execute(text('UPDATE marketplace_cards SET primary_variant_id=1 WHERE id=1'))
             c.execute(text("INSERT INTO price_history(card_id,variant_id,price,availability,observed_at,snapshot) VALUES (1,1,500,'in_stock',now(),'{\"keep\": true}')"))
             before=c.execute(text('SELECT * FROM marketplace_cards WHERE id=1')).one()

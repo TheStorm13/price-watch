@@ -60,7 +60,7 @@ class CardRepository:
                 if await session.scalar(select(CardVariantRecord.id).where(
                     CardVariantRecord.card_id == record.id, CardVariantRecord.external_id == external_id)):
                     raise CardAlreadyExists("Такой вариант уже добавлен")
-                variant = CardVariantRecord(card_id=record.id, external_id=external_id, url=url, product_title=title)
+                variant = CardVariantRecord(card_id=record.id, marketplace=marketplace, external_id=external_id, url=url, product_title=title)
                 session.add(variant)
                 await session.flush()
                 if record.primary_variant_id is None:

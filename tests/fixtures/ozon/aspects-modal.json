@@ -1,0 +1,509 @@
+{
+  "source": {
+    "aspects": [
+      {
+        "aspectName": "Цвет",
+        "aspectKey": "Color",
+        "type": "colorsText",
+        "descriptionRs": [
+          {
+            "type": "textGray",
+            "content": "Цвет: "
+          },
+          {
+            "type": "text",
+            "content": "лопата малая,нат. щетина + нейлоновый штифт."
+          }
+        ],
+        "additionalInfo": {},
+        "aspectModalInfo": {
+          "realNumberOfVariants": "10",
+          "link": "/modal/aspectsNew?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&product_id=410630078",
+          "linkText": "Все 10 цветов"
+        },
+        "variants": [
+          {
+            "sku": "410625529",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-neylonovyy-shtift-13-ryad-410625529/?from_sku=410630078&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "белый",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "белый"
+                }
+              ],
+              "price": "695 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-g/wc140/7367003944.jpg",
+              "originalPrice": "772 ₽",
+              "colors": [
+                "#ffffff"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\" нейлоновый штифт, 13 ряд."
+            },
+            "price": 695
+          },
+          {
+            "sku": "410627382",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-neylonovyy-shtift-13-ryad-410627382/?from_sku=410630078&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "бежевый",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "бежевый"
+                }
+              ],
+              "price": "598 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-z/wc140/7366987907.jpg",
+              "originalPrice": "1 351 ₽",
+              "colors": [
+                "#c0987e"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"ЛОПАТА\", нейлоновый штифт, 13 ряд."
+            },
+            "price": 598
+          },
+          {
+            "sku": "410630078",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-malaya-naturalnaya-shchetina-neylonovyy-shtift-410630078/?from_sku=410630078&oos_search=false",
+            "active": true,
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата малая,нат. щетина + нейлоновый штифт.",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата малая,нат. щетина + нейлоновый штифт."
+                }
+              ],
+              "price": "572 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-n/wc140/7370123423.jpg",
+              "originalPrice": "636 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата малая \", натуральная щетина + нейлоновый штифт."
+            },
+            "price": 572
+          },
+          {
+            "sku": "410629072",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-lopata-malaya-plastikovyy-shtift-410629072/?from_sku=410630078&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата малая,пл. штифт,черная",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата малая,пл. штифт,черная"
+                }
+              ],
+              "price": "498 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-3/wc140/7370125851.jpg",
+              "originalPrice": "943 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, \"лопата малая \", пластиковый штифт."
+            },
+            "price": 498
+          },
+          {
+            "sku": "410630604",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-nat-shchetina-neylonovyy-shtift-410630604/?from_sku=410630078&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата, нат. щетина + нейлоновый штифт",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата, нат. щетина + нейлоновый штифт"
+                }
+              ],
+              "price": "833 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-t/wc140/9092532485.jpg",
+              "originalPrice": "926 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\", нат. щетина + нейлоновый штифт"
+            },
+            "price": 833
+          },
+          {
+            "sku": "410631249",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-plastikovyy-shtift-410631249/?from_sku=410630078&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата, пластиковый штифт",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата, пластиковый штифт"
+                }
+              ],
+              "price": "631 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-6/wc140/7370114622.jpg",
+              "originalPrice": "1 239 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\", пластиковый штифт"
+            },
+            "price": 631
+          }
+        ]
+      }
+    ],
+    "lexemes": {
+      "additionalText": "Еще",
+      "ariaLabel": "Подсказка",
+      "chooseRingSizeText": "Подобрать размер кольца",
+      "chooseRingSizeTitle": "Подбор размера кольца",
+      "chooseSizeText": "Выберите размер",
+      "chooseVariantText": "Выбрать",
+      "notAvailableCombinationText": "Нет в таком сочетании",
+      "notAvailableText": "Нет в наличии",
+      "ringSizeBtnText": "Показать",
+      "ringSizeCloseBtnText": "Закрыть",
+      "ringSizeLabel": "Длина в мм",
+      "ringSizePlaceHolder": "Введите значение",
+      "ringSizeTactic1": "Возьмите измерительную ленту или же любой шнурок, нитку, которую потом можно измерить по линейке.",
+      "ringSizeTactic2": "Обмотайте",
+      "ringSizeTactic3": "ленту вокруг пальца (например, безымянного, если вы подбираете обручальное или помолвочное кольцо).",
+      "ringSizeTactic4": "Измерьте длину этого отрезка в миллиметрах с помощью линейки. Введите получившееся значение.",
+      "ringSizeTactic5": "Не измеряйте замерзшие пальцы",
+      "ringSizeTactic6": "Замеры лучше делать в конце дня",
+      "ringSizeTactic7": "Если сустав шире самого пальца – измеряйте диаметр сустава",
+      "ringSizeTactic8": "Ваш размер кольца:",
+      "showAllText": "Посмотреть все",
+      "showMoreText": "Показать еще"
+    },
+    "ringSizeTacticRs": [
+      {
+        "type": "text",
+        "content": "Возьмите измерительную ленту или же любой шнурок, нитку, которую потом можно измерить по линейке."
+      },
+      {
+        "type": "newLine"
+      },
+      {
+        "type": "text",
+        "content": "Обмотайте ленту вокруг пальца (например, безымянного, если вы подбираете обручальное или помолвочное кольцо)."
+      }
+    ]
+  },
+  "modal": {
+    "aspects": [
+      {
+        "aspectName": "Цвет",
+        "aspectKey": "Color",
+        "type": "colorsText",
+        "descriptionRs": [
+          {
+            "type": "textGray",
+            "content": "Цвет: "
+          },
+          {
+            "type": "text",
+            "content": "лопата малая,нат. щетина + нейлоновый штифт."
+          }
+        ],
+        "additionalInfo": {},
+        "variants": [
+          {
+            "sku": "410625529",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-neylonovyy-shtift-13-ryad-410625529/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "белый",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "белый"
+                }
+              ],
+              "price": "695 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-g/wc140/7367003944.jpg",
+              "originalPrice": "772 ₽",
+              "colors": [
+                "#ffffff"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\" нейлоновый штифт, 13 ряд."
+            },
+            "price": 695
+          },
+          {
+            "sku": "410627382",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-neylonovyy-shtift-13-ryad-410627382/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "бежевый",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "бежевый"
+                }
+              ],
+              "price": "598 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-z/wc140/7366987907.jpg",
+              "originalPrice": "1 351 ₽",
+              "colors": [
+                "#c0987e"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"ЛОПАТА\", нейлоновый штифт, 13 ряд."
+            },
+            "price": 598
+          },
+          {
+            "sku": "410630078",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-malaya-naturalnaya-shchetina-neylonovyy-shtift-410630078/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "active": true,
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата малая,нат. щетина + нейлоновый штифт.",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата малая,нат. щетина + нейлоновый штифт."
+                }
+              ],
+              "price": "572 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-n/wc140/7370123423.jpg",
+              "originalPrice": "636 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата малая \", натуральная щетина + нейлоновый штифт."
+            },
+            "price": 572
+          },
+          {
+            "sku": "410629072",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-lopata-malaya-plastikovyy-shtift-410629072/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата малая,пл. штифт,черная",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата малая,пл. штифт,черная"
+                }
+              ],
+              "price": "498 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-3/wc140/7370125851.jpg",
+              "originalPrice": "943 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, \"лопата малая \", пластиковый штифт."
+            },
+            "price": 498
+          },
+          {
+            "sku": "410630604",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-nat-shchetina-neylonovyy-shtift-410630604/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата, нат. щетина + нейлоновый штифт",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата, нат. щетина + нейлоновый штифт"
+                }
+              ],
+              "price": "833 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-t/wc140/9092532485.jpg",
+              "originalPrice": "926 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\", нат. щетина + нейлоновый штифт"
+            },
+            "price": 833
+          },
+          {
+            "sku": "410631249",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-plastikovyy-shtift-410631249/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата, пластиковый штифт",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата, пластиковый штифт"
+                }
+              ],
+              "price": "631 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-6/wc140/7370114622.jpg",
+              "originalPrice": "1 239 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\", пластиковый штифт"
+            },
+            "price": 631
+          },
+          {
+            "sku": "410614661",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-neylonovyy-shtift-13-ryad-410614661/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "нейлоновый штифт, 13 рядов",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "нейлоновый штифт, 13 рядов"
+                }
+              ],
+              "price": "691 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-5/wc140/7366991981.jpg",
+              "originalPrice": "767 ₽",
+              "colors": [
+                "#000000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\" нейлоновый штифт, 13 ряд."
+            },
+            "price": 691
+          },
+          {
+            "sku": "410628611",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-malaya-plastikovyy-shtift-410628611/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "лопата малая,пл. штифт.",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "лопата малая,пл. штифт."
+                }
+              ],
+              "price": "481 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-r/wc140/7370128071.jpg",
+              "originalPrice": "934 ₽",
+              "colors": [
+                "#000000",
+                "#ff0000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата малая \", пластиковый штифт."
+            },
+            "price": 481
+          },
+          {
+            "sku": "410618860",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-neylonovyy-shtift-13-ryad-410618860/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "красный",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "красный"
+                }
+              ],
+              "price": "526 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-2/wc140/7366994858.jpg",
+              "originalPrice": "1 008 ₽",
+              "colors": [
+                "#ff0000"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\" нейлоновый штифт, 13 ряд."
+            },
+            "price": 526
+          },
+          {
+            "sku": "410628104",
+            "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-naturalnaya-shchetina-plastikovyy-shtift-410628104/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+            "availability": "inStock",
+            "data": {
+              "searchableText": "синий",
+              "textRs": [
+                {
+                  "type": "text",
+                  "content": "синий"
+                }
+              ],
+              "price": "695 ₽",
+              "coverImage": "https://ir.ozone.ru/s3/multimedia-1-6/wc140/7370131002.jpg",
+              "originalPrice": "1 360 ₽",
+              "colors": [
+                "#0000ff"
+              ],
+              "title": "DEWAL Щетка для укладки волос, массажная \"лопата\", натуральная щетина + пластиковый штифт, с хвостиком."
+            },
+            "price": 695
+          }
+        ]
+      }
+    ],
+    "lexemes": {
+      "additionalText": "Еще",
+      "ariaLabel": "Подсказка",
+      "chooseRingSizeText": "Подобрать размер кольца",
+      "chooseRingSizeTitle": "Подбор размера кольца",
+      "chooseSizeText": "Выберите размер",
+      "chooseVariantText": "Выбрать",
+      "closeAspectModalText": "Отмена",
+      "modalHeaderText": "Все варианты товара",
+      "notAvailableCombinationText": "Нет в таком сочетании",
+      "notAvailableText": "Нет в наличии",
+      "notFoundSubtitle": "Попробуйте изменить формулировку",
+      "notFoundTitle": "Цвета не найдены",
+      "ringSizeBtnText": "Показать",
+      "ringSizeCloseBtnText": "Закрыть",
+      "ringSizeLabel": "Длина в мм",
+      "ringSizePlaceHolder": "Введите значение",
+      "ringSizeTactic1": "Возьмите измерительную ленту или же любой шнурок, нитку, которую потом можно измерить по линейке.",
+      "ringSizeTactic2": "Обмотайте",
+      "ringSizeTactic3": "ленту вокруг пальца (например, безымянного, если вы подбираете обручальное или помолвочное кольцо).",
+      "ringSizeTactic4": "Измерьте длину этого отрезка в миллиметрах с помощью линейки. Введите получившееся значение.",
+      "ringSizeTactic5": "Не измеряйте замерзшие пальцы",
+      "ringSizeTactic6": "Замеры лучше делать в конце дня",
+      "ringSizeTactic7": "Если сустав шире самого пальца – измеряйте диаметр сустава",
+      "ringSizeTactic8": "Ваш размер кольца:",
+      "searchFieldPlaceholderText": "Искать...",
+      "showAllText": "Посмотреть все",
+      "showMoreText": "Показать еще"
+    },
+    "currentVariant": {
+      "sku": "410630078",
+      "link": "/product/dewal-shchetka-dlya-ukladki-volos-massazhnaya-lopata-malaya-naturalnaya-shchetina-neylonovyy-shtift-410630078/?from_sku=410630078&from_url=https%3A%2F%2Fwww.ozon.ru%2F&oos_search=false",
+      "active": true,
+      "availability": "inStock",
+      "data": {
+        "searchableText": "лопата малая,нат. щетина + нейлоновый штифт.",
+        "textRs": [
+          {
+            "type": "text",
+            "content": "лопата малая,нат. щетина + нейлоновый штифт."
+          }
+        ],
+        "price": "572 ₽",
+        "coverImage": "https://ir.ozone.ru/s3/multimedia-1-n/wc140/7370123423.jpg",
+        "originalPrice": "636 ₽",
+        "colors": [
+          "#000000"
+        ],
+        "title": "DEWAL Щетка для укладки волос, массажная \"лопата малая \", натуральная щетина + нейлоновый штифт."
+      },
+      "price": 572
+    },
+    "ringSizeTacticRs": [
+      {
+        "type": "text",
+        "content": "Возьмите измерительную ленту или же любой шнурок, нитку, которую потом можно измерить по линейке."
+      },
+      {
+        "type": "newLine"
+      },
+      {
+        "type": "text",
+        "content": "Обмотайте ленту вокруг пальца (например, безымянного, если вы подбираете обручальное или помолвочное кольцо)."
+      }
+    ],
+    "modalType": "default"
+  }
+}

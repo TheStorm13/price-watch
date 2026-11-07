@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from .async_client import AsyncOzonClient
 from .mapper import OzonMapper
 from .parser import OzonProductParser
@@ -20,8 +22,11 @@ class OzonConnector:
 
     async def get_product(self, external_id: str) -> MarketplaceCard:
         response = await self._client.fetch_product_async(external_id)
-        return self._mapper.to_card(OzonProductParser.parse(
+        data = OzonProductParser.parse(
             response.raw_text,
             expected_external_id=response.external_id,
             collected_at=response.received_at,
-        ))
+        )
+        if response.aspects is not None:
+            data = replace(data, aspects=response.aspects, discovery_error=response.discovery_error)
+        return self._mapper.to_card(data)

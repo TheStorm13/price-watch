@@ -10,6 +10,8 @@ class OzonResponse:
     external_id: str
     raw_text: str
     received_at: datetime
+    aspects: dict[str, Any] | None = None
+    discovery_error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -34,3 +36,4 @@ class OzonProductData:
     aspects: dict[str, Any]
     gallery: dict[str, Any]
     seo_product: dict[str, Any]
+    discovery_error: str | None = None

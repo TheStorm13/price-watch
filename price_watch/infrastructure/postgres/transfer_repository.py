@@ -108,7 +108,7 @@ class TransferRepository:
                     if preview:
                         continue
                     if variant is None:
-                        variant=CardVariantRecord(card_id=product.id,external_id=imported['external_id'],url=imported.get('url'),
+                        variant=CardVariantRecord(card_id=product.id,marketplace=product.marketplace,external_id=imported['external_id'],url=imported.get('url'),
                             tracking_enabled=imported.get('tracking_enabled',False),
                             title=imported.get('title',''),product_title=imported.get('product_title'),image_url=imported.get('image_url'),options=imported.get('options',{}),updated_at=imported.get('updated_at'))
                         s.add(variant)

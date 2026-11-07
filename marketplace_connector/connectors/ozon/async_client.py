@@ -15,6 +15,8 @@ from playwright.async_api import Error as PlaywrightError
 from ...domain.errors import InvalidProductId, MarketplaceUnavailable
 from .json_transport import HOME_URL, OzonJsonTransport
 from .models import OzonResponse
+from .parser import OzonProductParser
+from .aspects import complete_aspects
 from ...ports.challenge import ChallengeHandler, RejectChallengeHandler
 from ...browser.session import ChromeSession
 
@@ -129,11 +131,18 @@ class AsyncOzonClient:
 
     async def fetch_product_async(self, external_id: Union[str, int]) -> OzonResponse:
         article = self.normalize_product_id(external_id)
-        raw_text = await self.fetch_raw_text_async(article, validate=False)
+        async with self._request_session() as transport:
+            raw_text = await transport.fetch(article)
+            received_at = datetime.now(timezone.utc)
+            data = OzonProductParser.parse(raw_text, expected_external_id=article, collected_at=received_at)
+            aspects, error = await complete_aspects(data.aspects, article,
+                lambda link: transport.fetch(article, modal_link=link))
         return OzonResponse(
             external_id=article,
             raw_text=raw_text,
-            received_at=datetime.now(timezone.utc),
+            received_at=received_at,
+            aspects=aspects,
+            discovery_error=error,
         )
 
     async def fetch_raw_text_async(self, external_id: Union[str, int], *, validate: bool = True) -> str:

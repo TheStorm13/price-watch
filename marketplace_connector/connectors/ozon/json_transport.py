@@ -160,7 +160,7 @@ class OzonJsonTransport:
                 raise MarketplaceUnavailable("Не удалось открыть сессию Ozon") from exc
             raise
 
-    async def fetch(self, article):
+    async def fetch(self, article, *, modal_link=None):
         owner = asyncio.current_task()
         self._owners.add(owner)
         try:
@@ -178,7 +178,8 @@ class OzonJsonTransport:
             await asyncio.shield(self._bootstrap)
             # Keep the product page (gallery/aspects) even when the SKU is sold
             # out; Ozon otherwise redirects it to a search/recommendations page.
-            url = HOME_URL.rstrip("/") + API_PATH + "?url=" + quote(f"/product/{article}/?oos_search=false", safe="")
+            path = modal_link or f"/product/{article}/?oos_search=false"
+            url = HOME_URL.rstrip("/") + API_PATH + "?url=" + quote(path, safe="")
             for attempt in range(self.max_attempts):
                 result, generation = await self._attempt(url)
                 recovering = self._needs_recovery(result)
@@ -188,7 +189,7 @@ class OzonJsonTransport:
                 else:
                     error = self._response_error(result)
                     if error is None:
-                        return self._validated_text(result, article)
+                        return self._validated_text(result, article, modal=modal_link is not None)
                 if attempt + 1 == self.max_attempts:
                     raise error
                 if result.get("status") == 429 or recovering:
@@ -215,11 +216,11 @@ class OzonJsonTransport:
         return None
 
     @staticmethod
-    def _validated_text(result, article):
+    def _validated_text(result, article, *, modal=False):
         content_type = result.get("contentType", "").lower().split(";", 1)[0].strip()
         if content_type != "application/json" and not content_type.endswith("+json"):
             raise MarketplaceSchemaChanged("Ozon вернул неожиданный тип ответа вместо JSON")
-        return validate_composer_text(result.get("text"), article)
+        return result.get("text") if modal else validate_composer_text(result.get("text"), article)
 
     @staticmethod
     def _access_error():

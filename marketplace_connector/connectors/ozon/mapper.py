@@ -106,7 +106,8 @@ class OzonMapper:
             attributes=tuple(cls._characteristics(characteristics)),
             description=str(ld_product.get("description") or ""),
             variants=tuple(cls._variants(aspects, external_id)),
-            extensions=cls._discovery_status(aspects),
+            extensions=({'variant_discovery_error': data.discovery_error}
+                        if data.discovery_error else cls._discovery_status(aspects)),
             collected_at=data.received_at,
         )
 

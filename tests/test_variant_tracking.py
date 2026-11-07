@@ -226,5 +226,8 @@ class VariantTrackingMigrationTests(unittest.TestCase):
             self.assertFalse(c.scalar(text('SELECT discover_all FROM collection_runs WHERE id=1')))
             for t in tables:
                 rows = c.execute(text(f'SELECT * FROM {t} ORDER BY 1,2')).mappings().all()
-                rows = [{k:v for k,v in r.items() if k != 'tracking_enabled'} for r in rows]
+                if t == 'card_variants':
+                    self.assertEqual({r['marketplace'] for r in rows}, {'wildberries', 'aliexpress'})
+                added = {'tracking_enabled', 'marketplace'} if t == 'card_variants' else set()
+                rows = [{k:v for k,v in r.items() if k not in added} for r in rows]
                 self.assertEqual(rows, before[t])

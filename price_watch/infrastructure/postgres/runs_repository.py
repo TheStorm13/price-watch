@@ -119,7 +119,7 @@ class RunRepository:
                     continue
             variant = known.get(ref)
             if variant is None:
-                variant = CardVariantRecord(card_id=product.id, external_id=ref, url=url)
+                variant = CardVariantRecord(card_id=product.id, marketplace=product.marketplace, external_id=ref, url=url)
                 session.add(variant)
                 known[ref] = variant
             # A neighbouring aspect only describes part of the SKU. Never

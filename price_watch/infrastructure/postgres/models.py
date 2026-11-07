@@ -45,6 +45,7 @@ class MarketplaceCardRecord(Base):
     __table_args__ = (
         ForeignKeyConstraint(["id", "primary_variant_id"], ["card_variants.card_id", "card_variants.id"], name="card_primary_variant_owner_fk", deferrable=True, initially="DEFERRED", use_alter=True),
         UniqueConstraint("marketplace", "external_id", name="marketplace_cards_marketplace_external_unique"),
+        UniqueConstraint("id", "marketplace", name="marketplace_cards_id_marketplace_unique"),
         CheckConstraint("btrim(marketplace) <> ''", name="marketplace_cards_marketplace_not_blank"),
         CheckConstraint("btrim(external_id) <> ''", name="marketplace_cards_external_id_not_blank"),
         CheckConstraint("cardinality(tags) <= 2", name="marketplace_cards_tags_limit"),
@@ -76,6 +77,9 @@ class MarketplaceCardRecord(Base):
 class CardVariantRecord(Base):
     __tablename__ = "card_variants"
     __table_args__ = (
+        ForeignKeyConstraint(['card_id', 'marketplace'], ['marketplace_cards.id', 'marketplace_cards.marketplace'],
+                             name='variant_marketplace_owner_fk', ondelete='CASCADE'),
+        Index('ozon_sku_unique', 'external_id', unique=True, postgresql_where=text("marketplace = 'ozon'")),
         UniqueConstraint("card_id", "external_id", name="card_variants_identity_unique"),
         UniqueConstraint("card_id", "id", name="card_variants_owner_unique"),
         CheckConstraint("btrim(external_id) <> ''", name="card_variants_identity_not_blank"),
@@ -83,6 +87,7 @@ class CardVariantRecord(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     card_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("marketplace_cards.id", ondelete="CASCADE"), index=True)
     external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    marketplace: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
     url: Mapped[str | None] = mapped_column(Text)
     product_title: Mapped[str | None] = mapped_column(Text)
@@ -165,7 +170,7 @@ class CollectionRunTargetRecord(Base):
 class PriceHistoryRecord(Base):
     __tablename__ = "price_history"
     __table_args__ = (
-        ForeignKeyConstraint(["card_id", "variant_id"], ["card_variants.card_id", "card_variants.id"], name="history_variant_fk", ondelete="CASCADE"),
+        ForeignKeyConstraint(["card_id", "variant_id"], ["card_variants.card_id", "card_variants.id"], name="history_variant_fk", ondelete="CASCADE", deferrable=True),
         CheckConstraint("price is null or price >= 0", name="price_history_price_check"),
         CheckConstraint("availability <> 'out_of_stock' or price is null",
                         name="price_history_unavailable_price_check"),
