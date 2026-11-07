@@ -22,6 +22,17 @@ API слушает свободный локальный порт и требу�
 
 ## Автоматические проверки
 
+Проверки дополнительного повтора сбора (без живых площадок):
+
+```bash
+.venv/bin/python -m unittest tests.test_product_retry tests.test_collection_service tests.test_transport_retry_preparation tests.test_price_watch_cli -v
+```
+
+Они покрывают один внешний повтор поверх внутренних попыток, задержку 1 секунду,
+`Retry-After`, отмену, потерю lease, освобождение лимита на паузе, итоговые
+счётчики, диагностику обеих попыток и отсутствие нового fetch при сбое записи.
+Проверки PostgreSQL по-прежнему требуют отдельную `TEST_DATABASE_URL`.
+
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
 npm --prefix frontend run lint

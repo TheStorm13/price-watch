@@ -116,7 +116,6 @@ class AsyncAliExpressClient:
 
     async def _prepare_storefront(self, page):
         recovering = self._storefront_prepared
-        self._storefront_prepared = True
         response = await page.goto(HOME_URL, wait_until="domcontentloaded", timeout=90_000)
         if await self._is_antibot_page_async(page):
             if not await self._wait_for_antibot_async(page):
@@ -131,6 +130,7 @@ class AsyncAliExpressClient:
         if (location.scheme != "https" or location.netloc != "aliexpress.ru"
                 or response is not None and response.status >= 400):
             raise MarketplaceUnavailable("Не удалось открыть главную страницу AliExpress")
+        self._storefront_prepared = True
 
     async def fetch_product_async(self, external_id: str) -> AliExpressResponse:
         article = self.normalize_product_id(external_id)

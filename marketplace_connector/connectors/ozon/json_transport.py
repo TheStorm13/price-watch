@@ -151,8 +151,14 @@ class OzonJsonTransport:
         try:
             self.page = await self.context.new_page()
             await self.prepare_page(self.page)
-        except (PlaywrightError, TimeoutError) as exc:
-            raise MarketplaceUnavailable("Не удалось открыть сессию Ozon") from exc
+        except BaseException as exc:
+            if self.page is not None:
+                with suppress(PlaywrightError):
+                    await self.page.close()
+                self.page = None
+            if isinstance(exc, (PlaywrightError, TimeoutError)):
+                raise MarketplaceUnavailable("Не удалось открыть сессию Ozon") from exc
+            raise
 
     async def fetch(self, article):
         owner = asyncio.current_task()
@@ -160,6 +166,12 @@ class OzonJsonTransport:
         try:
             if self._closed:
                 raise MarketplaceUnavailable("Сеанс Ozon закрыт")
+            if (self._bootstrap is not None and self._bootstrap.done()
+                    and not self._bootstrap.cancelled()
+                    and isinstance(self._bootstrap.exception(), MarketplaceUnavailable)):
+                # A later application attempt may retry temporary preparation.
+                # Existing waiters still observe their original failed task.
+                self._bootstrap = None
             if self._bootstrap is None:
                 self._bootstrap = asyncio.create_task(self._start())
                 self._bootstrap.add_done_callback(self._retrieve_exception)

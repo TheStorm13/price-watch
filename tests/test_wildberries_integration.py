@@ -91,7 +91,10 @@ class WildberriesIntegrationTests(unittest.IsolatedAsyncioTestCase):
         async def factory(run):return ConnectorRegistry([WildberriesConnector(client)])
         run=await RunExecutor(self.stores.runs,factory).collect()
         self.assertEqual((run.success_count,run.failure_count),(1,1))
-        self.assertEqual(transport.fetch.await_count,2)
+        self.assertEqual(transport.fetch.await_count,3)
+        requested = [call.args[0] for call in transport.fetch.await_args_list]
+        self.assertEqual(requested.count('999999999'), 2)
+        self.assertEqual(requested.count(REF), 1)
         transport.fetch.assert_any_await(REF)
         transport.fetch.assert_any_await('999999999')
         with self.sync.engine.connect() as c:

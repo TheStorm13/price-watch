@@ -126,8 +126,14 @@ class AliExpressJsonTransport:
         try:
             self.page = await self.context.new_page()
             await self.prepare_page(self.page)
-        except (PlaywrightError, TimeoutError) as exc:
-            raise MarketplaceUnavailable("Не удалось открыть сессию AliExpress") from exc
+        except BaseException as exc:
+            if self.page is not None:
+                with suppress(PlaywrightError):
+                    await self.page.close()
+                self.page = None
+            if isinstance(exc, (PlaywrightError, TimeoutError)):
+                raise MarketplaceUnavailable("Не удалось открыть сессию AliExpress") from exc
+            raise
 
     async def fetch(self, article):
         owner = asyncio.current_task()
@@ -135,6 +141,12 @@ class AliExpressJsonTransport:
         try:
             if self._closed:
                 raise MarketplaceUnavailable("Сеанс AliExpress закрыт")
+            if (self._bootstrap is not None and self._bootstrap.done()
+                    and not self._bootstrap.cancelled()
+                    and isinstance(self._bootstrap.exception(), MarketplaceUnavailable)):
+                # A later application attempt may retry temporary preparation.
+                # Existing waiters still observe their original failed task.
+                self._bootstrap = None
             if self._bootstrap is None:
                 self._bootstrap = asyncio.create_task(self._start())
                 self._bootstrap.add_done_callback(self._retrieve_exception)
@@ -227,7 +239,7 @@ class AliExpressJsonTransport:
         finally:
             async with self._condition:
                 if result is not None:
-                    if result.get("status") == 429 and not self._needs_recovery(result):
+                    if result.get("status") == 429:
                         wait = retry_after_seconds(result.get("retryAfter"))
                         self._cooldown = max(self._cooldown, asyncio.get_running_loop().time() + wait)
                     if self._needs_recovery(result) and self._generation == generation and self._recovery is None:

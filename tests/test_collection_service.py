@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import datetime, timezone
 import unittest
+from unittest.mock import AsyncMock, patch
 from marketplace_connector import Availability, ConnectorRegistry, ProductRef, MarketplaceCard
 from marketplace_connector.domain.errors import ProductNotFound, MarketplaceUnavailable, MarketplaceSchemaChanged, RateLimited
 from price_watch.application.run_executor import RunExecutor
@@ -78,6 +79,95 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
     def executor(self, repository, connector, **kwargs):
         async def factory(run): return ConnectorRegistry([connector])
         return RunExecutor(repository, factory, **kwargs)
+
+    async def test_retry_is_pending_until_success_and_successful_neighbors_are_not_repeated(self):
+        repo, connector = FakeRepository([card(1), card(2)]), Connector()
+        original = connector.get_product
+        calls = []
+        async def get_product(external_id):
+            calls.append(external_id)
+            if external_id == '1' and calls.count('1') == 1:
+                raise MarketplaceSchemaChanged('first response')
+            return await original(external_id)
+        connector.get_product = get_product
+        entered, release = asyncio.Event(), asyncio.Event()
+        async def delay(seconds):
+            self.assertEqual(seconds, 1)
+            entered.set()
+            await release.wait()
+        with patch('marketplace_connector.application.retry.sleep', side_effect=delay):
+            task = asyncio.create_task(self.executor(repo, connector).collect())
+            try:
+                await asyncio.wait_for(entered.wait(), 1)
+                self.assertEqual(repo.errors, [])
+                self.assertEqual(repo.run.failure_count, 0)
+                self.assertEqual(repo.run.status, 'running')
+                release.set()
+                result = await task
+            finally:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+        self.assertEqual((result.success_count, result.failure_count), (2, 0))
+        self.assertEqual(calls.count('1'), 2)
+        self.assertEqual(calls.count('2'), 1)
+        self.assertEqual(len(repo.saved), 2)
+
+    async def test_persistence_failure_does_not_fetch_again(self):
+        repo, connector = FakeRepository([card(1)]), Connector()
+        connector.get_product = AsyncMock(wraps=connector.get_product)
+        repo.save_result = AsyncMock(side_effect=RuntimeError('write failed'))
+        result = await self.executor(repo, connector).collect()
+        self.assertEqual(connector.get_product.await_count, 1)
+        self.assertEqual(result.failure_count, 1)
+
+    async def test_lease_loss_during_retry_delay_cancels_second_attempt(self):
+        repo, connector = FakeRepository([card(1)]), Connector()
+        connector.get_product = AsyncMock(side_effect=RuntimeError('temporary'))
+        entered = asyncio.Event()
+        async def delay(seconds):
+            entered.set()
+            await asyncio.Event().wait()
+        with patch('marketplace_connector.application.retry.sleep', side_effect=delay):
+            task = asyncio.create_task(self.executor(repo, connector, heartbeat_interval=.001).collect())
+            await asyncio.wait_for(entered.wait(), 1)
+            repo.lost = True
+            with self.assertRaises(LeaseLost):
+                await asyncio.wait_for(task, 1)
+        self.assertEqual(connector.get_product.await_count, 1)
+        self.assertEqual(connector.closes, 1)
+        self.assertEqual(repo.errors, [])
+
+    async def test_retry_delay_does_not_hold_a_fetch_slot(self):
+        repo, connector = FakeRepository([card(i) for i in range(6)]), Connector()
+        entered, last_started = asyncio.Event(), asyncio.Event()
+        calls = []
+        async def get_product(external_id):
+            calls.append(external_id)
+            if external_id != '5' and calls.count(external_id) == 1:
+                raise RuntimeError('temporary')
+            if external_id == '5':
+                last_started.set()
+            return MarketplaceCard(ref=ProductRef('ozon', external_id), title='Fetched',
+                                 url='', availability=Availability.OUT_OF_STOCK)
+        connector.get_product = get_product
+        async def delay(seconds):
+            entered.set()
+            await last_started.wait()
+        with patch('marketplace_connector.application.retry.sleep', side_effect=delay):
+            result = await asyncio.wait_for(self.executor(repo, connector).collect(), 1)
+        self.assertTrue(entered.is_set())
+        self.assertEqual(result.success_count, 6)
+
+    async def test_two_fetch_failures_record_one_error_with_both_attempts(self):
+        repo, connector = FakeRepository([card(1)]), Connector()
+        connector.get_product = AsyncMock(side_effect=[RuntimeError('first'), RuntimeError('last')])
+        with patch('marketplace_connector.application.retry.sleep', new_callable=AsyncMock):
+            result = await self.executor(repo, connector).collect()
+        self.assertEqual((result.success_count, result.failure_count), (0, 1))
+        self.assertEqual(len(repo.errors), 1)
+        self.assertIn('first', repo.errors[0]['traceback'])
+        self.assertIn('last', repo.errors[0]['traceback'])
+        self.assertEqual(repo.saved, [])
 
     async def test_limits_to_five_and_keeps_individual_errors(self):
         repo, connector = FakeRepository([card(i) for i in range(9)]), Connector(failed=['3'])

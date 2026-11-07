@@ -6,6 +6,7 @@ from contextlib import AsyncExitStack
 from datetime import datetime, timezone
 from marketplace_connector.domain.errors import ProductNotFound
 from marketplace_connector.domain.models import Availability, ProductRef, MarketplaceCard
+from marketplace_connector.application.product_service import ProductService
 from ..domain.models import LeaseLost
 from ..ports.runs import RunExecutionStore
 
@@ -23,19 +24,19 @@ class CollectionService:
             for marketplace in dict.fromkeys(card.ref.marketplace for card in cards):
                 await sessions.enter_async_context(self._connectors.get(marketplace).collection_session())
             limit = asyncio.Semaphore(MAX_CONCURRENT_CARDS)
+            products = ProductService(self._connectors)
 
             async def fetch(card):
-                async with limit:
-                    try:
-                        snapshot = await self._connectors.get(card.ref.marketplace).get_product(card.ref.external_id)
-                    except ProductNotFound:
-                        snapshot = MarketplaceCard(ref=ProductRef(card.ref.marketplace, card.ref.external_id),
-                            title=card.title if card.title and card.title.strip() else f'Товар {card.ref.external_id}',
-                            url=card.url or '', availability=Availability.OUT_OF_STOCK,
-                            collected_at=datetime.now(timezone.utc))
-                    except Exception as exc:
-                        return card, None, exc, traceback.format_exc()
-                    return card, snapshot, None, None
+                try:
+                    snapshot = await products.get_product(card.ref.marketplace, card.ref.external_id, limit=limit)
+                except ProductNotFound:
+                    snapshot = MarketplaceCard(ref=ProductRef(card.ref.marketplace, card.ref.external_id),
+                        title=card.title if card.title and card.title.strip() else f'Товар {card.ref.external_id}',
+                        url=card.url or '', availability=Availability.OUT_OF_STOCK,
+                        collected_at=datetime.now(timezone.utc))
+                except Exception as exc:
+                    return card, None, exc, traceback.format_exc()
+                return card, snapshot, None, None
 
             while cards:
                 if len(cards) == 1:

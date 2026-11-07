@@ -8,6 +8,7 @@ import sys
 from typing import Optional, Sequence
 
 from marketplace_connector.application.product_service import ConnectorRegistry, ProductService
+from marketplace_connector.application.retry import fetch_with_retry
 from marketplace_connector.connectors.ozon import AsyncOzonClient, OzonConnector
 from marketplace_connector.serialization.product_json import card_to_json
 
@@ -70,11 +71,13 @@ async def _run(args: argparse.Namespace) -> int:
         chrome_binary=args.chrome_binary,
         chrome_platform=args.chrome_platform,
     )
-    if args.raw:
-        output_text = await client.fetch_raw_text_async(args.article)
-    else:
-        service = ProductService(ConnectorRegistry([OzonConnector(client)]))
-        snapshot = await service.get_product("ozon", args.article)
+    async with client.collection_session():
+        if args.raw:
+            output_text = await fetch_with_retry(lambda: client.fetch_raw_text_async(args.article))
+        else:
+            service = ProductService(ConnectorRegistry([OzonConnector(client)]))
+            snapshot = await service.get_product("ozon", args.article)
+    if not args.raw:
         output_text = card_to_json(snapshot)
         logger.info(
             "Снимок нормализован: attributes=%s, variants=%s",

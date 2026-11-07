@@ -174,6 +174,43 @@ class RunReliabilityTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await self.repo.runs.create_retry_run(run.id)
 
+    async def test_outer_retry_keeps_api_pending_and_writes_one_history_point(self):
+        from httpx import ASGITransport, AsyncClient
+        from price_watch.api import create_app
+        from price_watch.application.run_executor import RunExecutor
+        from unittest.mock import AsyncMock
+        run = await self.owned(self.cards[0])
+        entered, release = asyncio.Event(), asyncio.Event()
+        class Connector:
+            marketplace = 'ozon'
+            @asynccontextmanager
+            async def collection_session(self): yield
+        connector = Connector()
+        connector.get_product = AsyncMock(side_effect=[RuntimeError('first'), self.snapshot(self.cards[0])])
+        async def factory(run): return ConnectorRegistry([connector])
+        async def delay(seconds):
+            entered.set()
+            await release.wait()
+        app = create_app(services=self.repo.api)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url='http://isolated') as client:
+            with patch('marketplace_connector.application.retry.sleep', side_effect=delay):
+                task = asyncio.create_task(RunExecutor(self.repo.runs, factory).execute(run))
+                try:
+                    await asyncio.wait_for(entered.wait(), 3)
+                    pending = (await client.get(f'/api/runs/{run.id}?includeErrors=true')).json()
+                    self.assertEqual((pending['status'], pending['successCount'], pending['failureCount']), ('running', 0, 0))
+                    self.assertEqual(pending['errors'], [])
+                    self.assertEqual(await self.repo.history.count_history(self.cards[0].id, 30), 0)
+                    release.set()
+                    await asyncio.wait_for(task, 3)
+                finally:
+                    task.cancel()
+                    await asyncio.gather(task, return_exceptions=True)
+            finished = (await client.get(f'/api/runs/{run.id}')).json()
+            self.assertEqual((finished['status'], finished['successCount'], finished['failureCount']), ('completed', 1, 0))
+            self.assertEqual(await self.repo.history.count_history(self.cards[0].id, 30), 1)
+            self.assertEqual(connector.get_product.await_count, 2)
+
     async def test_all_executor_writes_are_rejected_after_recovery(self):
         from price_watch.domain.models import LeaseLost, RunLease
         run = await self.owned(self.cards[0])

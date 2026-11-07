@@ -1,11 +1,13 @@
 """Connector registration and marketplace-independent product lookup."""
 
 from inspect import iscoroutinefunction
+from asyncio import Semaphore
 from typing import Dict, Iterable
 
 from ..domain.errors import UnknownMarketplace
 from ..domain.models import MarketplaceCard
 from ..ports.connector import MarketplaceConnector
+from .retry import fetch_with_retry
 
 
 class ConnectorRegistry:
@@ -38,5 +40,13 @@ class ProductService:
     def __init__(self, registry: ConnectorRegistry):
         self._registry = registry
 
-    async def get_product(self, marketplace: str, external_id: str) -> MarketplaceCard:
-        return await self._registry.get(marketplace).get_product(external_id)
+    async def get_product(self, marketplace: str, external_id: str, *, limit: Semaphore | None = None) -> MarketplaceCard:
+        connector = self._registry.get(marketplace)
+
+        async def fetch():
+            if limit is None:
+                return await connector.get_product(external_id)
+            async with limit:
+                return await connector.get_product(external_id)
+
+        return await fetch_with_retry(fetch)
