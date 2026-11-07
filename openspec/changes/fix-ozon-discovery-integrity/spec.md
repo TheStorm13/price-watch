@@ -106,7 +106,7 @@ gallery и collected_at остаются от точного товара. По�
 - [x] Добавить миграцию/FK/unique и обновить writer paths с тестами прямого SQL, конкуренции, API/CLI/импорта.
 - [x] Проверить queued/direct/numeric/raw режимы, постоянные документы и релевантный Python suite на disposable PostgreSQL.
 - [x] Сделать backup и выполнить разрешённую очистку двух локальных пар после готовности кода, проверить инварианты.
-- [ ] Проверить/закоммитить результат, обновить CodeGraph/Repowise, представить к приёмке с чистым деревом.
+- [x] Проверить/закоммитить результат, обновить CodeGraph/Repowise, представить к приёмке с чистым деревом.
 
 ## Execution state
 
@@ -119,7 +119,8 @@ gallery и collected_at остаются от точного товара. По�
 устаревший migration assertion не учитывал новую колонку; импорт и assertion
 исправлены, окончательный полный прогон 302 passed. После review выделены
 проверки modal в отдельные функции и убрано вложенное ветвление transport;
-дополнительный focused suite проверяет финальный код. diff/checks перед коммитом.
+дополнительный focused suite финального кода: 29 passed за 5.324 с.
+git diff --check, compileall, OpenSpec change и product-variants validation passed.
 Repowise change risk подтвердил текущий working tree/root и дал структурные
 замечания к сложности; они рассмотрены и уменьшена вложенность. Его исторический
 индекс по-прежнему указывает старый checkpoint, поэтому исторические советы
@@ -145,4 +146,11 @@ Backup: ~/.local/share/price-watch/backups/before-ozon-family-repair-20261107T18
 установку приложения пользователь отдельно не поручал. Данные уже исправлены,
 код/миграция поставляются вместе, обхода нового контракта для старого кода нет.
 
-Результат готовится к коммиту и обновлению индексов. Не принят, не архивирован.
+Implementation commit: c915611761cb27860d557effb965f2fa96dee430.
+CodeGraph sync/status: complete, pendingChanges=0, mismatch=null. Repowise
+index-only и обычный update выполнены; last_sync_commit/last_docs_commit совпали
+с implementation HEAD, incomplete=null, rescore_pending=[]. Deterministic pages
+обновлены согласно конфигурации, model generation не включалась. Изменения
+редакторских интеграций/посторонние tracked файлы не появились. Последующая
+фиксация этой записи и разбиения длинного требования также требует refresh.
+Готово к пользовательской проверке в новой сборке. Не принят, не архивирован.
