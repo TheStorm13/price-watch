@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "order": [
+    "unbounded",
+    "8"
+  ],
+  "pause_requested_seconds": 10,
+  "articles_source": "measurements-seeded.json",
+  "runs": [
+    {
+      "mode": "unbounded",
+      "started_at": "2026-11-08T12:45:59.319546+00:00",
+      "finished_at": "2026-11-08T12:46:02.215230+00:00",
+      "process_seconds": 2.9006493919987406,
+      "returncode": 0,
+      "profile_before": {
+        "singleton_lock_present": false,
+        "profile_browser_pids": []
+      },
+      "profile_after": {
+        "singleton_lock_present": false,
+        "profile_browser_pids": []
+      },
+      "report": "measurements-restart-unbounded.json",
+      "status": "complete",
+      "stop_reason": null
+    },
+    {
+      "mode": "8",
+      "started_at": "2026-11-08T12:46:12.220737+00:00",
+      "finished_at": "2026-11-08T12:46:48.330932+00:00",
+      "process_seconds": 36.118362501001684,
+      "returncode": 1,
+      "profile_before": {
+        "singleton_lock_present": false,
+        "profile_browser_pids": []
+      },
+      "profile_after": {
+        "singleton_lock_present": false,
+        "profile_browser_pids": []
+      },
+      "report": "measurements-restart-8.json",
+      "status": "completed_with_errors",
+      "stop_reason": null
+    }
+  ],
+  "status": "completed_with_errors",
+  "pause_observed_seconds": 10.000284952002403
+}

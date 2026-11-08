@@ -1,0 +1,421 @@
+{
+  "schema": 1,
+  "status": "completed_with_errors",
+  "created_at": "2026-11-08T12:46:12.322901+00:00",
+  "configuration": {
+    "concurrency": 8,
+    "starts_per_second": null,
+    "size": 40,
+    "browser_mode": "visible",
+    "batches": 1
+  },
+  "versions": {
+    "python": "3.14.9",
+    "playwright": "1.64.1",
+    "git_commit": "04b9a263385557cae5aaf085fae3a9adaab650d3",
+    "working_tree_dirty": true,
+    "chrome": "156.0.8078.79"
+  },
+  "articles": [
+    "1005007620335204:12000061321813248",
+    "1005008127103020:12000043898746227",
+    "1005003918845337:12000027464513422",
+    "1005013177457618:12000060506392477",
+    "1005007620335204:12000061321813249",
+    "1005008127103020:12000043898746228",
+    "1005003918845337:12000027464513423",
+    "1005013177457618:12000060506392478",
+    "1005008127103020:12000043898746229",
+    "1005003918845337:12000027464513424",
+    "1005013177457618:12000060506392479",
+    "1005008127103020:12000043898746230",
+    "1005003918845337:12000027464513425",
+    "1005013177457618:12000060506392480",
+    "1005008127103020:12000043898746231",
+    "1005003918845337:12000028472760464",
+    "1005013177457618:12000060506392481",
+    "1005008127103020:12000043898746232",
+    "1005003918845337:12000028472760465",
+    "1005013177457618:12000060506392482",
+    "1005008127103020:12000043898746234",
+    "1005003918845337:12000031106708020",
+    "1005013177457618:12000060506392483",
+    "1005008127103020:12000043898746235",
+    "1005003918845337:12000031106708021",
+    "1005013177457618:12000060506392484",
+    "1005008127103020:12000043898746236",
+    "1005003918845337:12000038215569051",
+    "1005013177457618:12000060506392485",
+    "1005008127103020:12000043898746237",
+    "1005003918845337:12000038215569052",
+    "1005013177457618:12000060506392486",
+    "1005008127103020:12000043898746238",
+    "1005003918845337:12000038963478061",
+    "1005013177457618:12000060506392487",
+    "1005008127103020:12000043898746239",
+    "1005003918845337:12000038963478062",
+    "1005013177457618:12000060506392488",
+    "1005008127103020:12000043898746240",
+    "1005003918845337:12000038963478063"
+  ],
+  "batch": {
+    "seconds": 34.617177316999005,
+    "counts": {
+      "success": 0,
+      "failed": 40,
+      "cancelled": 0,
+      "not_started": 0
+    },
+    "http_attempts": 8,
+    "retries": 0,
+    "recoveries": 0,
+    "peak_active_fetches": 8,
+    "not_dispatched": 32,
+    "request_seconds": {
+      "p50": 34.11542082999949,
+      "p95": 34.115561826001795
+    },
+    "card_seconds": {
+      "p50": null,
+      "p95": null
+    },
+    "requests": [
+      {
+        "article": "1005007620335204:12000061321813248",
+        "attempt": 1,
+        "start_seconds": 0.00029162400096538477,
+        "gate_seconds": 1.064300158759579e-05,
+        "status": null,
+        "error": "timeout",
+        "access_signal": null,
+        "network_seconds": 34.11432361599873
+      },
+      {
+        "article": "1005008127103020:12000043898746227",
+        "attempt": 1,
+        "start_seconds": 0.0004062609987158794,
+        "gate_seconds": 5.824000254506245e-06,
+        "status": null,
+        "error": "timeout",
+        "access_signal": null,
+        "network_seconds": 34.11502749000283
+      },
+      {
+        "article": "1005003918845337:12000027464513422",
+        "attempt": 1,
+        "start_seconds": 0.0004755629997816868,
+        "gate_seconds": 4.3620020733214915e-06,
+        "status": null,
+        "error": "timeout",
+        "access_signal": null,
+        "network_seconds": 34.115145912001026
+      },
+      {
+        "article": "1005013177457618:12000060506392477",
+        "attempt": 1,
+        "start_seconds": 0.0005215460005274508,
+        "gate_seconds": 2.6939997042063624e-06,
+        "status": null,
+        "error": "timeout",
+        "access_signal": null,
+        "network_seconds": 34.11542082999949
+      },
+      {
+        "article": "1005007620335204:12000061321813249",
+        "attempt": 1,
+        "start_seconds": 0.0005748030016548,
+        "gate_seconds": 3.715998900588602e-06,
+        "status": null,
+        "error": "timeout",
+        "access_signal": null,
+        "network_seconds": 34.11553785999786
+      },
+      {
+        "article": "1005008127103020:12000043898746228",
+        "attempt": 1,
+        "start_seconds": 0.0006180320015118923,
+        "gate_seconds": 2.3370012058876455e-06,
+        "status": null,
+        "error": "timeout",
+        "access_signal": null,
+        "network_seconds": 34.11555014999976
+      },
+      {
+        "article": "1005003918845337:12000027464513423",
+        "attempt": 1,
+        "start_seconds": 0.0006490929990832228,
+        "gate_seconds": 2.1310006559360772e-06,
+        "status": null,
+        "error": "timeout",
+        "access_signal": null,
+        "network_seconds": 34.115560312002344
+      },
+      {
+        "article": "1005013177457618:12000060506392478",
+        "attempt": 1,
+        "start_seconds": 0.0006774889989173971,
+        "gate_seconds": 1.7799975466914475e-06,
+        "status": null,
+        "error": "timeout",
+        "access_signal": null,
+        "network_seconds": 34.115561826001795
+      }
+    ],
+    "results": [
+      {
+        "article": "1005007620335204:12000061321813248",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.616795380999974
+      },
+      {
+        "article": "1005008127103020:12000043898746227",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.616645940001035
+      },
+      {
+        "article": "1005003918845337:12000027464513422",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.61657673100126
+      },
+      {
+        "article": "1005013177457618:12000060506392477",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.6165276219981
+      },
+      {
+        "article": "1005007620335204:12000061321813249",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.61649022399797
+      },
+      {
+        "article": "1005008127103020:12000043898746228",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.61644577200059
+      },
+      {
+        "article": "1005003918845337:12000027464513423",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.616418782003166
+      },
+      {
+        "article": "1005013177457618:12000060506392478",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.616393816999334
+      },
+      {
+        "article": "1005008127103020:12000043898746229",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.114094264001324
+      },
+      {
+        "article": "1005003918845337:12000027464513424",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11408919200039
+      },
+      {
+        "article": "1005013177457618:12000060506392479",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11408301499978
+      },
+      {
+        "article": "1005008127103020:12000043898746230",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11408122699868
+      },
+      {
+        "article": "1005003918845337:12000027464513425",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.114077534999524
+      },
+      {
+        "article": "1005013177457618:12000060506392480",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11408533499707
+      },
+      {
+        "article": "1005008127103020:12000043898746231",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11408324200238
+      },
+      {
+        "article": "1005003918845337:12000028472760464",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.114080249000835
+      },
+      {
+        "article": "1005013177457618:12000060506392481",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11407871800111
+      },
+      {
+        "article": "1005008127103020:12000043898746232",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11407787499775
+      },
+      {
+        "article": "1005003918845337:12000028472760465",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11406695599726
+      },
+      {
+        "article": "1005013177457618:12000060506392482",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11406339899986
+      },
+      {
+        "article": "1005008127103020:12000043898746234",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.1140612670024
+      },
+      {
+        "article": "1005003918845337:12000031106708020",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11405896100041
+      },
+      {
+        "article": "1005013177457618:12000060506392483",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11405250000098
+      },
+      {
+        "article": "1005008127103020:12000043898746235",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.114049609001086
+      },
+      {
+        "article": "1005003918845337:12000031106708021",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.114047836999816
+      },
+      {
+        "article": "1005013177457618:12000060506392484",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11404468299952
+      },
+      {
+        "article": "1005008127103020:12000043898746236",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.114033089997974
+      },
+      {
+        "article": "1005003918845337:12000038215569051",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11403071799941
+      },
+      {
+        "article": "1005013177457618:12000060506392485",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11402844099939
+      },
+      {
+        "article": "1005008127103020:12000043898746237",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11402476500007
+      },
+      {
+        "article": "1005003918845337:12000038215569052",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.114024654001696
+      },
+      {
+        "article": "1005013177457618:12000060506392486",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11402273299973
+      },
+      {
+        "article": "1005008127103020:12000043898746238",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11401643700083
+      },
+      {
+        "article": "1005003918845337:12000038963478061",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11401239999759
+      },
+      {
+        "article": "1005013177457618:12000060506392487",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.114007730000594
+      },
+      {
+        "article": "1005008127103020:12000043898746239",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11400302999755
+      },
+      {
+        "article": "1005003918845337:12000038963478062",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.113987607001036
+      },
+      {
+        "article": "1005013177457618:12000060506392488",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11397945800127
+      },
+      {
+        "article": "1005008127103020:12000043898746240",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11397690300146
+      },
+      {
+        "article": "1005003918845337:12000038963478063",
+        "state": "failed",
+        "error_type": "MarketplaceUnavailable",
+        "seconds": 34.11397199500061
+      }
+    ],
+    "stop_reason": null
+  },
+  "discovery": {
+    "performed": false,
+    "errors": [],
+    "availability": {},
+    "requests": [],
+    "recoveries": 0,
+    "seconds": 0.653552480001963
+  },
+  "measurement_scope": "productData fetch evaluations only; excludes discovery, navigation and browser background requests",
+  "limitations": "One finite batch, no control; browser scheduling may queue fetches; SKU count is not distinct product count; no general stability claim.",
+  "distinct_product_ids": 4,
+  "preparation_seconds": 0.5884168199991109,
+  "stop_reason": null
+}
