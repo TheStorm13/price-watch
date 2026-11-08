@@ -200,7 +200,7 @@ BACKLOG не использовать для параллельного task tra
   browser, mapper/parser, retries, variants и orchestration tests; pool100/101,
   stage ordering и отмену сохранить. Если нужна DB-проверка persistence,
   использовать только disposable TEST_DATABASE_URL. Не тестировать user DB.
-- [ ] Обновить затронутые постоянные документы, проверить diff, compile/checks
+- [x] Обновить затронутые постоянные документы, проверить diff, compile/checks
   по конфигурации проекта и strict OpenSpec validation. Зафиксировать результат
   коммитом, обновить CodeGraph/Repowise и настроенные страницы, представить
   конкретный результат на приёмку. Live smoke не является обязательным для этих
@@ -246,5 +246,16 @@ Repowise live diff findings рассмотрены: warnings о сложност
 доказывают дефект, критичные переходы покрыты перечисленными проверками;
 устаревшее MCP предложение про frontend lockfile к этому diff не относится.
 Обновлены пять guides и постоянный collection-run-execution contract.
-Остаются коммит/refresh индексов и страниц, затем presentation на приёмку.
-Приёмка и архивирование не состоялись.
+Реализация зафиксирована в `94e8e9c`. После коммита выполнены codegraph sync,
+repowise index update и configured pages update. CodeGraph complete, pending=0,
+worktreeMismatch=null; Repowise incomplete=null, last_sync_commit и last_docs_commit
+совпадают с implementation HEAD. Страницы пересобраны детерминированно без model
+provider; прежние 2 repo-wide doc drift findings не являются новыми дефектами
+коннекторов и не изменялись этой задачей. Generated tracked edits отсутствуют.
+
+Все 6 пунктов реализации и проверки учтены. Этот spec фиксируется отдельным
+коммитом статуса с последующим refresh knowledge. Результат готов к human review;
+успешные проверки и OpenSpec all_done не означают приёмку. Live API/native SDK
+на реальных площадках в этой задаче не проверялись; synthetic Chrome и isolated
+DB не доказывают длительную устойчивость площадок при 100 in-flight.
+Приёмка и архивирование не состоялись; обе прежние открытые задачи не закрыты.
