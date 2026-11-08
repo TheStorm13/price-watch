@@ -26,3 +26,5 @@
 что именно его заменяет. Исторические записи не переписываются.
 
 - [ADR 0013: Selective recurring variant tracking](0013-selective-variant-tracking.md) — initial full discovery, default-off preferences and frozen ordinary targets.
+
+- [ADR 0014: Асинхронный Ozon без планового лимита частоты](0014-ozon-unpaced-async-concurrency.md) — Accepted (design), выбор N и внедрение в обычный сбор впереди.
