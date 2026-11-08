@@ -32,7 +32,7 @@ class PreparationRetryTests(unittest.IsolatedAsyncioTestCase):
                 replies = [{'error': 'network'} for _ in range(failures)] + [ali_response()]
                 page = FakePage(AsyncMock(side_effect=replies))
                 transport = AliExpressJsonTransport(MagicMock(new_page=AsyncMock(return_value=page)),
-                    AsyncMock(), max_retry_wait=.001, starts_per_second=10000)
+                    AsyncMock(), max_retry_wait=.001)
                 try:
                     with patch('marketplace_connector.application.retry.sleep', new_callable=AsyncMock) as sleep:
                         if failures == 3:
@@ -60,7 +60,7 @@ class PreparationRetryTests(unittest.IsolatedAsyncioTestCase):
                         raise MarketplaceUnavailable('temporary preparation')
                 failed, ready = [FakePage(AsyncMock(return_value=reply)) for _ in range(2)]
                 context = MagicMock(new_page=AsyncMock(side_effect=[failed, ready]))
-                transport = cls(context, prepare, concurrency=5, starts_per_second=1000)
+                transport = cls(context, prepare, max_in_flight_requests=5)
                 try:
                     tasks = [asyncio.create_task(transport.fetch(external_id)) for _ in range(5)]
                     await asyncio.wait_for(entered.wait(), 1)

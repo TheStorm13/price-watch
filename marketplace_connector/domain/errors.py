@@ -39,3 +39,8 @@ class MarketplaceSchemaChanged(ConnectorError):
 
 class UnknownMarketplace(ConnectorError):
     pass
+
+
+class UnsafeBrowserTeardown(ConnectorError):
+    """Collection must stop: request termination could not be confirmed."""
+    pass

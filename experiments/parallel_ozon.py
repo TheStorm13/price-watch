@@ -20,9 +20,8 @@ from marketplace_connector.connectors.ozon.connector import OzonConnector
 from marketplace_connector.connectors.ozon.json_transport import OzonJsonTransport
 from marketplace_connector.domain.errors import ChallengeRequired
 
-MODES = {'A': (5, 5), 'B': (1, 5), 'C': (1, None), 'D': (5, None)}
-MODES.update({str(n): (n, None) for n in (5, 8, 12)})
-ORDER = ('A', 'B', 'C', 'C', 'B', 'A')
+MODES = {str(n): n for n in (1, 4, 5, 8, 12, 100)}
+ORDER = ('100',)
 SEEDS = ('1604900984', '1634943359', '1607687714', '1641499399', '1607686851',
          '2056350478', '4465694803', '4545459627')
 FETCH = ContextVar('experiment_fetch')
@@ -73,6 +72,7 @@ class MeasuredTransport(OzonJsonTransport):
         if self.probe.stop_reason:
             async with self._condition:
                 self._active -= 1
+                self.pool.release()
                 self._condition.notify_all()
             self.probe.check()
         return generation
@@ -92,8 +92,8 @@ class MeasuredTransport(OzonJsonTransport):
             if self._needs_recovery(result):
                 self.probe.access_refusals += 1
                 challenge = result.get('status') in (200, 429)
-                if challenge or self.probe.access_refusals >= 2:
-                    self.probe.stop('challenge' if challenge else 'repeated_access_refusal')
+                if challenge or self.probe.access_refusals >= 1:
+                    self.probe.stop('challenge' if challenge else 'access_refusal')
                     self.probe.check()
             return result
         except asyncio.CancelledError:
@@ -125,9 +125,8 @@ class ExperimentClient(AsyncOzonClient):
 
 @asynccontextmanager
 async def measured_client(args, probe, mode, session):
-    concurrency, rate = MODES[mode]
-    client = ExperimentClient(args.profile_dir, session=session, concurrency=concurrency,
-                            starts_per_second=rate, challenge_handler=StopChallenge(probe))
+    client = ExperimentClient(args.profile_dir, session=session, max_in_flight_requests=MODES[mode],
+                            challenge_handler=StopChallenge(probe))
     def factory(*factory_args, **kwargs):
         return MeasuredTransport(*factory_args, probe=probe, **kwargs)
     with patch('marketplace_connector.connectors.ozon.async_client.OzonJsonTransport', factory):
@@ -143,18 +142,14 @@ def completeness(card):
             'variant_discovery_error': bool(card.extensions.get('variant_discovery_error'))}
 
 
-async def fetch_one(connector, article, limit, probe):
+async def fetch_one(connector, article, probe):
     queued = time.perf_counter()
     attempts, slot_wait = 0, 0
     async def fetch():
         nonlocal attempts, slot_wait
         probe.check()
-        waiting = time.perf_counter()
-        async with limit:
-            slot_wait += time.perf_counter() - waiting
-            probe.check()
-            attempts += 1
-            return await connector.get_product(article)
+        attempts += 1
+        return await connector.get_product(article)
     result = {'article': article, 'ok': False}
     try:
         card = await fetch_with_retry(fetch)
@@ -171,9 +166,7 @@ async def fetch_one(connector, article, limit, probe):
 async def run_batch(connector, articles, probe, mode):
     probe.reset()
     started = time.perf_counter()
-    workers = max(5, MODES[mode][0])
-    limit = asyncio.Semaphore(workers)
-    tasks = [asyncio.create_task(fetch_one(connector, article, limit, probe)) for article in articles]
+    tasks = [asyncio.create_task(fetch_one(connector, article, probe)) for article in articles]
     stop = asyncio.create_task(probe.stopped.wait())
     try:
         pending = set(tasks)
@@ -188,7 +181,7 @@ async def run_batch(connector, articles, probe, mode):
     results = [t.result() for t in tasks if not t.cancelled() and t.exception() is None]
     elapsed = time.perf_counter() - started
     successes = sum(r['ok'] for r in results)
-    return {'mode': mode, 'card_workers': workers, 'concurrency': MODES[mode][0], 'starts_per_second': MODES[mode][1],
+    return {'mode': mode, 'max_in_flight_requests': MODES[mode],
             'seconds': elapsed, 'successes': successes, 'successful_sku_per_minute': successes * 60 / elapsed,
             'cancelled_targets': len(articles) - len(results), 'results': results,
             'composer_dispatches': len(probe.requests), 'peak_composer_dispatches': probe.peak,
@@ -287,18 +280,23 @@ async def run(args):
               'limitations': 'Small sample; discovery/cache/network/session state can bias results. No cache busting.'}
     try:
         session = ChromeSession(args.profile_dir, headless=args.headless)
-        async with session.collection_session():
-            if not report['articles']:
-                async with measured_client(args, probe, 'B', session) as connector:
+        lock = args.profile_dir / 'SingletonLock'
+        if lock.exists() or lock.is_symlink():
+            raise ExperimentStopped('profile_locked')
+        discovered = not report['articles']
+        if discovered:
+            async with session.collection_session():
+                async with measured_client(args, probe, '100', session) as connector:
                     report['articles'] = await discover(connector, args.size, probe)
                 report['discovery'] = {'composer_dispatches': len(probe.requests), 'recoveries': probe.recoveries}
-            if not 30 <= len(report['articles']) <= 50:
-                raise ExperimentStopped('insufficient_dataset')
-            save_report(report, args.output)
-            for index, mode in enumerate(args.order):
-                probe.check()
-                if index:
-                    await asyncio.sleep(args.pause)
+        if not 30 <= len(report['articles']) <= 50:
+            raise ExperimentStopped('insufficient_dataset')
+        save_report(report, args.output)
+        for index, mode in enumerate(args.order):
+            probe.check()
+            if index or discovered:
+                await asyncio.sleep(args.pause)
+            async with session.collection_session():
                 async with measured_client(args, probe, mode, session) as connector:
                     process = getattr(session, '_async_process', None)
                     resources = ChromeResources(process.pid if process is not None else None)
@@ -311,11 +309,11 @@ async def run(args):
                         await monitor
                         await resources.sample()
                     batch['chrome_resources'] = resources.report()
-                report['batches'].append(batch)
-                save_report(report, args.output)
-                print(json.dumps({k: v for k, v in batch.items() if k not in ('results', 'requests')}), flush=True)
-                probe.check()
-            report['status'] = 'complete' if all(b['successes'] == len(report['articles']) for b in report['batches']) else 'completed_with_errors'
+            report['batches'].append(batch)
+            save_report(report, args.output)
+            print(json.dumps({k: v for k, v in batch.items() if k not in ('results', 'requests')}), flush=True)
+            probe.check()
+        report['status'] = 'complete' if all(b['successes'] == len(report['articles']) for b in report['batches']) else 'completed_with_errors'
     except asyncio.CancelledError:
         report.update(status='interrupted', stop_reason='cancelled')
         report['partial_requests'] = list(probe.requests)
@@ -338,13 +336,13 @@ def main():
                         help='Existing Price Watch Chrome profile (default: XDG_DATA_HOME/price-watch/chrome-profile)')
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--size', type=int, default=40)
-    parser.add_argument('--pause', type=float, default=30)
+    parser.add_argument('--pause', type=float, default=10)
     parser.add_argument('--order', nargs='+', choices=tuple(MODES), default=ORDER,
-                        help='Batch order: A/B paced, C/D unpaced, 5/8/12 unpaced fixed N; default A B C C B A')
+                        help='Fixed HTTP pool sizes, without pacing or card limits; default 100')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    if not 30 <= args.size <= 50 or not math.isfinite(args.pause) or args.pause < 0:
-        parser.error('size must be 30–50; pause must be finite and nonnegative')
+    if not 30 <= args.size <= 50 or not math.isfinite(args.pause) or args.pause < 10:
+        parser.error('size must be 30–50; pause must be finite and at least 10 seconds')
     if args.articles_file:
         if args.articles:
             parser.error('Use articles or --articles-file')

@@ -1,9 +1,9 @@
 # ADR 0015: Последовательные маркетплейсы с отдельными request pools
 
-- Статус: **Proposed**, направление выбрано пользователем; детальный план ожидает согласования.
+- Статус: **Accepted** — план одобрен пользователем 2026-11-08; реализация в работе.
 - Дата: 2026-11-08.
 - Рабочий контекст и проверки: [shared-request-dispatcher](../../openspec/changes/shared-request-dispatcher/spec.md).
-- При принятии заменяет только concurrency/rate policy [ADR0006](0006-ozon-session-json-transport.md), [ADR0009](0009-wildberries-size-and-wallet-price.md) и [ADR0014](0014-ozon-unpaced-async-concurrency.md); ценовые и identity контракты сохраняются.
+- Заменяет только concurrency/rate policy [ADR0006](0006-ozon-session-json-transport.md), [ADR0009](0009-wildberries-size-and-wallet-price.md) и [ADR0014](0014-ozon-unpaced-async-concurrency.md); ценовые и identity контракты сохраняются.
 
 ## Контекст
 
@@ -62,3 +62,8 @@ LeaseLost или потеря общего browser прекращают весь
 - Диагностика прежнего Ali N=8 timeout отложена пользователем в [backlog](../BACKLOG.md#таймауты-aliexpress-в-эксперименте-с-n8). Для всех коннекторов выбран предел 100; проверки очереди, таймаутов и освобождения слотов сохраняются. Прежняя ошибка не объявляется исправленной.
 - Все consumers мигрируются полностью; legacy knobs/fallback не сохраняются.
   Миграций данных и изменений SKU/кошелька/истории/API payload нет.
+
+Для управляемых WB-запросов bridge заменяет timeout-сигнал native SDK своим
+HTTP-таймером после admission: native fetchStatic иначе включает 30 секунд ещё
+до очереди. Индивидуальная отмена передаётся контроллером владельца артикула,
+общий profile/wallet bootstrap продолжает работу для остальных ожидающих.

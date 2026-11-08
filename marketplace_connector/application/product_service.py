@@ -1,7 +1,7 @@
 """Connector registration and marketplace-independent product lookup."""
 
 from inspect import iscoroutinefunction
-from asyncio import Semaphore
+from contextlib import asynccontextmanager
 from typing import Dict, Iterable
 
 from ..domain.errors import UnknownMarketplace
@@ -11,10 +11,20 @@ from .retry import fetch_with_retry
 
 
 class ConnectorRegistry:
-    def __init__(self, connectors: Iterable[MarketplaceConnector] = ()):
+    def __init__(self, connectors: Iterable[MarketplaceConnector] = (), *, run_session=None):
+        self._run_session = run_session
         self._connectors: Dict[str, MarketplaceConnector] = {}
         for connector in connectors:
             self.register(connector)
+
+    @asynccontextmanager
+    async def run_session(self):
+        """Hold shared resources without preparing inactive marketplaces."""
+        if self._run_session is None:
+            yield
+        else:
+            async with self._run_session():
+                yield
 
     def register(self, connector: MarketplaceConnector) -> None:
         if not iscoroutinefunction(getattr(connector, "get_product", None)):
@@ -40,13 +50,10 @@ class ProductService:
     def __init__(self, registry: ConnectorRegistry):
         self._registry = registry
 
-    async def get_product(self, marketplace: str, external_id: str, *, limit: Semaphore | None = None) -> MarketplaceCard:
+    async def get_product(self, marketplace: str, external_id: str) -> MarketplaceCard:
         connector = self._registry.get(marketplace)
 
         async def fetch():
-            if limit is None:
-                return await connector.get_product(external_id)
-            async with limit:
-                return await connector.get_product(external_id)
+            return await connector.get_product(external_id)
 
         return await fetch_with_retry(fetch)

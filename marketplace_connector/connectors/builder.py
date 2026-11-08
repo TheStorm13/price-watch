@@ -18,4 +18,4 @@ def build_connectors(marketplaces, *, profile_dir, challenge_handler=None, chrom
     return ConnectorRegistry([
         connector(client(**options, session=session, challenge_handler=challenge_handler))
         for marketplace, (client, connector) in clients.items() if marketplace in marketplaces
-    ])
+    ], run_session=session.collection_session)

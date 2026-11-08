@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from playwright.async_api import Error as PlaywrightError
 
 from ...domain.errors import MarketplaceUnavailable
+from ...application.collection_policy import MAX_IN_FLIGHT_REQUESTS
 from .json_transport import HOME_URL, AliExpressJsonTransport
 from .models import AliExpressResponse
 from .identity import AliExpressRef
@@ -41,8 +42,7 @@ class AsyncAliExpressClient:
         virtual_display: bool = False,
         *,
         session: ChromeSession | None = None,
-        concurrency: int | None = 1,
-        starts_per_second: float | None = 5,
+        max_in_flight_requests: int = MAX_IN_FLIGHT_REQUESTS,
         request_timeout: float = 30,
         max_attempts: int = 3,
         max_retry_wait: float = 30,
@@ -58,7 +58,7 @@ class AsyncAliExpressClient:
         self.headless = self.session.headless
         self.virtual_display = self.session.virtual_display
         self._challenge_lock = self.session.challenge_lock
-        self._transport_options = dict(concurrency=concurrency, starts_per_second=starts_per_second,
+        self._transport_options = dict(max_in_flight_requests=max_in_flight_requests,
                                        request_timeout=request_timeout, max_attempts=max_attempts,
                                        max_retry_wait=max_retry_wait)
         # Validate before launching Chrome. The real transport belongs to a session.

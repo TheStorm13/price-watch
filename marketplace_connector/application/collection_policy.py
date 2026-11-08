@@ -1,3 +1,3 @@
-"""Selected Ozon request and card-attempt concurrency policy."""
+"""HTTP concurrency policy shared by marketplace adapters."""
 
-OZON_CONCURRENCY = 8
+MAX_IN_FLIGHT_REQUESTS = 100

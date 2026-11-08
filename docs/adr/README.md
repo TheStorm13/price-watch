@@ -27,6 +27,6 @@
 
 - [ADR 0013: Selective recurring variant tracking](0013-selective-variant-tracking.md) — initial full discovery, default-off preferences and frozen ordinary targets.
 
-- [ADR 0014: Асинхронный Ozon без планового лимита частоты](0014-ozon-unpaced-async-concurrency.md) — Accepted (design), выбор N и внедрение в обычный сбор впереди.
+- [ADR 0014: Асинхронный Ozon без планового лимита частоты](0014-ozon-unpaced-async-concurrency.md) — историческое решение Ozon N=8; concurrency policy заменена ADR0015.
 
-- [ADR 0015: Последовательные маркетплейсы с отдельными request pools](0015-shared-request-dispatcher.md) — Proposed, технический план на согласовании.
+- [ADR 0015: Последовательные маркетплейсы с отдельными request pools](0015-shared-request-dispatcher.md) — Accepted (design), последовательные этапы и отдельные HTTP pools 100.

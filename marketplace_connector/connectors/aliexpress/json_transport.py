@@ -20,7 +20,10 @@ from playwright.async_api import Error as PlaywrightError
 from ...domain.errors import MarketplaceSchemaChanged, MarketplaceUnavailable, RateLimited
 from .mapper import AliExpressMapper
 from .identity import AliExpressRef
+from ...application.request_pool import RequestPool
+from ...domain.errors import UnsafeBrowserTeardown
 from .parser import AliExpressProductParser
+from ...application.collection_policy import MAX_IN_FLIGHT_REQUESTS
 
 
 HOME_URL = "https://aliexpress.ru/"
@@ -92,35 +95,19 @@ def validate_product_text(raw_text, article):
     return raw_text
 
 
-def _positive_integer(name, value):
-    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        raise ValueError(f"{name} должен быть положительным целым")
-
-
-def _positive_number(name, value):
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
-        raise ValueError(f"{name} должен быть конечным положительным числом")
-
-
 class AliExpressJsonTransport:
-    """None/None disables active-request and start-rate limits; defaults stay paced."""
+    """Bounded HTTP operations without scheduled request pacing."""
 
-    def __init__(self, context, prepare_page, *, concurrency=1, starts_per_second=5,
+    def __init__(self, context, prepare_page, *, max_in_flight_requests=MAX_IN_FLIGHT_REQUESTS,
                  request_timeout=30, max_attempts=3, max_retry_wait=30):
-        if concurrency is None:
-            if starts_per_second is not None:
-                raise ValueError("Без concurrency требуется starts_per_second=None")
-        else:
-            _positive_integer("concurrency", concurrency)
-        _positive_integer("max_attempts", max_attempts)
-        if starts_per_second is not None:
-            _positive_number("starts_per_second", starts_per_second)
-        _positive_number("request_timeout", request_timeout)
-        _positive_number("max_retry_wait", max_retry_wait)
+        self.pool = RequestPool(max_in_flight_requests)
+        if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or max_attempts < 1:
+            raise ValueError('max_attempts должен быть положительным целым')
+        for name, value in (("request_timeout", request_timeout), ("max_retry_wait", max_retry_wait)):
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+                raise ValueError(f"{name} должен быть конечным положительным числом")
         self.context = context
         self.prepare_page = prepare_page
-        self.concurrency = concurrency
-        self.rate = starts_per_second
         self.request_timeout = request_timeout
         self.max_attempts = max_attempts
         self.max_retry_wait = max_retry_wait
@@ -130,8 +117,6 @@ class AliExpressJsonTransport:
         self._generation = 0
         self._condition = asyncio.Condition()
         self._active = 0
-        self._tokens = float(concurrency) if starts_per_second is not None else 0.0
-        self._updated = 0.0
         self._cooldown = 0.0
         self._failure = None
         self._closed = False
@@ -221,34 +206,32 @@ class AliExpressJsonTransport:
         )
 
     async def _reserve(self):
-        async with self._condition:
-            while True:
-                if self._closed:
-                    raise MarketplaceUnavailable("Сеанс AliExpress закрыт")
-                if self._failure:
-                    raise self._failure
-                now = asyncio.get_running_loop().time()
-                remaining = max(0.0, self._cooldown - now)
-                if remaining > self.max_retry_wait:
-                    raise RateLimited("AliExpress требует длительную паузу перед запросами", retry_after=remaining)
-                if self.rate is not None:
-                    self._tokens = min(self.concurrency, self._tokens + (now - self._updated) * self.rate)
-                    self._updated = now
-                recovering = self._recovery is not None and not self._recovery.done()
-                full = self.concurrency is not None and self._active >= self.concurrency
-                if recovering or full:
-                    await self._condition.wait()
-                    continue
-                pacing = (1 - self._tokens) / self.rate if self.rate is not None else 0.0
-                delay = max(remaining, pacing, 0)
-                if delay:
-                    with suppress(TimeoutError):
-                        await asyncio.wait_for(self._condition.wait(), timeout=delay)
-                    continue
-                self._active += 1
-                if self.rate is not None:
-                    self._tokens -= 1
-                return self._generation
+        while True:
+            async with self._condition:
+                while True:
+                    if self._closed:
+                        raise MarketplaceUnavailable("Сеанс AliExpress закрыт")
+                    if self._failure:
+                        raise self._failure
+                    remaining = max(0.0, self._cooldown - asyncio.get_running_loop().time())
+                    if remaining > self.max_retry_wait:
+                        raise RateLimited("AliExpress требует длительную паузу перед запросами", retry_after=remaining)
+                    if self._recovery is not None and not self._recovery.done():
+                        await self._condition.wait()
+                    elif remaining:
+                        with suppress(TimeoutError):
+                            await asyncio.wait_for(self._condition.wait(), timeout=remaining)
+                    else:
+                        break
+            await self.pool.acquire()
+            # No await between this recheck and dispatch: a new cooldown or
+            # recovery while queued must return the permit before waiting.
+            if (self._closed or self._failure or self._cooldown > asyncio.get_running_loop().time()
+                    or self._recovery is not None and not self._recovery.done()):
+                self.pool.release()
+                continue
+            self._active += 1
+            return self._generation
 
     async def _attempt(self, url):
         generation = await self._reserve()
@@ -269,6 +252,7 @@ class AliExpressJsonTransport:
                     elif self._needs_recovery(result) and generation > 0:
                         self._failure = self._access_error()
                 self._active -= 1
+                self.pool.release()
                 self._condition.notify_all()
 
     @staticmethod
@@ -322,6 +306,10 @@ class AliExpressJsonTransport:
                 await asyncio.wait_for(self.page.evaluate(ABORT_SCRIPT, request_id), timeout=2)
             except (PlaywrightError, TimeoutError):
                 self._failure = MarketplaceUnavailable("Страница AliExpress не отвечает; повторите сбор")
+                try:
+                    await self.page.close()
+                except PlaywrightError as exc:
+                    raise UnsafeBrowserTeardown("Не подтверждена остановка I/O браузера") from exc
             finally:
                 evaluation.cancel()
                 await asyncio.gather(evaluation, return_exceptions=True)

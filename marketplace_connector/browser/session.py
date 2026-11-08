@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Playwright, async_playwright
 
-from ..domain.errors import MarketplaceUnavailable
+from ..domain.errors import MarketplaceUnavailable, UnsafeBrowserTeardown
 from .profile_lifecycle import close_profile_browser, request_browser_close
 
 
@@ -61,13 +61,20 @@ class ChromeSession:
                 self._playwright_manager = manager
                 try:
                     await self._launch_async_context(self._async_playwright)
+                    self.check_connected()
                 except BaseException:
                     await self._close_async_context()
                     await manager.__aexit__(None, None, None)
                     self._async_playwright = self._playwright_manager = None
                     raise
+            else:
+                self.check_connected()
             self._users += 1
             return self.context
+
+    def check_connected(self):
+        if self._async_browser is not None and not self._async_browser.is_connected():
+            raise UnsafeBrowserTeardown("Потеряно соединение с общим Chrome")
 
     async def release(self):
         async with self._lock:
@@ -88,6 +95,7 @@ class ChromeSession:
         context = await self.acquire()
         try:
             yield context
+            self.check_connected()
         finally:
             await self.release()
 

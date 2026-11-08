@@ -28,7 +28,7 @@ class AliExpressTransportTests(unittest.IsolatedAsyncioTestCase):
             if len(page.calls) == 5: entered.set()
             await release.wait()
             return response()
-        transport, page = await self.transport(fetch, concurrency=5)
+        transport, page = await self.transport(fetch, max_in_flight_requests=5)
         tasks = [asyncio.create_task(transport.fetch(REF)) for _ in range(5)]
         await asyncio.wait_for(entered.wait(), 1)
         tasks[0].cancel()
@@ -38,6 +38,21 @@ class AliExpressTransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await asyncio.gather(*tasks[1:]), [RAW]*4)
         self.assertEqual(len(page.aborted), 1)
         self.assertEqual(page.calls[0]['url'], HOME_URL.rstrip('/')+API_PATH+'?productId=1005009868651525&sourceId=0&sku_id=12000061135122688')
+
+    async def test_queue_wait_is_outside_http_timeout_and_pending_cancel_never_sends(self):
+        transport, page = await self.transport(max_in_flight_requests=1, request_timeout=.01)
+        await transport.pool.acquire()
+        task = asyncio.create_task(transport.fetch(REF))
+        cancelled = asyncio.create_task(transport.fetch(REF))
+        await asyncio.sleep(.05)
+        self.assertEqual(page.calls, [])
+        self.assertFalse(task.done())
+        cancelled.cancel()
+        with self.assertRaises(asyncio.CancelledError): await cancelled
+        transport.pool.release()
+        self.assertEqual(await task, RAW)
+        self.assertEqual(len(page.calls), 1)
+        self.assertEqual(transport.pool.in_flight, 0)
 
     async def test_retry_after_cooldown_and_long_pause(self):
         times=[]
@@ -95,7 +110,7 @@ class AliExpressTransportTests(unittest.IsolatedAsyncioTestCase):
                     await release.wait()
                 return response()
             finally:active-=1
-        transport,_=await self.transport(fetch,prepare,concurrency=2)
+        transport,_=await self.transport(fetch,prepare,max_in_flight_requests=2)
         tasks=[asyncio.create_task(transport.fetch(REF)) for _ in range(2)]
         await asyncio.wait_for(blocked.wait(),1)
         await asyncio.sleep(.02)

@@ -1,10 +1,30 @@
 async ({id, nmId, timeoutMs}) => {
     const registry = globalThis.__priceWatchWbRequests ??= new Map();
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const network = globalThis.__priceWatchWbNetwork;
+    network.owners.set(nmId, controller);
     let finished;
     const done = new Promise(resolve => { finished = resolve; });
     registry.set(id, {controller, done});
+    const waitNative = promise => {
+        // A native Promise can remain unresolved even after its HTTP finished.
+        // This watchdog measures only time with no owned queued/active HTTP;
+        // it is not an HTTP or queue deadline. Unknown native work is fatal.
+        let idleSince = performance.now();
+        let timer;
+        const guard = new Promise((_, reject) => {
+            timer = setInterval(() => {
+                const busy = [...network.pending, ...network.active].some(r => r.article === nmId || r.article === 'profile');
+                const now = performance.now();
+                if (busy) idleSince = now;
+                else if (now - idleSince >= timeoutMs) {
+                    network.retired.add(nmId);
+                    reject(Object.assign(new Error('WB native runtime did not settle'), {unsafe: true}));
+                }
+            }, Math.max(10, Math.min(100, timeoutMs / 4)));
+        });
+        return Promise.race([promise, guard]).finally(() => clearInterval(timer));
+    };
     const fail = message => { throw new Error(message); };
     const money = (value, integer = false) => {
         if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 ||
@@ -21,7 +41,8 @@ async ({id, nmId, timeoutMs}) => {
         // Promise.all has no rejection handler). Wait for the native profile
         // context first; never supply a probe/default region in its place.
         let profileReady = false;
-        while (!controller.signal.aborted) {
+        const deadline = performance.now() + timeoutMs;
+        while (performance.now() < deadline) {
             try {
                 const xinfo = await w.user.getXinfo();
                 if (typeof xinfo === 'string' && xinfo.length > 0) {
@@ -58,10 +79,21 @@ async ({id, nmId, timeoutMs}) => {
         const w = window.wb;
         if (!w?.user?.getXinfo || !w.user.getUserGrade || !w.user.setDiscountForUnAuth || !w.xnm?.getXnmProducts)
             fail('Изменилась схема runtime WB');
-        await prepareProfile(w);
-        await prepareWallet(w);
+        // Share profile/wallet initialization, never a whole-product lock.
+        const wallet = globalThis.__priceWatchWbWallet ??= (async () => {
+            const generation = await globalThis.__priceWatchWbWalletStarting();
+            await prepareProfile(w);
+            await prepareWallet(w);
+            return generation;
+        })().finally(() => {
+            if (globalThis.__priceWatchWbWallet === wallet) globalThis.__priceWatchWbWallet = null;
+        });
+        const walletGeneration = await Promise.race([wallet, new Promise((_, reject) => {
+            if (controller.signal.aborted) reject(controller.signal.reason);
+            else controller.signal.addEventListener('abort', () => reject(controller.signal.reason), {once: true});
+        })]);
         if (controller.signal.aborted) fail('WB: таймаут условий');
-        const products = await w.xnm.getXnmProducts([Number(nmId)], true, false, null, null, false, controller.signal);
+        const products = await waitNative(w.xnm.getXnmProducts([Number(nmId)], true, false, null, null, false, controller.signal));
         const matches = Object.values(products ?? {}).filter(p => String(p?.id) === nmId);
         if (matches.length !== 1) fail('WB: ответ не содержит выбранный товар');
         const p = matches[0];
@@ -93,29 +125,26 @@ async ({id, nmId, timeoutMs}) => {
             } catch { /* Images are optional; never replace an exact price with an image error. */ }
         }
         let metadata = null;
-        let metadataTimedOut = false;
         if (typeof w.xnm.getProductColorsByNmIdsAsync === 'function') {
             try {
-                let metadataTimer;
-                const all = await Promise.race([
-                    w.xnm.getProductColorsByNmIdsAsync([Number(nmId)]),
-                    new Promise(resolve => { metadataTimer = setTimeout(() => {
-                        metadataTimedOut = true; resolve(null);
-                    }, Math.min(3000, timeoutMs / 3)); })
-                ]).finally(() => clearTimeout(metadataTimer));
+                if (controller.signal.aborted) throw controller.signal.reason;
+                const all = await waitNative(w.xnm.getProductColorsByNmIdsAsync([Number(nmId)]));
                 const m = all?.[nmId];
                 if (m) metadata = {options: m.options ?? (m.c ? [{name: 'Цвет', value: m.c}] : []), description: m.description};
-            } catch { /* Metadata is optional; price and size are already exact. */ }
+            } catch (error) {
+                if (error?.unsafe) throw error;
+                /* Metadata is optional; price and size are already exact. */
+            }
         }
-        return {currency: 'RUB', walletReady: true, product: {
+        return {currency: 'RUB', walletReady: true, walletGeneration, product: {
             id: safeId(p.id), name: p.name, brand: p.brand, supplier: p.supplier,
             supplierId: p.supplierId == null ? null : safeId(p.supplierId),
             reviewRating: p.reviewRating, feedbacks: p.feedbacks, imageUrl, sizes
-        }, metadata, metadataTimedOut};
+        }, metadata};
     } catch (error) {
-        return {errorKind: controller.signal.aborted ? 'timeout' : 'schema', error: controller.signal.aborted ? 'Таймаут запроса WB' : String(error.message)};
+        return {errorKind: error?.unsafe ? 'unsafe' : controller.signal.aborted ? 'timeout' : 'schema', error: controller.signal.aborted ? 'Таймаут запроса WB' : String(error?.message ?? error ?? 'неизвестная ошибка WB')};
     } finally {
-        clearTimeout(timer);
+        network.owners.delete(nmId);
         registry.delete(id);
         finished();
     }

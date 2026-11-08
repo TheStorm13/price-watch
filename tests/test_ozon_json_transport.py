@@ -91,25 +91,25 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(MarketplaceSchemaChanged):
             OzonMapper.to_card(OzonProductParser.parse(received, expected_external_id='999'))
 
-    async def test_default_eight_overlap_and_ninth_waits_shared_bootstrap_exact_raw(self):
+    async def test_default_hundred_overlap_and_next_waits_shared_bootstrap_exact_raw(self):
         release = asyncio.Event()
-        eight = asyncio.Event()
+        hundred = asyncio.Event()
         started = 0
         async def fetch(arg):
             nonlocal started
             started += 1
-            if started == 8:
-                eight.set()
+            if started == 100:
+                hundred.set()
             await release.wait()
             return response()
         transport, page, context, prepare = await self.make_transport(fetch)
-        self.assertIsNone(transport.rate)
-        tasks = [asyncio.create_task(transport.fetch(str(i))) for i in range(9)]
-        await asyncio.wait_for(eight.wait(), 1)
-        self.assertEqual(len(page.calls), 8)
+        self.assertEqual(transport.pool.max_in_flight_requests, 100)
+        tasks = [asyncio.create_task(transport.fetch(str(i))) for i in range(101)]
+        await asyncio.wait_for(hundred.wait(), 1)
+        self.assertEqual(len(page.calls), 100)
         self.assertFalse(any(task.done() for task in tasks))
         release.set()
-        self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 9)
+        self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 101)
         context.new_page.assert_awaited_once()
         prepare.assert_awaited_once_with(page)
         self.assertEqual(page.calls[0]['url'], HOME_URL.rstrip('/') + API_PATH + '?url=%2Fproduct%2F0%2F%3Foos_search%3Dfalse')
@@ -155,7 +155,7 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
             if count == 3:
                 await neighbor.wait()
             return response()
-        transport, page, _, _ = await self.make_transport(fetch, prepare, starts_per_second=1000)
+        transport, page, _, _ = await self.make_transport(fetch, prepare)
         tasks = [asyncio.create_task(transport.fetch(str(i))) for i in range(3)]
         while len(page.calls) < 3:
             await asyncio.sleep(0)
@@ -271,22 +271,15 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await two, product_text())
         self.assertEqual(prepares, 2)
 
-    async def test_token_bucket_is_independent_of_inflight_slots_and_covers_retries(self):
-        transport, page, _, _ = await self.make_transport(starts_per_second=10, concurrency=5)
-        await asyncio.gather(*(transport.fetch(str(i)) for i in range(5)))
-        started = asyncio.get_running_loop().time()
-        await transport.fetch('6')
-        self.assertGreaterEqual(asyncio.get_running_loop().time() - started, .07)
-        self.assertEqual(len(page.calls), 6)
-        transport.rate = 20
-        transport._tokens = 0
-        page.fetch = AsyncMock(side_effect=[response(429), response()])
-        # Numeric zero permits retry immediately, but the token bucket still applies.
+    async def test_no_pacing_after_completed_request_or_zero_retry_after(self):
+        transport, page, _, _ = await self.make_transport(max_in_flight_requests=1)
         first = response(429); first['retryAfter'] = '0'
-        page.fetch = AsyncMock(side_effect=[first, response()])
-        started = asyncio.get_running_loop().time()
-        await transport.fetch('7')
-        self.assertGreaterEqual(asyncio.get_running_loop().time() - started, .08)
+        page.fetch = AsyncMock(side_effect=[first, response(), response()])
+        with patch('marketplace_connector.connectors.ozon.json_transport.asyncio.sleep', new_callable=AsyncMock) as sleep:
+            await transport.fetch('1')
+            await transport.fetch('2')
+        sleep.assert_not_awaited()
+        self.assertEqual(len(page.calls), 3)
 
     async def test_parallel_429_extend_cooldown_and_waiting_dispatch_rechecks(self):
         short = response(429); short['retryAfter'] = '1'
@@ -306,7 +299,7 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
                 release.set()
                 return short
             return response()
-        transport, page, _, _ = await self.make_transport(fetch, starts_per_second=10000, concurrency=2)
+        transport, page, _, _ = await self.make_transport(fetch, max_in_flight_requests=2)
         self.assertEqual(await asyncio.gather(transport.fetch('1'), transport.fetch('2'), transport.fetch('3')), [product_text()] * 3)
         self.assertGreaterEqual(min(timestamps[2:]) - max(timestamps[:2]), 1.95)
 
@@ -377,8 +370,8 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(retry_after_seconds('9' * 500), float('inf'))
 
     def test_invalid_settings_rejected(self):
-        for kwargs in ({'concurrency': 0}, {'concurrency': True}, {'max_attempts': 1.5},
-                       {'request_timeout': float('nan')}, {'starts_per_second': 0}, {'max_retry_wait': -1}):
+        for kwargs in ({'max_in_flight_requests': 0}, {'max_in_flight_requests': True}, {'max_attempts': 1.5},
+                       {'request_timeout': float('nan')}, {'max_in_flight_requests': None}, {'max_retry_wait': -1}):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 OzonJsonTransport(None, None, **kwargs)
 
@@ -393,7 +386,7 @@ class ClientSessionTests(unittest.IsolatedAsyncioTestCase):
             entered = asyncio.Event()
             release = asyncio.Event()
             async def fetch(arg):
-                if len(pages[-1].calls) == 8:
+                if len(pages[-1].calls) == 100:
                     entered.set()
                 await release.wait()
                 return response()
@@ -413,15 +406,15 @@ class ClientSessionTests(unittest.IsolatedAsyncioTestCase):
             with (patch('marketplace_connector.browser.session.async_playwright', playwright),
                   patch.object(client.session, '_launch_async_context', side_effect=launch),
                   patch.object(client, '_is_antibot_page_async', AsyncMock(return_value=False))):
-                tasks = [asyncio.create_task(client.fetch_raw_text_async(str(i), validate=False)) for i in range(9)]
+                tasks = [asyncio.create_task(client.fetch_raw_text_async(str(i), validate=False)) for i in range(101)]
                 await asyncio.wait_for(entered.wait(), 1)
                 self.assertEqual(len(launches), 1)
                 self.assertEqual(len(pages), 1)
-                self.assertEqual(len(pages[0].calls), 8)
-                self.assertIsNone(client._transport.rate)
+                self.assertEqual(len(pages[0].calls), 100)
+                self.assertEqual(client._transport.pool.max_in_flight_requests, 100)
                 pages[0].goto.assert_awaited_once_with(HOME_URL, wait_until='domcontentloaded', timeout=90000)
                 release.set()
-                self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 9)
+                self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 101)
                 pages[0].close.assert_awaited_once()
                 self.assertIsNone(client._transport)
                 async with client.collection_session():

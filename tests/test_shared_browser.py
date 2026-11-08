@@ -87,7 +87,7 @@ class SharedBrowserTests(unittest.IsolatedAsyncioTestCase):
         with TemporaryDirectory(prefix='price-watch-ali-browser-') as directory:
             session=ChromeSession(directory,headless=True)
             ozon=AsyncOzonClient(directory,session=session)
-            ali=AsyncAliExpressClient(directory,session=session,concurrency=5,max_attempts=1,request_timeout=3)
+            ali=AsyncAliExpressClient(directory,session=session,max_in_flight_requests=5,max_attempts=1,request_timeout=3)
             requests=[]
             five,release=asyncio.Event(),asyncio.Event()
             async with ozon.collection_session():

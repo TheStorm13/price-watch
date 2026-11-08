@@ -24,7 +24,7 @@ def card():
     return SimpleNamespace(price=12, availability=SimpleNamespace(value='in_stock'), variants=())
 
 
-class UnboundedTransportTests(unittest.IsolatedAsyncioTestCase):
+class RequestPoolTransportTests(unittest.IsolatedAsyncioTestCase):
     async def make_transport(self, fetch, **options):
         page = FakePage(fetch)
         page.is_closed = lambda: False
@@ -39,7 +39,7 @@ class UnboundedTransportTests(unittest.IsolatedAsyncioTestCase):
                 entered.set()
             await release.wait()
             return response()
-        transport, page = await self.make_transport(fetch, concurrency=None, starts_per_second=None)
+        transport, page = await self.make_transport(fetch, max_in_flight_requests=100)
         tasks = [asyncio.create_task(transport.fetch(REF)) for _ in range(40)]
         try:
             await asyncio.wait_for(entered.wait(), 2)
@@ -58,7 +58,7 @@ class UnboundedTransportTests(unittest.IsolatedAsyncioTestCase):
                 entered.set()
             await release.wait()
             return response()
-        transport, page = await self.make_transport(fetch, concurrency=4, starts_per_second=None)
+        transport, page = await self.make_transport(fetch, max_in_flight_requests=4)
         tasks = [asyncio.create_task(transport.fetch(REF)) for _ in range(5)]
         try:
             await asyncio.wait_for(entered.wait(), 1)
@@ -74,35 +74,22 @@ class UnboundedTransportTests(unittest.IsolatedAsyncioTestCase):
         async def fetch(arg):
             times.append(asyncio.get_running_loop().time())
             return response(429, retryAfter='1') if len(times) == 1 else response()
-        transport, _ = await self.make_transport(fetch, concurrency=None, starts_per_second=None)
+        transport, _ = await self.make_transport(fetch, max_in_flight_requests=100)
         self.assertEqual(await transport.fetch(REF), RAW)
         self.assertGreaterEqual(times[1] - times[0], .95)
         transport, _ = await self.make_transport(AsyncMock(side_effect=[response(403), response()]),
-                                                concurrency=None, starts_per_second=None)
+                                                max_in_flight_requests=100)
         self.assertEqual(await transport.fetch(REF), RAW)
         self.assertEqual(transport.prepare_page.await_count, 2)
 
-    async def test_numeric_pacing_is_preserved(self):
-        times = []
-        async def fetch(arg):
-            times.append(asyncio.get_running_loop().time())
-            return response()
-        transport, _ = await self.make_transport(fetch, concurrency=1, starts_per_second=5)
-        await transport.fetch(REF)
-        await transport.fetch(REF)
-        self.assertGreaterEqual(times[1] - times[0], .18)
-
     def test_validation_and_application_defaults(self):
         transport = AliExpressJsonTransport(None, None)
-        self.assertEqual((transport.concurrency, transport.rate), (1, 5))
+        self.assertEqual(transport.pool.max_in_flight_requests, 100)
         client = AsyncAliExpressClient('/tmp/unused-ali-default')
-        self.assertEqual(client._transport_options['concurrency'], 1)
-        self.assertEqual(client._transport_options['starts_per_second'], 5)
-        client = AsyncAliExpressClient('/tmp/unused-ali-unbounded', concurrency=None, starts_per_second=None)
-        self.assertIsNone(client._transport_options['concurrency'])
-        for options in ({'concurrency': None}, {'concurrency': False}, {'concurrency': 0},
-                        {'concurrency': 1.5}, {'starts_per_second': False}, {'starts_per_second': 0},
-                        {'starts_per_second': float('nan')}, {'max_attempts': None}, {'request_timeout': None}):
+        self.assertEqual(client._transport_options['max_in_flight_requests'], 100)
+        for options in ({'max_in_flight_requests': None}, {'max_in_flight_requests': False},
+                        {'max_in_flight_requests': 0}, {'max_in_flight_requests': 1.5},
+                        {'max_attempts': None}, {'request_timeout': None}):
             with self.subTest(options=options), self.assertRaises(ValueError):
                 AliExpressJsonTransport(None, None, **options)
 
@@ -139,7 +126,7 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
         page = FakePage(fetch)
         page.is_closed = lambda: False
         transport = MeasuredTransport(MagicMock(new_page=AsyncMock(return_value=page)), AsyncMock(),
-                                      concurrency=None, starts_per_second=None, probe=probe)
+                                      max_in_flight_requests=100, probe=probe)
         self.addAsyncCleanup(transport.close)
         async def get_product(article):
             await transport.fetch(article)
@@ -163,7 +150,7 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
             probe = Probe()
             page = FakePage(AsyncMock(return_value=result))
             transport = MeasuredTransport(MagicMock(new_page=AsyncMock(return_value=page)), AsyncMock(),
-                                          concurrency=None, starts_per_second=None, probe=probe)
+                                          max_in_flight_requests=100, probe=probe)
             with self.subTest(status=result["status"]):
                 try:
                     with self.assertRaises(ExperimentStopped):
@@ -196,7 +183,7 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
     async def test_shared_preparation_stops_immediately_on_storefront_challenge(self):
         probe = Probe()
         client = ExperimentClient('/tmp/unused-ali-experiment', probe=probe,
-                                  concurrency=None, starts_per_second=None)
+                                  max_in_flight_requests=100)
         page = MagicMock(title=AsyncMock(return_value='captcha'))
         page.url = 'https://aliexpress.ru/'
         page.locator.return_value.inner_text = AsyncMock(return_value='captcha')
@@ -238,8 +225,7 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
             async with measured_client('/tmp/unused-ali-test', session, Probe()) as (client, connector):
                 await asyncio.gather(*(connector.get_product(REF) for _ in range(40)))
                 self.assertEqual(prepare.await_count, 1)
-                self.assertIsNone(client._transport.rate)
-                self.assertIsNone(client._transport.concurrency)
+                self.assertEqual(client._transport.pool.max_in_flight_requests, 100)
                 self.assertEqual(len(page.calls), 40)
         page.close.assert_awaited_once()
 
@@ -258,13 +244,12 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
         session.collection_session = scope
         probe = Probe()
         with patch.object(ExperimentClient, '_prepare_storefront', new_callable=AsyncMock):
-            async with measured_client('/tmp/unused-ali-n8', session, probe, concurrency=8) as (client, connector):
+            async with measured_client('/tmp/unused-ali-n8', session, probe, max_in_flight_requests=8) as (client, connector):
                 tasks = [asyncio.create_task(connector.get_product(REF)) for _ in range(40)]
                 try:
                     await asyncio.wait_for(entered.wait(), 1)
                     self.assertEqual(len(page.calls), 8)
-                    self.assertEqual(client._transport.concurrency, 8)
-                    self.assertIsNone(client._transport.rate)
+                    self.assertEqual(client._transport.pool.max_in_flight_requests, 8)
                 finally:
                     release.set()
                     await asyncio.gather(*tasks)
@@ -294,8 +279,7 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(report['status'], 'complete')
             self.assertEqual(report['batch']['counts']['success'], 40)
             self.assertEqual(report['configuration']['batches'], 1)
-            self.assertIsNone(report['configuration']['concurrency'])
-            self.assertIsNone(report['configuration']['starts_per_second'])
+            self.assertEqual(report['configuration']['max_in_flight_requests'], 100)
             self.assertEqual(snapshots[0]['articles'], ARTICLES)
             self.assertIsNone(snapshots[0]['batch'])
             self.assertEqual(json.loads(args.output.read_text())['status'], 'complete')

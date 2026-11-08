@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-08T16:26:41.022657+00:00",
+  "status": "completed",
+  "max_in_flight_requests": 100,
+  "database": "not_used",
+  "stages": [
+    {
+      "marketplace": "ozon",
+      "chrome_pid": 458191,
+      "seconds": 1.0429137689970958,
+      "peak": 1,
+      "in_flight_at_end": 0
+    },
+    {
+      "marketplace": "aliexpress",
+      "chrome_pid": 458191,
+      "seconds": 2.806435139998939,
+      "peak": 1,
+      "in_flight_at_end": 0
+    },
+    {
+      "marketplace": "wildberries",
+      "chrome_pid": 458191,
+      "seconds": 1.7379982689999451,
+      "network": {
+        "peak": 1,
+        "active": 0,
+        "pending": 0,
+        "requests": 2,
+        "queue_ms": 0.4000000022351742,
+        "http_ms": 278.29999999701977,
+        "unsupported_xhr": false
+      }
+    }
+  ],
+  "http": [
+    {
+      "marketplace": "ozon",
+      "queue_seconds": 2.8092999855289236e-05,
+      "status": 200,
+      "error": null,
+      "http_seconds": 0.23292753900022944
+    },
+    {
+      "marketplace": "aliexpress",
+      "queue_seconds": 5.511899871635251e-05,
+      "status": 200,
+      "error": null,
+      "http_seconds": 0.7991480000018782
+    }
+  ],
+  "stop_reason": null,
+  "limitations": "Three targets, one run; does not establish sustained stability or live capacity of 100.",
+  "targets": {
+    "ozon": "2936650207",
+    "aliexpress": "1005007620335204:12000061321813248",
+    "wildberries": "179224846:296499716"
+  },
+  "chrome_pid": 458191,
+  "successes": 3,
+  "failures": 0,
+  "outcomes": [
+    {
+      "marketplace": "ozon",
+      "external_id": "2936650207",
+      "availability": "in_stock",
+      "has_price": true
+    },
+    {
+      "marketplace": "aliexpress",
+      "external_id": "1005007620335204:12000061321813248",
+      "availability": "in_stock",
+      "has_price": true
+    },
+    {
+      "marketplace": "wildberries",
+      "external_id": "179224846:296499716",
+      "availability": "in_stock",
+      "has_price": true
+    }
+  ],
+  "errors": [],
+  "owned_chrome_closed": true,
+  "profile_released": true
+}

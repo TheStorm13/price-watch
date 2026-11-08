@@ -25,7 +25,7 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
             return response()
         page = FakePage(fetch)
         transport = OzonJsonTransport(MagicMock(new_page=AsyncMock(return_value=page)), AsyncMock(),
-                                      concurrency=1, starts_per_second=None)
+                                      max_in_flight_requests=1)
         self.addAsyncCleanup(transport.close)
         first = asyncio.create_task(transport.fetch('1'))
         await entered.wait()
@@ -43,7 +43,7 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
         page = FakePage(AsyncMock(side_effect=[response(429), response(403), response()]))
         prepare = AsyncMock()
         transport = OzonJsonTransport(MagicMock(new_page=AsyncMock(return_value=page)), prepare,
-                                      concurrency=1, starts_per_second=None)
+                                      max_in_flight_requests=1)
         self.addAsyncCleanup(transport.close)
         # Short controlled cooldown avoids waiting the default server pause.
         with patch('marketplace_connector.connectors.ozon.json_transport.retry_after_seconds', return_value=.04):
@@ -60,30 +60,6 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
             yield context
         return SimpleNamespace(collection_session=collection_session, headless=False,
                                virtual_display=False, challenge_lock=asyncio.Lock())
-
-    async def test_modes_measure_real_dispatch_and_pacing(self):
-        args = SimpleNamespace(profile_dir=Path('/unused'))
-        async def fetch(arg):
-            await asyncio.sleep(.005)
-            return response()
-        durations = {}
-        for mode in 'ABCD':
-            probe = Probe()
-            session = self.fake_session(fetch)
-            with patch('experiments.parallel_ozon.ExperimentClient._prepare_storefront', new=AsyncMock()):
-                async with measured_client(args, probe, mode, session) as connector:
-                    batch = await run_batch(connector, [str(i) for i in range(7)], probe, mode)
-            self.assertEqual(batch['successes'], 7)
-            self.assertEqual(batch['composer_dispatches'], 7)
-            self.assertEqual(batch['logical_retries'], 0)
-            self.assertEqual(batch['transport_retries'], 0)
-            self.assertEqual(batch['peak_composer_dispatches'], 5 if mode in ('A', 'D') else 1)
-            self.assertTrue(all(r['fields']['availability'] for r in batch['results']))
-            durations[mode] = batch['seconds']
-        self.assertGreater(durations['B'], 1.1)
-        self.assertGreater(durations['A'], .35)
-        self.assertLess(durations['D'], durations['A'] / 2)
-        self.assertLess(durations['C'], durations['B'] / 2)
 
     async def test_fixed_n_reaches_requested_concurrency_above_five(self):
         args = SimpleNamespace(profile_dir=Path('/unused'))
@@ -109,8 +85,7 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
                         batch = await task
             self.assertEqual(batch['successes'], 30)
             self.assertEqual(batch['peak_composer_dispatches'], n)
-            self.assertEqual(batch['card_workers'], n)
-            self.assertIsNone(batch['starts_per_second'])
+            self.assertEqual(batch['max_in_flight_requests'], n)
 
     async def test_chrome_resource_sampling_excludes_other_process_groups(self):
         with TemporaryDirectory() as directory:
@@ -141,29 +116,29 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
         session = self.fake_session(AsyncMock(return_value=response(text='<html>challenge</html>',
                                                                   status=200)))
         with patch('experiments.parallel_ozon.ExperimentClient._prepare_storefront', new=AsyncMock()):
-            async with measured_client(args, probe, 'C', session) as connector:
-                batch = await run_batch(connector, [str(i) for i in range(30)], probe, 'C')
+            async with measured_client(args, probe, '1', session) as connector:
+                batch = await run_batch(connector, [str(i) for i in range(30)], probe, '1')
         self.assertEqual(probe.stop_reason, 'challenge')
         self.assertEqual(batch['composer_dispatches'], 1)
         self.assertEqual(batch['successes'], 0)
         self.assertGreater(batch['cancelled_targets'], 0)
 
-    async def test_second_access_refusal_stops_after_one_recovery(self):
+    async def test_first_access_refusal_stops_without_recovery(self):
         args = SimpleNamespace(profile_dir=Path('/unused'))
         probe = Probe()
         session = self.fake_session(AsyncMock(return_value=response(403)))
         with patch('experiments.parallel_ozon.ExperimentClient._prepare_storefront', new=AsyncMock()):
-            async with measured_client(args, probe, 'C', session) as connector:
-                batch = await run_batch(connector, [str(i) for i in range(30)], probe, 'C')
-        self.assertEqual(probe.stop_reason, 'repeated_access_refusal')
-        self.assertEqual(batch['composer_dispatches'], 2)
-        self.assertEqual(batch['recoveries'], 1)
+            async with measured_client(args, probe, '1', session) as connector:
+                batch = await run_batch(connector, [str(i) for i in range(30)], probe, '1')
+        self.assertEqual(probe.stop_reason, 'access_refusal')
+        self.assertEqual(batch['composer_dispatches'], 1)
+        self.assertEqual(batch['recoveries'], 0)
 
     async def test_six_batches_keep_fixed_dataset_and_safe_report(self):
         session = self.fake_session(AsyncMock(return_value=response()))
         articles = [str(i) for i in range(30)]
         with TemporaryDirectory() as directory:
-            args = SimpleNamespace(profile_dir=Path(directory), headless=True, pause=0, order=tuple('ABCCBA'),
+            args = SimpleNamespace(profile_dir=Path(directory), headless=True, pause=0, order=('1', '5', '100', '100', '5', '1'),
                                    output=Path(directory) / 'result.json', articles=articles, size=30)
             async def batch(connector, received, probe, mode):
                 self.assertEqual(received, articles)
@@ -173,17 +148,17 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
                 report = await run(args)
             self.assertEqual(report['status'], 'complete')
             self.assertEqual(report['browser_mode'], 'headless')
-            self.assertEqual([b['mode'] for b in report['batches']], list('ABCCBA'))
+            self.assertEqual([b['mode'] for b in report['batches']], ['1', '5', '100', '100', '5', '1'])
             saved = json.loads(args.output.read_text())
             self.assertEqual(saved['articles'], articles)
             self.assertNotIn('widgetStates', args.output.read_text())
-            args.order = tuple('CDDC')
+            args.order = ('1', '5', '5', '1')
             with patch('experiments.parallel_ozon.ChromeSession', return_value=session), \
                  patch('experiments.parallel_ozon.run_batch', side_effect=batch):
                 report = await run(args)
             self.assertEqual(report['status'], 'complete')
-            self.assertEqual(report['order'], tuple('CDDC'))
-            self.assertEqual([b['mode'] for b in report['batches']], list('CDDC'))
+            self.assertEqual(report['order'], ('1', '5', '5', '1'))
+            self.assertEqual([b['mode'] for b in report['batches']], ['1', '5', '5', '1'])
             args.order = ('5', '8', '12', '12', '8', '5') * 2
             with patch('experiments.parallel_ozon.ChromeSession', return_value=session), \
                  patch('experiments.parallel_ozon.run_batch', side_effect=batch):
@@ -194,7 +169,7 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
     async def test_insufficient_discovery_does_not_run_comparison(self):
         session = self.fake_session(AsyncMock(return_value=response()))
         with TemporaryDirectory() as directory:
-            args = SimpleNamespace(profile_dir=Path(directory), headless=True, pause=0, order=tuple('ABCCBA'),
+            args = SimpleNamespace(profile_dir=Path(directory), headless=True, pause=0, order=('1', '5', '100', '100', '5', '1'),
                                    output=Path(directory) / 'result.json', articles=[], size=40)
             with patch('experiments.parallel_ozon.ChromeSession', return_value=session), \
                  patch('experiments.parallel_ozon.discover', new=AsyncMock(return_value=['1'])), \

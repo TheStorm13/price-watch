@@ -63,7 +63,7 @@ class WildberriesBrowserTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.directory = TemporaryDirectory(prefix='wb-synthetic-')
         self.session = ChromeSession(self.directory.name, headless=True)
-        self.client = AsyncWildberriesClient(self.directory.name, session=self.session, request_timeout=2, starts_per_second=100)
+        self.client = AsyncWildberriesClient(self.directory.name, session=self.session, request_timeout=2)
         self.manager = self.client.collection_session()
         await self.manager.__aenter__()
         self.payload = json.loads(FIXTURE.read_text())['product']
@@ -111,6 +111,159 @@ class WildberriesBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.counts, {'detail':2,'grade':1})
         self.assertEqual(self.navigations,['https://www.wildberries.ru/'])
         self.assertEqual(await self.client._transport.page.evaluate('__priceWatchWbRequests.size'),0)
+
+    async def test_hundred_http_requests_admitted_and_101_waits(self):
+        from urllib.parse import parse_qs, urlsplit
+        entered, release = asyncio.Event(), asyncio.Event()
+        original = self.route
+        async def route(request):
+            if '/cards/v4/detail' not in request.request.url:
+                await original(request)
+                return
+            self.counts['detail'] += 1
+            if self.counts['detail'] == 100:
+                entered.set()
+            await release.wait()
+            payload = dict(self.payload, id=int(parse_qs(urlsplit(request.request.url).query)['nm'][0]))
+            await request.fulfill(content_type='application/json', body=json.dumps({'products': [payload]}))
+        await self.session.context.unroute('https://www.wildberries.ru/**', self.route)
+        await self.session.context.route('https://www.wildberries.ru/**', route)
+        tasks = [asyncio.create_task(self.client.fetch_product_async(str(1000+i))) for i in range(101)]
+        try:
+            await asyncio.wait_for(entered.wait(), 8)
+            stats = await self.client._transport.page.evaluate('({active:__priceWatchWbNetwork.active.size,pending:__priceWatchWbNetwork.pending.size})')
+            self.assertEqual(stats, {'active': 100, 'pending': 1})
+            self.assertEqual(self.counts['detail'], 100)
+        finally:
+            release.set()
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        self.assertTrue(all(isinstance(r, dict) and 'product' in r for r in results), results)
+        self.assertEqual(self.counts['detail'], 101)
+        self.assertEqual(await self.client._transport.page.evaluate('__priceWatchWbNetwork.peak'), 100)
+
+    async def test_cancel_metadata_request_keeps_other_article_alive(self):
+        from urllib.parse import parse_qs, urlsplit
+        self.home = HOME.replace('getProductColorsByNmIdsAsync:async()=>({})',
+            "getProductColorsByNmIdsAsync:async ids=>{await fetch('https://basket-12.wbbasket.ru/vol1/part1/'+ids[0]+'/info/ru/card.json');return {};}")
+        metadata_entered, metadata_release = asyncio.Event(), asyncio.Event()
+        async def metadata(route):
+            metadata_entered.set()
+            await metadata_release.wait()
+            try:
+                await route.fulfill(content_type='application/json', body='{}')
+            except Exception:
+                pass  # The cancelled target has already aborted its request.
+        await self.session.context.route('https://basket-12.wbbasket.ru/**', metadata)
+        original = self.route
+        async def detail(route):
+            if '/cards/v4/detail' in route.request.url:
+                payload = dict(self.payload, id=int(parse_qs(urlsplit(route.request.url).query)['nm'][0]))
+                await route.fulfill(content_type='application/json', body=json.dumps({'products': [payload]}))
+            else:
+                await original(route)
+        await self.session.context.unroute('https://www.wildberries.ru/**', self.route)
+        await self.session.context.route('https://www.wildberries.ru/**', detail)
+        first = asyncio.create_task(self.client.fetch_product_async('1001'))
+        await asyncio.wait_for(metadata_entered.wait(), 5)
+        second = asyncio.create_task(self.client.fetch_product_async('1002'))
+        page = self.client._transport.page
+        try:
+            first.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await first
+            self.assertFalse(page.is_closed())
+            metadata_release.set()
+            self.assertEqual((await second)['product']['id'], '1002')
+        finally:
+            metadata_release.set()
+            for task in (first, second): task.cancel()
+            await asyncio.gather(first, second, return_exceptions=True)
+
+    async def test_native_sdk_timeout_does_not_include_pool_queue(self):
+        from urllib.parse import parse_qs, urlsplit
+        self.client._transport.max_in_flight_requests = 1
+        self.home = HOME.replace("ids[0],{signal}", "ids[0],{signal:AbortSignal.timeout(30)}")
+        first_entered, release = asyncio.Event(), asyncio.Event()
+        original = self.route
+        async def detail(route):
+            if '/cards/v4/detail' not in route.request.url:
+                await original(route)
+                return
+            article = parse_qs(urlsplit(route.request.url).query)['nm'][0]
+            if article == '1001':
+                first_entered.set()
+                await release.wait()
+            payload = dict(self.payload, id=int(article))
+            await route.fulfill(content_type='application/json', body=json.dumps({'products': [payload]}))
+        await self.session.context.unroute('https://www.wildberries.ru/**', self.route)
+        await self.session.context.route('https://www.wildberries.ru/**', detail)
+        first = asyncio.create_task(self.client.fetch_product_async('1001'))
+        await asyncio.wait_for(first_entered.wait(), 5)
+        second = asyncio.create_task(self.client.fetch_product_async('1002'))
+        try:
+            await asyncio.sleep(.1)  # Exceeds the native 30ms timeout while queued.
+            self.assertFalse(first.done())
+            self.assertFalse(second.done())
+            release.set()
+            results = await asyncio.gather(first, second)
+            self.assertEqual([r['product']['id'] for r in results], ['1001', '1002'])
+            self.assertGreater(await self.client._transport.page.evaluate('__priceWatchWbNetwork.queueMs'), 70)
+        finally:
+            release.set()
+            for task in (first, second): task.cancel()
+            await asyncio.gather(first, second, return_exceptions=True)
+
+    async def test_same_article_sizes_share_io_and_keep_exact_prices(self):
+        other = json.loads(json.dumps(self.payload['sizes'][0]))
+        other.update(optionId=296499717, name='Second size')
+        other['price']['priceToShow'] = 205600
+        self.payload['sizes'].append(other)
+        connector = WildberriesConnector(self.client)
+        first, second = await asyncio.gather(connector.get_product(REF), connector.get_product('179224846:296499717'))
+        self.assertEqual([str(c.price) for c in (first, second)], ['1024.00', '1994.00'])
+        self.assertEqual(self.counts['detail'], 1)
+        self.assertEqual([c.ref.external_id for c in (first, second)], [REF, '179224846:296499717'])
+        self.assertEqual([[v.ref.external_id for v in c.variants if v.selected] for c in (first, second)], [[REF], ['179224846:296499717']])
+
+    async def test_unsettled_native_helper_stops_instead_of_hanging(self):
+        from marketplace_connector.domain.errors import UnsafeBrowserTeardown
+        self.client._transport.request_timeout = .1
+        self.home = HOME.replace('getProductColorsByNmIdsAsync:async()=>({})', 'getProductColorsByNmIdsAsync:async()=>new Promise(()=>{})')
+        with self.assertRaises(UnsafeBrowserTeardown):
+            await asyncio.wait_for(self.card(), 5)
+        self.assertTrue(self.client._transport.page.is_closed())
+        with self.assertRaises(UnsafeBrowserTeardown): await self.card()
+
+    async def test_cancel_wallet_waiter_keeps_shared_bootstrap_for_other_article(self):
+        entered, release = asyncio.Event(), asyncio.Event()
+        original = self.route
+        async def route(request):
+            if '/v6/grade' in request.request.url:
+                self.counts['grade'] += 1
+                entered.set()
+                await release.wait()
+                await request.fulfill(content_type='application/json', body=json.dumps(self.grade_data))
+            else:
+                await original(request)
+        await self.session.context.unroute('https://www.wildberries.ru/**', self.route)
+        await self.session.context.route('https://www.wildberries.ru/**', route)
+        self.detail_body = json.dumps({'products': [dict(self.payload, id=1002)]})
+        first = asyncio.create_task(self.client.fetch_product_async('1001'))
+        await asyncio.wait_for(entered.wait(), 5)
+        second = asyncio.create_task(self.client.fetch_product_async('1002'))
+        try:
+            await asyncio.sleep(.02)
+            first.cancel()
+            with self.assertRaises(asyncio.CancelledError): await first
+            self.assertFalse(self.client._transport.page.is_closed())
+            self.assertEqual(self.counts['grade'], 1)
+            release.set()
+            self.assertEqual((await second)['product']['id'], '1002')
+            self.assertEqual(self.counts['grade'], 1)
+        finally:
+            release.set()
+            for task in (first, second): task.cancel()
+            await asyncio.gather(first, second, return_exceptions=True)
 
     async def test_stale_cache_and_changed_percent(self):
         await self.card()
@@ -177,10 +330,11 @@ class WildberriesBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(str((await connector.get_product(REF)).price), '1024.00')
         self.assertEqual(self.counts['detail'], 2)
 
-    async def test_timeout_closes_only_wb_page_and_next_target_recovers(self):
+    async def test_http_timeout_leaves_page_reusable(self):
         self.wait=asyncio.Event()
         self.client._transport.request_timeout=.2
         with self.assertRaises(MarketplaceUnavailable): await self.card()
+        self.assertFalse(self.client._transport.page.is_closed())
         self.wait.set()
         self.client._transport.request_timeout=2
         self.assertEqual(str((await self.card()).price),'1024.00')

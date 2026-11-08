@@ -169,51 +169,52 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('last', repo.errors[0]['traceback'])
         self.assertEqual(repo.saved, [])
 
-    async def test_limits_ozon_to_eight_and_keeps_individual_errors(self):
+    async def test_no_card_limit_and_keeps_individual_errors(self):
         repo, connector = FakeRepository([card(i) for i in range(9)]), Connector(failed=['3'])
         with self.assertLogs('price_watch.application.collection_service', level='ERROR'):
             result = await self.executor(repo, connector).collect()
-        self.assertEqual(connector.peak, 8)
+        self.assertEqual(connector.peak, 9)
         self.assertEqual((connector.opens, connector.closes), (1,1))
         self.assertEqual((result.success_count, result.failure_count), (8,1))
         self.assertIn('fetch failed', repo.errors[0]['traceback'])
 
-    async def test_mixed_run_has_eight_ozon_slots_and_shared_five_other_slots(self):
-        release = asyncio.Event()
-        ready = {'ozon': asyncio.Event(), 'other': asyncio.Event()}
-        active = {'ozon': 0, 'other': 0}
-        peak = dict(active)
+    async def test_mixed_run_is_sequential_and_has_no_card_semaphore(self):
+        active = set()
+        stages = []
         class Waiting(Connector):
             def __init__(self, marketplace):
                 super().__init__()
                 self.marketplace = marketplace
-            async def get_product(self, external_id):
-                group = 'ozon' if self.marketplace == 'ozon' else 'other'
-                active[group] += 1
-                peak[group] = max(peak[group], active[group])
-                if active[group] == (8 if group == 'ozon' else 5):
-                    ready[group].set()
+            @asynccontextmanager
+            async def collection_session(self):
+                self.opens += 1
+                assert not active
+                active.add(self.marketplace)
+                stages.append(self.marketplace)
                 try:
-                    await release.wait()
-                    return MarketplaceCard(ref=ProductRef(self.marketplace, external_id),
-                                         title='Fetched', url='', availability=Availability.OUT_OF_STOCK)
+                    yield
                 finally:
-                    active[group] -= 1
+                    active.remove(self.marketplace)
+                    self.closes += 1
+            async def get_product(self, external_id):
+                assert active == {self.marketplace}
+                self.active += 1
+                self.peak = max(self.peak, self.active)
+                try:
+                    await asyncio.sleep(.001)
+                    return MarketplaceCard(ref=ProductRef(self.marketplace, external_id), title='Fetched',
+                        url='', availability=Availability.OUT_OF_STOCK)
+                finally:
+                    self.active -= 1
         connectors = [Waiting(m) for m in ('ozon', 'wildberries', 'aliexpress')]
-        cards = [replace(card(i), ref=ProductRef(connectors[i % 3].marketplace, str(i)))
-                 for i in range(36)]
+        cards = [replace(card(i), ref=ProductRef(connectors[i % 3].marketplace, str(i))) for i in range(1002)]
         repo = FakeRepository(cards)
-        async def factory(run):
-            return ConnectorRegistry(connectors)
-        task = asyncio.create_task(RunExecutor(repo, factory).collect())
-        try:
-            await asyncio.wait_for(asyncio.gather(*(event.wait() for event in ready.values())), 1)
-            self.assertEqual(active, {'ozon': 8, 'other': 5})
-        finally:
-            release.set()
-            result = await task
-        self.assertEqual(peak, {'ozon': 8, 'other': 5})
-        self.assertEqual(result.success_count, 36)
+        async def factory(run): return ConnectorRegistry(connectors)
+        result = await RunExecutor(repo, factory).collect()
+        self.assertEqual(stages, ['ozon', 'aliexpress', 'wildberries'])
+        self.assertEqual(result.success_count, 1002)
+        self.assertEqual(len({c.id for c, _ in repo.saved}), 1002)
+        self.assertTrue(all(c.peak > 100 for c in connectors))
         self.assertEqual([(c.opens, c.closes) for c in connectors], [(1, 1)] * 3)
 
     async def test_excluded_card_still_collects_and_single_collect_is_scoped(self):
@@ -262,16 +263,17 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(repo.run.status, 'failed')
         self.assertIsNone(repo.errors[0]['cardId'])
 
-    async def test_session_failure_marks_run_failed(self):
+    async def test_session_failure_records_stage_errors(self):
         class Broken(Connector):
             @asynccontextmanager
             async def collection_session(self):
                 raise RuntimeError('session failed')
                 yield
         repo = FakeRepository([card(1)])
-        with self.assertRaisesRegex(RuntimeError, 'session failed'):
-            await self.executor(repo, Broken()).collect()
-        self.assertEqual(repo.run.status, 'failed')
+        result = await self.executor(repo, Broken()).collect()
+        self.assertEqual(result.status, 'completed_with_errors')
+        self.assertEqual(result.failure_count, 1)
+        self.assertEqual(repo.errors[0]['cardId'], 1)
 
     async def test_heartbeat_loss_cancels_fetch_and_closes_without_stale_finish(self):
         entered = asyncio.Event()
@@ -306,3 +308,41 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         repo = FakeRepository([card(1)])
         with self.assertRaises(LookupError): await self.executor(repo, Connector()).collect(99)
         self.assertIsNone(repo.run)
+
+class SequentialFailureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_failed_stage_does_not_prevent_next_marketplace(self):
+        class Broken(Connector):
+            @asynccontextmanager
+            async def collection_session(self):
+                raise MarketplaceUnavailable('isolated preparation failure')
+                yield
+        ali = Connector()
+        ali.marketplace = 'aliexpress'
+        async def product(external_id):
+            return MarketplaceCard(ref=ProductRef('aliexpress', external_id), title='Ali', url='', availability=Availability.OUT_OF_STOCK)
+        ali.get_product = product
+        repo = FakeRepository([card(1), replace(card(2), ref=ProductRef('aliexpress', '2'))])
+        async def factory(run): return ConnectorRegistry([Broken(), ali])
+        result = await RunExecutor(repo, factory).collect()
+        self.assertEqual((result.success_count, result.failure_count), (1, 1))
+        self.assertEqual(ali.opens, 1)
+        self.assertEqual(repo.errors[0]['cardId'], 1)
+
+    async def test_unsafe_teardown_stops_run_before_later_marketplace(self):
+        from marketplace_connector.domain.errors import UnsafeBrowserTeardown
+        ozon, ali = Connector(), Connector()
+        ali.marketplace = 'aliexpress'
+        ozon.get_product = AsyncMock(side_effect=UnsafeBrowserTeardown('unconfirmed I/O stop'))
+        repo = FakeRepository([card(1), replace(card(2), ref=ProductRef('aliexpress', '2'))])
+        async def factory(run): return ConnectorRegistry([ozon, ali])
+        with self.assertRaises(UnsafeBrowserTeardown): await RunExecutor(repo, factory).collect()
+        self.assertEqual(ozon.get_product.await_count, 1)
+        self.assertEqual(ali.opens, 0)
+        self.assertEqual(repo.run.status, 'failed')
+
+    async def test_empty_run_does_not_open_browser_or_connectors(self):
+        from price_watch.application.collection_service import CollectionService
+        from unittest.mock import MagicMock
+        registry = MagicMock()
+        await CollectionService(MagicMock(), registry).execute(None, [])
+        registry.run_session.assert_not_called()
