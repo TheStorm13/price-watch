@@ -1,0 +1,4466 @@
+{
+  "schema": 1,
+  "status": "complete",
+  "order": [
+    "C",
+    "D",
+    "D",
+    "C"
+  ],
+  "pause_seconds": 30,
+  "browser_mode": "visible",
+  "articles": [
+    "1604900984",
+    "1634943359",
+    "1607687714",
+    "1641499399",
+    "1607686851",
+    "2056350478",
+    "4465694803",
+    "4545459627",
+    "1604889241",
+    "1604932053",
+    "2425966181",
+    "2330540296",
+    "2143433216",
+    "1703694296",
+    "2330540344",
+    "1768241695",
+    "1604929093",
+    "1768241608",
+    "1604899883",
+    "1604888829",
+    "2860450018",
+    "1703628205",
+    "1887747434",
+    "2058838988",
+    "2058824697",
+    "1634943289",
+    "1641651855",
+    "1739897842",
+    "3437035003",
+    "1634943271",
+    "1649892562",
+    "1641499333",
+    "1621546679",
+    "1641499176",
+    "1649921958",
+    "1616075603",
+    "1607788589",
+    "4550284975",
+    "4550283205",
+    "4551085538"
+  ],
+  "batches": [
+    {
+      "mode": "C",
+      "concurrency": 1,
+      "starts_per_second": null,
+      "seconds": 6.367919034000806,
+      "successes": 40,
+      "successful_sku_per_minute": 376.8892140722052,
+      "cancelled_targets": 0,
+      "results": [
+        {
+          "article": "1604900984",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.004491194998991,
+          "slot_wait_seconds": 1.0694000593503006e-05,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943359",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.2634320519991888,
+          "slot_wait_seconds": 1.217399949382525e-05,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607687714",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3947247590003826,
+          "slot_wait_seconds": 5.2389987104106694e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499399",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.5154567449990282,
+          "slot_wait_seconds": 4.161000106250867e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607686851",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.6486041669995757,
+          "slot_wait_seconds": 4.075000106240623e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2056350478",
+          "ok": true,
+          "fields": {
+            "price": false,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 21,
+            "availability": "out_of_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.8408121120010037,
+          "slot_wait_seconds": 1.0043588370008365,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4465694803",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 5,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.983311373000106,
+          "slot_wait_seconds": 1.263281964998896,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4545459627",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 5,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.1102405229994474,
+          "slot_wait_seconds": 1.3946811850000813,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604889241",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.260029308999947,
+          "slot_wait_seconds": 1.5153920259999722,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604932053",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.4128321450007206,
+          "slot_wait_seconds": 1.648584918000779,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2425966181",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.566139643000497,
+          "slot_wait_seconds": 1.8408493620008812,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2330540296",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.7138573749998613,
+          "slot_wait_seconds": 1.9833049890003167,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2143433216",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.866322006999326,
+          "slot_wait_seconds": 2.11024292699949,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1703694296",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.021739849998994,
+          "slot_wait_seconds": 2.260058769999887,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2330540344",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.16214527000011,
+          "slot_wait_seconds": 2.4128324009998323,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1768241695",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.3019673340004374,
+          "slot_wait_seconds": 2.5661553340014507,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604929093",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.4336929629989754,
+          "slot_wait_seconds": 2.7138885330004996,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1768241608",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.5749137130005693,
+          "slot_wait_seconds": 2.8663704430000507,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604899883",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.7844548339999164,
+          "slot_wait_seconds": 3.0217829499997606,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604888829",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.925042802000462,
+          "slot_wait_seconds": 3.1621954330003064,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2860450018",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.097585817000436,
+          "slot_wait_seconds": 3.302007063999554,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1703628205",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.237294378001025,
+          "slot_wait_seconds": 3.4337318729994877,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1887747434",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 11,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.349685201999819,
+          "slot_wait_seconds": 3.5749674280014005,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2058838988",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 12,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.46516642899951,
+          "slot_wait_seconds": 3.784512023001298,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2058824697",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 12,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.5732158749997325,
+          "slot_wait_seconds": 3.9250937289998546,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943289",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.692708259999563,
+          "slot_wait_seconds": 4.097636619000696,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641651855",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.800323718998698,
+          "slot_wait_seconds": 4.23734709099881,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1739897842",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.9222293389993865,
+          "slot_wait_seconds": 4.349729010000374,
+          "logical_attempts": 1
+        },
+        {
+          "article": "3437035003",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.040359222999541,
+          "slot_wait_seconds": 4.46521753900015,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943271",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.164086630000384,
+          "slot_wait_seconds": 4.573254880000604,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1649892562",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.2813357839986566,
+          "slot_wait_seconds": 4.692756899999949,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499333",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.400244821999877,
+          "slot_wait_seconds": 4.800360092998744,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1621546679",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.526869186000113,
+          "slot_wait_seconds": 4.9222708769993915,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499176",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.645698174999779,
+          "slot_wait_seconds": 5.0404049349999696,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1649921958",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.774819972999467,
+          "slot_wait_seconds": 5.164116359999753,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1616075603",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.888845383000444,
+          "slot_wait_seconds": 5.281372784000268,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607788589",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 6.0105810620007105,
+          "slot_wait_seconds": 5.400272378999944,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4550284975",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 20,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 6.1329072559983615,
+          "slot_wait_seconds": 5.526887623000221,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4550283205",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 19,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 6.248170875998767,
+          "slot_wait_seconds": 5.645716819999507,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4551085538",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 19,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 6.36663018299987,
+          "slot_wait_seconds": 5.774835042000632,
+          "logical_attempts": 1
+        }
+      ],
+      "composer_dispatches": 40,
+      "peak_composer_dispatches": 1,
+      "status_counts": {
+        "200": 40
+      },
+      "logical_retries": 0,
+      "transport_retries": 0,
+      "recoveries": 0,
+      "requests": [
+        {
+          "article": "1604900984",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 1.8830998669727705e-05,
+          "start_seconds": 0.712307409999994,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.2776678760001232
+        },
+        {
+          "article": "1634943359",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.29256127099870355,
+          "start_seconds": 1.0049913269995159,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.2515890049999143
+        },
+        {
+          "article": "1607687714",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5515446420013177,
+          "start_seconds": 1.2640022030009277,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12521475600078702
+        },
+        {
+          "article": "1641499399",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6829087489986705,
+          "start_seconds": 1.3953847410011804,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11600924800040957
+        },
+        {
+          "article": "1607686851",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.803658886001358,
+          "start_seconds": 1.5161447299997235,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12737783000011405
+        },
+        {
+          "article": "2056350478",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6441590120011824,
+          "start_seconds": 1.649346518001039,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.18682712500049092
+        },
+        {
+          "article": "4465694803",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5775075299989112,
+          "start_seconds": 1.8416139450000628,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13827301699893724
+        },
+        {
+          "article": "4545459627",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5885782170007587,
+          "start_seconds": 1.9841181829997367,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12242205300026399
+        },
+        {
+          "article": "1604889241",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5948257529998955,
+          "start_seconds": 2.1110633240004972,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14465248600026825
+        },
+        {
+          "article": "1604932053",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6114455350016215,
+          "start_seconds": 2.2608864730009373,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14786708599967824
+        },
+        {
+          "article": "2425966181",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5719422160000249,
+          "start_seconds": 2.413680466999722,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1482396389983478
+        },
+        {
+          "article": "2330540296",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5827954369997315,
+          "start_seconds": 2.5670028340009594,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14270150599986664
+        },
+        {
+          "article": "2143433216",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6035891810006433,
+          "start_seconds": 2.7147454460009612,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14740060099939
+        },
+        {
+          "article": "1703694296",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6062506349990144,
+          "start_seconds": 2.8672390720003023,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1503563740006939
+        },
+        {
+          "article": "2330540344",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6088941170000908,
+          "start_seconds": 3.022662389999823,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13530872800038196
+        },
+        {
+          "article": "1768241695",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5959811669999908,
+          "start_seconds": 3.163082426000983,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13480647100004717
+        },
+        {
+          "article": "1604929093",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5880614459983917,
+          "start_seconds": 3.3029070730008243,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12676129300052708
+        },
+        {
+          "article": "1768241608",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5672987979996833,
+          "start_seconds": 3.434640027000569,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13621399299881887
+        },
+        {
+          "article": "1604899883",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5531246120008291,
+          "start_seconds": 3.5758850960010022,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.2044071630007238
+        },
+        {
+          "article": "1604888829",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6222538209985942,
+          "start_seconds": 3.7854337860007945,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13538853300087794
+        },
+        {
+          "article": "2860450018",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6230279710016475,
+          "start_seconds": 3.926027994000833,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.16747240099903138
+        },
+        {
+          "article": "1703628205",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6638497389994882,
+          "start_seconds": 4.098580511001273,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1347022569989349
+        },
+        {
+          "article": "1887747434",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6623125650003203,
+          "start_seconds": 4.2382961050007,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10758387900023081
+        },
+        {
+          "article": "2058838988",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5651561400009086,
+          "start_seconds": 4.350693190001039,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10976055299943255
+        },
+        {
+          "article": "2058824697",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.540061522000542,
+          "start_seconds": 4.466189058999589,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10316148600031738
+        },
+        {
+          "article": "1634943289",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.47556350199920416,
+          "start_seconds": 4.574245593999876,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11458413800028211
+        },
+        {
+          "article": "1641651855",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4553450259991223,
+          "start_seconds": 4.693750999000258,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10274683399984497
+        },
+        {
+          "article": "1739897842",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4505848859989783,
+          "start_seconds": 4.80137119200117,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11679765299959399
+        },
+        {
+          "article": "3437035003",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.45699789200079977,
+          "start_seconds": 4.923290183000063,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11323642700153869
+        },
+        {
+          "article": "1634943271",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4670871750004153,
+          "start_seconds": 5.041430724000747,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11883410199880018
+        },
+        {
+          "article": "1649892562",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4713001540003461,
+          "start_seconds": 5.16516117700121,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11240132000057201
+        },
+        {
+          "article": "1641499333",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.48096110000005865,
+          "start_seconds": 5.282424246999653,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11390037499950267
+        },
+        {
+          "article": "1621546679",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4779556720004621,
+          "start_seconds": 5.401345952999691,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12183219299913617
+        },
+        {
+          "article": "1641499176",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4864418500001193,
+          "start_seconds": 5.527972799000054,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11405859199840052
+        },
+        {
+          "article": "1649921958",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4815686510009982,
+          "start_seconds": 5.6468157790004625,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12426290799885464
+        },
+        {
+          "article": "1616075603",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4934291520003171,
+          "start_seconds": 5.7759471549998125,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10922883700004604
+        },
+        {
+          "article": "1607788589",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4885380920004536,
+          "start_seconds": 5.889977259999796,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1168442119997053
+        },
+        {
+          "article": "4550284975",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.48369114200068,
+          "start_seconds": 6.0117541090003215,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11712754700056394
+        },
+        {
+          "article": "4550283205",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.487190271000145,
+          "start_seconds": 6.134097547001147,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11024103499948978
+        },
+        {
+          "article": "4551085538",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.47331460600071296,
+          "start_seconds": 6.249347713001043,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11328949400012789
+        }
+      ],
+      "stop_reason": null
+    },
+    {
+      "mode": "D",
+      "concurrency": 5,
+      "starts_per_second": null,
+      "seconds": 1.34775931600052,
+      "successes": 40,
+      "successful_sku_per_minute": 1780.7333783616557,
+      "cancelled_targets": 0,
+      "results": [
+        {
+          "article": "1604900984",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.3189023070008261,
+          "slot_wait_seconds": 3.395000021555461e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943359",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.30214846699891496,
+          "slot_wait_seconds": 1.1730007827281952e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607687714",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.31125724100093066,
+          "slot_wait_seconds": 8.829993021208793e-07,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499399",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.3262675299993134,
+          "slot_wait_seconds": 6.099999154685065e-07,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607686851",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.28913055900011386,
+          "slot_wait_seconds": 5.639994924422354e-07,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2056350478",
+          "ok": true,
+          "fields": {
+            "price": false,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 21,
+            "availability": "out_of_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5052802629998041,
+          "slot_wait_seconds": 0.28916159300024447,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4465694803",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 5,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.4346604860002117,
+          "slot_wait_seconds": 0.3021582240016869,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4545459627",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 5,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.44334636999883514,
+          "slot_wait_seconds": 0.31125907599925995,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604889241",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.4884687890007626,
+          "slot_wait_seconds": 0.31885498800147616,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604932053",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5133109429989418,
+          "slot_wait_seconds": 0.3262703220007097,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2425966181",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5901358840001194,
+          "slot_wait_seconds": 0.43467931899976975,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2330540296",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5980453239990311,
+          "slot_wait_seconds": 0.4433652080006141,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2143433216",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.62454088999948,
+          "slot_wait_seconds": 0.48851078400002734,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1703694296",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.6529537379992689,
+          "slot_wait_seconds": 0.505306021999786,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2330540344",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.6599961920001078,
+          "slot_wait_seconds": 0.5133355380003195,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1768241695",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.799413648999689,
+          "slot_wait_seconds": 0.5901578350003547,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604929093",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.7496464350006136,
+          "slot_wait_seconds": 0.5980688929994358,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1768241608",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.8137896919997729,
+          "slot_wait_seconds": 0.6245651499993983,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604899883",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.8315625769992039,
+          "slot_wait_seconds": 0.6529764890001388,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604888829",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.8242185769995558,
+          "slot_wait_seconds": 0.6600101530002576,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2860450018",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9342743260003772,
+          "slot_wait_seconds": 0.7496688209994318,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1703628205",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9770458769999095,
+          "slot_wait_seconds": 0.7994328040003893,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1887747434",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 11,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.949555885999871,
+          "slot_wait_seconds": 0.8138187630011089,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2058838988",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 12,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9428006240013929,
+          "slot_wait_seconds": 0.82426461400064,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2058824697",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 12,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9570375849998527,
+          "slot_wait_seconds": 0.8315738640012569,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943289",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0846714350009279,
+          "slot_wait_seconds": 0.9342964490006125,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641651855",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.06529163200139,
+          "slot_wait_seconds": 0.9428418890001922,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1739897842",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0586927809999906,
+          "slot_wait_seconds": 0.9496149460010201,
+          "logical_attempts": 1
+        },
+        {
+          "article": "3437035003",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0765671909994126,
+          "slot_wait_seconds": 0.9570637739998347,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943271",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0983852530007425,
+          "slot_wait_seconds": 0.9770686760002718,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1649892562",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.1728817719995277,
+          "slot_wait_seconds": 1.0587223120001,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499333",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.1847614539983624,
+          "slot_wait_seconds": 1.0653038039999956,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1621546679",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.1967048860005889,
+          "slot_wait_seconds": 1.0765943690003041,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499176",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.2114650689982227,
+          "slot_wait_seconds": 1.0846980300011637,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1649921958",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.2180223760005902,
+          "slot_wait_seconds": 1.0983972799986077,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1616075603",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3005387030007114,
+          "slot_wait_seconds": 1.1729063949987903,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607788589",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3065920469998673,
+          "slot_wait_seconds": 1.184790196000904,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4550284975",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 20,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3196073960007197,
+          "slot_wait_seconds": 1.196722876999047,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4550283205",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 19,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3408775729985791,
+          "slot_wait_seconds": 1.2114830749997054,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4551085538",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 19,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.347409563999463,
+          "slot_wait_seconds": 1.218038056998921,
+          "logical_attempts": 1
+        }
+      ],
+      "composer_dispatches": 40,
+      "peak_composer_dispatches": 5,
+      "status_counts": {
+        "200": 40
+      },
+      "logical_retries": 0,
+      "transport_retries": 0,
+      "recoveries": 0,
+      "requests": [
+        {
+          "article": "1604900984",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 1.4717001249664463e-05,
+          "start_seconds": 0.1600803960009216,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.15360669099936786
+        },
+        {
+          "article": "1634943359",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.502999217947945e-06,
+          "start_seconds": 0.16016092200152343,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13317370599907008
+        },
+        {
+          "article": "1607687714",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.1290004446636885e-06,
+          "start_seconds": 0.16020700199987914,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1451709299999493
+        },
+        {
+          "article": "1641499399",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 3.621000359999016e-06,
+          "start_seconds": 0.16024663200005307,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.16110145399943576
+        },
+        {
+          "article": "1607686851",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 3.4019994927803054e-06,
+          "start_seconds": 0.16028298700075538,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1205272139995941
+        },
+        {
+          "article": "2056350478",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 1.1174999599461444e-05,
+          "start_seconds": 0.2894426310012932,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.21028263799962588
+        },
+        {
+          "article": "4465694803",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 9.262999810744077e-06,
+          "start_seconds": 0.3024209790000896,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12776049799867906
+        },
+        {
+          "article": "4545459627",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.8969999372493476e-06,
+          "start_seconds": 0.31149467900104355,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1260401110012026
+        },
+        {
+          "article": "1604889241",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.7159995776601136e-06,
+          "start_seconds": 0.31908980600019277,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.16121652699985134
+        },
+        {
+          "article": "1604932053",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.9630001487676054e-06,
+          "start_seconds": 0.326513949999935,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.18109130099946924
+        },
+        {
+          "article": "2425966181",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 7.1429985837312415e-06,
+          "start_seconds": 0.4349228540013428,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.150222455000403
+        },
+        {
+          "article": "2330540296",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.370999133447185e-06,
+          "start_seconds": 0.44360629900074855,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14925423999920895
+        },
+        {
+          "article": "2143433216",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.117999873822555e-06,
+          "start_seconds": 0.4887561480009026,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1305403140013368
+        },
+        {
+          "article": "1703694296",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.981999493087642e-06,
+          "start_seconds": 0.5055583910016139,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1425340639998467
+        },
+        {
+          "article": "2330540344",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.6489989219699055e-06,
+          "start_seconds": 0.5135857260011107,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1416605040012655
+        },
+        {
+          "article": "1768241695",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.91200114286039e-06,
+          "start_seconds": 0.5904096890008077,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.20408517500072776
+        },
+        {
+          "article": "1604929093",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.61700107937213e-06,
+          "start_seconds": 0.5983194600012212,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14575110800069524
+        },
+        {
+          "article": "1768241608",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.324998710420914e-06,
+          "start_seconds": 0.6248189890011417,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.18384544500077027
+        },
+        {
+          "article": "1604899883",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.330999894998968e-06,
+          "start_seconds": 0.6532264460001898,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1734038890008378
+        },
+        {
+          "article": "1604888829",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.102998668211512e-06,
+          "start_seconds": 0.6602605480002239,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.158986228001595
+        },
+        {
+          "article": "2860450018",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 7.540000297012739e-06,
+          "start_seconds": 0.7499288020007953,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.17935413499981223
+        },
+        {
+          "article": "1703628205",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.224998287507333e-06,
+          "start_seconds": 0.7996953830006532,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.17240294799921685
+        },
+        {
+          "article": "1887747434",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 7.007000021985732e-06,
+          "start_seconds": 0.8140813940008229,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13074950999907742
+        },
+        {
+          "article": "2058838988",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.7440011005382985e-06,
+          "start_seconds": 0.8245238350009458,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11366045700015093
+        },
+        {
+          "article": "2058824697",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.702000296674669e-06,
+          "start_seconds": 0.8318244670008426,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11972855900057766
+        },
+        {
+          "article": "1634943289",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.748999344883487e-06,
+          "start_seconds": 0.9345526560009603,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14457486900028016
+        },
+        {
+          "article": "1641651855",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.265999789116904e-06,
+          "start_seconds": 0.9431013920002442,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11760723400038842
+        },
+        {
+          "article": "1739897842",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.773999873781577e-06,
+          "start_seconds": 0.94988852500137,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10342049800055975
+        },
+        {
+          "article": "3437035003",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.267998858471401e-06,
+          "start_seconds": 0.9573343780011783,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11368395399949804
+        },
+        {
+          "article": "1634943271",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.844998668180779e-06,
+          "start_seconds": 0.9773388160010654,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11640489900128159
+        },
+        {
+          "article": "1649892562",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.2939994930056855e-06,
+          "start_seconds": 1.058996786001444,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10889498300093692
+        },
+        {
+          "article": "1641499333",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.1650004024850205e-06,
+          "start_seconds": 1.065567474001,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11378997199972218
+        },
+        {
+          "article": "1621546679",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.193000444909558e-06,
+          "start_seconds": 1.0768756610013952,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11508060799860687
+        },
+        {
+          "article": "1641499176",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.10400059283711e-06,
+          "start_seconds": 1.0849743320013658,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12188384100045369
+        },
+        {
+          "article": "1649921958",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.3269992602290586e-06,
+          "start_seconds": 1.098666593001326,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11474793799970939
+        },
+        {
+          "article": "1616075603",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.6219993237173185e-06,
+          "start_seconds": 1.173184282000875,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12249165699904552
+        },
+        {
+          "article": "1607788589",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.222000254434533e-06,
+          "start_seconds": 1.1850757920001342,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11697845100025006
+        },
+        {
+          "article": "4550284975",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.51899938727729e-06,
+          "start_seconds": 1.1970020190001378,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11723666600119032
+        },
+        {
+          "article": "4550283205",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.2219999158987775e-06,
+          "start_seconds": 1.211759059000542,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12406244500016328
+        },
+        {
+          "article": "4551085538",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.067000529379584e-06,
+          "start_seconds": 1.2183148190015345,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12404592699931527
+        }
+      ],
+      "stop_reason": null
+    },
+    {
+      "mode": "D",
+      "concurrency": 5,
+      "starts_per_second": null,
+      "seconds": 1.5005775170011475,
+      "successes": 40,
+      "successful_sku_per_minute": 1599.384218948127,
+      "cancelled_targets": 0,
+      "results": [
+        {
+          "article": "1604900984",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.3768446429985488,
+          "slot_wait_seconds": 3.510998794808984e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943359",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.3546457290012768,
+          "slot_wait_seconds": 1.0009989637183025e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607687714",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.3439393470016512,
+          "slot_wait_seconds": 1.0080002539325505e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499399",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.3253436569993937,
+          "slot_wait_seconds": 7.830003596609458e-07,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607686851",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.36495541200019943,
+          "slot_wait_seconds": 7.530015864176676e-07,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2056350478",
+          "ok": true,
+          "fields": {
+            "price": false,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 21,
+            "availability": "out_of_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5797908430013194,
+          "slot_wait_seconds": 0.325394426999992,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4465694803",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 5,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5085103309993428,
+          "slot_wait_seconds": 0.3439575259999401,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4545459627",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 5,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5009971929994208,
+          "slot_wait_seconds": 0.35470931899908464,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604889241",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5614663329997711,
+          "slot_wait_seconds": 0.3650256629989599,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604932053",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5711639040000591,
+          "slot_wait_seconds": 0.3768168719998357,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2425966181",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.7113401770002383,
+          "slot_wait_seconds": 0.501026867001201,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2330540296",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.7011720659993443,
+          "slot_wait_seconds": 0.5085377329996845,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2143433216",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.7225871939990611,
+          "slot_wait_seconds": 0.5614955910004937,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1703694296",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.7315527480004675,
+          "slot_wait_seconds": 0.5711978020008246,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2330540344",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.7410361820002436,
+          "slot_wait_seconds": 0.5798055300001579,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1768241695",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9463186630000564,
+          "slot_wait_seconds": 0.7012004209991574,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604929093",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9204129050012853,
+          "slot_wait_seconds": 0.7113877359988692,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1768241608",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9086694829984481,
+          "slot_wait_seconds": 0.7226452199993219,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604899883",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9307062719999522,
+          "slot_wait_seconds": 0.7316356280007312,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604888829",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.9390088990003278,
+          "slot_wait_seconds": 0.7410624389995064,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2860450018",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0735718550004094,
+          "slot_wait_seconds": 0.908712578999257,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1703628205",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0911061610004253,
+          "slot_wait_seconds": 0.9204398140009289,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1887747434",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 11,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.062402440000369,
+          "slot_wait_seconds": 0.9307809180008917,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2058838988",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 12,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0552353740004037,
+          "slot_wait_seconds": 0.9390848729999561,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2058824697",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 12,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0837936570005695,
+          "slot_wait_seconds": 0.9463453460011806,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943289",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.18397144499977,
+          "slot_wait_seconds": 1.0552662030004285,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641651855",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.1923963370009005,
+          "slot_wait_seconds": 1.0624252510006045,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1739897842",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.2015526529994531,
+          "slot_wait_seconds": 1.073595372001364,
+          "logical_attempts": 1
+        },
+        {
+          "article": "3437035003",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.2086183840001468,
+          "slot_wait_seconds": 1.083819006998965,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943271",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.2204535710006894,
+          "slot_wait_seconds": 1.0911255390001315,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1649892562",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3007494609992136,
+          "slot_wait_seconds": 1.184000590999858,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499333",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3301535539994802,
+          "slot_wait_seconds": 1.1924226749997615,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1621546679",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3381447200008552,
+          "slot_wait_seconds": 1.2015838400002394,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499176",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.3451623780001682,
+          "slot_wait_seconds": 1.2086436959998537,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1649921958",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.352160816999458,
+          "slot_wait_seconds": 1.2204826830002276,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1616075603",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.419967224001084,
+          "slot_wait_seconds": 1.3007724819999567,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607788589",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.4356115840000712,
+          "slot_wait_seconds": 1.3301835739985108,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4550284975",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 20,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.4574490330014669,
+          "slot_wait_seconds": 1.3381961499999306,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4550283205",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 19,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.4740585569998075,
+          "slot_wait_seconds": 1.3452577930002008,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4551085538",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 19,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.500236717000007,
+          "slot_wait_seconds": 1.3521809060002852,
+          "logical_attempts": 1
+        }
+      ],
+      "composer_dispatches": 40,
+      "peak_composer_dispatches": 5,
+      "status_counts": {
+        "200": 40
+      },
+      "logical_retries": 0,
+      "transport_retries": 0,
+      "recoveries": 0,
+      "requests": [
+        {
+          "article": "1604900984",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 1.4712999472976662e-05,
+          "start_seconds": 0.15716118899945286,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.21020716600105516
+        },
+        {
+          "article": "1634943359",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 3.827999535133131e-06,
+          "start_seconds": 0.15723611599969445,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.18973622399971646
+        },
+        {
+          "article": "1607687714",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 2.885999492718838e-06,
+          "start_seconds": 0.1572712479992333,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1750088049993792
+        },
+        {
+          "article": "1641499399",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 2.554999809945002e-06,
+          "start_seconds": 0.15729719099908834,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.15766167800029507
+        },
+        {
+          "article": "1607686851",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 2.0469997252803296e-06,
+          "start_seconds": 0.15731825799957733,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.20006818799993198
+        },
+        {
+          "article": "2056350478",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 8.861999958753586e-06,
+          "start_seconds": 0.3256525060005515,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.2482193579999148
+        },
+        {
+          "article": "4465694803",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 7.743999958620407e-06,
+          "start_seconds": 0.34421123299944156,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1590546869992977
+        },
+        {
+          "article": "4545459627",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 7.779000952723436e-06,
+          "start_seconds": 0.35495965299924137,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13987546200041834
+        },
+        {
+          "article": "1604889241",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 9.216000762535259e-06,
+          "start_seconds": 0.36528259700025956,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.189683167000112
+        },
+        {
+          "article": "1604932053",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.451999070122838e-06,
+          "start_seconds": 0.3770655039988924,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.18790923000051407
+        },
+        {
+          "article": "2425966181",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.85000088904053e-06,
+          "start_seconds": 0.5012674819990934,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.20350502400106052
+        },
+        {
+          "article": "2330540296",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 8.441998943453655e-06,
+          "start_seconds": 0.5087981569995463,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.18644163099997968
+        },
+        {
+          "article": "2143433216",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 8.023000191315077e-06,
+          "start_seconds": 0.5617476490006084,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.15485294199970667
+        },
+        {
+          "article": "1703694296",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 7.050999556668103e-06,
+          "start_seconds": 0.571447103000537,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.15416123999966658
+        },
+        {
+          "article": "2330540344",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.193000106373802e-06,
+          "start_seconds": 0.5800514330003352,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.15472687500005122
+        },
+        {
+          "article": "1768241695",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.935999070061371e-06,
+          "start_seconds": 0.7014497939999274,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.23992179399829183
+        },
+        {
+          "article": "1604929093",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 8.696000804775394e-06,
+          "start_seconds": 0.7116521859989007,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.2003545009993104
+        },
+        {
+          "article": "1768241608",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 9.250999937648885e-06,
+          "start_seconds": 0.7229055450006854,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.17788520100111782
+        },
+        {
+          "article": "1604899883",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.868000127724372e-06,
+          "start_seconds": 0.7318929390003177,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.19333807799921487
+        },
+        {
+          "article": "1604888829",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.529998816200532e-06,
+          "start_seconds": 0.7413144379988807,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.19219141099893022
+        },
+        {
+          "article": "2860450018",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 8.47200135467574e-06,
+          "start_seconds": 0.9089853759996913,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1587676230010402
+        },
+        {
+          "article": "1703628205",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.596999810426496e-06,
+          "start_seconds": 0.9206926200004091,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1652614699996775
+        },
+        {
+          "article": "1887747434",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.943000360275619e-06,
+          "start_seconds": 0.9310382200001186,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12630309399901307
+        },
+        {
+          "article": "2058838988",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.502999556483701e-06,
+          "start_seconds": 0.9393406079998385,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11088198899960844
+        },
+        {
+          "article": "2058824697",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.260999387246557e-06,
+          "start_seconds": 0.946600553999815,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13216537900007097
+        },
+        {
+          "article": "1634943289",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.336000296869315e-06,
+          "start_seconds": 1.0555375059993821,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12187338700096007
+        },
+        {
+          "article": "1641651855",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 6.003001544740982e-06,
+          "start_seconds": 1.0626915670000017,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12418202400112932
+        },
+        {
+          "article": "1739897842",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 7.3740011430345476e-06,
+          "start_seconds": 1.0738619189996825,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12251620299866772
+        },
+        {
+          "article": "3437035003",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.945000910083763e-06,
+          "start_seconds": 1.0840842969992082,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11941881199891213
+        },
+        {
+          "article": "1634943271",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.1129991334164515e-06,
+          "start_seconds": 1.0913893439992535,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12415229299949715
+        },
+        {
+          "article": "1649892562",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.8269994294969365e-06,
+          "start_seconds": 1.1842688510005246,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.111679138000909
+        },
+        {
+          "article": "1641499333",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.10400059283711e-06,
+          "start_seconds": 1.1926948899999843,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13253031699969142
+        },
+        {
+          "article": "1621546679",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.094998414278962e-06,
+          "start_seconds": 1.2018520649999118,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13146689600034733
+        },
+        {
+          "article": "1641499176",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.312000212143175e-06,
+          "start_seconds": 1.2089155110006686,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13132396500077448
+        },
+        {
+          "article": "1649921958",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.841000529471785e-06,
+          "start_seconds": 1.220762322000155,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12658134199955384
+        },
+        {
+          "article": "1616075603",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.530999260372482e-06,
+          "start_seconds": 1.3010483910002222,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11181732200020633
+        },
+        {
+          "article": "1607788589",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.59699947189074e-06,
+          "start_seconds": 1.3304604000004474,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.09775726099906024
+        },
+        {
+          "article": "4550284975",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 5.6230001064250246e-06,
+          "start_seconds": 1.3384743179994985,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11366496899972844
+        },
+        {
+          "article": "4550283205",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 1.2296000932110474e-05,
+          "start_seconds": 1.3455457269992621,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1234680550005578
+        },
+        {
+          "article": "4551085538",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 4.8790006985655054e-06,
+          "start_seconds": 1.3524544230003812,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14272166800037667
+        }
+      ],
+      "stop_reason": null
+    },
+    {
+      "mode": "C",
+      "concurrency": 1,
+      "starts_per_second": null,
+      "seconds": 5.471203760998833,
+      "successes": 40,
+      "successful_sku_per_minute": 438.6603213552865,
+      "cancelled_targets": 0,
+      "results": [
+        {
+          "article": "1604900984",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.3257743020003545,
+          "slot_wait_seconds": 2.6289999368600547e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943359",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.4642662330006715,
+          "slot_wait_seconds": 1.24100006360095e-06,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607687714",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.5894121279998217,
+          "slot_wait_seconds": 9.289997251471505e-07,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499399",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.734402037000109,
+          "slot_wait_seconds": 7.250000635394827e-07,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607686851",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 0.8563337329997012,
+          "slot_wait_seconds": 6.150003173388541e-07,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2056350478",
+          "ok": true,
+          "fields": {
+            "price": false,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 21,
+            "availability": "out_of_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.0400454880000325,
+          "slot_wait_seconds": 0.32581161099915334,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4465694803",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 5,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.1758460940000077,
+          "slot_wait_seconds": 0.46434737399977166,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4545459627",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 5,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.2895138849999057,
+          "slot_wait_seconds": 0.589488181998604,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604889241",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.4620720319999236,
+          "slot_wait_seconds": 0.7344927579997602,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604932053",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.613407412000015,
+          "slot_wait_seconds": 0.8563894920007442,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2425966181",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.7520899160008412,
+          "slot_wait_seconds": 1.0401301170004444,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2330540296",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 1.899121083000864,
+          "slot_wait_seconds": 1.1759253079999326,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2143433216",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.047344519000035,
+          "slot_wait_seconds": 1.2895824589995755,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1703694296",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.2070246639996185,
+          "slot_wait_seconds": 1.4621590449987707,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2330540344",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.3441140260001703,
+          "slot_wait_seconds": 1.6134974020005757,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1768241695",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.511060308001106,
+          "slot_wait_seconds": 1.7521985399998812,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604929093",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.656861821000348,
+          "slot_wait_seconds": 1.8992135829994368,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1768241608",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.8031379229996674,
+          "slot_wait_seconds": 2.047420009999769,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604899883",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 2.9484912719999556,
+          "slot_wait_seconds": 2.2071061079986976,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1604888829",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.1180747449998307,
+          "slot_wait_seconds": 2.344200430001365,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2860450018",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.2690326379997714,
+          "slot_wait_seconds": 2.5111354990003747,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1703628205",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 15,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.416060583000217,
+          "slot_wait_seconds": 2.656953532001353,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1887747434",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 11,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.5370548110004165,
+          "slot_wait_seconds": 2.8032377079998696,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2058838988",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 12,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.642259981999814,
+          "slot_wait_seconds": 2.948594426001364,
+          "logical_attempts": 1
+        },
+        {
+          "article": "2058824697",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 12,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.7465549079988705,
+          "slot_wait_seconds": 3.1181620359984663,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943289",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.86447883099936,
+          "slot_wait_seconds": 3.2691240499989362,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641651855",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 3.9751292439996178,
+          "slot_wait_seconds": 3.416158091999023,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1739897842",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.100941585000328,
+          "slot_wait_seconds": 3.5371318489997066,
+          "logical_attempts": 1
+        },
+        {
+          "article": "3437035003",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.209955575999629,
+          "slot_wait_seconds": 3.64233493500069,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1634943271",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.3213015439996525,
+          "slot_wait_seconds": 3.7466334750006354,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1649892562",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.443009663000339,
+          "slot_wait_seconds": 3.864571183999942,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499333",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.5482691140005045,
+          "slot_wait_seconds": 3.9752223450013844,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1621546679",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.659539522999694,
+          "slot_wait_seconds": 4.101045113999135,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1641499176",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.765527452998867,
+          "slot_wait_seconds": 4.210039162999237,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1649921958",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.874496352998904,
+          "slot_wait_seconds": 4.321397674000764,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1616075603",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 4.993501691998972,
+          "slot_wait_seconds": 4.443112757000563,
+          "logical_attempts": 1
+        },
+        {
+          "article": "1607788589",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 13,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.095783261000179,
+          "slot_wait_seconds": 4.548350671000662,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4550284975",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 20,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.223518593998961,
+          "slot_wait_seconds": 4.65963536199888,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4550283205",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 19,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.346023640999192,
+          "slot_wait_seconds": 4.76563128700036,
+          "logical_attempts": 1
+        },
+        {
+          "article": "4551085538",
+          "ok": true,
+          "fields": {
+            "price": true,
+            "image": true,
+            "seller": true,
+            "rating": true,
+            "attributes": 5,
+            "variants": 19,
+            "availability": "in_stock",
+            "variant_discovery_error": false
+          },
+          "seconds": 5.470862361999025,
+          "slot_wait_seconds": 4.874582237998766,
+          "logical_attempts": 1
+        }
+      ],
+      "composer_dispatches": 40,
+      "peak_composer_dispatches": 1,
+      "status_counts": {
+        "200": 40
+      },
+      "logical_retries": 0,
+      "transport_retries": 0,
+      "recoveries": 0,
+      "requests": [
+        {
+          "article": "1604900984",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 1.4834999092272483e-05,
+          "start_seconds": 0.1740055280006345,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1457027279993781
+        },
+        {
+          "article": "1634943359",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.15183336400150438,
+          "start_seconds": 0.3259214259996952,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13251859699994384
+        },
+        {
+          "article": "1607687714",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.29034066299936967,
+          "start_seconds": 0.464453329999742,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11972136799886357
+        },
+        {
+          "article": "1641499399",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4154759800003376,
+          "start_seconds": 0.5896034400011558,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1388849040013156
+        },
+        {
+          "article": "1607686851",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.560461832999863,
+          "start_seconds": 0.7346038010000484,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11705666800116887
+        },
+        {
+          "article": "2056350478",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.530502241999784,
+          "start_seconds": 0.8565226059999986,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.17830864099960309
+        },
+        {
+          "article": "4465694803",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5756824660002167,
+          "start_seconds": 1.0402531640011148,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1313975480006775
+        },
+        {
+          "article": "4545459627",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5863442070003657,
+          "start_seconds": 1.1760546040004556,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10908566299985978
+        },
+        {
+          "article": "1604889241",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5550050159999955,
+          "start_seconds": 1.2897190990006493,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1673395990001154
+        },
+        {
+          "article": "1604932053",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6056864459987992,
+          "start_seconds": 1.4622918910008593,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1461925670009805
+        },
+        {
+          "article": "2425966181",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5732734049997816,
+          "start_seconds": 1.613628062999851,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.13328014999933657
+        },
+        {
+          "article": "2330540296",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5761750630008464,
+          "start_seconds": 1.7523248360012076,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14182106600128463
+        },
+        {
+          "article": "2143433216",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6095421310001257,
+          "start_seconds": 1.8993462800008274,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14303162599935604
+        },
+        {
+          "article": "1703694296",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5851787290011998,
+          "start_seconds": 2.047566191000442,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1544649980005488
+        },
+        {
+          "article": "2330540344",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5935197179987881,
+          "start_seconds": 2.2072473139996873,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1320808210002724
+        },
+        {
+          "article": "1768241695",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5919050599986804,
+          "start_seconds": 2.344338543000049,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.16190493999965838
+        },
+        {
+          "article": "1604929093",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6118365420006739,
+          "start_seconds": 2.5112821780003287,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14072217700049805
+        },
+        {
+          "article": "1768241608",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6094392920003884,
+          "start_seconds": 2.6570908650010097,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14102813299905392
+        },
+        {
+          "article": "1604899883",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5960351300000184,
+          "start_seconds": 2.8033769940011553,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1401256339995598
+        },
+        {
+          "article": "1604888829",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6042943249995005,
+          "start_seconds": 2.9487331220007036,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.16440534200046386
+        },
+        {
+          "article": "2860450018",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6069379420005134,
+          "start_seconds": 3.1183098330002395,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.14583081099954143
+        },
+        {
+          "article": "1703628205",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.6120839149989479,
+          "start_seconds": 3.269273358000646,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1417393739993713
+        },
+        {
+          "article": "1887747434",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.612820145999649,
+          "start_seconds": 3.4163043900007324,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11608400800105301
+        },
+        {
+          "article": "2058838988",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5884391840008902,
+          "start_seconds": 3.537289067000529,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10030844900029479
+        },
+        {
+          "article": "2058824697",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.5240880860001198,
+          "start_seconds": 3.6424958520001383,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.09938733799936017
+        },
+        {
+          "article": "1634943289",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.47742085800018685,
+          "start_seconds": 3.7467920079998294,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11290098200151988
+        },
+        {
+          "article": "1641651855",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.44831794899982924,
+          "start_seconds": 3.8647264370010816,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10561613000027137
+        },
+        {
+          "article": "1739897842",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.43799839000166685,
+          "start_seconds": 3.975377844000832,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12046320899935381
+        },
+        {
+          "article": "3437035003",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4586137719998078,
+          "start_seconds": 4.10119864599983,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10407854699951713
+        },
+        {
+          "article": "1634943271",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.46332293299929006,
+          "start_seconds": 4.210202939000737,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10601088600014918
+        },
+        {
+          "article": "1649892562",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4567111449996446,
+          "start_seconds": 4.321556791001058,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11672307200024079
+        },
+        {
+          "article": "1641499333",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.467791272998511,
+          "start_seconds": 4.443269249000878,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10034884299966507
+        },
+        {
+          "article": "1621546679",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4472130579997611,
+          "start_seconds": 4.548516822000238,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10625943999912124
+        },
+        {
+          "article": "1641499176",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.44949808700039284,
+          "start_seconds": 4.659794291999788,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10110273300051631
+        },
+        {
+          "article": "1649921958",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.44411595999918063,
+          "start_seconds": 4.7657783049999125,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.10403932699955476
+        },
+        {
+          "article": "1616075603",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.43137642800138565,
+          "start_seconds": 4.874750681001387,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11409796599946276
+        },
+        {
+          "article": "1607788589",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4451438630003395,
+          "start_seconds": 4.993756777999806,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.09737777499867661
+        },
+        {
+          "article": "4550284975",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4361447829996905,
+          "start_seconds": 5.096044937001352,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.12229230400043889
+        },
+        {
+          "article": "4550283205",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4578937180012872,
+          "start_seconds": 5.223794571000326,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.11744044099941675
+        },
+        {
+          "article": "4551085538",
+          "kind": "product",
+          "attempt": 1,
+          "gate_seconds": 0.4714334339987545,
+          "start_seconds": 5.346280662000936,
+          "status": 200,
+          "error": null,
+          "network_seconds": 0.1196307699992758
+        }
+      ],
+      "stop_reason": null
+    }
+  ],
+  "measurement_scope": "composer fetch only; excludes navigation/background requests",
+  "limitations": "Small sample; discovery/cache/network/session state can bias results. No cache busting."
+}

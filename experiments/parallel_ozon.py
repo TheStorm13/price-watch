@@ -1,4 +1,4 @@
-"""DB-free Ozon A/B/C/C/B/A comparison; see the testing guide."""
+"""DB-free Ozon dispatch comparison; see the testing guide."""
 from __future__ import annotations
 
 import argparse
@@ -20,7 +20,7 @@ from marketplace_connector.connectors.ozon.connector import OzonConnector
 from marketplace_connector.connectors.ozon.json_transport import OzonJsonTransport
 from marketplace_connector.domain.errors import ChallengeRequired
 
-MODES = {'A': (5, 5), 'B': (1, 5), 'C': (1, None)}
+MODES = {'A': (5, 5), 'B': (1, 5), 'C': (1, None), 'D': (5, None)}
 ORDER = ('A', 'B', 'C', 'C', 'B', 'A')
 SEEDS = ('1604900984', '1634943359', '1607687714', '1641499399', '1607686851',
          '2056350478', '4465694803', '4545459627')
@@ -228,10 +228,11 @@ def save_report(report, output):
 
 async def run(args):
     probe = Probe()
-    report = {'schema': 1, 'status': 'running', 'order': ORDER, 'pause_seconds': args.pause,
+    report = {'schema': 1, 'status': 'running', 'order': args.order, 'pause_seconds': args.pause,
+              'browser_mode': 'headless' if args.headless else 'visible',
               'articles': list(args.articles), 'batches': [],
               'measurement_scope': 'composer fetch only; excludes navigation/background requests',
-              'limitations': 'Six runs; discovery/cache/network/session state can bias results. No cache busting.'}
+              'limitations': 'Small sample; discovery/cache/network/session state can bias results. No cache busting.'}
     try:
         session = ChromeSession(args.profile_dir, headless=args.headless)
         async with session.collection_session():
@@ -242,7 +243,7 @@ async def run(args):
             if not 30 <= len(report['articles']) <= 50:
                 raise ExperimentStopped('insufficient_dataset')
             save_report(report, args.output)
-            for index, mode in enumerate(ORDER):
+            for index, mode in enumerate(args.order):
                 probe.check()
                 if index:
                     await asyncio.sleep(args.pause)
@@ -276,6 +277,8 @@ def main():
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--size', type=int, default=40)
     parser.add_argument('--pause', type=float, default=30)
+    parser.add_argument('--order', nargs='+', choices=tuple(MODES), default=ORDER,
+                        help='Batch order, e.g. --order C D D C (default: A B C C B A)')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     if not 30 <= args.size <= 50 or not math.isfinite(args.pause) or args.pause < 0:

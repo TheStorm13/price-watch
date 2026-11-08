@@ -27,8 +27,7 @@ comparison or request instrumentation. `docs/tasks/ozon-session-json-transport.m
 records five historical live SKU seeds; availability today is unverified.
 Backlog separately proposes measuring collection performance; it is unchanged.
 CodeGraph returned current source. Repowise MCP targets obsolete 9f3876d despite
-explicit repo path; its risk output is not used as current evidence. Local state
-has HEAD f1d4c01 for both index and docs checkpoints, docs_enabled=false.
+explicit repo path; its risk output is not used as current evidence. Local CLI index refresh is used instead; docs_enabled=false (deterministic pages only).
 
 ## Agreed solution
 
@@ -63,12 +62,18 @@ Update docs/guide/TESTING_AND_TROUBLESHOOTING.md with experiment commands,
 metric definitions and limits. Persistent application contracts remain unchanged
 apart from the explicit optional Ozon pacing parameter. Keep task findings here.
 
+User extended the experiment to compare C (1, None) with D (5, None),
+then explicitly requested continuing. B is excluded from this next comparison.
+Use C/D/D/C, 30-second pauses, the same frozen 40 SKUs and visible existing
+Chrome profile; retain all stop conditions and recovery. No production policy change.
+
 ## Implementation and verification plan
 
 - [x] Implement optional pacing and verify real transport invariants synthetically.
 - [x] Implement three-mode runner, fixed dataset, metrics and bounded stop behavior; verify synthetic orchestration.
-- [ ] Run live discovery and A/B/C/C/B/A comparison, or document a reproducible blocker and ask for a decision.
-- [ ] Update guide and assess results; run relevant Ozon and application regression checks.
+- [x] Run live discovery and A/B/C/C/B/A comparison, or document a reproducible blocker and ask for a decision.
+- [x] Add selectable C/D/D/C order and verify D (5, no pacing); run on the same fixed 40 SKUs.
+- [x] Update guide and assess results; run relevant Ozon and application regression checks.
 - [ ] Inspect/stage/commit task files, refresh existing indexes/pages and present for acceptance.
 
 ## Execution state
@@ -80,12 +85,35 @@ refusal stopping, fixed six-batch order, and insufficient-dataset rejection.
 Initial focused Ozon/application suite: 72 tests, 6 DB tests skipped, no failures.
 Focused transport/CLI suite outside sandbox: 41 tests, 1 DB test skipped, no
 failures (sandbox invocation hung). Compileall, CLI --help, diff --check and strict OpenSpec validation
-passed. No live traffic yet. Production defaults and other marketplaces unchanged;
-queued/direct/numeric behavior checked by existing relevant tests, not live demo UI.
-Working tree initially clean. User acceptance not requested or received. Next:
-commit the verified harness and refresh knowledge, then
-run live discovery/comparison with the existing Price Watch profile and preserve results.
+passed. First live headless attempt stopped during dataset discovery: first
+composer request for 1604900984 returned HTTP 403, then storefront preparation
+reported challenge. No fixed dataset and no comparison batches were produced;
+/tmp/ozon-dispatch-live-20261108.json preserves sanitized partial metrics.
+Visible A/B/C/C/B/A completed: 240/240 successful cards, all composer HTTP 200,
+no retries, 429 or recovery. Mean batch time A 7.577s, B 8.438s, C 7.107s.
+C averaged 6.2% faster than A; two runs per mode are inconclusive. All per-SKU
+field presence/count summaries matched; SKU 2056350478 was out of stock without
+a price in every run. Raw evidence: measurements.json beside this spec.
+C/D/D/C completed on the identical frozen dataset, without rediscovery, visible
+Chrome, 30s pauses. Raw sanitized report: measurements-cd.json. Times: C 6.367919s,
+D 1.347759s, D 1.500578s, C 5.471204s. Means C 5.919561s, D 1.424168s:
+D is 4.1565x faster (75.94% less batch time). All 160 cards successful; all 160
+composer calls HTTP 200, no 429/retries/recovery/cancellation. Actual peaks C=1,
+D=5. Per-SKU field presence/count summaries match across all ten batches; actual
+price values/content equality is not measured. Two runs per mode, warmed related
+SKUs, cache/network/session variation and batch bootstrap limit generalization;
+this establishes short-batch benefit, not sustained throughput or access reliability.
+No live user DB access or production default changes. Guide documents --order C D D C,
+visible mode, existing profile and retained cooldown/stop policy.
+Final focused regression suite: 85 tests, 7 DB-dependent skips, no failures.
+Strengthened mode test additionally passed (7 experiment tests): seven requests
+exceed the five-token burst and distinguish unpaced D from paced A, measuring
+actual peak five vs one. Compileall, CLI help, diff --check and strict OpenSpec
+validation passed. Acceptance remains pending; next is commit and knowledge refresh.
 Harness implementation committed as bf80cc9 before the user's profile correction;
-post-commit knowledge refresh is pending. Documentation and experiment defaults now
-follow the user's explicit existing-profile instruction. No owner process was found
-for ~/.local/share/price-watch/chrome-profile during the preflight check.
+Profile correction committed as 3eb289a. Both commits received CodeGraph sync
+and Repowise index refresh; local checkpoints matched HEAD. Model generation is
+disabled; deterministic structural pages refreshed. MCP stale target remains a
+separate limitation. Documentation and experiment defaults follow the user's
+explicit existing-profile instruction. No owner process was found for
+~/.local/share/price-watch/chrome-profile during the preflight check.

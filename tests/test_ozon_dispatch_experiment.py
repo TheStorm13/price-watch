@@ -72,15 +72,17 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
             session = self.fake_session(fetch)
             with patch('experiments.parallel_ozon.ExperimentClient._prepare_storefront', new=AsyncMock()):
                 async with measured_client(args, probe, mode, session) as connector:
-                    batch = await run_batch(connector, ['1', '2', '3'], probe, mode)
-            self.assertEqual(batch['successes'], 3)
-            self.assertEqual(batch['composer_dispatches'], 3)
+                    batch = await run_batch(connector, [str(i) for i in range(7)], probe, mode)
+            self.assertEqual(batch['successes'], 7)
+            self.assertEqual(batch['composer_dispatches'], 7)
             self.assertEqual(batch['logical_retries'], 0)
             self.assertEqual(batch['transport_retries'], 0)
-            self.assertEqual(batch['peak_composer_dispatches'], 3 if mode == 'A' else 1)
+            self.assertEqual(batch['peak_composer_dispatches'], 5 if mode in ('A', 'D') else 1)
             self.assertTrue(all(r['fields']['availability'] for r in batch['results']))
             durations[mode] = batch['seconds']
-        self.assertGreater(durations['B'], .35)
+        self.assertGreater(durations['B'], 1.1)
+        self.assertGreater(durations['A'], .35)
+        self.assertLess(durations['D'], durations['A'] / 2)
         self.assertLess(durations['C'], durations['B'] / 2)
 
     async def test_challenge_stops_waiters_and_preserves_metrics(self):
@@ -111,7 +113,7 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
         session = self.fake_session(AsyncMock(return_value=response()))
         articles = [str(i) for i in range(30)]
         with TemporaryDirectory() as directory:
-            args = SimpleNamespace(profile_dir=Path(directory), headless=True, pause=0,
+            args = SimpleNamespace(profile_dir=Path(directory), headless=True, pause=0, order=tuple('ABCCBA'),
                                    output=Path(directory) / 'result.json', articles=articles, size=30)
             async def batch(connector, received, probe, mode):
                 self.assertEqual(received, articles)
@@ -120,15 +122,23 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
                  patch('experiments.parallel_ozon.run_batch', side_effect=batch):
                 report = await run(args)
             self.assertEqual(report['status'], 'complete')
+            self.assertEqual(report['browser_mode'], 'headless')
             self.assertEqual([b['mode'] for b in report['batches']], list('ABCCBA'))
             saved = json.loads(args.output.read_text())
             self.assertEqual(saved['articles'], articles)
             self.assertNotIn('widgetStates', args.output.read_text())
+            args.order = tuple('CDDC')
+            with patch('experiments.parallel_ozon.ChromeSession', return_value=session), \
+                 patch('experiments.parallel_ozon.run_batch', side_effect=batch):
+                report = await run(args)
+            self.assertEqual(report['status'], 'complete')
+            self.assertEqual(report['order'], tuple('CDDC'))
+            self.assertEqual([b['mode'] for b in report['batches']], list('CDDC'))
 
     async def test_insufficient_discovery_does_not_run_comparison(self):
         session = self.fake_session(AsyncMock(return_value=response()))
         with TemporaryDirectory() as directory:
-            args = SimpleNamespace(profile_dir=Path(directory), headless=True, pause=0,
+            args = SimpleNamespace(profile_dir=Path(directory), headless=True, pause=0, order=tuple('ABCCBA'),
                                    output=Path(directory) / 'result.json', articles=[], size=40)
             with patch('experiments.parallel_ozon.ChromeSession', return_value=session), \
                  patch('experiments.parallel_ozon.discover', new=AsyncMock(return_value=['1'])), \
