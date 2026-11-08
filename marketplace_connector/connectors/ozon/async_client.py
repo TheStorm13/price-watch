@@ -43,7 +43,7 @@ class AsyncOzonClient:
         *,
         session: ChromeSession | None = None,
         concurrency: int = 5,
-        starts_per_second: float = 5,
+        starts_per_second: float | None = 5,
         request_timeout: float = 30,
         max_attempts: int = 3,
         max_retry_wait: float = 30,

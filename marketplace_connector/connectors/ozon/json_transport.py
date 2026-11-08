@@ -123,8 +123,10 @@ class OzonJsonTransport:
         for name, value in (("concurrency", concurrency), ("max_attempts", max_attempts)):
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ValueError(f"{name} должен быть положительным целым")
-        for name, value in (("starts_per_second", starts_per_second),
-                            ("request_timeout", request_timeout), ("max_retry_wait", max_retry_wait)):
+        numeric_limits = [("request_timeout", request_timeout), ("max_retry_wait", max_retry_wait)]
+        if starts_per_second is not None:
+            numeric_limits.append(("starts_per_second", starts_per_second))
+        for name, value in numeric_limits:
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} должен быть конечным положительным числом")
         self.context = context
@@ -240,18 +242,21 @@ class OzonJsonTransport:
                 remaining = max(0.0, self._cooldown - now)
                 if remaining > self.max_retry_wait:
                     raise RateLimited("Ozon требует длительную паузу перед запросами", retry_after=remaining)
-                self._tokens = min(self.concurrency, self._tokens + (now - self._updated) * self.rate)
+                if self.rate is not None:
+                    self._tokens = min(self.concurrency, self._tokens + (now - self._updated) * self.rate)
                 self._updated = now
                 if (self._recovery is not None and not self._recovery.done()) or self._active >= self.concurrency:
                     await self._condition.wait()
                     continue
-                delay = max(remaining, (1 - self._tokens) / self.rate, 0)
+                pacing = (1 - self._tokens) / self.rate if self.rate is not None else 0
+                delay = max(remaining, pacing, 0)
                 if delay:
                     with suppress(TimeoutError):
                         await asyncio.wait_for(self._condition.wait(), timeout=delay)
                     continue
                 self._active += 1
-                self._tokens -= 1
+                if self.rate is not None:
+                    self._tokens -= 1
                 return self._generation
 
     async def _attempt(self, url):

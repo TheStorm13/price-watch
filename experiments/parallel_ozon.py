@@ -1,93 +1,297 @@
-"""Read-only comparison of sequential and concurrent Ozon JSON requests.
-
-Run from the repository root:
-    .venv/bin/python -m experiments.parallel_ozon 4465694803 4545459627
-
-This experiment does not write to PostgreSQL or change the production collector.
-It stops on an anti-bot page instead of waiting for a user confirmation.
-"""
-
+"""DB-free Ozon A/B/C/C/B/A comparison; see the testing guide."""
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
+import math
 import time
+from collections import Counter
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from pathlib import Path
+from tempfile import mkdtemp
+from unittest.mock import patch
 
+from marketplace_connector.application.retry import fetch_with_retry
+from marketplace_connector.browser.session import ChromeSession
 from marketplace_connector.connectors.ozon.async_client import AsyncOzonClient
 from marketplace_connector.connectors.ozon.connector import OzonConnector
+from marketplace_connector.connectors.ozon.json_transport import OzonJsonTransport
+from marketplace_connector.domain.errors import ChallengeRequired
+
+MODES = {'A': (5, 5), 'B': (1, 5), 'C': (1, None)}
+ORDER = ('A', 'B', 'C', 'C', 'B', 'A')
+SEEDS = ('1604900984', '1634943359', '1607687714', '1641499399', '1607686851',
+         '2056350478', '4465694803', '4545459627')
+FETCH = ContextVar('experiment_fetch')
 
 
-async def fetch_one(connector, article: str) -> dict:
-    started = time.perf_counter()
+class ExperimentStopped(Exception):
+    """A stop condition, without private response details."""
+
+
+class Probe:
+    def __init__(self):
+        self.stop_reason = None
+        self.stopped = asyncio.Event()
+        self.access_refusals = 0
+        self.reset()
+
+    def reset(self):
+        self.requests = []
+        self.started = time.perf_counter()
+        self.recoveries = self.active = self.peak = 0
+
+    def check(self):
+        if self.stop_reason:
+            raise ExperimentStopped(self.stop_reason)
+
+    def stop(self, reason):
+        self.stop_reason = reason
+        self.stopped.set()
+
+
+class MeasuredTransport(OzonJsonTransport):
+    def __init__(self, *args, probe, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.probe, self.waits = probe, {}
+
+    async def fetch(self, article, *, modal_link=None):
+        token = FETCH.set({'article': article, 'kind': 'modal' if modal_link else 'product', 'attempt': 0})
+        try:
+            return await super().fetch(article, modal_link=modal_link)
+        finally:
+            FETCH.reset(token)
+
+    async def _reserve(self):
+        self.probe.check()
+        started = time.perf_counter()
+        generation = await super()._reserve()
+        self.waits[asyncio.current_task()] = time.perf_counter() - started
+        if self.probe.stop_reason:
+            async with self._condition:
+                self._active -= 1
+                self._condition.notify_all()
+            self.probe.check()
+        return generation
+
+    async def _evaluate(self, url):
+        fetch = FETCH.get()
+        fetch['attempt'] += 1
+        record = {**fetch, 'gate_seconds': self.waits.pop(asyncio.current_task(), 0),
+                  'start_seconds': time.perf_counter() - self.probe.started}
+        self.probe.requests.append(record)
+        self.probe.active += 1
+        self.probe.peak = max(self.probe.peak, self.probe.active)
+        started = time.perf_counter()
+        try:
+            result = await super()._evaluate(url)
+            record.update(status=result.get('status'), error=result.get('error'))
+            if self._needs_recovery(result):
+                self.probe.access_refusals += 1
+                challenge = result.get('status') in (200, 429)
+                if challenge or self.probe.access_refusals >= 2:
+                    self.probe.stop('challenge' if challenge else 'repeated_access_refusal')
+                    self.probe.check()
+            return result
+        except asyncio.CancelledError:
+            record['cancelled'] = True
+            raise
+        finally:
+            record['network_seconds'] = time.perf_counter() - started
+            self.probe.active -= 1
+
+    async def _recover(self):
+        self.probe.recoveries += 1
+        return await super()._recover()
+
+
+class StopChallenge:
+    def __init__(self, probe):
+        self.probe = probe
+
+    async def handle_async(self, marketplace, message):
+        self.probe.stop('challenge')
+        raise ExperimentStopped('challenge')
+
+
+class ExperimentClient(AsyncOzonClient):
+    async def _handle_antibot_async(self, page, article, *, force=False):
+        # A detected challenge stops even in headless mode; do not ask for input.
+        await self.challenge_handler.handle_async('ozon', 'challenge')
+
+
+@asynccontextmanager
+async def measured_client(args, probe, mode, session):
+    concurrency, rate = MODES[mode]
+    client = ExperimentClient(args.profile_dir, session=session, concurrency=concurrency,
+                            starts_per_second=rate, challenge_handler=StopChallenge(probe))
+    def factory(*factory_args, **kwargs):
+        return MeasuredTransport(*factory_args, probe=probe, **kwargs)
+    with patch('marketplace_connector.connectors.ozon.async_client.OzonJsonTransport', factory):
+        async with client.collection_session():
+            yield OzonConnector(client)
+
+
+def completeness(card):
+    return {'price': card.price is not None, 'image': bool(card.image_url),
+            'seller': card.seller is not None, 'rating': card.rating is not None,
+            'attributes': len(card.attributes), 'variants': len(card.variants),
+            'availability': card.availability.value,
+            'variant_discovery_error': bool(card.extensions.get('variant_discovery_error'))}
+
+
+async def fetch_one(connector, article, limit, probe):
+    queued = time.perf_counter()
+    attempts, slot_wait = 0, 0
+    async def fetch():
+        nonlocal attempts, slot_wait
+        probe.check()
+        waiting = time.perf_counter()
+        async with limit:
+            slot_wait += time.perf_counter() - waiting
+            probe.check()
+            attempts += 1
+            return await connector.get_product(article)
+    result = {'article': article, 'ok': False}
     try:
-        snapshot = await connector.get_product(article)
-        return {
-            "article": article,
-            "ok": True,
-            "seconds": round(time.perf_counter() - started, 3),
-            "availability": snapshot.availability.value,
-        }
+        card = await fetch_with_retry(fetch)
+        result.update(ok=True, fields=completeness(card))
     except Exception as exc:
-        return {
-            "article": article,
-            "ok": False,
-            "seconds": round(time.perf_counter() - started, 3),
-            "error": f"{type(exc).__name__}: {exc}",
-        }
+        result['error_type'] = type(exc).__name__
+        if isinstance(exc, ChallengeRequired):
+            probe.stop('challenge')
+    result.update(seconds=time.perf_counter() - queued, slot_wait_seconds=slot_wait,
+                  logical_attempts=attempts)
+    return result
 
 
-async def run_batch(connector, articles: list[str], parallel: bool, concurrency: int) -> dict:
+async def run_batch(connector, articles, probe, mode):
+    probe.reset()
     started = time.perf_counter()
-    if parallel:
-        limit = asyncio.Semaphore(concurrency)
-
-        async def bounded_fetch(article: str) -> dict:
-            async with limit:
-                return await fetch_one(connector, article)
-
-        results = await asyncio.gather(*(bounded_fetch(article) for article in articles))
-    else:
-        results = [await fetch_one(connector, article) for article in articles]
-    return {
-        "mode": "parallel" if parallel else "sequential",
-        "seconds": round(time.perf_counter() - started, 3),
-        "results": results,
-    }
-
-
-async def run(args) -> list[dict]:
-    client = AsyncOzonClient(args.profile_dir, headless=args.headless, concurrency=args.concurrency)
-    connector = OzonConnector(client)
-    batches = []
-    modes = (True, False) if args.parallel_first else (False, True)
-    async with client.collection_session():
-        for parallel in modes:
-            batch = await run_batch(connector, args.articles, parallel, args.concurrency)
-            batches.append(batch)
-            print(json.dumps(batch, ensure_ascii=False), flush=True)
-            if any(not result["ok"] for result in batch["results"]):
-                break
-    return batches
+    limit = asyncio.Semaphore(5)
+    tasks = [asyncio.create_task(fetch_one(connector, article, limit, probe)) for article in articles]
+    stop = asyncio.create_task(probe.stopped.wait())
+    try:
+        pending = set(tasks)
+        while pending and not probe.stop_reason:
+            done, _ = await asyncio.wait(pending | {stop}, return_when=asyncio.FIRST_COMPLETED)
+            pending -= done
+    finally:
+        for task in [*tasks, stop]:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, stop, return_exceptions=True)
+    results = [t.result() for t in tasks if not t.cancelled() and t.exception() is None]
+    elapsed = time.perf_counter() - started
+    successes = sum(r['ok'] for r in results)
+    return {'mode': mode, 'concurrency': MODES[mode][0], 'starts_per_second': MODES[mode][1],
+            'seconds': elapsed, 'successes': successes, 'successful_sku_per_minute': successes * 60 / elapsed,
+            'cancelled_targets': len(articles) - len(results), 'results': results,
+            'composer_dispatches': len(probe.requests), 'peak_composer_dispatches': probe.peak,
+            'status_counts': dict(Counter(str(r.get('status')) for r in probe.requests)),
+            'logical_retries': sum(max(0, r['logical_attempts'] - 1) for r in results),
+            'transport_retries': sum(r['attempt'] > 1 for r in probe.requests),
+            'recoveries': probe.recoveries, 'requests': list(probe.requests), 'stop_reason': probe.stop_reason}
 
 
-def main() -> int:
+async def discover(connector, size, probe):
+    queue, visited, articles = list(SEEDS), set(), []
+    while queue and len(articles) < size:
+        article = queue.pop(0)
+        if article in visited:
+            continue
+        visited.add(article)
+        probe.check()
+        try:
+            card = await connector.get_product(article)
+        except ExperimentStopped:
+            raise
+        except Exception as exc:
+            if isinstance(exc, ChallengeRequired):
+                probe.stop('challenge')
+            probe.check()
+            continue
+        articles.append(article)
+        queue.extend(v.ref.external_id for v in card.variants if v.ref.external_id not in visited)
+    return articles
+
+
+def save_report(report, output):
+    # No raw responses, headers, profile paths or exception messages.
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output.with_suffix(output.suffix + '.tmp')
+    temporary.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+    temporary.replace(output)
+
+
+async def run(args):
+    probe = Probe()
+    report = {'schema': 1, 'status': 'running', 'order': ORDER, 'pause_seconds': args.pause,
+              'articles': list(args.articles), 'batches': [],
+              'measurement_scope': 'composer fetch only; excludes navigation/background requests',
+              'limitations': 'Six runs; discovery/cache/network/session state can bias results. No cache busting.'}
+    try:
+        session = ChromeSession(args.profile_dir, headless=args.headless)
+        async with session.collection_session():
+            if not report['articles']:
+                async with measured_client(args, probe, 'B', session) as connector:
+                    report['articles'] = await discover(connector, args.size, probe)
+                report['discovery'] = {'composer_dispatches': len(probe.requests), 'recoveries': probe.recoveries}
+            if not 30 <= len(report['articles']) <= 50:
+                raise ExperimentStopped('insufficient_dataset')
+            save_report(report, args.output)
+            for index, mode in enumerate(ORDER):
+                probe.check()
+                if index:
+                    await asyncio.sleep(args.pause)
+                async with measured_client(args, probe, mode, session) as connector:
+                    batch = await run_batch(connector, report['articles'], probe, mode)
+                report['batches'].append(batch)
+                save_report(report, args.output)
+                print(json.dumps({k: v for k, v in batch.items() if k not in ('results', 'requests')}), flush=True)
+                probe.check()
+            report['status'] = 'complete' if all(b['successes'] == len(report['articles']) for b in report['batches']) else 'completed_with_errors'
+    except asyncio.CancelledError:
+        report.update(status='interrupted', stop_reason='cancelled')
+        report['partial_requests'] = list(probe.requests)
+        raise
+    except Exception as exc:
+        report.update(status='stopped', stop_reason=probe.stop_reason or (
+            str(exc) if isinstance(exc, ExperimentStopped) else type(exc).__name__))
+        report['partial_requests'] = list(probe.requests)
+    finally:
+        save_report(report, args.output)
+    return report
+
+
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("articles", nargs="+", help="Ozon article IDs to compare")
-    parser.add_argument("--profile-dir", type=Path, default=Path(".playwright-profile"))
-    parser.add_argument("--headless", action="store_true")
-    parser.add_argument("--parallel-first", action="store_true")
-    parser.add_argument("--concurrency", type=int, default=5)
+    parser.add_argument('articles', nargs='*', help='30–50 unique Ozon SKU IDs; otherwise discover from seeds')
+    parser.add_argument('--articles-file', type=Path, help='JSON array of fixed SKU IDs')
+    parser.add_argument('--profile-dir', type=Path, help='Dedicated experiment Chrome profile')
+    parser.add_argument('--headless', action='store_true')
+    parser.add_argument('--size', type=int, default=40)
+    parser.add_argument('--pause', type=float, default=30)
+    parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    if len(args.articles) < 2:
-        parser.error("Передайте минимум два артикула")
-    if args.concurrency < 1:
-        parser.error("--concurrency должен быть положительным")
-    args.articles = [AsyncOzonClient.normalize_product_id(article) for article in args.articles]
-    batches = asyncio.run(run(args))
-    return 0 if len(batches) == 2 and all(result["ok"] for batch in batches for result in batch["results"]) else 1
+    if not 30 <= args.size <= 50 or not math.isfinite(args.pause) or args.pause < 0:
+        parser.error('size must be 30–50; pause must be finite and nonnegative')
+    if args.articles_file:
+        if args.articles:
+            parser.error('Use articles or --articles-file')
+        args.articles = json.loads(args.articles_file.read_text())
+        if not isinstance(args.articles, list):
+            parser.error('--articles-file must contain a JSON array')
+    args.articles = list(dict.fromkeys(AsyncOzonClient.normalize_product_id(a) for a in args.articles))
+    if args.articles and not 30 <= len(args.articles) <= 50:
+        parser.error('Provide 30–50 unique SKU IDs')
+    args.profile_dir = args.profile_dir or Path(mkdtemp(prefix='price-watch-ozon-experiment-'))
+    report = asyncio.run(run(args))
+    print(json.dumps({'status': report['status'], 'stop_reason': report.get('stop_reason'), 'output': str(args.output)}))
+    return 0 if report['status'] == 'complete' else 1
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())
