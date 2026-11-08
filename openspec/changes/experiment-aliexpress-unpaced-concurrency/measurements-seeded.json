@@ -1,0 +1,915 @@
+{
+  "schema": 1,
+  "status": "complete",
+  "created_at": "2026-11-08T12:31:15.124436+00:00",
+  "configuration": {
+    "concurrency": null,
+    "starts_per_second": null,
+    "size": 40,
+    "browser_mode": "visible",
+    "batches": 1
+  },
+  "versions": {
+    "python": "3.14.9",
+    "playwright": "1.63.0",
+    "git_commit": "d6c2854bb73efc6acfc2534b06a260ce89c69522",
+    "working_tree_dirty": false,
+    "chrome": "156.0.8078.79"
+  },
+  "articles": [
+    "1005007620335204:12000061321813248",
+    "1005008127103020:12000043898746227",
+    "1005003918845337:12000027464513422",
+    "1005013177457618:12000060506392477",
+    "1005007620335204:12000061321813249",
+    "1005008127103020:12000043898746228",
+    "1005003918845337:12000027464513423",
+    "1005013177457618:12000060506392478",
+    "1005008127103020:12000043898746229",
+    "1005003918845337:12000027464513424",
+    "1005013177457618:12000060506392479",
+    "1005008127103020:12000043898746230",
+    "1005003918845337:12000027464513425",
+    "1005013177457618:12000060506392480",
+    "1005008127103020:12000043898746231",
+    "1005003918845337:12000028472760464",
+    "1005013177457618:12000060506392481",
+    "1005008127103020:12000043898746232",
+    "1005003918845337:12000028472760465",
+    "1005013177457618:12000060506392482",
+    "1005008127103020:12000043898746234",
+    "1005003918845337:12000031106708020",
+    "1005013177457618:12000060506392483",
+    "1005008127103020:12000043898746235",
+    "1005003918845337:12000031106708021",
+    "1005013177457618:12000060506392484",
+    "1005008127103020:12000043898746236",
+    "1005003918845337:12000038215569051",
+    "1005013177457618:12000060506392485",
+    "1005008127103020:12000043898746237",
+    "1005003918845337:12000038215569052",
+    "1005013177457618:12000060506392486",
+    "1005008127103020:12000043898746238",
+    "1005003918845337:12000038963478061",
+    "1005013177457618:12000060506392487",
+    "1005008127103020:12000043898746239",
+    "1005003918845337:12000038963478062",
+    "1005013177457618:12000060506392488",
+    "1005008127103020:12000043898746240",
+    "1005003918845337:12000038963478063"
+  ],
+  "batch": {
+    "seconds": 1.2477118150018214,
+    "counts": {
+      "success": 40,
+      "failed": 0,
+      "cancelled": 0,
+      "not_started": 0
+    },
+    "http_attempts": 40,
+    "retries": 0,
+    "recoveries": 0,
+    "peak_active_fetches": 40,
+    "not_dispatched": 0,
+    "request_seconds": {
+      "p50": 0.9678965579987562,
+      "p95": 1.2017032820003806
+    },
+    "card_seconds": {
+      "p50": 0.9706118340000103,
+      "p95": 1.2122308460020577
+    },
+    "requests": [
+      {
+        "article": "1005007620335204:12000061321813248",
+        "attempt": 1,
+        "start_seconds": 0.00019402100224397145,
+        "gate_seconds": 6.620000931434333e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.45347047499672044
+      },
+      {
+        "article": "1005008127103020:12000043898746227",
+        "attempt": 1,
+        "start_seconds": 0.0002646079992700834,
+        "gate_seconds": 3.3510004868730903e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.8000479020010971
+      },
+      {
+        "article": "1005003918845337:12000027464513422",
+        "attempt": 1,
+        "start_seconds": 0.0003063160002056975,
+        "gate_seconds": 2.6089983293786645e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.5090814229988609
+      },
+      {
+        "article": "1005013177457618:12000060506392477",
+        "attempt": 1,
+        "start_seconds": 0.0003421340006752871,
+        "gate_seconds": 2.2899985197000206e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.0325691779980843
+      },
+      {
+        "article": "1005007620335204:12000061321813249",
+        "attempt": 1,
+        "start_seconds": 0.0003790720002143644,
+        "gate_seconds": 2.2989988792687654e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9480665840019356
+      },
+      {
+        "article": "1005008127103020:12000043898746228",
+        "attempt": 1,
+        "start_seconds": 0.000413518999266671,
+        "gate_seconds": 2.034998033195734e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9353453319999971
+      },
+      {
+        "article": "1005003918845337:12000027464513423",
+        "attempt": 1,
+        "start_seconds": 0.00044635300218942575,
+        "gate_seconds": 1.9899998733308166e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9860216109991597
+      },
+      {
+        "article": "1005013177457618:12000060506392478",
+        "attempt": 1,
+        "start_seconds": 0.00047867000102996826,
+        "gate_seconds": 2.1859996195416898e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.0163598529979936
+      },
+      {
+        "article": "1005008127103020:12000043898746229",
+        "attempt": 1,
+        "start_seconds": 0.0005130669997015502,
+        "gate_seconds": 2.1230007405392826e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9518265020014951
+      },
+      {
+        "article": "1005003918845337:12000027464513424",
+        "attempt": 1,
+        "start_seconds": 0.0005448709998745471,
+        "gate_seconds": 2.1949999791104347e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.5063418190002267
+      },
+      {
+        "article": "1005013177457618:12000060506392479",
+        "attempt": 1,
+        "start_seconds": 0.0005802320010843687,
+        "gate_seconds": 1.8409991753287613e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.0720456979979645
+      },
+      {
+        "article": "1005008127103020:12000043898746230",
+        "attempt": 1,
+        "start_seconds": 0.0006113669987826142,
+        "gate_seconds": 2.2240019461605698e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9261732360027963
+      },
+      {
+        "article": "1005003918845337:12000027464513425",
+        "attempt": 1,
+        "start_seconds": 0.0006426460022339597,
+        "gate_seconds": 1.8889986677095294e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.47046051699726377
+      },
+      {
+        "article": "1005013177457618:12000060506392480",
+        "attempt": 1,
+        "start_seconds": 0.0006727760010107886,
+        "gate_seconds": 1.8650025594979525e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.0519412930007093
+      },
+      {
+        "article": "1005008127103020:12000043898746231",
+        "attempt": 1,
+        "start_seconds": 0.0007015289993432816,
+        "gate_seconds": 1.6260019037872553e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9630881320008484
+      },
+      {
+        "article": "1005003918845337:12000028472760464",
+        "attempt": 1,
+        "start_seconds": 0.0007336109993048012,
+        "gate_seconds": 2.2470012481790036e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.99126403199989
+      },
+      {
+        "article": "1005013177457618:12000060506392481",
+        "attempt": 1,
+        "start_seconds": 0.0007629669999005273,
+        "gate_seconds": 1.8979990272782743e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.2190929280004639
+      },
+      {
+        "article": "1005008127103020:12000043898746232",
+        "attempt": 1,
+        "start_seconds": 0.0007968550016812515,
+        "gate_seconds": 2.544999006204307e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9555511279977509
+      },
+      {
+        "article": "1005003918845337:12000028472760465",
+        "attempt": 1,
+        "start_seconds": 0.0008268400015367661,
+        "gate_seconds": 1.8040009308606386e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.4803834589984035
+      },
+      {
+        "article": "1005013177457618:12000060506392482",
+        "attempt": 1,
+        "start_seconds": 0.0008588710006733891,
+        "gate_seconds": 2.4809996830299497e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.1868792019995453
+      },
+      {
+        "article": "1005008127103020:12000043898746234",
+        "attempt": 1,
+        "start_seconds": 0.0008891809993656352,
+        "gate_seconds": 1.71599822351709e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9404437840021274
+      },
+      {
+        "article": "1005003918845337:12000031106708020",
+        "attempt": 1,
+        "start_seconds": 0.0009191829994961154,
+        "gate_seconds": 1.7029997252393514e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9380471280019265
+      },
+      {
+        "article": "1005013177457618:12000060506392483",
+        "attempt": 1,
+        "start_seconds": 0.0009494100013398565,
+        "gate_seconds": 2.128999767592177e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.2351895760002662
+      },
+      {
+        "article": "1005008127103020:12000043898746235",
+        "attempt": 1,
+        "start_seconds": 0.0009802630011108704,
+        "gate_seconds": 2.2360000002663583e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9740330460008408
+      },
+      {
+        "article": "1005003918845337:12000031106708021",
+        "attempt": 1,
+        "start_seconds": 0.0010085270005220082,
+        "gate_seconds": 1.644002622924745e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9435350899984769
+      },
+      {
+        "article": "1005013177457618:12000060506392484",
+        "attempt": 1,
+        "start_seconds": 0.0010410780014353804,
+        "gate_seconds": 2.2190033632796258e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.1563281540002208
+      },
+      {
+        "article": "1005008127103020:12000043898746236",
+        "attempt": 1,
+        "start_seconds": 0.0010816040012286976,
+        "gate_seconds": 2.0799998310394585e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9777533150008821
+      },
+      {
+        "article": "1005003918845337:12000038215569051",
+        "attempt": 1,
+        "start_seconds": 0.0011237149992666673,
+        "gate_seconds": 3.0659975891467184e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9462144380013342
+      },
+      {
+        "article": "1005013177457618:12000060506392485",
+        "attempt": 1,
+        "start_seconds": 0.0011532030002854299,
+        "gate_seconds": 1.7839993233792484e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.1690209190019232
+      },
+      {
+        "article": "1005008127103020:12000043898746237",
+        "attempt": 1,
+        "start_seconds": 0.0011816719998023473,
+        "gate_seconds": 1.868000254034996e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9819444679997105
+      },
+      {
+        "article": "1005003918845337:12000038215569052",
+        "attempt": 1,
+        "start_seconds": 0.0012092540018784348,
+        "gate_seconds": 1.5410005289595574e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9295157460001064
+      },
+      {
+        "article": "1005013177457618:12000060506392486",
+        "attempt": 1,
+        "start_seconds": 0.0012367230010568164,
+        "gate_seconds": 1.534001057734713e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.1419387819987605
+      },
+      {
+        "article": "1005008127103020:12000043898746238",
+        "attempt": 1,
+        "start_seconds": 0.0012642020010389388,
+        "gate_seconds": 2.0369989215396345e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9678965579987562
+      },
+      {
+        "article": "1005003918845337:12000038963478061",
+        "attempt": 1,
+        "start_seconds": 0.0015126059988688212,
+        "gate_seconds": 3.894998371833935e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9175581090021296
+      },
+      {
+        "article": "1005013177457618:12000060506392487",
+        "attempt": 1,
+        "start_seconds": 0.0015759679990878794,
+        "gate_seconds": 3.2909993024077266e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.1140401100019517
+      },
+      {
+        "article": "1005008127103020:12000043898746239",
+        "attempt": 1,
+        "start_seconds": 0.001627231999009382,
+        "gate_seconds": 2.715998562052846e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.987138139000308
+      },
+      {
+        "article": "1005003918845337:12000038963478062",
+        "attempt": 1,
+        "start_seconds": 0.0016752949995861854,
+        "gate_seconds": 2.6750021788757294e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9915764450015558
+      },
+      {
+        "article": "1005013177457618:12000060506392488",
+        "attempt": 1,
+        "start_seconds": 0.00172122100048,
+        "gate_seconds": 2.5890003598760813e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 1.2017032820003806
+      },
+      {
+        "article": "1005008127103020:12000043898746240",
+        "attempt": 1,
+        "start_seconds": 0.0017685839993646368,
+        "gate_seconds": 3.1609997677151114e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9933620209994842
+      },
+      {
+        "article": "1005003918845337:12000038963478063",
+        "attempt": 1,
+        "start_seconds": 0.0018102680005540606,
+        "gate_seconds": 2.5129993446171284e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9442378120002104
+      }
+    ],
+    "results": [
+      {
+        "article": "1005007620335204:12000061321813248",
+        "state": "success",
+        "price": "9438.00",
+        "availability": "in_stock",
+        "variants": 2,
+        "seconds": 0.457115208999312
+      },
+      {
+        "article": "1005008127103020:12000043898746227",
+        "state": "success",
+        "price": "283.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.8028439179979614
+      },
+      {
+        "article": "1005003918845337:12000027464513422",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.5107390839984873
+      },
+      {
+        "article": "1005013177457618:12000060506392477",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.044451702000515
+      },
+      {
+        "article": "1005007620335204:12000061321813249",
+        "state": "success",
+        "price": "9438.00",
+        "availability": "in_stock",
+        "variants": 2,
+        "seconds": 0.9485657760014874
+      },
+      {
+        "article": "1005008127103020:12000043898746228",
+        "state": "success",
+        "price": "285.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9380433120022644
+      },
+      {
+        "article": "1005003918845337:12000027464513423",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.987126537002041
+      },
+      {
+        "article": "1005013177457618:12000060506392478",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.026523206001002
+      },
+      {
+        "article": "1005008127103020:12000043898746229",
+        "state": "success",
+        "price": "282.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9546723879975616
+      },
+      {
+        "article": "1005003918845337:12000027464513424",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.5082043599977624
+      },
+      {
+        "article": "1005013177457618:12000060506392479",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.0893273389992828
+      },
+      {
+        "article": "1005008127103020:12000043898746230",
+        "state": "success",
+        "price": "285.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9289989829994738
+      },
+      {
+        "article": "1005003918845337:12000027464513425",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.4716913710035442
+      },
+      {
+        "article": "1005013177457618:12000060506392480",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.0656565739991493
+      },
+      {
+        "article": "1005008127103020:12000043898746231",
+        "state": "success",
+        "price": "285.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9662560770011623
+      },
+      {
+        "article": "1005003918845337:12000028472760464",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.9923636749990692
+      },
+      {
+        "article": "1005013177457618:12000060506392481",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.2307233959982113
+      },
+      {
+        "article": "1005008127103020:12000043898746232",
+        "state": "success",
+        "price": "285.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9582953119970625
+      },
+      {
+        "article": "1005003918845337:12000028472760465",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.48162831800073036
+      },
+      {
+        "article": "1005013177457618:12000060506392482",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.1970707079999556
+      },
+      {
+        "article": "1005008127103020:12000043898746234",
+        "state": "success",
+        "price": "282.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9431938300003821
+      },
+      {
+        "article": "1005003918845337:12000031106708020",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.9392504950010334
+      },
+      {
+        "article": "1005013177457618:12000060506392483",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.2464902299980167
+      },
+      {
+        "article": "1005008127103020:12000043898746235",
+        "state": "success",
+        "price": "285.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.976891151000018
+      },
+      {
+        "article": "1005003918845337:12000031106708021",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.9446358370005328
+      },
+      {
+        "article": "1005013177457618:12000060506392484",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.1660363070004678
+      },
+      {
+        "article": "1005008127103020:12000043898746236",
+        "state": "success",
+        "price": "285.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9810669660000713
+      },
+      {
+        "article": "1005003918845337:12000038215569051",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.9472550970021985
+      },
+      {
+        "article": "1005013177457618:12000060506392485",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.178886499001237
+      },
+      {
+        "article": "1005008127103020:12000043898746237",
+        "state": "success",
+        "price": "284.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9848034729984647
+      },
+      {
+        "article": "1005003918845337:12000038215569052",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.9308103450021008
+      },
+      {
+        "article": "1005013177457618:12000060506392486",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.153008735000185
+      },
+      {
+        "article": "1005008127103020:12000043898746238",
+        "state": "success",
+        "price": "279.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9706118340000103
+      },
+      {
+        "article": "1005003918845337:12000038963478061",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.918985699001496
+      },
+      {
+        "article": "1005013177457618:12000060506392487",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.1315718149999157
+      },
+      {
+        "article": "1005008127103020:12000043898746239",
+        "state": "success",
+        "price": "285.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9898930529998324
+      },
+      {
+        "article": "1005003918845337:12000038963478062",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.9925975539990759
+      },
+      {
+        "article": "1005013177457618:12000060506392488",
+        "state": "success",
+        "price": "123.00",
+        "availability": "in_stock",
+        "variants": 234,
+        "seconds": 1.2122308460020577
+      },
+      {
+        "article": "1005008127103020:12000043898746240",
+        "state": "success",
+        "price": "285.00",
+        "availability": "in_stock",
+        "variants": 47,
+        "seconds": 0.9961507430016354
+      },
+      {
+        "article": "1005003918845337:12000038963478063",
+        "state": "success",
+        "price": "77.00",
+        "availability": "in_stock",
+        "variants": 14,
+        "seconds": 0.945285972997226
+      }
+    ],
+    "stop_reason": null
+  },
+  "discovery": {
+    "performed": true,
+    "errors": [],
+    "availability": {
+      "1005007620335204:12000061321813248": "in_stock",
+      "1005008127103020:12000043898746227": "in_stock",
+      "1005003918845337:12000027464513422": "in_stock",
+      "1005013177457618:12000060506392477": "in_stock",
+      "1005007620335204:12000061321813249": "in_stock",
+      "1005008127103020:12000043898746228": "in_stock",
+      "1005003918845337:12000027464513423": "in_stock",
+      "1005013177457618:12000060506392478": "in_stock",
+      "1005008127103020:12000043898746229": "in_stock",
+      "1005003918845337:12000027464513424": "in_stock",
+      "1005013177457618:12000060506392479": "in_stock",
+      "1005008127103020:12000043898746230": "in_stock",
+      "1005003918845337:12000027464513425": "in_stock",
+      "1005013177457618:12000060506392480": "in_stock",
+      "1005008127103020:12000043898746231": "in_stock",
+      "1005003918845337:12000028472760464": "in_stock",
+      "1005013177457618:12000060506392481": "in_stock",
+      "1005008127103020:12000043898746232": "in_stock",
+      "1005003918845337:12000028472760465": "in_stock",
+      "1005013177457618:12000060506392482": "in_stock",
+      "1005008127103020:12000043898746234": "in_stock",
+      "1005003918845337:12000031106708020": "in_stock",
+      "1005013177457618:12000060506392483": "in_stock",
+      "1005008127103020:12000043898746235": "in_stock",
+      "1005003918845337:12000031106708021": "in_stock",
+      "1005013177457618:12000060506392484": "in_stock",
+      "1005008127103020:12000043898746236": "in_stock",
+      "1005003918845337:12000038215569051": "in_stock",
+      "1005013177457618:12000060506392485": "in_stock",
+      "1005008127103020:12000043898746237": "in_stock",
+      "1005003918845337:12000038215569052": "in_stock",
+      "1005013177457618:12000060506392486": "in_stock",
+      "1005008127103020:12000043898746238": "in_stock",
+      "1005003918845337:12000038963478061": "in_stock",
+      "1005013177457618:12000060506392487": "in_stock",
+      "1005008127103020:12000043898746239": "in_stock",
+      "1005003918845337:12000038963478062": "in_stock",
+      "1005013177457618:12000060506392488": "in_stock",
+      "1005008127103020:12000043898746240": "in_stock",
+      "1005003918845337:12000038963478063": "in_stock"
+    },
+    "seed_product_ids": [
+      "1005007620335204",
+      "1005008127103020",
+      "1005003918845337",
+      "1005013177457618"
+    ],
+    "sku_counts": {
+      "1005007620335204": 2,
+      "1005008127103020": 47,
+      "1005003918845337": 14,
+      "1005013177457618": 234
+    },
+    "requests": [
+      {
+        "article": "1005007620335204",
+        "attempt": 1,
+        "start_seconds": 1.2722294600025634,
+        "gate_seconds": 1.3135999324731529e-05,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.48565396899721236
+      },
+      {
+        "article": "1005008127103020",
+        "attempt": 1,
+        "start_seconds": 1.7587005050008884,
+        "gate_seconds": 8.791997970547527e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.5812307060004969
+      },
+      {
+        "article": "1005003918845337",
+        "attempt": 1,
+        "start_seconds": 2.3436290710014873,
+        "gate_seconds": 8.696999429957941e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.47098931599975913
+      },
+      {
+        "article": "1005013177457618",
+        "attempt": 1,
+        "start_seconds": 2.8160834280024574,
+        "gate_seconds": 6.6209977376274765e-06,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.9027837439971336
+      }
+    ],
+    "recoveries": 0,
+    "seconds": 3.741852884002583
+  },
+  "measurement_scope": "productData fetch evaluations only; excludes discovery, navigation and browser background requests",
+  "limitations": "One finite batch, no control; browser scheduling may queue fetches; SKU count is not distinct product count; no general stability claim.",
+  "distinct_product_ids": 4,
+  "preparation_seconds": 0.4358394299997599,
+  "stop_reason": null
+}
