@@ -210,7 +210,7 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
             yield
         session = SimpleNamespace(collection_session=session_scope, _async_browser=SimpleNamespace(version='synthetic'))
         @asynccontextmanager
-        async def client_scope(profile, session, probe):
+        async def client_scope(profile, session, probe, **options):
             probe.stop('storefront_challenge')
             probe.check()
             yield
@@ -243,13 +243,42 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(page.calls), 40)
         page.close.assert_awaited_once()
 
+    async def test_n8_client_has_eight_active_fetches_and_no_rate_limit(self):
+        entered, release = asyncio.Event(), asyncio.Event()
+        async def fetch(arg):
+            if len(page.calls) == 8:
+                entered.set()
+            await release.wait()
+            return response()
+        page = FakePage(fetch)
+        session = SimpleNamespace(headless=False, virtual_display=False, challenge_lock=asyncio.Lock())
+        @asynccontextmanager
+        async def scope():
+            yield MagicMock(new_page=AsyncMock(return_value=page))
+        session.collection_session = scope
+        probe = Probe()
+        with patch.object(ExperimentClient, '_prepare_storefront', new_callable=AsyncMock):
+            async with measured_client('/tmp/unused-ali-n8', session, probe, concurrency=8) as (client, connector):
+                tasks = [asyncio.create_task(connector.get_product(REF)) for _ in range(40)]
+                try:
+                    await asyncio.wait_for(entered.wait(), 1)
+                    self.assertEqual(len(page.calls), 8)
+                    self.assertEqual(client._transport.concurrency, 8)
+                    self.assertIsNone(client._transport.rate)
+                finally:
+                    release.set()
+                    await asyncio.gather(*tasks)
+                self.assertEqual(probe.peak, 8)
+                self.assertEqual(len(page.calls), 40)
+        page.close.assert_awaited_once()
+
     async def test_run_has_exactly_one_unbounded_batch_and_persists_frozen_set(self):
         @asynccontextmanager
         async def session_scope():
             yield
         session = SimpleNamespace(collection_session=session_scope, _async_browser=SimpleNamespace(version='synthetic'))
         @asynccontextmanager
-        async def client_scope(profile, session, probe):
+        async def client_scope(profile, session, probe, **options):
             yield None, SimpleNamespace(get_product=AsyncMock(return_value=card()))
         with TemporaryDirectory() as directory:
             args = SimpleNamespace(profile_dir=Path(directory), articles=ARTICLES, output=Path(directory)/'report.json')

@@ -1,4 +1,4 @@
-"""One DB-free AliExpress batch: all forty SKU tasks, no concurrency or rate cap."""
+"""One DB-free AliExpress batch: forty async SKU tasks, no rate cap, optional concurrency cap."""
 from __future__ import annotations
 
 import argparse
@@ -144,9 +144,9 @@ class ExperimentClient(AsyncAliExpressClient):
 
 
 @asynccontextmanager
-async def measured_client(profile, session, probe):
+async def measured_client(profile, session, probe, *, concurrency=None):
     client = ExperimentClient(profile, session=session, probe=probe,
-                              concurrency=None, starts_per_second=None)
+                              concurrency=concurrency, starts_per_second=None)
     def factory(*args, **kwargs):
         return MeasuredTransport(*args, probe=probe, **kwargs)
     with patch('marketplace_connector.connectors.aliexpress.client.AliExpressJsonTransport', factory):
@@ -289,8 +289,9 @@ def runtime_versions():
 
 
 async def run(args):
+    concurrency = getattr(args, "concurrency", None)
     report = {'schema': 1, 'status': 'running', 'created_at': datetime.now(timezone.utc).isoformat(),
-              'configuration': {'concurrency': None, 'starts_per_second': None, 'size': 40,
+              'configuration': {'concurrency': concurrency, 'starts_per_second': None, 'size': 40,
                                 'browser_mode': 'visible', 'batches': 1},
               'versions': await asyncio.to_thread(runtime_versions),
               'articles': list(args.articles), 'batch': None,
@@ -320,7 +321,7 @@ async def run(args):
             probe = Probe()
             phase = 'batch_preparation'
             preparation = time.perf_counter()
-            async with measured_client(args.profile_dir, session, probe) as (_, connector):
+            async with measured_client(args.profile_dir, session, probe, concurrency=concurrency) as (_, connector):
                 report['preparation_seconds'] = time.perf_counter() - preparation
                 phase = 'batch'
                 report['batch'] = await run_batch(connector, report['articles'], probe)
@@ -346,10 +347,13 @@ async def run(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile-dir', type=Path, default=PROFILE, help='Existing stable Price Watch Chrome profile')
+    parser.add_argument('--concurrency', type=int, help='Maximum active requests; omitted means no cap. No rate limit in either mode.')
     parser.add_argument('--seed-product-ids', nargs='+', help='Public product IDs for separate SKU discovery')
     parser.add_argument('--articles-file', type=Path, help='JSON array of exactly 40 fixed productId:skuId pairs')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if args.concurrency is not None and args.concurrency <= 0:
+        parser.error('--concurrency must be positive')
     args.profile_dir = args.profile_dir.expanduser().resolve()
     if not args.profile_dir.is_dir():
         parser.error('Use the existing stable profile; do not create a new experimental profile')

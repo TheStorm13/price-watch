@@ -186,7 +186,7 @@ Mock E2E не проверяет живые Tauri WebView, API, worker и мар
 ## Эксперимент AliExpress: весь пул асинхронно без лимитов
 
 Стенд запускает один пакет из 40 уникальных `productId:skuId` сразу через async-задачи.
-В нём явно заданы `concurrency=None, starts_per_second=None`: нет worker pool,
+По умолчанию в нём явно заданы `concurrency=None, starts_per_second=None`: нет worker pool,
 семафора, потолка активных запросов и плановых задержек. Обычный Ali-сбор сохраняет
 `concurrency=1, starts_per_second=5`. У клиента/транспорта None для concurrency
 допустим только вместе с None для частоты. Числовая concurrency с частотой None
@@ -204,6 +204,18 @@ Mock E2E не проверяет живые Tauri WebView, API, worker и мар
 ```bash
 .venv/bin/python -m experiments.parallel_aliexpress --output /tmp/ali-unbounded.json
 ```
+
+Для сравнения с максимум восемью активными запросами на той же фиксированной
+выборке используйте `--concurrency 8`. Частота стартов остаётся без ограничителя;
+все 40 async-задач создаются сразу, допуск к fetch регулирует только транспорт:
+
+```bash
+.venv/bin/python -m experiments.parallel_aliexpress --concurrency 8 --articles-file /tmp/ali-skus.json --output /tmp/ali-n8.json
+```
+
+`/tmp/ali-skus.json` — JSON-массив `articles` из предыдущего отчёта. Новый discovery
+для этого сравнения не требуется. Подготовка Chrome/страницы не входит в batch.
+Один более поздний прогон не исключает влияние сети и изменившегося кэша.
 
 Не создавать, не сбрасывать и не клонировать профиль. Стенд отклоняет существующий
 `SingletonLock`, не удаляет его и не завершает чужие процессы. Для другого уже
@@ -224,7 +236,7 @@ Discovery использует публичные product ID с главной �
 могут успеть завершиться. Ошибки подготовки и закрытие страницы записываются
 отдельно. Не повторять остановленный live-прогон без обсуждения с пользователем.
 
-Отчёт содержит отдельные discovery/preparation/batch, конфигурацию с двумя null,
+Отчёт содержит отдельные discovery/preparation/batch, конфигурацию с выбранной concurrency и частотой null,
 активные fetch evaluations, HTTP-попытки/повторы, исходы карточек, длительности
 и безопасную причину остановки. Тела ответов, cookies, заголовки и challenge URL
 не записываются. `peak_active_fetches` измеряет перекрытие browser fetch evaluations,
