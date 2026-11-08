@@ -24,9 +24,10 @@ class ChallengeRequired(ConnectorError):
 
 
 class RateLimited(ConnectorError):
-    def __init__(self, message: str, retry_after: Optional[float] = None):
+    def __init__(self, message: str, retry_after: Optional[float] = None, *, retry_allowed: bool = True):
         super().__init__(message)
         self.retry_after = retry_after
+        self.retry_allowed = retry_allowed
 
 
 class MarketplaceUnavailable(ConnectorError):

@@ -87,3 +87,21 @@ class ProductRetryTests(unittest.IsolatedAsyncioTestCase):
         before = asyncio.get_running_loop().time()
         self.assertEqual(await fetch_with_retry(fetch), 'ok')
         self.assertGreaterEqual(asyncio.get_running_loop().time() - before, 1)
+
+    async def test_over_budget_or_disallowed_retry_never_sleeps_or_repeats(self):
+        for after, allowed in [(30.01, True), (float('inf'), True), (1, False)]:
+            error = RateLimited('429', retry_after=after, retry_allowed=allowed)
+            fetch = AsyncMock(side_effect=error)
+            with patch('marketplace_connector.application.retry.sleep', new_callable=AsyncMock) as sleep:
+                with self.assertRaises(RateLimited) as caught:
+                    await fetch_with_retry(fetch)
+            self.assertIs(caught.exception, error)
+            self.assertEqual(fetch.await_count, 1)
+            sleep.assert_not_awaited()
+
+    async def test_budget_boundary_and_negative_wait_are_finite(self):
+        for after, expected in [(30, 30), (-10, 1), (float('-inf'), 1)]:
+            fetch = AsyncMock(side_effect=[RateLimited('429', retry_after=after), 'ok'])
+            with patch('marketplace_connector.application.retry.sleep', new_callable=AsyncMock) as sleep:
+                self.assertEqual(await fetch_with_retry(fetch), 'ok')
+            sleep.assert_awaited_once_with(expected)

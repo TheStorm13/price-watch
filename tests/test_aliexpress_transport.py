@@ -79,7 +79,14 @@ class AliExpressTransportTests(unittest.IsolatedAsyncioTestCase):
                               ({'error':'timeout'},MarketplaceUnavailable),
                               (dict(response(), contentType='text/plain'),MarketplaceSchemaChanged)]:
             transport, _ = await self.transport(AsyncMock(return_value=result), max_attempts=1)
-            with self.subTest(result=result.get('status')), self.assertRaises(error): await transport.fetch(REF)
+            from contextlib import asynccontextmanager
+            from unittest.mock import patch
+            from marketplace_connector.connectors.aliexpress.client import AsyncAliExpressClient
+            client = AsyncAliExpressClient('/tmp/unused-profile')
+            @asynccontextmanager
+            async def session(): yield transport
+            with self.subTest(result=result.get('status')), patch.object(client, '_request_session', session), self.assertRaises(error):
+                await client.fetch_raw_text_async(REF)
 
     async def test_product_only_fetch_omits_sku_and_returns_discovery(self):
         from urllib.parse import parse_qs, urlsplit
@@ -123,7 +130,9 @@ class AliExpressTransportTests(unittest.IsolatedAsyncioTestCase):
         from marketplace_connector import ConnectorRegistry,ProductService
         from marketplace_connector.connectors.aliexpress.connector import AliExpressConnector
         from marketplace_connector.connectors.aliexpress.models import AliExpressResponse
-        from datetime import datetime,timezone
-        client=MagicMock(fetch_product_async=AsyncMock(return_value=AliExpressResponse(REF,RAW,datetime.now(timezone.utc))))
+        from marketplace_connector.connectors.aliexpress.parser import AliExpressProductParser
+        from marketplace_connector.connectors.aliexpress.mapper import AliExpressMapper
+        client=MagicMock(fetch_product_async=AsyncMock(return_value=AliExpressResponse(
+            RAW, AliExpressMapper.to_card(AliExpressProductParser.parse(RAW, expected_external_id=REF)))))
         service=ProductService(ConnectorRegistry([AliExpressConnector(client)]))
         self.assertEqual(str((await service.get_product('aliexpress',REF)).price),'77648.00')

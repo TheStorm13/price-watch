@@ -132,3 +132,10 @@ class OzonAspectTests(unittest.IsolatedAsyncioTestCase):
             result = json.loads(output.getvalue())
             self.assertEqual(transport.fetch.await_count, 1 if raw else 2)
             self.assertEqual(len(result['widgetStates']['webAspects-1']['aspects'][0]['variants']) if raw else len(result['variants']), 6 if raw else 10)
+
+    async def test_unsafe_browser_teardown_is_not_optional_discovery_failure(self):
+        from marketplace_connector.domain.errors import UnsafeBrowserTeardown
+        error = UnsafeBrowserTeardown('I/O not confirmed')
+        with self.assertRaises(UnsafeBrowserTeardown) as caught:
+            await complete_aspects(FIXTURE['source'], SKU, AsyncMock(side_effect=error))
+        self.assertIs(caught.exception, error)

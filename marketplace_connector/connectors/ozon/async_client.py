@@ -6,17 +6,19 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import urlparse
 
 from playwright.async_api import Error as PlaywrightError
 
-from ...domain.errors import InvalidProductId, MarketplaceUnavailable
+from ...domain.errors import InvalidProductId, MarketplaceUnavailable, MarketplaceSchemaChanged, ProductNotFound
 from ...application.collection_policy import MAX_IN_FLIGHT_REQUESTS
 from .json_transport import HOME_URL, OzonJsonTransport
 from .models import OzonResponse
 from .parser import OzonProductParser
+from .mapper import OzonMapper
 from .aspects import complete_aspects
 from ...ports.challenge import ChallengeHandler, RejectChallengeHandler
 from ...browser.session import ChromeSession
@@ -134,23 +136,31 @@ class AsyncOzonClient:
         async with self._request_session() as transport:
             raw_text = await transport.fetch(article)
             received_at = datetime.now(timezone.utc)
-            data = OzonProductParser.parse(raw_text, expected_external_id=article, collected_at=received_at)
+            data = OzonProductParser.parse_json(raw_text, expected_external_id=article, collected_at=received_at)
             aspects, error = await complete_aspects(data.aspects, article,
                 lambda link: transport.fetch(article, modal_link=link))
-        return OzonResponse(
-            external_id=article,
-            raw_text=raw_text,
-            received_at=received_at,
-            aspects=aspects,
-            discovery_error=error,
-        )
+            data = replace(data, aspects=aspects, discovery_error=error)
+            card = self._to_card(data)
+        return OzonResponse(raw_text, card)
 
-    async def fetch_raw_text_async(self, external_id: Union[str, int], *, validate: bool = True) -> str:
+    @staticmethod
+    def _to_card(data):
+        try:
+            return OzonMapper.to_card(data)
+        except (TypeError, ValueError, AttributeError, KeyError) as exc:
+            raise MarketplaceSchemaChanged('Изменилась структура товарных данных Ozon') from exc
+
+    async def fetch_raw_text_async(self, external_id: Union[str, int]) -> str:
         article = self.normalize_product_id(external_id)
-        # Keep the keyword for callers; access/schema checks also apply to raw
-        # and validate=False. Successful response text is returned unchanged.
         async with self._request_session() as transport:
-            return await transport.fetch(article)
+            raw_text = await transport.fetch(article)
+            try:
+                data = OzonProductParser.parse_json(raw_text, expected_external_id=article)
+            except ProductNotFound:
+                # A valid search redirect is useful raw evidence of absence.
+                return raw_text
+            self._to_card(data)
+            return raw_text
 
     async def _is_antibot_page_async(self, page) -> bool:
         parts = []

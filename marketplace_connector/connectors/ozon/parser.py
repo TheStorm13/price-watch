@@ -9,13 +9,35 @@ from .models import OzonProductData, OzonPrice
 
 JsonObject = Dict[str, Any]
 
+
+def _reject_constant(value):
+    raise ValueError('Non-finite JSON number')
+
+
 class OzonProductParser:
+    @classmethod
+    def parse_json(cls, raw, expected_external_id=None, collected_at=None):
+        """HTTP documents must be strict JSON; parse captured text separately."""
+        try:
+            payload = json.loads(raw, parse_float=Decimal, parse_constant=_reject_constant)
+        except (ValueError, TypeError) as exc:
+            raise MarketplaceSchemaChanged('Ozon вернул некорректный JSON') from exc
+        if not isinstance(payload, dict):
+            raise MarketplaceSchemaChanged('Корневое значение JSON должно быть объектом')
+        return cls.parse(payload, expected_external_id=expected_external_id, collected_at=collected_at)
+
     @classmethod
     def parse(cls, raw, expected_external_id=None, collected_at=None):
         payload = cls._decode_document(raw)
         widgets = payload.get("widgetStates")
         if not isinstance(widgets, dict):
             raise MarketplaceSchemaChanged("В ответе Ozon отсутствует widgetStates")
+        widgets = dict(widgets)
+        prefixes = ('webProductHeading-', 'webPrice-', 'webStickyProducts-', 'webCurrentSeller-',
+                    'webReviewProductScore-', 'webShortCharacteristics-', 'webAspects-', 'webGallery-')
+        for name, value in widgets.items():
+            if name.startswith(prefixes):
+                widgets[name] = cls._decode_widget(value)
         if cls._is_unavailable_search(payload, widgets, expected_external_id):
             raise ProductNotFound(f"Ozon перенаправил товар {expected_external_id} на поиск")
         price = cls._widget(widgets, "webPrice-")
@@ -41,31 +63,33 @@ class OzonProductParser:
             return dict(raw)
         if not isinstance(raw, str):
             raise TypeError("Ожидалась JSON-строка или словарь")
-        start = raw.find("{")
+        start = raw.find('{')
         if start < 0:
-            raise MarketplaceSchemaChanged("JSON-объект не найден")
+            raise MarketplaceSchemaChanged('JSON-объект не найден')
         try:
-            payload, _ = json.JSONDecoder(parse_float=Decimal).raw_decode(raw[start:])
-        except json.JSONDecodeError as exc:
-            raise MarketplaceSchemaChanged(f"Некорректный JSON: {exc}") from exc
+            payload, _ = json.JSONDecoder(parse_float=Decimal, parse_constant=_reject_constant).raw_decode(raw[start:])
+        except ValueError as exc:
+            raise MarketplaceSchemaChanged('Ozon вернул некорректный JSON') from exc
         if not isinstance(payload, dict):
             raise MarketplaceSchemaChanged("Корневое значение JSON должно быть объектом")
         return payload
 
     @staticmethod
-    def _widget(widget_states: JsonObject, prefix: str) -> JsonObject:
+    def _decode_widget(value):
+        if isinstance(value, str):
+            try:
+                value = json.loads(value, parse_float=Decimal, parse_constant=_reject_constant)
+            except (ValueError, TypeError) as exc:
+                raise MarketplaceSchemaChanged('Повреждён товарный виджет Ozon') from exc
+        if not isinstance(value, dict):
+            raise MarketplaceSchemaChanged('Изменился формат товарного виджета Ozon')
+        return value
+
+    @classmethod
+    def _widget(cls, widget_states: JsonObject, prefix: str) -> JsonObject:
         for key, value in widget_states.items():
-            if not key.startswith(prefix):
-                continue
-            if isinstance(value, dict):
-                return value
-            if isinstance(value, str):
-                try:
-                    decoded = json.loads(value, parse_float=Decimal)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(decoded, dict):
-                    return decoded
+            if key.startswith(prefix):
+                return cls._decode_widget(value)
         return {}
 
     @staticmethod
@@ -101,8 +125,8 @@ class OzonProductParser:
             if not isinstance(value, str):
                 continue
             try:
-                decoded = json.loads(value, parse_float=Decimal)
-            except json.JSONDecodeError:
+                decoded = json.loads(value, parse_float=Decimal, parse_constant=_reject_constant)
+            except ValueError:
                 continue
             if isinstance(decoded, dict) and decoded.get("@type") == "Product":
                 return decoded

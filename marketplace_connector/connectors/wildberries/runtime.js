@@ -6,7 +6,7 @@ async ({id, nmId, timeoutMs}) => {
     let finished;
     const done = new Promise(resolve => { finished = resolve; });
     registry.set(id, {controller, done});
-    const waitNative = promise => {
+    const waitNative = (promise, article = nmId) => {
         // A native Promise can remain unresolved even after its HTTP finished.
         // This watchdog measures only time with no owned queued/active HTTP;
         // it is not an HTTP or queue deadline. Unknown native work is fatal.
@@ -14,7 +14,7 @@ async ({id, nmId, timeoutMs}) => {
         let timer;
         const guard = new Promise((_, reject) => {
             timer = setInterval(() => {
-                const busy = [...network.pending, ...network.active].some(r => r.article === nmId || r.article === 'profile');
+                const busy = [...network.pending, ...network.active].some(r => r.article === article);
                 const now = performance.now();
                 if (busy) idleSince = now;
                 else if (now - idleSince >= timeoutMs) {
@@ -44,12 +44,15 @@ async ({id, nmId, timeoutMs}) => {
         const deadline = performance.now() + timeoutMs;
         while (performance.now() < deadline) {
             try {
-                const xinfo = await w.user.getXinfo();
+                const xinfo = await waitNative(w.user.getXinfo(), 'profile');
                 if (typeof xinfo === 'string' && xinfo.length > 0) {
                     profileReady = true;
                     break;
                 }
-            } catch { /* The host may still be initializing. */ }
+            } catch (error) {
+                if (error?.unsafe) throw error;
+                /* The host may still be initializing. */
+            }
             await new Promise(resolve => setTimeout(resolve, 100));
         }
         if (!profileReady) fail('WB: контекст профиля не готов');
@@ -59,9 +62,9 @@ async ({id, nmId, timeoutMs}) => {
     const validPercent = value => Number.isFinite(value) && value >= 0 && value <= 100;
     const prepareWallet = async w => {
         // getUserGrade is auth-aware and returns null for an anonymous profile.
-        const grade = await w.user.getUserGrade('RUB');
+        const grade = await waitNative(w.user.getUserGrade('RUB'), 'profile');
         if (grade === null) {
-            await w.user.setDiscountForUnAuth();
+            await waitNative(w.user.setDiscountForUnAuth(), 'profile');
             let cache;
             try { cache = JSON.parse(localStorage.getItem('wbx_default_discounts')); } catch {}
             if (!cache || !fresh(cache.expire) || cache.wctype_id !== 1 || !validPercent(cache.discount_value))
@@ -80,15 +83,23 @@ async ({id, nmId, timeoutMs}) => {
         if (!w?.user?.getXinfo || !w.user.getUserGrade || !w.user.setDiscountForUnAuth || !w.xnm?.getXnmProducts)
             fail('Изменилась схема runtime WB');
         // Share profile/wallet initialization, never a whole-product lock.
-        const wallet = globalThis.__priceWatchWbWallet ??= (async () => {
-            const generation = await globalThis.__priceWatchWbWalletStarting();
+        const wallet = globalThis.__priceWatchWbWallet ??= {
+            generation: globalThis.__priceWatchWbWalletStarting(), promise: null
+        };
+        if (!wallet.promise) wallet.promise = (async () => {
+            const generation = await wallet.generation;
             await prepareProfile(w);
             await prepareWallet(w);
             return generation;
-        })().finally(() => {
+        })().finally(async () => {
             if (globalThis.__priceWatchWbWallet === wallet) globalThis.__priceWatchWbWallet = null;
+            await globalThis.__priceWatchWbWalletFinished(await wallet.generation);
         });
-        const walletGeneration = await Promise.race([wallet, new Promise((_, reject) => {
+        // Register ownership before waiting for bootstrap, including its failure
+        // path. Python releases it only after response inspection/abort settles.
+        const walletGeneration = await wallet.generation;
+        await globalThis.__priceWatchWbWalletJoined(id, walletGeneration);
+        await Promise.race([wallet.promise, new Promise((_, reject) => {
             if (controller.signal.aborted) reject(controller.signal.reason);
             else controller.signal.addEventListener('abort', () => reject(controller.signal.reason), {once: true});
         })]);

@@ -125,7 +125,7 @@ class SharedBrowserTests(unittest.IsolatedAsyncioTestCase):
                     with self.assertRaises(asyncio.CancelledError): await tasks[0]
                     release.set()
                     results=await asyncio.gather(*tasks[1:])
-                    self.assertEqual((await ozon_task).external_id, '1604900984')
+                    self.assertEqual((await ozon_task).card.ref.external_id, '1604900984')
                     self.assertIsNot(ozon._transport.page, ali._transport.page)
                     self.assertTrue(all(result.raw_text==RAW for result in results))
                     self.assertTrue(all('synthetic_session=test-only' in r.get('cookie','') for r in requests))

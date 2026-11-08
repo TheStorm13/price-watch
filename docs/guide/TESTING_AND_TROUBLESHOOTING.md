@@ -165,6 +165,20 @@ peak fetch evaluations и retries; не содержит cookies, bodies и за
 Живая проверка Ozon отдельно зависит от работающей сессии; сохранение cookies
 и личных данных в фикстуры не требуется.
 
+Дополнительные регрессии lifecycle и однократного parsing:
+
+```bash
+.venv/bin/python -m unittest tests.test_connector_pipeline tests.test_product_retry tests.test_ozon_aspects tests.test_wildberries_transport tests.test_wildberries_browser -v
+```
+
+Они проверяют строгий raw, Decimal/SKU и время цены, один parse/map на ответ,
+фатальную ошибку Ozon discovery на пути до RunExecutor, отказ от сверхбюджетного
+Retry-After, зависшие WB profile helpers, ограниченное ожидание renderer,
+повтор временного bootstrap, перекрывающиеся поколения wallet и их очистку.
+Synthetic Chrome также проверяет очередь profile HTTP дольше request_timeout:
+очередь не становится таймаутом запроса или bootstrap. Это локальные проверки;
+они не доказывают совместимость с будущими версиями native SDK площадки.
+
 ## Типовые проблемы
 
 | Симптом | Что проверить |

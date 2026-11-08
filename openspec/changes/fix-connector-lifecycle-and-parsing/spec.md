@@ -87,9 +87,9 @@ Repowise live-git review предыдущего изменения указал�
 
 ## Agreed solution
 
-Статус: пользователь запросил план всех исправлений, исключив объединение
-Ozon/Ali. Нижеследующий конкретный дизайн предложен для первого review gate;
-одобрение реализации ещё не получено.
+Статус: план явно согласован пользователем 2026-11-08: «Качественно подойди
+к изменениям. Я даю добро». Объединение Ozon/Ali исключено. Реализация начата;
+приёмка результата остаётся отдельным human gate.
 
 ### Ошибки и retry
 
@@ -180,21 +180,21 @@ BACKLOG не использовать для параллельного task tra
 
 ## Implementation and verification plan
 
-- [ ] Исправить propagation Unsafe в Ozon и конечный budget application retry;
+- [x] Исправить propagation Unsafe в Ozon и конечный budget application retry;
   обновить RateLimited producers, включая сверхбюджетные WB ответы. Проверить
   аспекты, product retry, Retry-After границы и остановку всего run при Unsafe.
-- [ ] Исправить WB bootstrap: watchdog native helpers, контролируемый повтор
+- [x] Исправить WB bootstrap: watchdog native helpers, контролируемый повтор
   временного старта, cleanup и отмена. Проверить synthetic browser зависания
   каждого helper, partial startup, один отменённый waiter и живого соседа,
   HTTP queue wait за пределами HTTP timeout, отсутствие orphan requests.
-- [ ] Заменить WB string matching на typed HTTP errors и добавить безопасное
+- [x] Заменить WB string matching на typed HTTP errors и добавить безопасное
   освобождение wallet generations. Проверить recovery once, persistent refusal,
   текст ошибки, перекрывающиеся поколения, delayed body и очистку после серии.
-- [ ] Перестроить отдельно Ozon/Ali pipeline под однократный parse/map;
+- [x] Перестроить отдельно Ozon/Ali pipeline под однократный parse/map;
   мигрировать response models, client/connector, raw paths, эксперименты и
   test doubles. Удалить validate. Проверить точные Decimal/SKU/цены/время,
   raw byte-for-byte output, schema errors, Ozon variants и ProductNotFound.
-- [ ] Проверить затронутые execution paths: queued CollectionService/RunExecutor
+- [x] Проверить затронутые execution paths: queued CollectionService/RunExecutor
   (desktop/API/worker), `main.py collect`, числовой Ozon JSON/raw CLI без
   DATABASE_URL и оба CLI imports. Запустить релевантные существующие transport,
   browser, mapper/parser, retries, variants и orchestration tests; pool100/101,
@@ -211,11 +211,40 @@ BACKLOG не использовать для параллельного task tra
 
 ## Execution state
 
-Сформирован исследованный план; production code и тесты не изменялись.
-Повторно использованы результаты ревью неизменённого HEAD: 42 passed и четыре
-reproductions. Они подтверждают исходные дефекты, а не исправление.
-Новые проверки реализации не запускались; чекбоксы намеренно открыты.
+План согласован 2026-11-08. Реализованы ошибки/retry, WB bootstrap/поколения,
+структурированные HTTP errors и pipeline Ozon/Ali. Объединения транспортов нет.
 
-Следующий шаг: явное согласование этого плана пользователем, затем
-openspec-apply-change и автономная реализация. Приёмка результата и архивирование
-потребуют отдельного human gate. Другие открытые задачи остаются открытыми.
+Проверено на текущих изменениях:
+- 106 adapter/parser/mapper/CLI/variant tests: OK, 11 DB-зависимых пропусков.
+- 34 WB transport/browser tests: OK, включая зависания каждого profile helper,
+  renderer probe, bootstrap retry, wallet queue вне timeout, pin/release поколений.
+- 27 shared-browser/pipeline/identity/mapper tests: OK. Включены один decode/parse/map
+  на pipeline, строгий raw, ProductNotFound, время цены и Ozon Unsafe до RunExecutor.
+- Отдельная серия execution/browser/experiment: 65 прошли, один старый caller
+  нового response API найден в shared browser test, исправлен и перепроверен
+  в серии 27 выше. Ошибка запуска несуществующего test_aliexpress_mapper исправлена
+  выбором существующих модулей. Фактических сбоев продукта в этих двух случаях нет.
+
+Сохранён standalone parser Ozon для текста с префиксом, покрытый существующим
+тестом. HTTP pipeline использует строгий parse_json: один JSON decode, затем
+parse Mapping; это сохраняет прежний полезный parser contract без ослабления raw.
+Renderer probe разделён между evaluations и кэшируется на 0.5с, чтобы 100 задач
+не создавали 100 одинаковых ping. Закрытие WB страницы ограничено 2с;
+неподтверждённое закрытие даёт UnsafeBrowserTeardown.
+
+DB-проверка: 73 tests OK (postgreSQL integration, Ali/WB integration,
+run reliability, variant tracking, Ozon ownership и Ozon variants) на собственном
+временном кластере `/tmp/pw-connector-fix-db-332v5ouu`; pg_ctl fast stop успешен.
+Рабочая БД и профиль пользователя не использовались.
+Финальная серия после review-коррекций: 61 tests OK (pipeline, retries, Ozon
+aspects, WB transport/browser), включая невалидные aspect rows и потерю renderer
+probe без orphan evaluation. Изменённый shared browser caller проверен в серии 27.
+compileall, node --check обоих WB scripts, импорты обоих CLI без DATABASE_URL,
+git diff --check и strict OpenSpec validation успешны. Отдельных Python lint/type
+checks в проекте не настроено; frontend не менялся. Live-проверок не было.
+Repowise live diff findings рассмотрены: warnings о сложности WB/retry не
+доказывают дефект, критичные переходы покрыты перечисленными проверками;
+устаревшее MCP предложение про frontend lockfile к этому diff не относится.
+Обновлены пять guides и постоянный collection-run-execution contract.
+Остаются коммит/refresh индексов и страниц, затем presentation на приёмку.
+Приёмка и архивирование не состоялись.

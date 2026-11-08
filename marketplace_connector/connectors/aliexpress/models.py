@@ -3,15 +3,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
+from ...domain.models import MarketplaceCard
 from .identity import AliExpressRef
 from ...domain.models import Availability
 
 
 @dataclass(frozen=True)
 class AliExpressResponse:
-    external_id: str
     raw_text: str
-    received_at: datetime
+    card: MarketplaceCard
 
 
 @dataclass(frozen=True)

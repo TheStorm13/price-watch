@@ -49,6 +49,15 @@ def endpoint(url):
     return None
 
 
+ACCESS_STATUSES = frozenset((401, 403, 498))
+
+
+class WildberriesHttpError(MarketplaceUnavailable):
+    def __init__(self, status):
+        self.status = status
+        super().__init__(f'WB: HTTP {status}')
+
+
 @dataclass
 class ArticleState:
     counts: dict = field(default_factory=dict)
@@ -57,6 +66,7 @@ class ArticleState:
     task: asyncio.Task | None = None
     waiters: int = 0
     responses: set = field(default_factory=set)
+    bootstrapping: bool = False
 
 
 class WildberriesTransport:
@@ -79,6 +89,9 @@ class WildberriesTransport:
         self._profile = ArticleState()
         self._profiles = {0: self._profile}
         self._wallet_generation = 0
+        self._wallet_users = {}
+        self._renderer_probe = None
+        self._renderer_checked_at = 0.0
         self._responses = set()
         self._owners = set()
         self._closed = False
@@ -102,8 +115,7 @@ class WildberriesTransport:
             return
         try:
             error = state.errors.get(kind)
-            blocked = isinstance(error, MarketplaceUnavailable) and any(
-                token in str(error) for token in ('HTTP 403', 'HTTP 498', 'HTTP 401'))
+            blocked = isinstance(error, WildberriesHttpError) and error.status in ACCESS_STATUSES
             if self._closed or state.fatal or blocked:
                 await route.abort()
                 return
@@ -124,15 +136,18 @@ class WildberriesTransport:
             state.responses.add(task)
             task.add_done_callback(self._responses.discard)
             task.add_done_callback(state.responses.discard)
+            task.add_done_callback(self._inspection_done)
 
     async def _inspect(self, response, kind, article, state, generation):
         status = response.status
         try:
             if status == 429:
-                state.errors[kind] = RateLimited('WB ограничил частоту запросов', retry_after=retry_after(response.headers.get('retry-after')))
+                wait = retry_after(response.headers.get('retry-after'))
+                state.errors[kind] = RateLimited('WB ограничил частоту запросов', retry_after=wait,
+                                                retry_allowed=wait <= self.max_retry_wait)
                 return
             if status != 200:
-                state.errors[kind] = MarketplaceUnavailable(f'WB: HTTP {status}')
+                state.errors[kind] = WildberriesHttpError(status)
                 if status in (401, 403, 498):
                     if self._generation == 0 and self._recovery is None:
                         # The SDK can already be retrying in the paused HTTP
@@ -140,7 +155,7 @@ class WildberriesTransport:
                         self._recovery = asyncio.create_task(self._recover())
                     elif generation == self._generation and generation > 0:
                         self._failure = MarketplaceUnavailable('WB отклонил доступ после восстановления сессии')
-                        await self.page.close()
+                        await self._stop_page()
                 return
             if 'application/json' not in response.headers.get('content-type', '').lower():
                 raise ValueError('неожиданный тип ответа')
@@ -159,6 +174,8 @@ class WildberriesTransport:
                 if parse_qs(urlsplit(response.url).query).get('curr') != ['rub']:
                     raise ValueError('неподтверждённая валюта')
             state.errors.pop(kind, None)
+        except UnsafeBrowserTeardown as exc:
+            self._failure = state.fatal = exc
         except (ValueError, TypeError, PlaywrightError):
             state.fatal = MarketplaceSchemaChanged(f'WB: неверный JSON {kind}')
 
@@ -169,21 +186,65 @@ class WildberriesTransport:
             responses.difference_update(tasks)
             await asyncio.gather(*tasks)
 
+    def _inspection_done(self, task):
+        if not task.cancelled():
+            task.exception()
+        self._prune_profiles()
+
+    def _prune_profiles(self):
+        # Keep the current profile for late joiners; older generations live only
+        # while bootstrap, article evaluations or response inspections own them.
+        for generation, state in tuple(self._profiles.items()):
+            if (state is not self._profile and not state.bootstrapping
+                    and not state.waiters and not state.responses):
+                self._profiles.pop(generation)
+
     def _new_wallet(self):
         self._wallet_generation += 1
-        self._profile = ArticleState()
+        self._profile = ArticleState(bootstrapping=True)
         self._profiles[self._wallet_generation] = self._profile
+        self._prune_profiles()
         return self._wallet_generation
 
+    def _join_wallet(self, request_id, generation):
+        profile = self._profiles[generation]
+        profile.waiters += 1
+        self._wallet_users[request_id] = generation
+
+    def _finish_wallet(self, generation):
+        profile = self._profiles.get(generation)
+        if profile is not None:
+            profile.bootstrapping = False
+        self._prune_profiles()
+
+    def _release_wallet(self, request_id):
+        generation = self._wallet_users.pop(request_id, None)
+        if generation is not None:
+            self._profiles[generation].waiters -= 1
+        self._prune_profiles()
+
+    @staticmethod
+    def _retrieve_exception(task):
+        if not task.cancelled():
+            task.exception()
+
     async def _start(self):
-        self.page = await self.context.new_page()
-        config = json.dumps(dict(maxInFlight=self.max_in_flight_requests,
-            timeoutMs=self.request_timeout * 1000, maxRetryWaitMs=self.max_retry_wait * 1000))
-        await self.page.expose_function('__priceWatchWbWalletStarting', self._new_wallet)
-        await self.page.add_init_script(f'({NETWORK_SCRIPT})({config})')
-        await self.page.route('**/*', self._route)
-        self.page.on('response', self._response)
-        await self.prepare_page(self.page)
+        try:
+            self.page = await self.context.new_page()
+            config = json.dumps(dict(maxInFlight=self.max_in_flight_requests,
+                timeoutMs=self.request_timeout * 1000, maxRetryWaitMs=self.max_retry_wait * 1000))
+            await self.page.expose_function('__priceWatchWbWalletStarting', self._new_wallet)
+            await self.page.expose_function('__priceWatchWbWalletJoined', self._join_wallet)
+            await self.page.expose_function('__priceWatchWbWalletFinished', self._finish_wallet)
+            await self.page.add_init_script(f'({NETWORK_SCRIPT})({config})')
+            await self.page.route('**/*', self._route)
+            self.page.on('response', self._response)
+            await self.prepare_page(self.page)
+        except BaseException as exc:
+            await self._close_page()
+            if isinstance(exc, (PlaywrightError, TimeoutError)):
+                raise MarketplaceUnavailable('Не удалось открыть сессию WB') from exc
+            raise
 
     async def fetch(self, external_id):
         ref = WildberriesRef.parse(external_id)
@@ -195,8 +256,13 @@ class WildberriesTransport:
                 raise self._failure
             if self._closed:
                 raise MarketplaceUnavailable('Сеанс WB закрыт')
+            if (self._bootstrap is not None and self._bootstrap.done()
+                    and not self._bootstrap.cancelled()
+                    and isinstance(self._bootstrap.exception(), MarketplaceUnavailable)):
+                self._bootstrap = None
             if self._bootstrap is None:
                 self._bootstrap = asyncio.create_task(self._start())
+                self._bootstrap.add_done_callback(self._retrieve_exception)
             await asyncio.shield(self._bootstrap)
             if self._recovery is not None:
                 await asyncio.shield(self._recovery)
@@ -237,7 +303,12 @@ class WildberriesTransport:
                 timeout=(self.request_timeout + 2) * 1000)
             await self.prepare_page(self.page, force=True)
             self._generation += 1
+            # Navigation stopped the previous document's bootstrap. Article
+            # evaluations still pin its profile until their own finally blocks.
+            for profile in self._profiles.values():
+                profile.bootstrapping = False
             self._profile = ArticleState()
+            self._prune_profiles()
         except BaseException as exc:
             self._failure = exc
             raise
@@ -249,18 +320,18 @@ class WildberriesTransport:
                 return await self._evaluate_article(ref, state)
             except UnsafeBrowserTeardown as exc:
                 self._failure = exc
-                with suppress(PlaywrightError):
-                    await self.page.close()
+                with suppress(UnsafeBrowserTeardown):
+                    await self._stop_page()
                 raise
             except MarketplaceUnavailable as exc:
-                access = any(token in str(exc) for token in ('HTTP 403', 'HTTP 498', 'HTTP 401'))
+                access = isinstance(exc, WildberriesHttpError) and exc.status in ACCESS_STATUSES
                 if self._failure:
                     raise self._failure
                 if access and self._generation > 0 and generation == self._generation:
                     self._failure = MarketplaceUnavailable('WB отклонил доступ после восстановления сессии')
                     # Fatal stage failure: stopping its page drains every queued
                     # native helper before any later marketplace can start.
-                    await self.page.close()
+                    await self._stop_page()
                     raise self._failure
                 recovering = self._recovery is not None and (not self._recovery.done() or self._generation != generation)
                 if attempt or not access and not recovering:
@@ -279,13 +350,17 @@ class WildberriesTransport:
         evaluation = asyncio.create_task(self.page.evaluate(RUNTIME_SCRIPT, {
             'id': request_id, 'nmId': ref.nm_id, 'timeoutMs': self.request_timeout * 1000}))
         try:
-            result = await asyncio.shield(evaluation)
+            result = await self._wait_evaluation(evaluation)
             if isinstance(result, dict) and result.get('errorKind') == 'unsafe':
                 raise UnsafeBrowserTeardown('WB: native helper не завершился; сбор остановлен')
             await self._drain(state)
-            profile = self._profiles.get(result.get('walletGeneration') if isinstance(result, dict) else None, self._profile)
-            await self._drain(profile)
+            generation = self._wallet_users.get(request_id)
+            profile = self._profiles[generation] if generation is not None else None
+            if profile is not None:
+                await self._drain(profile)
             for current in (state, profile):
+                if current is None:
+                    continue
                 if current.fatal:
                     raise current.fatal
                 if current.errors:
@@ -308,14 +383,52 @@ class WildberriesTransport:
             raise
         except PlaywrightError as exc:
             raise MarketplaceUnavailable('Ошибка браузера WB') from exc
+        finally:
+            self._release_wallet(request_id)
+
+    async def _wait_evaluation(self, evaluation):
+        # A responsive JS watchdog can measure idle time without charging HTTP
+        # queue wait. If the renderer itself stops responding, fail closed.
+        try:
+            while True:
+                done, _ = await asyncio.wait((evaluation,), timeout=.5)
+                if done:
+                    return evaluation.result()
+                now = asyncio.get_running_loop().time()
+                if now - self._renderer_checked_at < .5:
+                    continue
+                if self._renderer_probe is None or self._renderer_probe.done():
+                    self._renderer_probe = asyncio.create_task(
+                        asyncio.wait_for(self.page.evaluate('true'), timeout=2))
+                    self._renderer_probe.add_done_callback(self._retrieve_exception)
+                await asyncio.shield(self._renderer_probe)
+                self._renderer_checked_at = asyncio.get_running_loop().time()
+        except PlaywrightError as exc:
+            if evaluation.done():
+                raise
+            evaluation.cancel()
+            await asyncio.gather(evaluation, return_exceptions=True)
+            raise UnsafeBrowserTeardown('WB: потерян контроль renderer при активном I/O') from exc
+        except TimeoutError as exc:
+            evaluation.cancel()
+            await asyncio.gather(evaluation, return_exceptions=True)
+            raise UnsafeBrowserTeardown('WB: renderer не отвечает') from exc
+
+    async def _stop_page(self, page=None):
+        try:
+            await asyncio.wait_for((page or self.page).close(), timeout=2)
+        except (PlaywrightError, TimeoutError) as exc:
+            raise UnsafeBrowserTeardown('WB: не подтверждено закрытие страницы') from exc
 
     async def _close_page(self):
         if self.page is not None:
             page, self.page = self.page, None
             page.remove_listener('response', self._response)
-            with suppress(PlaywrightError):
-                await page.close()
+            await self._stop_page(page)
             await self._drain()
+        for profile in self._profiles.values():
+            profile.bootstrapping = False
+        self._prune_profiles()
 
     async def close(self):
         self._closed = True
@@ -323,8 +436,10 @@ class WildberriesTransport:
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-        for shared in (self._bootstrap, self._recovery):
+        for shared in (self._bootstrap, self._recovery, self._renderer_probe):
             if shared is not None:
                 shared.cancel()
                 await asyncio.gather(shared, return_exceptions=True)
         await self._close_page()
+        self._profiles.clear()
+        self._wallet_users.clear()

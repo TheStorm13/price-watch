@@ -72,7 +72,8 @@ class FixtureClient:
             raw['widgetStates']['webGallery-1'] = {'images': [f'https://img.test/{sku}-{self.image_revision}.jpg']}
         if self.incomplete:
             raw['widgetStates']['webAspects-1']['nextPage'] = '/unrecognised-continuation'
-        return OzonResponse(sku, json.dumps(raw), datetime.now(timezone.utc))
+        return OzonResponse(json.dumps(raw), OzonMapper.to_card(OzonProductParser.parse(
+            raw, expected_external_id=sku, collected_at=datetime.now(timezone.utc))))
 
     async def fetch_raw_text_async(self, sku):
         return (await self.fetch_product_async(sku)).raw_text

@@ -11,7 +11,6 @@ from sqlalchemy.engine import make_url
 from marketplace_connector import ConnectorRegistry
 from marketplace_connector.connectors.aliexpress.client import AsyncAliExpressClient
 from marketplace_connector.connectors.aliexpress.connector import AliExpressConnector
-from marketplace_connector.connectors.aliexpress.models import AliExpressResponse
 from marketplace_connector.connectors.aliexpress.identity import AliExpressRef
 from price_watch.api import create_app
 from price_watch.bootstrap import create_postgres_stores

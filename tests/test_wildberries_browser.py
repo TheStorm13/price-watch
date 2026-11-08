@@ -418,3 +418,99 @@ class WildberriesBrowserTests(unittest.IsolatedAsyncioTestCase):
         card = await self.card()
         self.assertIsNone(card.image_url)
         self.assertEqual(str(card.price), '1024.00')
+
+    async def test_unsettled_profile_helpers_fail_closed_for_every_waiter(self):
+        from marketplace_connector.domain.errors import UnsafeBrowserTeardown
+        self.client._transport.request_timeout = .1
+        for helper in ('getXinfo', 'getUserGrade', 'setDiscountForUnAuth'):
+            with self.subTest(helper=helper):
+                # Each subcase owns a fresh page but the same isolated Chrome.
+                if self.client._transport._failure:
+                    await self.client._transport.close()
+                    from marketplace_connector.connectors.wildberries.transport import WildberriesTransport
+                    self.client._transport = WildberriesTransport(self.session.context,
+                        self.client._prepare_storefront, request_timeout=.1)
+                self.home = HOME
+                self.home = self.home.replace('</script>',
+                    f"window.wb.user.{helper}=()=>new Promise(()=>{{}});</script>")
+                tasks = [asyncio.create_task(self.client.fetch_product_async(str(i))) for i in (1001, 1002)]
+                results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), 5)
+                self.assertTrue(all(isinstance(r, UnsafeBrowserTeardown) for r in results), results)
+                self.assertTrue(self.client._transport.page.is_closed())
+                self.assertEqual(self.client._transport._wallet_users, {})
+                requests = dict(self.counts)
+                await asyncio.sleep(.15)
+                self.assertEqual(self.counts, requests)
+
+    async def test_profile_generations_do_not_accumulate_in_sequential_collection(self):
+        for _ in range(12):
+            self.assertEqual(str((await self.card()).price), '1024.00')
+            self.assertEqual(self.client._transport._wallet_users, {})
+            self.assertLessEqual(len(self.client._transport._profiles), 1)
+
+    async def test_old_profile_failure_is_not_replaced_by_new_profile(self):
+        from urllib.parse import parse_qs, urlsplit
+        entered, release = asyncio.Event(), asyncio.Event()
+        original = self.route
+        async def route(request):
+            if '/cards/v4/detail' not in request.request.url:
+                await original(request)
+                return
+            article = parse_qs(urlsplit(request.request.url).query)['nm'][0]
+            if article == '1001':
+                entered.set()
+                await release.wait()
+            payload = dict(self.payload, id=int(article))
+            await request.fulfill(content_type='application/json', body=json.dumps({'products': [payload]}))
+        await self.session.context.unroute('https://www.wildberries.ru/**', self.route)
+        await self.session.context.route('https://www.wildberries.ru/**', route)
+        first = asyncio.create_task(self.client.fetch_product_async('1001'))
+        try:
+            await asyncio.wait_for(entered.wait(), 5)
+            self.assertEqual(len(self.client._transport._profiles), 1)
+            old = self.client._transport._profile
+            old.fatal = MarketplaceSchemaChanged('old profile inspection failed')
+            second = await self.client.fetch_product_async('1002')
+            self.assertEqual(second['product']['id'], '1002')
+            self.assertEqual(len(self.client._transport._profiles), 2)
+            release.set()
+            with self.assertRaisesRegex(MarketplaceSchemaChanged, 'old profile'):
+                await first
+            self.assertEqual(len(self.client._transport._profiles), 1)
+        finally:
+            release.set()
+            first.cancel()
+            await asyncio.gather(first, return_exceptions=True)
+
+    async def test_wallet_http_queue_wait_does_not_expire_bootstrap_watchdog(self):
+        from urllib.parse import parse_qs, urlsplit
+        transport = self.client._transport
+        transport.max_in_flight_requests = 1
+        transport.request_timeout = .5
+        first_entered = asyncio.Event()
+        original = self.route
+        async def route(request):
+            if '/cards/v4/detail' not in request.request.url:
+                await original(request)
+                return
+            article = parse_qs(urlsplit(request.request.url).query)['nm'][0]
+            first_entered.set()
+            await asyncio.sleep(.3)
+            payload = dict(self.payload, id=int(article))
+            await request.fulfill(content_type='application/json', body=json.dumps({'products': [payload]}))
+        await self.session.context.unroute('https://www.wildberries.ru/**', self.route)
+        await self.session.context.route('https://www.wildberries.ru/**', route)
+        tasks = [asyncio.create_task(self.client.fetch_product_async('1001'))]
+        try:
+            await asyncio.wait_for(first_entered.wait(), 5)
+            tasks.append(asyncio.create_task(self.client.fetch_product_async('1002')))
+            await transport.page.wait_for_function("[...__priceWatchWbNetwork.pending].some(r=>r.article==='1002')")
+            await transport.page.evaluate("localStorage.removeItem('wbx_default_discounts')")
+            tasks.append(asyncio.create_task(self.client.fetch_product_async('1003')))
+            results = await asyncio.wait_for(asyncio.gather(*tasks), 8)
+            self.assertEqual([r['product']['id'] for r in results], ['1001', '1002', '1003'])
+            self.assertEqual(self.counts['grade'], 2)
+            self.assertFalse(transport.page.is_closed())
+        finally:
+            for task in tasks: task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)

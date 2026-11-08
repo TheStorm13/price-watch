@@ -10,6 +10,8 @@ from io import StringIO
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from price_watch.cli import build_parser
+from marketplace_connector.connectors.ozon.mapper import OzonMapper
+from marketplace_connector.connectors.ozon.parser import OzonProductParser
 
 
 class PriceWatchCliTests(unittest.TestCase):
@@ -95,7 +97,8 @@ class NumericRetryTests(unittest.IsolatedAsyncioTestCase):
                 text = product_text()
                 client.fetch_raw_text_async = AsyncMock(side_effect=[MarketplaceUnavailable('temporary'), text])
                 client.fetch_product_async = AsyncMock(side_effect=[MarketplaceUnavailable('temporary'),
-                    OzonResponse('123', text, datetime.now(timezone.utc))])
+                    OzonResponse(text, OzonMapper.to_card(
+                        OzonProductParser.parse(text, expected_external_id='123')))])
                 args = numeric_parser().parse_args(['123'] + (['--raw'] if raw else []))
                 output = StringIO()
                 with patch.dict(os.environ, {}, clear=True), redirect_stdout(output), patch(

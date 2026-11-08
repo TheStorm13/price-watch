@@ -6,11 +6,9 @@ The dispatch policy is local: it is not a published AliExpress rate limit.
 from __future__ import annotations
 
 import asyncio
-import json
 import math
 from contextlib import suppress
 from datetime import datetime, timezone
-from decimal import Decimal
 from email.utils import parsedate_to_datetime
 from urllib.parse import urlencode, urlsplit
 from uuid import uuid4
@@ -18,11 +16,9 @@ from uuid import uuid4
 from playwright.async_api import Error as PlaywrightError
 
 from ...domain.errors import MarketplaceSchemaChanged, MarketplaceUnavailable, RateLimited
-from .mapper import AliExpressMapper
 from .identity import AliExpressRef
 from ...application.request_pool import RequestPool
 from ...domain.errors import UnsafeBrowserTeardown
-from .parser import AliExpressProductParser
 from ...application.collection_policy import MAX_IN_FLIGHT_REQUESTS
 
 
@@ -79,20 +75,6 @@ def retry_after_seconds(value, *, now=None, fallback=1.0):
         return max(0.0, (date - (now or datetime.now(timezone.utc))).total_seconds())
     except (ValueError, TypeError, OverflowError):
         return fallback
-
-
-def _reject_non_json_constant(_value):
-    raise ValueError("Non-finite number is not a JSON value")
-
-
-def validate_product_text(raw_text, article):
-    try:
-        payload = json.loads(raw_text, parse_float=Decimal, parse_constant=_reject_non_json_constant)
-    except (ValueError, TypeError) as exc:
-        raise MarketplaceSchemaChanged("AliExpress вернул некорректный JSON") from exc
-    data = AliExpressProductParser.parse(payload, expected_external_id=article)
-    AliExpressMapper.to_card(data)
-    return raw_text
 
 
 class AliExpressJsonTransport:
@@ -165,7 +147,7 @@ class AliExpressJsonTransport:
                 else:
                     error = self._response_error(result)
                     if error is None:
-                        return self._validated_text(result, article)
+                        return self._response_text(result)
                 if attempt + 1 == self.max_attempts:
                     raise error
                 if result.get("status") == 429 or recovering:
@@ -184,7 +166,7 @@ class AliExpressJsonTransport:
         status = result.get("status")
         if status == 429:
             remaining = max(0, self._cooldown - asyncio.get_running_loop().time())
-            return RateLimited("AliExpress ограничил частоту запросов", retry_after=remaining)
+            return RateLimited("AliExpress ограничил частоту запросов", retry_after=remaining, retry_allowed=remaining <= self.max_retry_wait)
         if isinstance(status, int) and 500 <= status < 600:
             return MarketplaceUnavailable(f"AliExpress временно недоступен (HTTP {status})")
         if status != 200:
@@ -192,11 +174,11 @@ class AliExpressJsonTransport:
         return None
 
     @staticmethod
-    def _validated_text(result, article):
+    def _response_text(result):
         content_type = result.get("contentType", "").lower().split(";", 1)[0].strip()
         if content_type != "application/json" and not content_type.endswith("+json"):
             raise MarketplaceSchemaChanged("AliExpress вернул неожиданный тип ответа вместо JSON")
-        return validate_product_text(result.get("text"), article)
+        return result.get("text")
 
     @staticmethod
     def _access_error():
@@ -215,7 +197,7 @@ class AliExpressJsonTransport:
                         raise self._failure
                     remaining = max(0.0, self._cooldown - asyncio.get_running_loop().time())
                     if remaining > self.max_retry_wait:
-                        raise RateLimited("AliExpress требует длительную паузу перед запросами", retry_after=remaining)
+                        raise RateLimited("AliExpress требует длительную паузу перед запросами", retry_after=remaining, retry_allowed=remaining <= self.max_retry_wait)
                     if self._recovery is not None and not self._recovery.done():
                         await self._condition.wait()
                     elif remaining:

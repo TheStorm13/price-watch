@@ -9,6 +9,7 @@ from ..domain.errors import ProductNotFound, RateLimited, UnsafeBrowserTeardown
 
 logger = logging.getLogger(__name__)
 T = TypeVar('T')
+MAX_RETRY_WAIT = 30.0
 
 
 async def fetch_with_retry(fetch: Callable[[], Awaitable[T]]) -> T:
@@ -18,9 +19,11 @@ async def fetch_with_retry(fetch: Callable[[], Awaitable[T]]) -> T:
         raise  # Neither a confirmed absence nor unsafe teardown allows another fetch.
     except Exception as first:
         delay = 1.0
-        if isinstance(first, RateLimited) and first.retry_after is not None:
+        if isinstance(first, RateLimited):
             wait = first.retry_after
-            if not math.isnan(wait):
+            if not first.retry_allowed or (wait is not None and wait > MAX_RETRY_WAIT):
+                raise
+            if wait is not None and not math.isnan(wait):
                 delay = max(delay, wait)
         logger.warning('Получение товара не удалось; повтор через %s с', delay, exc_info=True)
         await sleep(delay)

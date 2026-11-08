@@ -211,8 +211,11 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
         for value, error in cases:
             with self.subTest(value=value):
                 transport, page, _, prepare = await self.make_transport(AsyncMock(return_value=value))
-                with self.assertRaises(error):
-                    await transport.fetch('1')
+                client = AsyncOzonClient('/tmp/unused-profile')
+                @asynccontextmanager
+                async def session(): yield transport
+                with patch.object(client, '_request_session', session), self.assertRaises(error):
+                    await client.fetch_raw_text_async('1')
                 self.assertEqual(len(page.calls), 1)
                 self.assertEqual(prepare.await_count, 1)
 
@@ -406,7 +409,7 @@ class ClientSessionTests(unittest.IsolatedAsyncioTestCase):
             with (patch('marketplace_connector.browser.session.async_playwright', playwright),
                   patch.object(client.session, '_launch_async_context', side_effect=launch),
                   patch.object(client, '_is_antibot_page_async', AsyncMock(return_value=False))):
-                tasks = [asyncio.create_task(client.fetch_raw_text_async(str(i), validate=False)) for i in range(101)]
+                tasks = [asyncio.create_task(client.fetch_raw_text_async(str(i))) for i in range(101)]
                 await asyncio.wait_for(entered.wait(), 1)
                 self.assertEqual(len(launches), 1)
                 self.assertEqual(len(pages), 1)

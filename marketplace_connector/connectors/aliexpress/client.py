@@ -16,6 +16,8 @@ from ...domain.errors import MarketplaceUnavailable
 from ...application.collection_policy import MAX_IN_FLIGHT_REQUESTS
 from .json_transport import HOME_URL, AliExpressJsonTransport
 from .models import AliExpressResponse
+from .parser import AliExpressProductParser
+from .mapper import AliExpressMapper
 from .identity import AliExpressRef
 from ...ports.challenge import ChallengeHandler, RejectChallengeHandler
 from ...browser.session import ChromeSession
@@ -134,17 +136,14 @@ class AsyncAliExpressClient:
 
     async def fetch_product_async(self, external_id: str) -> AliExpressResponse:
         article = self.normalize_product_id(external_id)
-        raw_text = await self.fetch_raw_text_async(article)
-        return AliExpressResponse(
-            external_id=article,
-            raw_text=raw_text,
-            received_at=datetime.now(timezone.utc),
-        )
+        async with self._request_session() as transport:
+            raw_text = await transport.fetch(article)
+            received_at = datetime.now(timezone.utc)
+            data = AliExpressProductParser.parse(raw_text, expected_external_id=article, collected_at=received_at)
+            return AliExpressResponse(raw_text, AliExpressMapper.to_card(data))
 
     async def fetch_raw_text_async(self, external_id: str) -> str:
-        article = self.normalize_product_id(external_id)
-        async with self._request_session() as transport:
-            return await transport.fetch(article)
+        return (await self.fetch_product_async(external_id)).raw_text
 
     async def _is_antibot_page_async(self, page) -> bool:
         parts = []

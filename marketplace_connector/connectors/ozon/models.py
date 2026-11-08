@@ -3,15 +3,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
+from ...domain.models import MarketplaceCard
 
 
 @dataclass(frozen=True)
 class OzonResponse:
-    external_id: str
     raw_text: str
-    received_at: datetime
-    aspects: dict[str, Any] | None = None
-    discovery_error: str | None = None
+    card: MarketplaceCard
 
 
 @dataclass(frozen=True)

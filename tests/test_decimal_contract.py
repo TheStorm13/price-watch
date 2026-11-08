@@ -96,7 +96,9 @@ class DecimalContractTests(unittest.TestCase):
                                      Availability.IN_STOCK, price=Decimal(response['amount']))
         class Client:
             async def fetch_product_async(self, external_id):
-                return OzonResponse(external_id, '{"widgetStates":{"webProductHeading-1":{"title":"Ozon"},"webPrice-1":{"cardPrice":"12.34","isAvailable":true}},"pageInfo":{"analyticsInfo":{"sku":"1"}}}', datetime.now(timezone.utc))
+                raw = '{"widgetStates":{"webProductHeading-1":{"title":"Ozon"},"webPrice-1":{"cardPrice":"12.34","isAvailable":true}},"pageInfo":{"analyticsInfo":{"sku":"1"}}}'
+                return OzonResponse(raw, OzonMapper.to_card(OzonProductParser.parse(raw,
+                    expected_external_id=external_id, collected_at=datetime.now(timezone.utc))))
             @asynccontextmanager
             async def collection_session(self): yield
         async def check():

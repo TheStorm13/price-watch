@@ -2,7 +2,7 @@
 from copy import deepcopy
 from urllib.parse import parse_qs, urlsplit
 
-from ...domain.errors import MarketplaceSchemaChanged
+from ...domain.errors import MarketplaceSchemaChanged, UnsafeBrowserTeardown
 from .mapper import OzonMapper
 from .parser import OzonProductParser
 
@@ -79,7 +79,10 @@ async def complete_aspects(aspects, article, fetch_modal):
     result = deepcopy(aspects)
     errors = []
     fetched = {}
-    for aspect in result.get('aspects', []):
+    rows = result.get('aspects', [])
+    if not isinstance(rows, list) or any(not isinstance(aspect, dict) for aspect in rows):
+        raise MarketplaceSchemaChanged('Некорректные аспекты Ozon')
+    for aspect in rows:
         info = aspect.get('aspectModalInfo')
         if info is None:
             continue
@@ -92,6 +95,8 @@ async def complete_aspects(aspects, article, fetch_modal):
             if link not in fetched:
                 try:
                     fetched[link] = modal_aspects(await fetch_modal(link))
+                except UnsafeBrowserTeardown:
+                    raise
                 except Exception as exc:
                     fetched[link] = exc
             modal = fetched[link]
@@ -99,6 +104,8 @@ async def complete_aspects(aspects, article, fetch_modal):
                 raise modal
             aspect['variants'] = _merged_variants(aspect, modal, count)
             aspect.pop('aspectModalInfo')
+        except UnsafeBrowserTeardown:
+            raise
         except Exception as exc:
             errors.append(f"Ozon {article}, аспект {aspect.get('aspectKey')}: {type(exc).__name__}: {exc}")
     return result, '; '.join(errors) or None
