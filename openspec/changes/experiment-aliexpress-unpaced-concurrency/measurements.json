@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "status": "stopped",
+  "created_at": "2026-11-08T12:26:30.592312+00:00",
+  "configuration": {
+    "concurrency": null,
+    "starts_per_second": null,
+    "size": 40,
+    "browser_mode": "visible",
+    "batches": 1
+  },
+  "versions": {
+    "python": "3.14.9",
+    "playwright": "1.63.0",
+    "git_commit": "6a9cda60752abb7de7945ce99152ecb6a5d9dca1",
+    "working_tree_dirty": false,
+    "chrome": "156.0.8078.79"
+  },
+  "articles": [
+    "1005009868651525:12000061135122688",
+    "1005009868651525:12000061135122690",
+    "1005009868651525:12000061135122692"
+  ],
+  "batch": null,
+  "discovery": {
+    "performed": true,
+    "errors": [],
+    "availability": {
+      "1005009868651525:12000061135122688": "in_stock",
+      "1005009868651525:12000061135122690": "in_stock",
+      "1005009868651525:12000061135122692": "in_stock"
+    },
+    "seed_product_ids": [
+      "1005009868651525"
+    ],
+    "requests": [
+      {
+        "article": "1005009868651525",
+        "attempt": 1,
+        "start_seconds": 1.278136168999481,
+        "gate_seconds": 1.0270003258483484e-05,
+        "status": 200,
+        "error": null,
+        "access_signal": null,
+        "network_seconds": 0.4824893279983371
+      }
+    ],
+    "recoveries": 0,
+    "seconds": 1.9112885649992677
+  },
+  "measurement_scope": "productData fetch evaluations only; excludes discovery, navigation and browser background requests",
+  "limitations": "One finite batch, no control; browser scheduling may queue fetches; SKU count is not distinct product count; no general stability claim.",
+  "stop_reason": "insufficient_dataset",
+  "phase": "discovery",
+  "error_type": "ExperimentStopped"
+}
