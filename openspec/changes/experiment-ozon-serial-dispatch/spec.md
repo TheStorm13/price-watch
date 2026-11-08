@@ -51,10 +51,13 @@ Report order/cache/session bias and six-run sample limitations.
 
 Accept explicit SKU list or discover up to 40 from historical seeds and returned
 variants before freezing the list. If fewer than 30 can be found, stop and report
-instead of silently using a smaller comparison. Use a dedicated /tmp Chrome profile
-by default; no reuse/closing of user's running profile. Synthetic tests use fake
-pages and require neither Chrome nor network nor DB. Live execution may need
-sandbox approval; network/CAPTCHA blockers require a user decision.
+instead of silently using a smaller comparison. User explicitly corrected profile
+policy on 2026-11-08: use the existing stable Price Watch Chrome profile, not a new
+temporary profile. Default follows XDG_DATA_HOME, normally
+~/.local/share/price-watch/chrome-profile; reject missing profile directories.
+Before launching, check that no other Chrome/collector owns it. Do not reset or
+export cookies/session data. Synthetic tests use fake pages and require neither
+Chrome nor network nor DB. Network/CAPTCHA blockers require a user decision.
 
 Update docs/guide/TESTING_AND_TROUBLESHOOTING.md with experiment commands,
 metric definitions and limits. Persistent application contracts remain unchanged
@@ -81,4 +84,8 @@ passed. No live traffic yet. Production defaults and other marketplaces unchange
 queued/direct/numeric behavior checked by existing relevant tests, not live demo UI.
 Working tree initially clean. User acceptance not requested or received. Next:
 commit the verified harness and refresh knowledge, then
-run live discovery/comparison with a dedicated /tmp profile and preserve results.
+run live discovery/comparison with the existing Price Watch profile and preserve results.
+Harness implementation committed as bf80cc9 before the user's profile correction;
+post-commit knowledge refresh is pending. Documentation and experiment defaults now
+follow the user's explicit existing-profile instruction. No owner process was found
+for ~/.local/share/price-watch/chrome-profile during the preflight check.

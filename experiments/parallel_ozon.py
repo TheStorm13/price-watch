@@ -5,12 +5,12 @@ import argparse
 import asyncio
 import json
 import math
+import os
 import time
 from collections import Counter
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from pathlib import Path
-from tempfile import mkdtemp
 from unittest.mock import patch
 
 from marketplace_connector.application.retry import fetch_with_retry
@@ -270,7 +270,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('articles', nargs='*', help='30–50 unique Ozon SKU IDs; otherwise discover from seeds')
     parser.add_argument('--articles-file', type=Path, help='JSON array of fixed SKU IDs')
-    parser.add_argument('--profile-dir', type=Path, help='Dedicated experiment Chrome profile')
+    default_profile = Path(os.environ.get('XDG_DATA_HOME') or Path.home() / '.local/share') / 'price-watch/chrome-profile'
+    parser.add_argument('--profile-dir', type=Path, default=default_profile,
+                        help='Existing Price Watch Chrome profile (default: XDG_DATA_HOME/price-watch/chrome-profile)')
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--size', type=int, default=40)
     parser.add_argument('--pause', type=float, default=30)
@@ -287,7 +289,9 @@ def main():
     args.articles = list(dict.fromkeys(AsyncOzonClient.normalize_product_id(a) for a in args.articles))
     if args.articles and not 30 <= len(args.articles) <= 50:
         parser.error('Provide 30–50 unique SKU IDs')
-    args.profile_dir = args.profile_dir or Path(mkdtemp(prefix='price-watch-ozon-experiment-'))
+    args.profile_dir = args.profile_dir.expanduser().resolve()
+    if not args.profile_dir.is_dir():
+        parser.error('Use an existing Price Watch Chrome profile; do not create a fresh experimental profile')
     report = asyncio.run(run(args))
     print(json.dumps({'status': report['status'], 'stop_reason': report.get('stop_reason'), 'output': str(args.output)}))
     return 0 if report['status'] == 'complete' else 1
