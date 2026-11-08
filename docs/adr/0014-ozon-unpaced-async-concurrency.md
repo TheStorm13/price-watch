@@ -1,6 +1,6 @@
 # ADR 0014: Асинхронный сбор Ozon без планового лимита частоты
 
-- Статус: Accepted (design), выбран пользователем 2026-11-08; пользователь также выбрал фиксированный N=8 и поручил внедрение. Приёмка реализации остаётся отдельным этапом.
+- Статус: Accepted (design), выбран пользователем 2026-11-08; фиксированный N=8 внедрён в 31f6a1d, реализация принята пользователем 2026-11-08.
 - Дата: 2026-11-08
 - Уточняет [ADR 0006](0006-ozon-session-json-transport.md): заменяет выбранную политику фиксированных 5 стартов/с. Исторический ADR не переписывается.
 
@@ -34,9 +34,9 @@ B исключён пользователем из следующего иссл
 Нет основания объявлять снятие планового лимита универсально более надёжным.
 Headless-попытка получила отказ доступа и не смешивается с видимыми измерениями.
 
-Доказательства и история реализации: [результат эксперимента](../../openspec/changes/experiment-ozon-serial-dispatch/spec.md),
-[сырые A/B/C-метрики](../../openspec/changes/experiment-ozon-serial-dispatch/measurements.json),
-[сырые C/D-метрики](../../openspec/changes/experiment-ozon-serial-dispatch/measurements-cd.json).
+Доказательства и история реализации: [результат эксперимента](../../openspec/changes/archive/2026-11-08-experiment-ozon-serial-dispatch/spec.md),
+[сырые A/B/C-метрики](../../openspec/changes/archive/2026-11-08-experiment-ozon-serial-dispatch/measurements.json),
+[сырые C/D-метрики](../../openspec/changes/archive/2026-11-08-experiment-ozon-serial-dispatch/measurements-cd.json).
 
 ## Внедрение
 
@@ -60,5 +60,5 @@ Ozon плюс пять остальных; собственные огранич
 Первый N5 пересекался с запуском локальных тестов. Это неполная для сравнения
 серия и не доказательство долговременной устойчивости; N12 быстрее на успешных
 коротких пакетах, а N8 выбран пользователем для внедрения.
-[Полный отчёт](../../openspec/changes/experiment-ozon-serial-dispatch/measurements-fixed-n.json)
+[Полный отчёт](../../openspec/changes/archive/2026-11-08-experiment-ozon-serial-dispatch/measurements-fixed-n.json)
 сохранён вместе с ошибками. CPU/RSS измерены приближённо по группе процессов Chrome.
