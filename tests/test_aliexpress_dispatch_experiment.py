@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from experiments.parallel_aliexpress import (
     ExperimentClient, ExperimentStopped, MeasuredTransport, Probe, access_signal,
-    measured_client, run, run_batch, validate_articles,
+    discover, measured_client, run, run_batch, validate_articles,
 )
 from marketplace_connector.connectors.aliexpress.client import AsyncAliExpressClient
 from marketplace_connector.connectors.aliexpress.json_transport import AliExpressJsonTransport
@@ -282,6 +282,25 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
             session.assert_not_called()
             self.assertEqual(report['stop_reason'], 'profile_locked')
             self.assertTrue(lock.is_symlink())
+
+    async def test_supplied_seeds_discover_forty_distinct_skus_across_products(self):
+        seeds = ['1005007620335204', '1005008127103020', '1005003918845337', '1005013177457618']
+        def product(product_id):
+            return SimpleNamespace(variants=[SimpleNamespace(
+                ref=SimpleNamespace(external_id=f'{product_id}:{10000+i}'),
+                availability=SimpleNamespace(value='in_stock')) for i in range(12)])
+        connector = SimpleNamespace(get_product=AsyncMock(side_effect=product))
+        page = MagicMock(evaluate=AsyncMock())
+        client = SimpleNamespace(_transport=SimpleNamespace(page=page))
+        report = {'articles': [], 'discovery': {'errors': [], 'availability': {}}}
+        articles = await discover(client, connector, Probe(), report, seeds)
+        self.assertEqual(len(articles), 40)
+        self.assertEqual(len(set(articles)), 40)
+        self.assertEqual([call.args[0] for call in connector.get_product.await_args_list], seeds)
+        self.assertEqual({seed: sum(ref.startswith(seed+':') for ref in articles) for seed in seeds},
+                         {seed: 10 for seed in seeds})
+        self.assertEqual(report['articles'], articles)
+        page.evaluate.assert_not_awaited()
 
     def test_frozen_dataset_requires_unique_exact_skus(self):
         self.assertEqual(validate_articles(ARTICLES), ARTICLES)

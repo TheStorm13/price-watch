@@ -213,16 +213,19 @@ async def run_batch(connector, articles, probe):
             'requests': requests, 'results': results, 'stop_reason': probe.reason}
 
 
-async def discover(client, connector, probe, report):
+async def discover(client, connector, probe, report, seed_product_ids=None):
     page = client._transport.page
-    # Only public product IDs survive extraction; no URLs, tokens, or page text are stored.
-    product_ids = await page.evaluate('''() => [...new Set([...document.querySelectorAll('a[href]')]
-        .map(a => { try { const u = new URL(a.href); return u.hostname === 'aliexpress.ru'
-            ? (u.pathname.match(/^\\/item\\/(\\d+)\\.html/) || [])[1] : null; }
-            catch { return null; } }).filter(Boolean))]''')
-    seeds = list(dict.fromkeys([SEED, *product_ids]))
-    articles = []
+    if seed_product_ids:
+        seeds = list(dict.fromkeys(seed_product_ids))
+    else:
+        # Only public product IDs survive extraction; URLs/tokens are not stored.
+        product_ids = await page.evaluate('''() => [...new Set([...document.querySelectorAll('a[href]')]
+            .map(a => { try { const u = new URL(a.href); return u.hostname === 'aliexpress.ru'
+                ? (u.pathname.match(/^\\/item\\/(\\d+)\\.html/) || [])[1] : null; }
+                catch { return null; } }).filter(Boolean))]''')
+        seeds = list(dict.fromkeys([SEED, *product_ids]))
     report['discovery']['seed_product_ids'] = seeds
+    candidates = []
     for product_id in seeds:
         probe.check()
         try:
@@ -231,18 +234,33 @@ async def discover(client, connector, probe, report):
             raise
         except Exception as exc:
             report['discovery']['errors'].append({'product_id': product_id, 'error_type': type(exc).__name__})
-            if client._transport.page.is_closed():
+            if page.is_closed():
                 probe.stop('page_closed')
                 probe.check()
             continue
-        for variant in card.variants:
-            ref = variant.ref.external_id
-            if ref not in articles:
-                articles.append(ref)
-                report['articles'] = list(articles)
-                report['discovery']['availability'][ref] = variant.availability.value
+        candidates.append(list(card.variants))
+        report['discovery'].setdefault('sku_counts', {})[product_id] = len(card.variants)
+        # Round-robin keeps supplied products represented when one has many SKUs.
+        articles = []
+        availability = {}
+        for index in range(max(map(len, candidates), default=0)):
+            for variants in candidates:
+                if index < len(variants):
+                    variant = variants[index]
+                    ref = variant.ref.external_id
+                    if ref not in articles:
+                        articles.append(ref)
+                        availability[ref] = variant.availability.value
+                    if len(articles) == 40:
+                        break
             if len(articles) == 40:
-                return articles
+                break
+        report['articles'] = articles
+        report['discovery']['availability'] = availability
+        if not seed_product_ids and len(articles) == 40:
+            return articles
+    if len(report['articles']) == 40:
+        return report['articles']
     probe.stop('insufficient_dataset')
     probe.check()
 
@@ -292,7 +310,7 @@ async def run(args):
             if not report['articles']:
                 phase = 'discovery'
                 async with measured_client(args.profile_dir, session, probe) as (client, connector):
-                    report['articles'] = await discover(client, connector, probe, report)
+                    report['articles'] = await discover(client, connector, probe, report, getattr(args, 'seed_product_ids', None))
             report['discovery'].update(requests=list(probe.requests), recoveries=probe.recoveries,
                                        seconds=time.perf_counter() - probe.started)
             validate_articles(report['articles'])
@@ -328,12 +346,19 @@ async def run(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile-dir', type=Path, default=PROFILE, help='Existing stable Price Watch Chrome profile')
+    parser.add_argument('--seed-product-ids', nargs='+', help='Public product IDs for separate SKU discovery')
     parser.add_argument('--articles-file', type=Path, help='JSON array of exactly 40 fixed productId:skuId pairs')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     args.profile_dir = args.profile_dir.expanduser().resolve()
     if not args.profile_dir.is_dir():
         parser.error('Use the existing stable profile; do not create a new experimental profile')
+    if args.articles_file and args.seed_product_ids:
+        parser.error('Use --articles-file or --seed-product-ids, not both')
+    if args.seed_product_ids:
+        for product_id in args.seed_product_ids:
+            if not product_id.isascii() or not product_id.isdigit():
+                parser.error('--seed-product-ids requires numeric product IDs')
     args.articles = validate_articles(json.loads(args.articles_file.read_text())) if args.articles_file else []
     report = asyncio.run(run(args))
     print(json.dumps({'status': report['status'], 'stop_reason': report.get('stop_reason'),
