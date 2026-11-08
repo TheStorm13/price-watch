@@ -93,13 +93,21 @@ def validate_product_text(raw_text, article):
 
 
 class AliExpressJsonTransport:
+    """None/None disables active-request and start-rate limits; defaults stay paced."""
+
     def __init__(self, context, prepare_page, *, concurrency=1, starts_per_second=5,
                  request_timeout=30, max_attempts=3, max_retry_wait=30):
+        if concurrency is None and starts_per_second is not None:
+            raise ValueError("Без concurrency требуется starts_per_second=None")
         for name, value in (("concurrency", concurrency), ("max_attempts", max_attempts)):
+            if name == "concurrency" and value is None:
+                continue
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ValueError(f"{name} должен быть положительным целым")
         for name, value in (("starts_per_second", starts_per_second),
                             ("request_timeout", request_timeout), ("max_retry_wait", max_retry_wait)):
+            if name == "starts_per_second" and value is None:
+                continue
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} должен быть конечным положительным числом")
         self.context = context
@@ -115,7 +123,7 @@ class AliExpressJsonTransport:
         self._generation = 0
         self._condition = asyncio.Condition()
         self._active = 0
-        self._tokens = float(concurrency)
+        self._tokens = float(concurrency) if starts_per_second is not None else 0.0
         self._updated = 0.0
         self._cooldown = 0.0
         self._failure = None
@@ -216,18 +224,21 @@ class AliExpressJsonTransport:
                 remaining = max(0.0, self._cooldown - now)
                 if remaining > self.max_retry_wait:
                     raise RateLimited("AliExpress требует длительную паузу перед запросами", retry_after=remaining)
-                self._tokens = min(self.concurrency, self._tokens + (now - self._updated) * self.rate)
-                self._updated = now
-                if (self._recovery is not None and not self._recovery.done()) or self._active >= self.concurrency:
+                if self.rate is not None:
+                    self._tokens = min(self.concurrency, self._tokens + (now - self._updated) * self.rate)
+                    self._updated = now
+                if (self._recovery is not None and not self._recovery.done()) or (self.concurrency is not None and self._active >= self.concurrency):
                     await self._condition.wait()
                     continue
-                delay = max(remaining, (1 - self._tokens) / self.rate, 0)
+                pacing = (1 - self._tokens) / self.rate if self.rate is not None else 0.0
+                delay = max(remaining, pacing, 0)
                 if delay:
                     with suppress(TimeoutError):
                         await asyncio.wait_for(self._condition.wait(), timeout=delay)
                     continue
                 self._active += 1
-                self._tokens -= 1
+                if self.rate is not None:
+                    self._tokens -= 1
                 return self._generation
 
     async def _attempt(self, url):
