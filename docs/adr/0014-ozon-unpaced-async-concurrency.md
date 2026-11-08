@@ -33,9 +33,9 @@ B исключён пользователем из следующего иссл
 Нет основания объявлять снятие планового лимита универсально более надёжным.
 Headless-попытка получила отказ доступа и не смешивается с видимыми измерениями.
 
-Доказательства и история реализации: [результат эксперимента](../../openspec/changes/archive/2026-11-08-experiment-ozon-serial-dispatch/spec.md),
-[сырые A/B/C-метрики](../../openspec/changes/archive/2026-11-08-experiment-ozon-serial-dispatch/measurements.json),
-[сырые C/D-метрики](../../openspec/changes/archive/2026-11-08-experiment-ozon-serial-dispatch/measurements-cd.json).
+Доказательства и история реализации: [результат эксперимента](../../openspec/changes/experiment-ozon-serial-dispatch/spec.md),
+[сырые A/B/C-метрики](../../openspec/changes/experiment-ozon-serial-dispatch/measurements.json),
+[сырые C/D-метрики](../../openspec/changes/experiment-ozon-serial-dispatch/measurements-cd.json).
 
 ## Внедрение
 
