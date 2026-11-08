@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from playwright.async_api import Error as PlaywrightError
 
 from ...domain.errors import InvalidProductId, MarketplaceUnavailable
+from ...application.collection_policy import OZON_CONCURRENCY
 from .json_transport import HOME_URL, OzonJsonTransport
 from .models import OzonResponse
 from .parser import OzonProductParser
@@ -42,8 +43,8 @@ class AsyncOzonClient:
         virtual_display: bool = False,
         *,
         session: ChromeSession | None = None,
-        concurrency: int = 5,
-        starts_per_second: float | None = 5,
+        concurrency: int = OZON_CONCURRENCY,
+        starts_per_second: float | None = None,
         request_timeout: float = 30,
         max_attempts: int = 3,
         max_retry_wait: float = 30,

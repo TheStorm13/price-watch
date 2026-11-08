@@ -7,11 +7,12 @@ from datetime import datetime, timezone
 from marketplace_connector.domain.errors import ProductNotFound
 from marketplace_connector.domain.models import Availability, ProductRef, MarketplaceCard
 from marketplace_connector.application.product_service import ProductService
+from marketplace_connector.application.collection_policy import OZON_CONCURRENCY
 from ..domain.models import LeaseLost
 from ..ports.runs import RunExecutionStore
 
 logger = logging.getLogger(__name__)
-MAX_CONCURRENT_CARDS = 5
+MAX_CONCURRENT_OTHER_CARDS = 5
 
 
 class CollectionService:
@@ -23,11 +24,13 @@ class CollectionService:
         async with AsyncExitStack() as sessions:
             for marketplace in dict.fromkeys(card.ref.marketplace for card in cards):
                 await sessions.enter_async_context(self._connectors.get(marketplace).collection_session())
-            limit = asyncio.Semaphore(MAX_CONCURRENT_CARDS)
+            ozon_limit = asyncio.Semaphore(OZON_CONCURRENCY)
+            other_limit = asyncio.Semaphore(MAX_CONCURRENT_OTHER_CARDS)
             products = ProductService(self._connectors)
 
             async def fetch(card):
                 try:
+                    limit = ozon_limit if card.ref.marketplace == 'ozon' else other_limit
                     snapshot = await products.get_product(card.ref.marketplace, card.ref.external_id, limit=limit)
                 except ProductNotFound:
                     snapshot = MarketplaceCard(ref=ProductRef(card.ref.marketplace, card.ref.external_id),

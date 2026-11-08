@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from marketplace_connector.connectors.ozon.async_client import AsyncOzonClient
+from marketplace_connector.connectors.builder import build_connectors
 from marketplace_connector.connectors.ozon.json_transport import (
     ABORT_SCRIPT, API_PATH, FETCH_SCRIPT, HOME_URL, OzonJsonTransport, retry_after_seconds,
 )
@@ -90,24 +91,25 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(MarketplaceSchemaChanged):
             OzonMapper.to_card(OzonProductParser.parse(received, expected_external_id='999'))
 
-    async def test_five_overlap_and_sixth_waits_shared_bootstrap_exact_raw(self):
+    async def test_default_eight_overlap_and_ninth_waits_shared_bootstrap_exact_raw(self):
         release = asyncio.Event()
-        five = asyncio.Event()
+        eight = asyncio.Event()
         started = 0
         async def fetch(arg):
             nonlocal started
             started += 1
-            if started == 5:
-                five.set()
+            if started == 8:
+                eight.set()
             await release.wait()
             return response()
         transport, page, context, prepare = await self.make_transport(fetch)
-        tasks = [asyncio.create_task(transport.fetch(str(i))) for i in range(6)]
-        await asyncio.wait_for(five.wait(), 1)
-        self.assertEqual(len(page.calls), 5)
+        self.assertIsNone(transport.rate)
+        tasks = [asyncio.create_task(transport.fetch(str(i))) for i in range(9)]
+        await asyncio.wait_for(eight.wait(), 1)
+        self.assertEqual(len(page.calls), 8)
         self.assertFalse(any(task.done() for task in tasks))
         release.set()
-        self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 6)
+        self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 9)
         context.new_page.assert_awaited_once()
         prepare.assert_awaited_once_with(page)
         self.assertEqual(page.calls[0]['url'], HOME_URL.rstrip('/') + API_PATH + '?url=%2Fproduct%2F0%2F%3Foos_search%3Dfalse')
@@ -384,13 +386,14 @@ class JsonTransportTests(unittest.IsolatedAsyncioTestCase):
 class ClientSessionTests(unittest.IsolatedAsyncioTestCase):
     async def test_concurrent_standalone_and_repeated_sessions_share_one_home_page(self):
         with TemporaryDirectory() as directory:
-            client = AsyncOzonClient(directory)
+            registry = build_connectors(['ozon'], profile_dir=directory)
+            client = registry.get('ozon')._client
             pages = []
             launches = []
             entered = asyncio.Event()
             release = asyncio.Event()
             async def fetch(arg):
-                if len(pages[-1].calls) == 5:
+                if len(pages[-1].calls) == 8:
                     entered.set()
                 await release.wait()
                 return response()
@@ -410,13 +413,15 @@ class ClientSessionTests(unittest.IsolatedAsyncioTestCase):
             with (patch('marketplace_connector.browser.session.async_playwright', playwright),
                   patch.object(client.session, '_launch_async_context', side_effect=launch),
                   patch.object(client, '_is_antibot_page_async', AsyncMock(return_value=False))):
-                tasks = [asyncio.create_task(client.fetch_raw_text_async(str(i), validate=False)) for i in range(5)]
+                tasks = [asyncio.create_task(client.fetch_raw_text_async(str(i), validate=False)) for i in range(9)]
                 await asyncio.wait_for(entered.wait(), 1)
                 self.assertEqual(len(launches), 1)
                 self.assertEqual(len(pages), 1)
+                self.assertEqual(len(pages[0].calls), 8)
+                self.assertIsNone(client._transport.rate)
                 pages[0].goto.assert_awaited_once_with(HOME_URL, wait_until='domcontentloaded', timeout=90000)
                 release.set()
-                self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 5)
+                self.assertEqual(await asyncio.gather(*tasks), [product_text()] * 9)
                 pages[0].close.assert_awaited_once()
                 self.assertIsNone(client._transport)
                 async with client.collection_session():

@@ -21,6 +21,7 @@ from marketplace_connector.connectors.ozon.json_transport import OzonJsonTranspo
 from marketplace_connector.domain.errors import ChallengeRequired
 
 MODES = {'A': (5, 5), 'B': (1, 5), 'C': (1, None), 'D': (5, None)}
+MODES.update({str(n): (n, None) for n in (5, 8, 12)})
 ORDER = ('A', 'B', 'C', 'C', 'B', 'A')
 SEEDS = ('1604900984', '1634943359', '1607687714', '1641499399', '1607686851',
          '2056350478', '4465694803', '4545459627')
@@ -170,7 +171,8 @@ async def fetch_one(connector, article, limit, probe):
 async def run_batch(connector, articles, probe, mode):
     probe.reset()
     started = time.perf_counter()
-    limit = asyncio.Semaphore(5)
+    workers = max(5, MODES[mode][0])
+    limit = asyncio.Semaphore(workers)
     tasks = [asyncio.create_task(fetch_one(connector, article, limit, probe)) for article in articles]
     stop = asyncio.create_task(probe.stopped.wait())
     try:
@@ -186,7 +188,7 @@ async def run_batch(connector, articles, probe, mode):
     results = [t.result() for t in tasks if not t.cancelled() and t.exception() is None]
     elapsed = time.perf_counter() - started
     successes = sum(r['ok'] for r in results)
-    return {'mode': mode, 'concurrency': MODES[mode][0], 'starts_per_second': MODES[mode][1],
+    return {'mode': mode, 'card_workers': workers, 'concurrency': MODES[mode][0], 'starts_per_second': MODES[mode][1],
             'seconds': elapsed, 'successes': successes, 'successful_sku_per_minute': successes * 60 / elapsed,
             'cancelled_targets': len(articles) - len(results), 'results': results,
             'composer_dispatches': len(probe.requests), 'peak_composer_dispatches': probe.peak,
@@ -226,6 +228,56 @@ def save_report(report, output):
     temporary.replace(output)
 
 
+def chrome_processes(group, proc_root=Path('/proc')):
+    """Linux process-group CPU/RSS snapshot; shared pages can be counted twice."""
+    if group is None or not proc_root.is_dir():
+        return None
+    samples = {}
+    for entry in proc_root.iterdir():
+        if not entry.name.isdecimal():
+            continue
+        try:
+            fields = (entry / 'stat').read_text().rsplit(')', 1)[1].split()
+            if int(fields[2]) == group:
+                identity = (int(entry.name), int(fields[19]))
+                samples[identity] = ((int(fields[11]) + int(fields[12])) / os.sysconf('SC_CLK_TCK'),
+                                     int(fields[21]) * os.sysconf('SC_PAGE_SIZE'))
+        except (OSError, ValueError, IndexError):
+            continue  # A process can exit while /proc is being sampled.
+    return samples
+
+
+class ChromeResources:
+    def __init__(self, group):
+        self.group, self.previous = group, None
+        self.cpu_seconds, self.peak_rss, self.samples = 0.0, 0, 0
+        self.finished = asyncio.Event()
+
+    async def sample(self):
+        values = await asyncio.to_thread(chrome_processes, self.group)
+        if not values:
+            return
+        if self.previous is not None:
+            self.cpu_seconds += sum(max(0, cpu - self.previous.get(key, (0, 0))[0])
+                                    for key, (cpu, _) in values.items())
+        self.previous = values
+        self.peak_rss = max(self.peak_rss, sum(rss for _, rss in values.values()))
+        self.samples += 1
+
+    async def monitor(self):
+        while not self.finished.is_set():
+            try:
+                await asyncio.wait_for(self.finished.wait(), timeout=.1)
+            except TimeoutError:
+                await self.sample()
+
+    def report(self):
+        return {'available': bool(self.samples), 'samples': self.samples,
+                'sampled_cpu_seconds': self.cpu_seconds if self.samples else None,
+                'sampled_peak_rss_bytes': self.peak_rss if self.samples else None,
+                'scope': 'Linux Chrome process group; 100ms samples; CPU may miss exited processes; RSS sums shared pages'}
+
+
 async def run(args):
     probe = Probe()
     report = {'schema': 1, 'status': 'running', 'order': args.order, 'pause_seconds': args.pause,
@@ -248,7 +300,17 @@ async def run(args):
                 if index:
                     await asyncio.sleep(args.pause)
                 async with measured_client(args, probe, mode, session) as connector:
-                    batch = await run_batch(connector, report['articles'], probe, mode)
+                    process = getattr(session, '_async_process', None)
+                    resources = ChromeResources(process.pid if process is not None else None)
+                    await resources.sample()
+                    monitor = asyncio.create_task(resources.monitor())
+                    try:
+                        batch = await run_batch(connector, report['articles'], probe, mode)
+                    finally:
+                        resources.finished.set()
+                        await monitor
+                        await resources.sample()
+                    batch['chrome_resources'] = resources.report()
                 report['batches'].append(batch)
                 save_report(report, args.output)
                 print(json.dumps({k: v for k, v in batch.items() if k not in ('results', 'requests')}), flush=True)
@@ -278,7 +340,7 @@ def main():
     parser.add_argument('--size', type=int, default=40)
     parser.add_argument('--pause', type=float, default=30)
     parser.add_argument('--order', nargs='+', choices=tuple(MODES), default=ORDER,
-                        help='Batch order, e.g. --order C D D C (default: A B C C B A)')
+                        help='Batch order: A/B paced, C/D unpaced, 5/8/12 unpaced fixed N; default A B C C B A')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     if not 30 <= args.size <= 50 or not math.isfinite(args.pause) or args.pause < 0:

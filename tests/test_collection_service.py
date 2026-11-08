@@ -138,14 +138,14 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(repo.errors, [])
 
     async def test_retry_delay_does_not_hold_a_fetch_slot(self):
-        repo, connector = FakeRepository([card(i) for i in range(6)]), Connector()
+        repo, connector = FakeRepository([card(i) for i in range(9)]), Connector()
         entered, last_started = asyncio.Event(), asyncio.Event()
         calls = []
         async def get_product(external_id):
             calls.append(external_id)
-            if external_id != '5' and calls.count(external_id) == 1:
+            if external_id != '8' and calls.count(external_id) == 1:
                 raise RuntimeError('temporary')
-            if external_id == '5':
+            if external_id == '8':
                 last_started.set()
             return MarketplaceCard(ref=ProductRef('ozon', external_id), title='Fetched',
                                  url='', availability=Availability.OUT_OF_STOCK)
@@ -156,7 +156,7 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         with patch('marketplace_connector.application.retry.sleep', side_effect=delay):
             result = await asyncio.wait_for(self.executor(repo, connector).collect(), 1)
         self.assertTrue(entered.is_set())
-        self.assertEqual(result.success_count, 6)
+        self.assertEqual(result.success_count, 9)
 
     async def test_two_fetch_failures_record_one_error_with_both_attempts(self):
         repo, connector = FakeRepository([card(1)]), Connector()
@@ -169,14 +169,52 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('last', repo.errors[0]['traceback'])
         self.assertEqual(repo.saved, [])
 
-    async def test_limits_to_five_and_keeps_individual_errors(self):
+    async def test_limits_ozon_to_eight_and_keeps_individual_errors(self):
         repo, connector = FakeRepository([card(i) for i in range(9)]), Connector(failed=['3'])
         with self.assertLogs('price_watch.application.collection_service', level='ERROR'):
             result = await self.executor(repo, connector).collect()
-        self.assertEqual(connector.peak, 5)
+        self.assertEqual(connector.peak, 8)
         self.assertEqual((connector.opens, connector.closes), (1,1))
         self.assertEqual((result.success_count, result.failure_count), (8,1))
         self.assertIn('fetch failed', repo.errors[0]['traceback'])
+
+    async def test_mixed_run_has_eight_ozon_slots_and_shared_five_other_slots(self):
+        release = asyncio.Event()
+        ready = {'ozon': asyncio.Event(), 'other': asyncio.Event()}
+        active = {'ozon': 0, 'other': 0}
+        peak = dict(active)
+        class Waiting(Connector):
+            def __init__(self, marketplace):
+                super().__init__()
+                self.marketplace = marketplace
+            async def get_product(self, external_id):
+                group = 'ozon' if self.marketplace == 'ozon' else 'other'
+                active[group] += 1
+                peak[group] = max(peak[group], active[group])
+                if active[group] == (8 if group == 'ozon' else 5):
+                    ready[group].set()
+                try:
+                    await release.wait()
+                    return MarketplaceCard(ref=ProductRef(self.marketplace, external_id),
+                                         title='Fetched', url='', availability=Availability.OUT_OF_STOCK)
+                finally:
+                    active[group] -= 1
+        connectors = [Waiting(m) for m in ('ozon', 'wildberries', 'aliexpress')]
+        cards = [replace(card(i), ref=ProductRef(connectors[i % 3].marketplace, str(i)))
+                 for i in range(36)]
+        repo = FakeRepository(cards)
+        async def factory(run):
+            return ConnectorRegistry(connectors)
+        task = asyncio.create_task(RunExecutor(repo, factory).collect())
+        try:
+            await asyncio.wait_for(asyncio.gather(*(event.wait() for event in ready.values())), 1)
+            self.assertEqual(active, {'ozon': 8, 'other': 5})
+        finally:
+            release.set()
+            result = await task
+        self.assertEqual(peak, {'ozon': 8, 'other': 5})
+        self.assertEqual(result.success_count, 36)
+        self.assertEqual([(c.opens, c.closes) for c in connectors], [(1, 1)] * 3)
 
     async def test_excluded_card_still_collects_and_single_collect_is_scoped(self):
         repo = FakeRepository([card(1),card(2,False)])

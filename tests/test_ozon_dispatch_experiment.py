@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from experiments.parallel_ozon import (
-    MODES, Probe, measured_client, run, run_batch,
+    Probe, ChromeResources, chrome_processes, measured_client, run, run_batch,
 )
 from tests.test_ozon_json_transport import FakePage, product_text, response
 from marketplace_connector.connectors.ozon.json_transport import OzonJsonTransport
@@ -67,7 +67,7 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(.005)
             return response()
         durations = {}
-        for mode in MODES:
+        for mode in 'ABCD':
             probe = Probe()
             session = self.fake_session(fetch)
             with patch('experiments.parallel_ozon.ExperimentClient._prepare_storefront', new=AsyncMock()):
@@ -84,6 +84,56 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(durations['A'], .35)
         self.assertLess(durations['D'], durations['A'] / 2)
         self.assertLess(durations['C'], durations['B'] / 2)
+
+    async def test_fixed_n_reaches_requested_concurrency_above_five(self):
+        args = SimpleNamespace(profile_dir=Path('/unused'))
+        for n in (5, 8, 12):
+            entered, release = asyncio.Event(), asyncio.Event()
+            active = 0
+            async def fetch(arg):
+                nonlocal active
+                active += 1
+                if active == n:
+                    entered.set()
+                await release.wait()
+                return response()
+            probe = Probe()
+            with patch('experiments.parallel_ozon.ExperimentClient._prepare_storefront', new=AsyncMock()):
+                async with measured_client(args, probe, str(n), self.fake_session(fetch)) as connector:
+                    task = asyncio.create_task(run_batch(connector, [str(i) for i in range(30)], probe, str(n)))
+                    try:
+                        await asyncio.wait_for(entered.wait(), timeout=1)
+                        self.assertEqual(probe.peak, n)
+                    finally:
+                        release.set()
+                        batch = await task
+            self.assertEqual(batch['successes'], 30)
+            self.assertEqual(batch['peak_composer_dispatches'], n)
+            self.assertEqual(batch['card_workers'], n)
+            self.assertIsNone(batch['starts_per_second'])
+
+    async def test_chrome_resource_sampling_excludes_other_process_groups(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for pid, group in ((101, 101), (102, 101), (103, 999)):
+                process = root / str(pid)
+                process.mkdir()
+                fields = ['0'] * 22
+                fields[0], fields[2] = 'S', str(group)
+                fields[11], fields[12], fields[19], fields[21] = '100', '50', str(pid), '10'
+                (process / 'stat').write_text(str(pid) + ' (chrome test) ' + ' '.join(fields))
+            values = chrome_processes(101, root)
+            self.assertEqual({pid for pid, _ in values}, {101, 102})
+            resources = ChromeResources(101)
+            with patch('experiments.parallel_ozon.chrome_processes', return_value=values):
+                await resources.sample()
+            after = {key: (cpu + .25, rss * 2) for key, (cpu, rss) in values.items()}
+            with patch('experiments.parallel_ozon.chrome_processes', return_value=after):
+                await resources.sample()
+            report = resources.report()
+            self.assertEqual(report['sampled_cpu_seconds'], .5)
+            self.assertEqual(report['sampled_peak_rss_bytes'], sum(rss for _, rss in after.values()))
+            self.assertFalse(ChromeResources(None).report()['available'])
 
     async def test_challenge_stops_waiters_and_preserves_metrics(self):
         args = SimpleNamespace(profile_dir=Path('/unused'))
@@ -134,6 +184,12 @@ class DispatchExperimentTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(report['status'], 'complete')
             self.assertEqual(report['order'], tuple('CDDC'))
             self.assertEqual([b['mode'] for b in report['batches']], list('CDDC'))
+            args.order = ('5', '8', '12', '12', '8', '5') * 2
+            with patch('experiments.parallel_ozon.ChromeSession', return_value=session), \
+                 patch('experiments.parallel_ozon.run_batch', side_effect=batch):
+                report = await run(args)
+            self.assertEqual([b['mode'] for b in report['batches']], list(args.order))
+            self.assertTrue(all(not b['chrome_resources']['available'] for b in report['batches']))
 
     async def test_insufficient_discovery_does_not_run_comparison(self):
         session = self.fake_session(AsyncMock(return_value=response()))
