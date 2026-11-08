@@ -92,24 +92,31 @@ def validate_product_text(raw_text, article):
     return raw_text
 
 
+def _positive_integer(name, value):
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(f"{name} должен быть положительным целым")
+
+
+def _positive_number(name, value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} должен быть конечным положительным числом")
+
+
 class AliExpressJsonTransport:
     """None/None disables active-request and start-rate limits; defaults stay paced."""
 
     def __init__(self, context, prepare_page, *, concurrency=1, starts_per_second=5,
                  request_timeout=30, max_attempts=3, max_retry_wait=30):
-        if concurrency is None and starts_per_second is not None:
-            raise ValueError("Без concurrency требуется starts_per_second=None")
-        for name, value in (("concurrency", concurrency), ("max_attempts", max_attempts)):
-            if name == "concurrency" and value is None:
-                continue
-            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-                raise ValueError(f"{name} должен быть положительным целым")
-        for name, value in (("starts_per_second", starts_per_second),
-                            ("request_timeout", request_timeout), ("max_retry_wait", max_retry_wait)):
-            if name == "starts_per_second" and value is None:
-                continue
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
-                raise ValueError(f"{name} должен быть конечным положительным числом")
+        if concurrency is None:
+            if starts_per_second is not None:
+                raise ValueError("Без concurrency требуется starts_per_second=None")
+        else:
+            _positive_integer("concurrency", concurrency)
+        _positive_integer("max_attempts", max_attempts)
+        if starts_per_second is not None:
+            _positive_number("starts_per_second", starts_per_second)
+        _positive_number("request_timeout", request_timeout)
+        _positive_number("max_retry_wait", max_retry_wait)
         self.context = context
         self.prepare_page = prepare_page
         self.concurrency = concurrency
@@ -227,7 +234,9 @@ class AliExpressJsonTransport:
                 if self.rate is not None:
                     self._tokens = min(self.concurrency, self._tokens + (now - self._updated) * self.rate)
                     self._updated = now
-                if (self._recovery is not None and not self._recovery.done()) or (self.concurrency is not None and self._active >= self.concurrency):
+                recovering = self._recovery is not None and not self._recovery.done()
+                full = self.concurrency is not None and self._active >= self.concurrency
+                if recovering or full:
                     await self._condition.wait()
                     continue
                 pacing = (1 - self._tokens) / self.rate if self.rate is not None else 0.0

@@ -264,13 +264,17 @@ def validate_articles(articles):
     return articles
 
 
+def runtime_versions():
+    return {'python': platform.python_version(), 'playwright': version('playwright'),
+            'git_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+            'working_tree_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], text=True).strip())}
+
+
 async def run(args):
     report = {'schema': 1, 'status': 'running', 'created_at': datetime.now(timezone.utc).isoformat(),
               'configuration': {'concurrency': None, 'starts_per_second': None, 'size': 40,
                                 'browser_mode': 'visible', 'batches': 1},
-              'versions': {'python': platform.python_version(), 'playwright': version('playwright'),
-                           'git_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
-                           'working_tree_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], text=True).strip())},
+              'versions': await asyncio.to_thread(runtime_versions),
               'articles': list(args.articles), 'batch': None,
               'discovery': {'performed': not bool(args.articles), 'errors': [], 'availability': {}},
               'measurement_scope': 'productData fetch evaluations only; excludes discovery, navigation and browser background requests',

@@ -288,4 +288,3 @@ class ExperimentTests(unittest.IsolatedAsyncioTestCase):
         for articles in ([REF] * 40, ARTICLES[:39], ['123'] + ARTICLES[1:]):
             with self.assertRaises(ValueError):
                 validate_articles(articles)
-
