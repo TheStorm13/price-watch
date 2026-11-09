@@ -2682,6 +2682,7 @@ name = "price-watch"
 version = "0.1.5"
 dependencies = [
  "dotenvy",
+ "gtk",
  "libc",
  "serde",
  "tauri",

@@ -1114,6 +1114,7 @@ pub fn run() {
             app.get_webview_window("main")
                 .ok_or("Не найдено главное окно")?
                 .with_webview(|platform| {
+                    webview_settings::accelerate_mouse_wheel(&platform.inner());
                     if let Err(error) =
                         webview_settings::allow_display_refresh_rate(&platform.inner())
                     {
