@@ -131,8 +131,8 @@ input::placeholder { color: #98a2b3; }
 .cards-table th.cards-table__selection, .cards-table td.cards-table__selection { width: 42px; padding-inline: 8px 4px; text-align: center; }
 .cards-table__selection input { width: 18px; height: 18px; accent-color: var(--blue); cursor: pointer; }
 .cards-table__product.is-selected { --row-surface: var(--blue-soft); background: var(--row-surface); }
-.cards-table tr:not(.virtual-spacer) > :nth-last-child(2) { position: sticky; right: 48px; width: 156px; z-index: 1; }
-.cards-table tr:not(.virtual-spacer) > :last-child { position: sticky; right: 0; z-index: 1; }
+[data-horizontal-overflow] .cards-table tr:not(.virtual-spacer) > :nth-last-child(2) { position: sticky; right: 48px; width: 156px; z-index: 1; }
+[data-horizontal-overflow] .cards-table tr:not(.virtual-spacer) > :last-child { position: sticky; right: 0; z-index: 1; }
 .cards-table td:nth-last-child(-n+2) { background: var(--row-surface, var(--surface)); }
 .cards-table th:nth-last-child(-n+2) { background: var(--surface-subtle); }
 .cards-table__product { height: auto; }

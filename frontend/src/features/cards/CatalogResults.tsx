@@ -35,15 +35,39 @@ function CatalogColumnHeaders({ sort: value, onSort }: Pick<Props, 'sort' | 'onS
    </TableHead>
  })}</>
 }
+// Observe horizontal geometry only; virtual row height changes do not need it.
+function observeTableOverflow(element: HTMLElement | null, onChange: (value: boolean) => void) {
+ const container=element?.querySelector<HTMLElement>('[data-slot="table-container"]')
+ const table=container?.querySelector('table')
+ if(!container || !table) {onChange(false);return}
+ const widths=new WeakMap<Element,number>()
+ const measure=()=>onChange(container.scrollWidth>container.clientWidth+1)
+ measure()
+ const observer=new ResizeObserver(entries=>{
+   let changed=false
+   for(const entry of entries) {
+     if(widths.get(entry.target)!==entry.contentRect.width) changed=true
+     widths.set(entry.target,entry.contentRect.width)
+   }
+   if(changed) measure()
+ })
+ observer.observe(container)
+ observer.observe(table)
+ return ()=>observer.disconnect()
+}
+
 export const CatalogResults = memo(function CatalogResults(props:Props) {
  const {view,items,groupedCards,deals,selectedIds,onSelect,collapsedGroups,onToggleGroup,onEditGroup,returnTo}=props
  const [columns,setColumns]=useState(1)
+ const [overflow,setOverflow]=useState(false)
  const rows=useMemo(()=>catalogRows(items,groupedCards,collapsedGroups,view==='grid'?columns:1),[items,groupedCards,collapsedGroups,view,columns])
  const keys=useMemo(()=>rows.map(row=>row.key),[rows])
  const saved=useRef(positions.get(location.pathname+location.search))
- const windowed=useVirtualRows(keys,view==='grid'?484:82, saved.current?.width===window.innerWidth?saved.current:undefined)
+ const windowed=useVirtualRows(keys,view==='grid'?484:82, saved.current?.width===window.innerWidth?saved.current:undefined,{blockSize:view==='list'?4:1,naturalLimit:view==='list'&&!overflow?100:40})
  const {root,virtualizer,virtual,margin}=windowed
  useLayoutEffect(()=>{if(windowed.width) setColumns(Math.max(1,Math.floor((windowed.width+8)/288)))},[windowed.width])
+ // Sticky cells are expensive to paint in WebKit; only pin them when needed.
+ useLayoutEffect(()=>observeTableOverflow(root.current,setOverflow),[root,view])
  const current=useRef({returnTo,virtualizer})
  current.current={returnTo,virtualizer}
  useLayoutEffect(()=>{
@@ -87,7 +111,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
    return <Fragment key={item.key}>{gap>0?<tr aria-hidden="true" className="virtual-spacer"><td colSpan={9} style={{height:gap}} /></tr>:null}{content(item.index)}</Fragment>
  })
  const tail=virtual?Math.max(0,virtualizer.getTotalSize()-(last-margin)):0
- return <div ref={root} onFocusCapture={windowed.focus} onPointerDownCapture={windowed.focus} onBlurCapture={windowed.blur} data-catalog-results>
+ return <div ref={root} onFocusCapture={windowed.focus} onPointerDownCapture={windowed.focus} onBlurCapture={windowed.blur} data-catalog-results data-horizontal-overflow={overflow || undefined}>
    {view==='grid'?<ul className="virtual-grid" data-virtual-start aria-label="Отслеживаемые карточки маркетплейсов">
      {body}{tail>0?<li aria-hidden="true" style={{height:tail}} />:null}
    </ul>:<Table className={'cards-table w-[1060px] max-[1200px]:w-[980px]'} aria-rowcount={rows.length+1}>

@@ -1,21 +1,29 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { defaultRangeExtractor, useWindowVirtualizer, type VirtualItem } from '@tanstack/react-virtual'
 
-// Shared by catalog and group candidates. Only one focus owner and its adjacent
-// rows can be pinned, so keyboard navigation/portaled menus do not grow the DOM.
-export function useVirtualRows(keys: string[], estimate: number, saved?: {offset:number;measurements:VirtualItem[]}) {
+// Only one focus owner and its adjacent rows can be pinned, so keyboard
+// navigation/portaled menus do not grow the DOM.
+export function useVirtualRows(keys: string[], estimate: number, saved?: {offset:number;measurements:VirtualItem[]}, { blockSize = 1, naturalLimit = 40 }: { blockSize?: number; naturalLimit?: number } = {}) {
   const root = useRef<HTMLDivElement>(null)
   const [margin, setMargin] = useState(0)
   const [width, setWidth] = useState(0)
   const [pinned, setPinned] = useState<string | null>(null)
+  const virtual = keys.length > naturalLimit
+  const estimateSize = useCallback(() => estimate, [estimate])
+  const getItemKey = useCallback((index: number) => keys[index], [keys])
   const pinnedIndex = pinned === null ? -1 : keys.indexOf(pinned)
   const rangeExtractor = useCallback((range: Parameters<typeof defaultRangeExtractor>[0]) => {
-    const indices = defaultRangeExtractor(range)
+    const visible = defaultRangeExtractor(range)
+    // Keep the DOM window stable within a block instead of replacing a table
+    // row at every row boundary. Include the full overscan range and focus pins.
+    const start = Math.floor(visible[0] / blockSize) * blockSize
+    const end = Math.min(range.count, Math.ceil((visible.at(-1)! + 1) / blockSize) * blockSize)
+    const indices = Array.from({ length: end - start }, (_, index) => start + index)
     if(pinnedIndex>=0) for(let i=Math.max(0,pinnedIndex-1); i<=Math.min(keys.length-1,pinnedIndex+1); i++) indices.push(i)
     return [...new Set(indices)].sort((a,b)=>a-b)
-  }, [pinnedIndex,keys.length])
-  const virtualizer = useWindowVirtualizer({count:keys.length,estimateSize:()=>estimate,
-    getItemKey:index=>keys[index], scrollMargin:margin, overscan:4, rangeExtractor,
+  }, [pinnedIndex,keys.length,blockSize])
+  const virtualizer = useWindowVirtualizer({count:keys.length, estimateSize, enabled: virtual, useFlushSync: false,
+    getItemKey, scrollMargin:margin, overscan:4, rangeExtractor,
     initialRect:{width:window.innerWidth,height:window.innerHeight},
     initialOffset:saved?.offset, initialMeasurementsCache:saved?.measurements,
   })
@@ -49,6 +57,6 @@ export function useVirtualRows(keys: string[], estimate: number, saved?: {offset
     previousWidth.current=width
   },[width,virtualizer])
   // Small collections retain their natural layout and are also usable in jsdom.
-  const items = keys.length<=40 ? keys.map((key,index)=>({key,index,start:0,end:0,size:0,lane:0})) : virtualizer.getVirtualItems()
-  return {root,width,virtualizer,items,margin,focus,blur,virtual:keys.length>40}
+  const items = !virtual ? keys.map((key,index)=>({key,index,start:0,end:0,size:0,lane:0})) : virtualizer.getVirtualItems()
+  return {root,width,virtualizer,items,margin,focus,blur,virtual}
 }
