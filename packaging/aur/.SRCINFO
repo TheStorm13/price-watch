@@ -17,7 +17,7 @@ pkgbase = price-watch-bin
 	depends = python-pydantic
 	depends = python-sqlalchemy
 	depends = uvicorn
-	depends = webkit2gtk-4.1
+	depends = webkit2gtk-4.1>=2.42
 	depends = xorg-server-xvfb
 	depends = xorg-xauth
 	provides = price-watch
