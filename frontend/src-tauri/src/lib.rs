@@ -19,6 +19,8 @@ use tauri_plugin_dialog::DialogExt;
 
 mod native_services;
 mod process_log;
+#[cfg(target_os = "linux")]
+mod webview_settings;
 use native_services::NativeServices;
 
 #[derive(Clone, Serialize)]
@@ -1108,6 +1110,16 @@ pub fn run() {
             save_export_file
         ])
         .setup(move |app| {
+            #[cfg(target_os = "linux")]
+            app.get_webview_window("main")
+                .ok_or("Не найдено главное окно")?
+                .with_webview(|platform| {
+                    if let Err(error) =
+                        webview_settings::allow_display_refresh_rate(&platform.inner())
+                    {
+                        eprintln!("Не удалось настроить частоту WebView: {error}");
+                    }
+                })?;
             if let Err(error) = install_tray(app) {
                 eprintln!("Не удалось создать значок в системном tray: {error}");
             }

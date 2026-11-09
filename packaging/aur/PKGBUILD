@@ -19,7 +19,7 @@ depends=(
   'python-pydantic'
   'python-sqlalchemy'
   'uvicorn'
-  'webkit2gtk-4.1'
+  'webkit2gtk-4.1>=2.42'
   'xorg-server-xvfb'
   'xorg-xauth'
 )
