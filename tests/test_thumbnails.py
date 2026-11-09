@@ -138,6 +138,43 @@ class ThumbnailTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(ThumbnailError):
                 await public_address(httpx.URL('https://cdn.test/a'))
 
+    async def test_fake_ip_is_allowed_only_for_marketplace_cdn_domains(self):
+        resolver = AsyncMock()
+        with patch.object(asyncio.get_running_loop(), 'getaddrinfo', resolver):
+            for address in ('198.18.0.0', '198.18.0.7', '198.19.255.255'):
+                resolver.return_value = [(0, 0, 0, '', (address, 443))]
+                for host in ('ozone.ru', 'ir.ozone.ru', 'ir-27.ozone.ru',
+                             'basket-04.wbbasket.ru', 'ae-pic-a1.aliexpress-media.com'):
+                    with self.subTest(host=host, address=address):
+                        self.assertEqual(await public_address(httpx.URL(f'https://{host}/a')), address)
+                for host in ('cdn.test', 'fakeozone.ru', 'ozone.ru.attacker.test',
+                             'wbbasket.ru.attacker.test', 'fakealiexpress-media.com', address):
+                    with self.subTest(host=host, address=address), self.assertRaises(ThumbnailError):
+                        await public_address(httpx.URL(f'https://{host}/a'))
+            for address in ('127.0.0.1', '10.0.0.1', '169.254.169.254', '192.168.1.1',
+                            '::1', 'fc00::1', '::ffff:127.0.0.1', '224.0.0.1'):
+                resolver.return_value = [(0, 0, 0, '', ('198.18.0.7', 443)),
+                                         (0, 0, 0, '', (address, 443))]
+                with self.subTest(address=address), self.assertRaises(ThumbnailError):
+                    await public_address(httpx.URL('https://ir.ozone.ru/a'))
+
+    async def test_fake_ip_download_preserves_tls_name_and_rechecks_redirects(self):
+        requests = []
+        def respond(request):
+            requests.append(request)
+            return httpx.Response(302, headers={'location': 'https://ozone.ru.attacker.test/a'})
+        original = httpx.AsyncClient
+        dns = AsyncMock(return_value=[(0, 0, 0, '', ('198.18.0.7', 443))])
+        with (patch.object(asyncio.get_running_loop(), 'getaddrinfo', dns),
+              patch('price_watch.infrastructure.thumbnails.httpx.AsyncClient', side_effect=lambda **kw: original(transport=httpx.MockTransport(respond), **kw))):
+            with self.assertRaises(ThumbnailError):
+                await download_image('https://ir.ozone.ru/a', {})
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(str(requests[0].url), 'https://198.18.0.7/a')
+        self.assertEqual(requests[0].headers['host'], 'ir.ozone.ru')
+        self.assertEqual(requests[0].extensions['sni_hostname'], 'ir.ozone.ru')
+        self.assertEqual(dns.await_count, 2)
+
     async def test_download_pins_ip_sni_headers_and_checks_redirects(self):
         requests = []
         def respond(request):

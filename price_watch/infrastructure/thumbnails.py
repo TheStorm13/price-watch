@@ -24,6 +24,8 @@ MAX_PIXELS = 40_000_000
 CACHE_BYTES = 256 * 1024 * 1024
 FRESH_SECONDS = 24 * 60 * 60
 ERROR_SECONDS = 30
+_FAKE_IP_NETWORK = ipaddress.ip_network("198.18.0.0/15")
+_FAKE_IP_CDN_DOMAINS = ("ozone.ru", "wbbasket.ru", "aliexpress-media.com")
 _OWN_FILE = re.compile(r"[0-9a-f]{64}\.(png|json)$")
 
 
@@ -41,7 +43,15 @@ async def public_address(url: httpx.URL) -> str:
         url.host, 443, type=socket.SOCK_STREAM,
     )
     ips = {entry[4][0] for entry in addresses}
-    if not ips or any((not ipaddress.ip_address(ip).is_global or ipaddress.ip_address(ip).is_multicast) for ip in ips):
+    # Local DNS routing can represent a public CDN with a synthetic address.
+    # Permit only this range for known CDN domains, retaining Host/SNI validation.
+    host = url.host.rstrip(".").lower()
+    allow_fake_ip = any(host == domain or host.endswith(f".{domain}") for domain in _FAKE_IP_CDN_DOMAINS)
+    parsed = [ipaddress.ip_address(ip) for ip in ips]
+    if not parsed or any(
+        ip.is_multicast or not (ip.is_global or (allow_fake_ip and ip in _FAKE_IP_NETWORK))
+        for ip in parsed
+    ):
         raise ThumbnailError("Недопустимый сетевой адрес изображения")
     return sorted(ips)[0]
 
