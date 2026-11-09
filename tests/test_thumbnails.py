@@ -33,25 +33,40 @@ class ThumbnailTests(unittest.IsolatedAsyncioTestCase):
         self.service = ThumbnailService(self.directory, downloader=self.downloader)
 
     def test_recipe_pixels_dimensions_and_small_images(self):
-        actual = render_thumbnail(self.source)
-        with Image.open(BytesIO(self.source)) as image:
-            expected = image.copy()
-        expected.thumbnail((204, 204), Image.Resampling.LANCZOS, reducing_gap=2.0)
-        with Image.open(BytesIO(actual)) as result:
-            self.assertEqual(result.format, 'PNG')
-            self.assertEqual(result.size, (153, 204))
-            self.assertEqual(result.tobytes(), expected.tobytes())
-        with Image.open(BytesIO(render_thumbnail(photo((30, 40))))) as result:
-            self.assertEqual(result.size, (30, 40))
+        for size in (68, 85, 102, 136, 204):
+            with Image.open(BytesIO(self.source)) as image:
+                expected = image.copy()
+            expected.thumbnail((size, size), Image.Resampling.LANCZOS, reducing_gap=2.0)
+            with Image.open(BytesIO(render_thumbnail(self.source, (size, size)))) as result:
+                self.assertEqual(result.format, 'PNG')
+                self.assertEqual(result.size, (size, size))
+                x, y = (size - expected.width) // 2, (size - expected.height) // 2
+                self.assertEqual(result.crop((x, y, x + expected.width, y + expected.height)).tobytes(), expected.convert('RGBA').tobytes())
+                self.assertEqual(result.getpixel((0, 0))[3], 0)
+        with Image.open(BytesIO(render_thumbnail(photo((30, 40)), (68, 68)))) as result:
+            self.assertEqual(result.size, (68, 68))
+            self.assertEqual(result.getchannel('A').getbbox(), (19, 14, 49, 54))
+        for size in (0, 2225):
+            with self.assertRaises(ThumbnailError):
+                render_thumbnail(self.source, (size, size))
+
+    async def test_sizes_have_separate_persistent_cache_entries(self):
+        small = await self.service.get('https://cdn.test/a', (68, 68))
+        large = await self.service.get('https://cdn.test/a', (136, 136))
+        self.assertNotEqual(small, large)
+        restarted = ThumbnailService(self.directory, downloader=self.downloader)
+        self.assertEqual(await restarted.get('https://cdn.test/a', (68, 68)), small)
+        self.assertEqual(await restarted.get('https://cdn.test/a', (136, 136)), large)
+        self.assertEqual(self.downloader.await_count, 1)
 
     async def test_singleflight_restart_and_source_change(self):
-        results = await asyncio.gather(*(self.service.get('https://cdn.test/a') for _ in range(20)))
+        results = await asyncio.gather(*(self.service.get('https://cdn.test/a', (68, 68)) for _ in range(20)))
         self.assertTrue(all(item == results[0] for item in results))
         self.downloader.assert_awaited_once()
         restarted = ThumbnailService(self.directory, downloader=self.downloader)
-        self.assertEqual(await restarted.get('https://cdn.test/a'), results[0])
+        self.assertEqual(await restarted.get('https://cdn.test/a', (68, 68)), results[0])
         self.downloader.assert_awaited_once()
-        await restarted.get('https://cdn.test/b')
+        await restarted.get('https://cdn.test/b', (68, 68))
         self.assertEqual(self.downloader.await_count, 2)
 
     async def test_cancelled_request_does_not_cancel_shared_job(self):
@@ -61,9 +76,9 @@ class ThumbnailTests(unittest.IsolatedAsyncioTestCase):
             await release.wait()
             return Download(self.source)
         self.service.downloader = download
-        first = asyncio.create_task(self.service.get('https://cdn.test/a'))
+        first = asyncio.create_task(self.service.get('https://cdn.test/a', (68, 68)))
         await ready.wait()
-        second = asyncio.create_task(self.service.get('https://cdn.test/a'))
+        second = asyncio.create_task(self.service.get('https://cdn.test/a', (68, 68)))
         first.cancel()
         with self.assertRaises(asyncio.CancelledError):
             await first
@@ -80,48 +95,50 @@ class ThumbnailTests(unittest.IsolatedAsyncioTestCase):
             active -= 1
             return Download(self.source)
         self.service.downloader = download
-        await asyncio.gather(*(self.service.get(f'https://cdn.test/{i}') for i in range(12)))
+        await asyncio.gather(*(self.service.get(f'https://cdn.test/{i}', (68, 68)) for i in range(12)))
         self.assertEqual(maximum, 2)
 
     async def test_revalidation_304_and_same_content_skip_render(self):
         now = [100.0]
         self.service.clock = lambda: now[0]
-        expected = await self.service.get('https://cdn.test/a')
+        expected = await self.service.get('https://cdn.test/a', (68, 68))
         now[0] += FRESH_SECONDS + 1
         self.downloader.return_value = Download(None)
         with patch('price_watch.infrastructure.thumbnails.render_thumbnail', side_effect=AssertionError('rendered twice')):
-            self.assertEqual(await self.service.get('https://cdn.test/a'), expected)
+            self.assertEqual(await self.service.get('https://cdn.test/a', (68, 68)), expected)
             now[0] += FRESH_SECONDS + 1
             self.downloader.return_value = Download(self.source)
-            self.assertEqual(await self.service.get('https://cdn.test/a'), expected)
+            self.assertEqual(await self.service.get('https://cdn.test/a', (68, 68)), expected)
         self.assertEqual(self.downloader.call_args_list[1].args[1]['etag'], 'v1')
         now[0] += FRESH_SECONDS + 1
         self.downloader.return_value = Download(photo(color='red'))
-        self.assertNotEqual(await self.service.get('https://cdn.test/a'), expected)
+        self.assertNotEqual(await self.service.get('https://cdn.test/a', (68, 68)), expected)
 
     async def test_error_cache_limits_and_corrupt_cache(self):
         self.downloader.return_value = Download(b'bad image')
         for _ in range(2):
             with self.assertRaises(ThumbnailError):
-                await self.service.get('https://cdn.test/bad')
+                await self.service.get('https://cdn.test/bad', (68, 68))
         self.downloader.assert_awaited_once()
         with self.assertRaises(ThumbnailError):
-            render_thumbnail(b'x' * (MAX_INPUT + 1))
+            render_thumbnail(b'x' * (MAX_INPUT + 1), (68, 68))
         with patch('price_watch.infrastructure.thumbnails.MAX_PIXELS', 10):
             with self.assertRaises(ThumbnailError):
-                render_thumbnail(self.source)
+                render_thumbnail(self.source, (68, 68))
         self.downloader.return_value = Download(self.source)
-        await self.service.get('https://cdn.test/a')
-        next(self.directory.glob('*.json')).write_text('bad metadata')
-        await self.service.get('https://cdn.test/a')
+        await self.service.get('https://cdn.test/a', (68, 68))
+        next((self.directory / 'sources').glob('*.json')).write_text('bad metadata')
+        for path in self.directory.glob('*.json'):
+            path.write_text('bad metadata')
+        await self.service.get('https://cdn.test/a', (68, 68))
         self.assertEqual(self.downloader.await_count, 3)
 
     async def test_lru_only_removes_own_files(self):
         sentinel = self.directory / 'user.png'
         sentinel.write_bytes(b'keep')
-        first = await self.service.get('https://cdn.test/a')
-        self.service.max_bytes = len(first) + 300
-        await self.service.get('https://cdn.test/b')
+        first = await self.service.get('https://cdn.test/a', (68, 68))
+        self.service.max_bytes = 2 * (len(first) + 300)
+        await self.service.get('https://cdn.test/b', (68, 68))
         self.assertEqual(sentinel.read_bytes(), b'keep')
         self.assertEqual(len(list(self.directory.glob('*.json'))), 1)
         self.assertEqual(len(list(self.directory.glob('*.tmp'))), 0)

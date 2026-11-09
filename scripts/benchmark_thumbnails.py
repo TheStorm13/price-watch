@@ -38,13 +38,13 @@ async def main():
             before_calls = calls
             with patch('price_watch.infrastructure.thumbnails.render_thumbnail', wraps=render_thumbnail) as render:
                 wall, cpu = time.perf_counter(), time.process_time()
-                images = await asyncio.gather(*(service.get(url) for url in urls))
+                images = await asyncio.gather(*(service.get(url, (68, 68)) for url in urls))
                 results[phase] = {'wall_seconds': round(time.perf_counter()-wall, 4),
                                   'cpu_seconds': round(time.process_time()-cpu, 4),
                                   'downloads': calls-before_calls, 'renders': render.call_count,
                                   'png_bytes': sum(map(len, images))}
             await service.close()
-            assert len(images) == 100 and all(Image.open(BytesIO(data)).size == (153, 204) for data in images)
+            assert len(images) == 100 and all(Image.open(BytesIO(data)).size == (68, 68) for data in images)
         assert results['warm_after_restart']['downloads'] == results['warm_after_restart']['renders'] == 0
         print(json.dumps({'python': platform.python_version(), 'pillow': pillow_version,
                           'source_size': [1800,2400], 'count':100, 'parallelism':2,

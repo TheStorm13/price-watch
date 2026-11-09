@@ -11,7 +11,7 @@ import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
 import { useUpdateCard, useVariantTracking } from '../../api/queries'
 import type { TrackedCardView, TrackedVariant } from '../../types/domain'
 import { formatDateTime, formatPrice } from '../../utils/format'
-import { ProductImage } from '../../components/product/ProductImage'
+import { PreparedProductImage } from '../../components/product/PreparedProductImage'
 import { sortVariants, variantColor, variantLabel } from './variantDisplay'
 
 export function VariantPanel({ card, variants }: { card: TrackedCardView; variants: TrackedVariant[] }) {
@@ -50,7 +50,7 @@ export function VariantPanel({ card, variants }: { card: TrackedCardView; varian
         const label = variantLabel(variant)
         const historical = !primary && ['wildberries', 'aliexpress'].includes(card.marketplace) && !variant.externalId.includes(':')
         return <TableRow key={variant.id} data-primary={primary || undefined}>
-          <TableCell><div className="variant-name"><ProductImage card={{ title: label, imageUrl: variant.imageUrl ?? null }} /><span className="variant-color" style={{ backgroundColor: variantColor(variant.externalId) }} /><div><strong>{label}</strong></div></div></TableCell>
+          <TableCell><div className="variant-name"><PreparedProductImage card={{ id: card.id, title: label, imageUrl: variant.imageUrl ?? null }} variantId={variant.id} /><span className="variant-color" style={{ backgroundColor: variantColor(variant.externalId) }} /><div><strong title={label}>{label}</strong></div></div></TableCell>
           <TableCell className="price-cell">{formatPrice(variant.currentPrice)}</TableCell>
           <TableCell><AvailabilityStatus value={variant.currentAvailability} /></TableCell>
           <TableCell>{formatDateTime(variant.updatedAt)}</TableCell>

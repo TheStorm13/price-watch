@@ -43,8 +43,8 @@ describe('desktop API client', () => {
     const revision = thumbnailConfig.snapshot()
     expect(configureDesktopApi({ baseUrl: 'http://127.0.0.1:1234', token: 'secret' })).toBe(false)
     const signal = new AbortController().signal
-    expect(await api.getThumbnail(7, signal)).toBeInstanceOf(Blob)
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:1234/api/cards/7/thumbnail', expect.objectContaining({
+    expect(await api.getThumbnail(7, { profile: 'list', scale: 1.25 }, signal)).toBeInstanceOf(Blob)
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:1234/api/cards/7/thumbnail?profile=list&scale=1.25', expect.objectContaining({
       signal, headers: expect.objectContaining({ 'X-Price-Watch-Token': 'secret' }),
     }))
     configureDesktopApi({ baseUrl: 'http://127.0.0.1:1234', token: 'new-secret' })

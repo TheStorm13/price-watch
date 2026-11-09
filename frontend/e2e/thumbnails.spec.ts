@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
 
-for (const dpr of [1, 2]) {
+for (const dpr of [1, 1.25, 1.5, 2, 3]) {
   test.describe(`catalog thumbnails DPR ${dpr}`, () => {
     test.use({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: dpr })
-    test('prepared images in ordinary/nested rows, originals in grid and details', async ({ page }) => {
+    test('prepared images in ordinary/nested rows, prepared grid and detail images', async ({ page }) => {
       const errors: string[] = []
       page.on('pageerror', (error) => errors.push(error.message))
       await page.goto('/cards')
@@ -25,8 +25,8 @@ for (const dpr of [1, 2]) {
       await expect.poll(() => photos.count()).toBe(5)
       for (const photo of await photos.all()) {
         await expect(photo).toHaveAttribute('src', /^blob:/)
-        await expect.poll(() => photo.evaluate((image: HTMLImageElement) => [image.naturalWidth, image.naturalHeight])).toEqual([153, 204])
-        expect(await photo.evaluate((image) => [image.getBoundingClientRect().width, image.getBoundingClientRect().height])).toEqual([51, 68])
+        await expect.poll(() => photo.evaluate((image: HTMLImageElement) => [image.naturalWidth, image.naturalHeight])).toEqual([Math.round(68 * dpr), Math.round(68 * dpr)])
+        expect(await photo.evaluate((image) => [image.getBoundingClientRect().width, image.getBoundingClientRect().height])).toEqual([68, 68])
         expect(await photo.evaluate((image) => [image.parentElement!.getBoundingClientRect().width, image.parentElement!.getBoundingClientRect().height])).toEqual([68, 68])
       }
       await expect(page.locator('.cards-table__nested img')).toHaveCount(2)
@@ -34,11 +34,11 @@ for (const dpr of [1, 2]) {
       await page.screenshot({ path: `/tmp/price-watch-catalog-thumbnails-dpr${dpr}.png` })
       await page.locator('.cards-table__product .card-identity__link').first().click()
       const detail = page.locator('.detail-header__product img')
-      await expect(detail).toHaveAttribute('src', /^data:image\/svg\+xml/)
-      await expect.poll(() => detail.evaluate((image: HTMLImageElement) => image.naturalHeight)).toBe(2400)
+      await expect(detail).toHaveAttribute('src', /^blob:/)
+      await expect.poll(() => detail.evaluate((image: HTMLImageElement) => image.naturalHeight)).toBe(Math.round(158 * dpr))
       await page.goBack()
       await page.getByRole('radio', { name: 'Сетка' }).click()
-      await expect(page.locator('.cards-grid__item img').first()).toHaveAttribute('src', /^data:image\/svg\+xml/)
+      await expect(page.locator('.cards-grid__item img').first()).toHaveAttribute('src', /^blob:/)
       expect(errors).toEqual([])
     })
   })

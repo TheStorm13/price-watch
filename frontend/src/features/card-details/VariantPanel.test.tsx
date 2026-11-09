@@ -3,9 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { TrackedCardView, TrackedVariant } from '../../types/domain'
 import { VariantPanel } from './VariantPanel'
+const imageProps = vi.hoisted(() => vi.fn())
+vi.mock('../../components/product/PreparedProductImage', () => ({ PreparedProductImage: (props: unknown) => { imageProps(props); return <span className="product-placeholder" /> } }))
 const mutate=vi.hoisted(()=>vi.fn().mockResolvedValue({}))
 vi.mock('../../api/queries',()=>({useVariantTracking:()=>({isPending:false,mutateAsync:mutate}),useUpdateCard:()=>({isPending:false,mutateAsync:mutate})}))
-afterEach(()=>{cleanup();mutate.mockClear()})
+afterEach(()=>{cleanup();mutate.mockClear();imageProps.mockClear()})
 
 it('searches a large SKU list and explicitly selects the matching variant as primary',async()=>{
   const card={id:1,primaryVariantId:1} as TrackedCardView
@@ -26,7 +28,7 @@ it('shows each variant photo with its own parameters and plain labels', () => {
     options: { Цвет: id === 1 ? 'Чёрный' : 'Белый' }, imageUrl: id < 3 ? `https://img.test/${id}.webp` : null,
     url: null, currentPrice: '100.00', currentAvailability: 'in_stock', lastObservedAt: null, updatedAt: null }))
   const { container } = render(<VariantPanel card={card} variants={variants} />)
-  expect([...container.querySelectorAll('img')].map((img) => img.src)).toEqual(['https://img.test/2.webp', 'https://img.test/1.webp'])
+  expect(imageProps.mock.calls.map(([props]) => [props.card.id, props.variantId, props.card.imageUrl])).toEqual([[1, 2, 'https://img.test/2.webp'], [1, 3, null], [1, 1, 'https://img.test/1.webp']])
   expect(container.querySelectorAll('.product-placeholder')).toHaveLength(3)
   expect(container.textContent).not.toContain('Код варианта')
   expect(container.textContent).not.toContain('SKU')

@@ -41,7 +41,7 @@ test('варианты показывают свои фото, а карточк
   }
   await page.getByRole('button', { name: 'Сделать главным: Цвет: белый', exact: true }).click()
   await expect(page.getByRole('heading', { name: titles[1], exact: true })).toBeVisible()
-  await expect(page.locator('.detail-header__product img')).toHaveAttribute('src', photos[1])
+  await expect(page.locator('.detail-header__product img')).toHaveAttribute('src', /^blob:/)
   await expect(page.getByRole('link', { name: 'Открыть на Wildberries' })).toHaveAttribute('href', /size=2$/)
   await expect(page.locator('.price-summary__primary strong')).toContainText('200')
   await expect(page.locator('.price-stat').first()).toContainText('200')
@@ -55,8 +55,7 @@ test('варианты показывают свои фото, а карточк
   await page.screenshot({ path: '/tmp/pw-variant-images-1024.png', fullPage: false })
   await page.getByRole('button', { name: 'Сделать главным: Цвет: серый', exact: true }).click()
   await expect(page.getByRole('heading', { name: titles[2], exact: true })).toBeVisible()
-  await expect(page.locator('.detail-header__product img')).toHaveAttribute('src', photos[2])
-  await expect(page.locator('.detail-header__product img')).toBeHidden()
+  await expect(page.locator('.detail-header__product img')).toHaveCount(0)
   expect(await page.locator('body').innerText()).not.toContain('SKU')
   expect(errors).toEqual([])
 })

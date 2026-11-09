@@ -41,9 +41,9 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  const rows=useMemo(()=>catalogRows(items,groupedCards,collapsedGroups,view==='grid'?columns:1),[items,groupedCards,collapsedGroups,view,columns])
  const keys=useMemo(()=>rows.map(row=>row.key),[rows])
  const saved=useRef(positions.get(location.pathname+location.search))
- const windowed=useVirtualRows(keys,view==='grid'?460:82, saved.current?.width===window.innerWidth?saved.current:undefined)
+ const windowed=useVirtualRows(keys,view==='grid'?484:82, saved.current?.width===window.innerWidth?saved.current:undefined)
  const {root,virtualizer,virtual,margin}=windowed
- useLayoutEffect(()=>{if(windowed.width) setColumns(Math.max(1,Math.floor((windowed.width+8)/228)))},[windowed.width])
+ useLayoutEffect(()=>{if(windowed.width) setColumns(Math.max(1,Math.floor((windowed.width+8)/288)))},[windowed.width])
  const current=useRef({returnTo,virtualizer})
  current.current={returnTo,virtualizer}
  useLayoutEffect(()=>{
@@ -70,7 +70,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
    const cards=row.cards.map(({card,nested})=><CatalogProduct key={card.id} card={card} nested={nested} view={view}
      selected={selectedIds.has(card.id)} onToggle={onSelect} savings={deals.get(card.id)?.savings ?? null} returnTo={returnTo}
      index={index} blockEnd={endsBlock(rows[index+1])} measure={virtual && view==='list'?virtualizer.measureElement:undefined} />)
-   return view==='list'?cards:<ul className={cn('cards-grid',row.cards[0]?.nested && 'cards-grid--nested')} style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`}}>{cards}</ul>
+   return view==='list'?cards:<ul className={cn('cards-grid',row.cards[0]?.nested && 'cards-grid--nested')} style={{gridTemplateColumns:`repeat(${columns},280px)`}}>{cards}</ul>
  }
  let last=margin
  const body=rendered.map(item=>{

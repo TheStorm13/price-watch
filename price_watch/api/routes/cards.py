@@ -21,6 +21,7 @@ from ..schemas import (
     ImportSummary,
 )
 from ...domain.models import TrackedCardOverview
+from ...ports.thumbnails import ThumbnailProfile, THUMBNAIL_BOXES
 from ...domain.history_merge import ConflictingObservation
 from ...domain.errors import CardAlreadyExists, CardInActiveRun, ImportDuringRun, VariantOwnershipConflict, ThumbnailError
 
@@ -91,14 +92,24 @@ async def get_card(card_id: int, cards: CardDep):
 
 
 @router.get("/{card_id}/thumbnail", response_class=Response, responses={200: {"content": {"image/png": {}}}})
-async def get_thumbnail(card_id: int, cards: CardDep, thumbnails: ThumbnailDep):
+async def get_thumbnail(card_id: int, cards: CardDep, thumbnails: ThumbnailDep,
+                        profile: ThumbnailProfile,
+                        scale: Annotated[float, Query(ge=0.25, le=8)],
+                        variant_id: Annotated[int | None, Query(alias="variantId", ge=1)] = None):
     overview = await cards.get_card(card_id)
     if overview is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
-    if not overview.card.image_url:
+    source = overview.card.image_url
+    if variant_id is not None:
+        variant = await cards.get_variant_image(card_id, variant_id)
+        if variant is None:
+            raise ApiProblem(404, "variant_not_found", "Вариант не принадлежит этой карточке")
+        source = variant[0]
+    if not source:
         raise ApiProblem(404, "image_not_found", "У карточки нет фотографии")
     try:
-        content = await thumbnails.get(overview.card.image_url)
+        size = tuple(max(1, int(side * scale + 0.5)) for side in THUMBNAIL_BOXES[profile])
+        content = await thumbnails.get(source, size)
     except ThumbnailError as exc:
         raise ApiProblem(502, "thumbnail_unavailable", str(exc)) from exc
     return Response(content, media_type="image/png", headers={"Cache-Control": "no-store"})

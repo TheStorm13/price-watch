@@ -162,22 +162,25 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                                self.repository, self.repository, CatalogService(self.repository))
         app = create_app(services=services, api_token='secret', thumbnails=thumbnails)
         async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
-            self.assertEqual((await client.get('/api/cards/1/thumbnail')).status_code, 401)
+            self.assertEqual((await client.get('/api/cards/1/thumbnail?profile=list&scale=1')).status_code, 401)
             headers = {'X-Price-Watch-Token': 'secret'}
-            self.assertEqual((await client.get('/api/cards/1/thumbnail', headers=headers)).status_code, 404)
-            self.assertEqual((await client.get('/api/cards/999/thumbnail', headers=headers)).status_code, 404)
+            for query in ('', '?profile=no&scale=1', '?profile=list&scale=0', '?profile=list&scale=9', '?profile=list&scale=no'):
+                self.assertEqual((await client.get('/api/cards/1/thumbnail' + query, headers=headers)).status_code, 422)
+
+            self.assertEqual((await client.get('/api/cards/1/thumbnail?profile=list&scale=1', headers=headers)).status_code, 404)
+            self.assertEqual((await client.get('/api/cards/999/thumbnail?profile=list&scale=1', headers=headers)).status_code, 404)
             thumbnails.get.assert_not_called()
             for source in ['https://cdn.test/first', 'https://cdn.test/new-primary']:
                 self.repository.card = replace(self.repository.card, image_url=source)
-                response = await client.get('/api/cards/1/thumbnail', headers=headers)
+                response = await client.get('/api/cards/1/thumbnail?profile=list&scale=1', headers=headers)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.headers['content-type'], 'image/png')
                 self.assertEqual(response.headers['cache-control'], 'no-store')
                 self.assertEqual(response.content, b'png-content')
-                thumbnails.get.assert_awaited_with(source)
+                thumbnails.get.assert_awaited_with(source, (68, 68))
                 self.assertEqual(self.repository.card.image_url, source)
             thumbnails.get.side_effect = ThumbnailError('unavailable')
-            response = await client.get('/api/cards/1/thumbnail', headers=headers)
+            response = await client.get('/api/cards/1/thumbnail?profile=list&scale=1', headers=headers)
             self.assertEqual(response.status_code, 502)
             self.assertEqual(response.json()['error']['code'], 'thumbnail_unavailable')
 

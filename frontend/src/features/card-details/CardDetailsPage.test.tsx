@@ -1,4 +1,6 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+import { cleanup, render as renderView, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { CardDetailsPage } from './CardDetailsPage'
@@ -20,6 +22,10 @@ vi.mock('../../api/queries', () => ({
 vi.mock('../collection/CollectionProvider', () => ({ useCollectionCommands: () => ({ isStarting: false, startError: null }) }))
 vi.mock('./VariantPriceChart', () => ({ VariantPriceChart: () => <div>График доступен</div> }))
 afterEach(() => { cleanup(); Object.assign(state, { chartError: false, historyError: false, historyLoading: false, chartLoading: false, primaryVariantId: 1, variantStatistics: false }) })
+function render(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderView(ui, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> })
+}
 function view() { return render(<MemoryRouter initialEntries={['/cards/1']}><Routes><Route path="/cards/:cardId" element={<CardDetailsPage />} /></Routes></MemoryRouter>) }
 it('keeps the card and measurements visible when chart fails', () => {
   state.chartError = true; view()

@@ -179,6 +179,13 @@ class CardRepository:
             return [_tracked_card(record, variant, for_collection=True) for record, variant in rows
                     if variant.id == record.primary_variant_id or variant.tracking_enabled]
 
+    async def get_variant_image(self, card_id: int, variant_id: int) -> tuple[str | None] | None:
+        async with self._database.session() as session:
+            row = (await session.execute(select(CardVariantRecord.image_url).where(
+                CardVariantRecord.card_id == card_id, CardVariantRecord.id == variant_id,
+            ))).first()
+        return (row[0],) if row is not None else None
+
     async def get_variants(self, card_id: int) -> list[dict]:
         from .models import PriceHistoryRecord
         from sqlalchemy.orm import aliased

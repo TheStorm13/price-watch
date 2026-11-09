@@ -16,7 +16,7 @@ import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
 import { Button } from '../../components/ui/button'
 import { CardActionsMenu } from '../../components/product/CardActionsMenu'
 import { MarketplaceMark } from '../../components/product/MarketplaceMark'
-import { ProductImage } from '../../components/product/ProductImage'
+import { PreparedProductImage } from '../../components/product/PreparedProductImage'
 import { TagList } from '../../components/product/TagList'
 import { formatDateTime, formatPrice, marketplaceLabel } from '../../utils/format'
 import { useCollectionCommands } from '../collection/CollectionProvider'
@@ -92,7 +92,7 @@ export function CardDetailsPage() {
       <Link className="back-link" to={returnTo}><ArrowLeft />К карточкам</Link>
       <header className="detail-header">
         <div className="detail-header__product">
-          <ProductImage card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager />
+          <PreparedProductImage profile="detail" card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager />
           <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span><span>{Object.entries(card.options ?? {}).map(([name, value]) => `${name}: ${value}`).join(' · ')}</span>{!card.dealsEnabled ? <><span>·</span><Badge variant="warning" className="tracking-status">Не участвует в выгодных</Badge></> : null}</div></div>
         </div>
         <div className="page-actions">

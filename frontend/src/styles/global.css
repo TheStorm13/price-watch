@@ -153,8 +153,8 @@ input::placeholder { color: #98a2b3; }
 .tracking-status { display: inline-block; max-width: 100%; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--amber); font-size: 12px; font-weight: 600; }
 .product-placeholder { position: relative; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 8px; display: grid; place-items: center; overflow: hidden; color: var(--blue); background: var(--blue-soft); font-size: 18px; font-weight: 650; }
 .product-placeholder img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; }
-.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; padding: 0; margin: 0; list-style: none; }
-.cards-grid__item { position: relative; width: 100%; max-width: 280px; min-width: 0; display: grid; grid-template-rows: 238px 28px 34px 112px 34px 28px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, 280px); gap: 8px; padding: 0; margin: 0; list-style: none; }
+.cards-grid__item { position: relative; width: 280px; height: 476px; min-width: 280px; display: grid; grid-template-rows: 238px 28px 34px 112px 34px 28px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
 .cards-grid__item.is-selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .cards-grid__selection { position: absolute; z-index: 1; top: 8px; left: 8px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
 .cards-grid__link { min-width: 0; display: grid; grid-template-rows: 190px 48px; color: var(--text); text-decoration: none; }
@@ -183,7 +183,7 @@ input::placeholder { color: #98a2b3; }
 .cards-grid__tracking .tracking-status { margin: 0; font-size: inherit; line-height: inherit; }
 .cards-grid__actions { position: absolute; z-index: 1; top: 8px; right: 8px; border-radius: 8px; background: rgba(255, 255, 255, .94); box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }
 .cards-grid__group { grid-column: 1 / -1; min-width: 0; }
-.cards-grid--nested { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.cards-grid--nested { grid-template-columns: repeat(auto-fill, 280px); }
 .tag-list { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
 .card-identity .tag-list { width: 100%; max-width: 100%; min-width: 0; flex: none; flex-wrap: nowrap; }
 .card-identity .tag { min-width: 0; flex: 0 1 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
@@ -310,8 +310,7 @@ input::placeholder { color: #98a2b3; }
 .cards-table thead th:last-child { border-top-right-radius: var(--catalog-radius); }
 .cards-table__product .product-placeholder--with-image,
 .cards-grid .product-placeholder--with-image { background: var(--surface); }
-.cards-table__product .product-placeholder img,
-.cards-grid .product-placeholder img { width: auto; height: auto; max-width: 100%; max-height: 100%; margin: auto; border-radius: inherit; }
+
 .cards-table tbody tr, .cards-table tbody tr:hover { background: transparent; border: 0; }
 .cards-table tbody tr > td { background-color: var(--row-surface); background-clip: padding-box; }
 .cards-table [data-block-start] > td { border-top: var(--catalog-gap) solid transparent; box-shadow: inset 0 1px var(--border); }
@@ -372,3 +371,14 @@ input::placeholder { color: #98a2b3; }
 .variant-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; max-height: 150px; overflow-y: auto; margin-bottom: 16px; }
 .variant-legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 .variant-chart-section { margin-bottom: 24px; }
+
+/* Prepared bitmaps occupy the exact content box, including transparent padding. */
+.cards-table__product .product-placeholder img,
+.cards-grid .product-placeholder img { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; }
+.variant-table .product-placeholder { width: 68px; height: 68px; flex-basis: 68px; border-radius: var(--radius-control); }
+.variant-table td { padding-top: 4px; padding-bottom: 4px; }
+.variant-name { min-height: 68px; height: 68px; }
+.variant-name > div { min-width: 0; }
+.variant-name strong { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+.variant-color { flex-shrink: 0; }

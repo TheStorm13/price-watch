@@ -310,11 +310,11 @@ PRICE_SMOKE_CATALOG_SIZE=5000 dbus-run-session -- xvfb-run -a -s '-screen 0 1440
 Нужны также libXtst/libX11. Ввод выполняется только на приватном Xvfb теста;
 дополнительные карточки не включаются в сбор.
 
-## Миниатюры списка
+## Подготовленные фото
 
 ```bash
 .venv/bin/python -m unittest tests.test_thumbnails tests.test_api tests.test_dependency_boundaries -q
-npm --prefix frontend test -- src/components/product/CatalogThumbnail.test.tsx src/api/client.test.ts src/app/App.test.tsx
+npm --prefix frontend test -- src/components/product/PreparedProductImage.test.tsx src/api/client.test.ts src/app/App.test.tsx
 npm --prefix frontend run test:e2e -- thumbnails.spec.ts
 .venv/bin/python -m scripts.benchmark_thumbnails
 ```
@@ -323,10 +323,19 @@ Python использует синтетические JPEG и временны�
 повторное чтение и перезапуск, смена URL, условные ответы 304, неизменное тело,
 дедупликация, лимит двух операций, отмена, ошибки и ограничения источника,
 авторизация и текущий главный вариант. E2E проверяет обычные/вложенные строки
-68 × 68 с PNG 153 × 204 при DPR 1/2 и оригиналы в сетке/деталях.
+68 × 68 CSS px с квадратными PNG 68/85/102/136/204 при DPR 1/1.25/1.5/2/3 и подготовленные фото tile/detail.
 Это mock UI, не live CDN и не проверка Tauri WebView.
 
 Benchmark генерирует 100 разных JPEG 1800 × 2400, читает их с локального диска
 и сравнивает холодный кэш с новым экземпляром сервиса на готовом кэше.
 Он сообщает wall/CPU, число загрузок/преобразований и PNG-байты. Сетевой задержки
 в измерении нет; результат не предсказывает время загрузки из маркетплейсов.
+
+
+Качество уменьшения фото проверяйте также в native WebKitGTK на целевом Linux:
+прохождение Chromium E2E не подтверждает качество интерполяции WebView. Сравните
+одно фото в списке до/после, прокрутку и смену масштаба; проверьте naturalWidth/
+naturalHeight PNG против round(68 × devicePixelRatio). Для диагностики используйте
+изолированные данные и временный кэш, не изменяйте реальные карточки. Важны
+DPR=1 и дробные значения, а не только 2×. Не включайте pixelated/crisp-edges для
+фотографий: это не замена качественному уменьшению.

@@ -1,3 +1,4 @@
+export type ThumbnailProfile = 'list' | 'tile' | 'detail'
 import { thumbnailConfig } from './thumbnailConfig'
 import { mockApi } from './mockApi'
 import type {
@@ -69,8 +70,11 @@ async function request<T>(path: string, init?: RequestInit, binary = false): Pro
 }
 
 export const api = {
-  getThumbnail: (cardId: number, signal?: AbortSignal): Promise<Blob> =>
-    isE2ETestMode ? mockApi.getThumbnail() : request(`/api/cards/${cardId}/thumbnail`, { signal }, true),
+  getThumbnail: (cardId: number, options: { profile: ThumbnailProfile; scale: number; variantId?: number }, signal?: AbortSignal): Promise<Blob> => {
+    const params = new URLSearchParams({ profile: options.profile, scale: String(options.scale) })
+    if (options.variantId !== undefined) params.set('variantId', String(options.variantId))
+    return isE2ETestMode ? mockApi.getThumbnail(cardId, options.profile, options.scale, options.variantId) : request(`/api/cards/${cardId}/thumbnail?${params}`, { signal }, true)
+  },
   getCatalog: (signal?: AbortSignal): Promise<CatalogSnapshot> =>
     isE2ETestMode ? mockApi.getCatalog() : request('/api/catalog', { signal }),
   createGroup: (input: GroupInput): Promise<ProductGroup> =>

@@ -32,3 +32,5 @@
 - [ADR 0015: Последовательные маркетплейсы с отдельными request pools](0015-shared-request-dispatcher.md) — Accepted (design), последовательные этапы и отдельные HTTP pools 100.
 
 - [ADR 0016: Кэшированные миниатюры списка в локальном API](0016-cached-product-thumbnails.md) — Accepted, Lanczos 204 px и восстанавливаемый дисковый кэш.
+
+- [ADR 0017: Подготовленные фото под физический размер](0017-physical-product-images.md) — Accepted (design), три роли ×1; заменяет фиксированный рецепт ADR0016.
