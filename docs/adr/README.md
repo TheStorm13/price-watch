@@ -30,3 +30,5 @@
 - [ADR 0014: Асинхронный Ozon без планового лимита частоты](0014-ozon-unpaced-async-concurrency.md) — историческое решение Ozon N=8; concurrency policy заменена ADR0015.
 
 - [ADR 0015: Последовательные маркетплейсы с отдельными request pools](0015-shared-request-dispatcher.md) — Accepted (design), последовательные этапы и отдельные HTTP pools 100.
+
+- [ADR 0016: Кэшированные миниатюры списка в локальном API](0016-cached-product-thumbnails.md) — Accepted, Lanczos 204 px и восстанавливаемый дисковый кэш.

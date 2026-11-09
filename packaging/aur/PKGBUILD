@@ -13,6 +13,7 @@ depends=(
   'python-alembic'
   'python-fastapi'
   'python-httpx'
+  'python-pillow'
   'python-playwright'
   'python-psycopg'
   'python-pydantic'

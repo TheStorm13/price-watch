@@ -23,3 +23,7 @@ class ImportDuringRun(ValueError):
 
 class VariantOwnershipConflict(ValueError):
     pass
+
+
+class ThumbnailError(Exception):
+    """Unavailable image source or cache; the UI shows its image placeholder."""

@@ -1,6 +1,6 @@
 # ADR 0016: Кэшированные миниатюры списка в локальном API
 
-- Статус: Proposed.
+- Статус: Accepted (одобрено пользователем 2026-11-09).
 - Дата: 2026-11-08.
 - План и критерии: [cached-product-thumbnails](../../openspec/changes/cached-product-thumbnails/spec.md).
 

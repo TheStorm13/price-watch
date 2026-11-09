@@ -4,7 +4,7 @@ from marketplace_connector.domain.errors import InvalidProductId
 
 from fastapi import APIRouter, Query, Response, status
 
-from ..dependencies import CardDep, HistoryDep, TransferDep
+from ..dependencies import CardDep, HistoryDep, TransferDep, ThumbnailDep
 from ..errors import ApiProblem
 from ..schemas import (
     CardCreate,
@@ -22,7 +22,7 @@ from ..schemas import (
 )
 from ...domain.models import TrackedCardOverview
 from ...domain.history_merge import ConflictingObservation
-from ...domain.errors import CardAlreadyExists, CardInActiveRun, ImportDuringRun, VariantOwnershipConflict
+from ...domain.errors import CardAlreadyExists, CardInActiveRun, ImportDuringRun, VariantOwnershipConflict, ThumbnailError
 
 
 router = APIRouter(prefix="/cards", tags=["cards"])
@@ -88,6 +88,20 @@ async def get_card(card_id: int, cards: CardDep):
     if overview is None:
         raise ApiProblem(404, "card_not_found", "Карточка не найдена")
     return CardResponse.from_overview(overview)
+
+
+@router.get("/{card_id}/thumbnail", response_class=Response, responses={200: {"content": {"image/png": {}}}})
+async def get_thumbnail(card_id: int, cards: CardDep, thumbnails: ThumbnailDep):
+    overview = await cards.get_card(card_id)
+    if overview is None:
+        raise ApiProblem(404, "card_not_found", "Карточка не найдена")
+    if not overview.card.image_url:
+        raise ApiProblem(404, "image_not_found", "У карточки нет фотографии")
+    try:
+        content = await thumbnails.get(overview.card.image_url)
+    except ThumbnailError as exc:
+        raise ApiProblem(502, "thumbnail_unavailable", str(exc)) from exc
+    return Response(content, media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/{card_id}/variants", response_model=list[VariantResponse])

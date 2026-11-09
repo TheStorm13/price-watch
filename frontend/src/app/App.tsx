@@ -21,7 +21,10 @@ function startDesktopServices() {
 }
 
 function applyDesktopConfig(config: DesktopApiConfig) {
-  if (configureDesktopApi(config)) void queryClient.invalidateQueries()
+  if (configureDesktopApi(config)) {
+    queryClient.removeQueries({ queryKey: ['thumbnails'] })
+    void queryClient.invalidateQueries()
+  }
 }
 
 function DesktopBootstrap({ children }: { children: ReactNode }) {

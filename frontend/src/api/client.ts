@@ -1,3 +1,4 @@
+import { thumbnailConfig } from './thumbnailConfig'
 import { mockApi } from './mockApi'
 import type {
   ApiErrorPayload,
@@ -38,10 +39,11 @@ let desktopApiConfig: DesktopApiConfig | null = null
 export function configureDesktopApi(config: DesktopApiConfig) {
   const changed = desktopApiConfig?.baseUrl !== config.baseUrl || desktopApiConfig?.token !== config.token
   desktopApiConfig = config
+  if (changed) thumbnailConfig.changed()
   return changed
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, binary = false): Promise<T> {
   if (!desktopApiConfig) {
     throw new Error('Локальный API ещё не запущен')
   }
@@ -61,11 +63,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       payload?.error.field,
     )
   }
+  if (binary) return response.blob() as Promise<T>
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
 }
 
 export const api = {
+  getThumbnail: (cardId: number, signal?: AbortSignal): Promise<Blob> =>
+    isE2ETestMode ? mockApi.getThumbnail() : request(`/api/cards/${cardId}/thumbnail`, { signal }, true),
   getCatalog: (signal?: AbortSignal): Promise<CatalogSnapshot> =>
     isE2ETestMode ? mockApi.getCatalog() : request('/api/catalog', { signal }),
   createGroup: (input: GroupInput): Promise<ProductGroup> =>

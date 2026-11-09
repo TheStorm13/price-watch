@@ -329,7 +329,13 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
   return summary
 }
 
+// Synthetic PNG for the existing mock API; no real product photograph.
+const thumbnailBytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAJkAAADMCAIAAADvfZapAAADiElEQVR4nO3dzU0jXRBG4QsiIcuS8/CSAMgAEmCLM3AALG8eliyH1OwQKiHx4+7brlPnrGYFaB71W+P+9M3cTdPUDNH92j+AzZaWnLTkpCUnLTlpyUlLTlpy0pKTlpy05KQlJy05aclJS05actKSk5actOSkJSctOWnJSUtOWnLSkpOWnLTkpCUnLTk9XP8lnl4Oc/wk1Tu+PV/5FXwuOWnJSUtOWnLSkpOWnLTkpCWnEZaX82nAd7EZ3vv8BvJyPvX3Y/Hf7tfDMfFz6RM5smUtN9vd56/3j0+Lfi8b+mcfOXNbhjMpZ+7n0j/1oDb2K6ePJupdgZy5LV1a1HPp0mLfx7q0uS1dWtRz6dJi/5uXS5vb0pdBqOfSw4naWA8n7V5+5uHMbenSop5Ll5ZjGXJpc1u6tBxLlxZlGXJpc1v6Mohj6eFEWXo4UZYhD2duSz+icCxdWpRlyKXNbelHFI6lhxNl6eFEWYY8nLkt/YjCsXRpUZYhlza3pUvLsXRpUZYhlza3pS+DOJYeTpSlhxNlGfJw5rb0IwrH0qVFWYb25f/uxNyWLi3H0qVFWYb2hZeWYOnLII6lhxNl2fz/q0mWoYKHE2XZa/+zGSjLVntpaZahUpxAy171X14AWraqh5Np2UoeTqxlqAIn2bIXW1qyZSu2tHDLEJuTb9nLLC3fspVZ2hKWISpnFcte4GVQFctW4HAWsmz0w1nLMgTjLGfZuUtbzrJxl7aiZQjDWdSyEz+iFLVsxMNZ17LhDmdpy1B2zuqWHbS01S0baGm1jOXl1JKztFpyllbL78vIqSXnZZCWnMOpJedwavlDiTi15Cytlpyl1fJXpeDUkrO0WnKWVss/dOOcWnJeBmnJOZxacg6nlv/pNjm15Cytlpyl1fL/3RqnlpyPKFpyDqeWnMOp5QzdCKeWnKXVkrO0Ws7W6pxacpZWS87SajlzK3JqyXkZpCXncGrJOZxaLtV4Ti05S6slZ2m1XLaRnFpyllZLztJqOaIxnFpyXgZpyTmcWo7jvJxPi34vLce12e4W/foPi3711trrYf2Xzuu22e4u59PSkD6XgxoAqSUq7yUnLTlpyUlLTlpy0pKTlpzupmla+2ewefK55KQlJy05aclJS05actKSk5actOSkJSctOWnJSUtOWnLSkpOWnLTkpCUnLTlpyUlLTlpy0pKTlpy05KQlJy0bpg9F/CNPDTadPgAAAABJRU5ErkJggg=='), (character) => character.charCodeAt(0))
+
 export const mockApi = {
+  async getThumbnail(): Promise<Blob> {
+    return new Blob([thumbnailBytes], { type: 'image/png' })
+  },
   async getCatalog() {
     return delay({ cards: cards.map(cardView), groups: groups.map(groupView),
       deals: cards.flatMap((card) => { const deal = cardDeal(card); return deal ? [deal] : [] })

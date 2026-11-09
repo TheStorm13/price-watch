@@ -11,6 +11,7 @@ pkgbase = price-watch-bin
 	depends = python-alembic
 	depends = python-fastapi
 	depends = python-httpx
+	depends = python-pillow
 	depends = python-playwright
 	depends = python-psycopg
 	depends = python-pydantic

@@ -153,6 +153,34 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.client.aclose()
 
+    async def test_thumbnail_auth_source_changes_and_missing_images(self):
+        from unittest.mock import AsyncMock
+        from price_watch.infrastructure.thumbnails import ThumbnailError
+        thumbnails = AsyncMock()
+        thumbnails.get.return_value = b'png-content'
+        services = ApiServices(self.repository, self.repository, self.repository, self.repository,
+                               self.repository, self.repository, CatalogService(self.repository))
+        app = create_app(services=services, api_token='secret', thumbnails=thumbnails)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
+            self.assertEqual((await client.get('/api/cards/1/thumbnail')).status_code, 401)
+            headers = {'X-Price-Watch-Token': 'secret'}
+            self.assertEqual((await client.get('/api/cards/1/thumbnail', headers=headers)).status_code, 404)
+            self.assertEqual((await client.get('/api/cards/999/thumbnail', headers=headers)).status_code, 404)
+            thumbnails.get.assert_not_called()
+            for source in ['https://cdn.test/first', 'https://cdn.test/new-primary']:
+                self.repository.card = replace(self.repository.card, image_url=source)
+                response = await client.get('/api/cards/1/thumbnail', headers=headers)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers['content-type'], 'image/png')
+                self.assertEqual(response.headers['cache-control'], 'no-store')
+                self.assertEqual(response.content, b'png-content')
+                thumbnails.get.assert_awaited_with(source)
+                self.assertEqual(self.repository.card.image_url, source)
+            thumbnails.get.side_effect = ThumbnailError('unavailable')
+            response = await client.get('/api/cards/1/thumbnail', headers=headers)
+            self.assertEqual(response.status_code, 502)
+            self.assertEqual(response.json()['error']['code'], 'thumbnail_unavailable')
+
     async def test_replaced_list_routes_are_removed(self):
         schema = self.client._transport.app.openapi()
         self.assertNotIn('get', schema['paths']['/api/cards'])

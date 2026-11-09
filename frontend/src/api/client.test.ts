@@ -33,4 +33,22 @@ describe('desktop API client', () => {
       }),
     )
   })
+  it('loads authenticated binary images with cancellation and resets config revision', async () => {
+    vi.stubEnv('VITE_E2E_TEST_MODE', 'false')
+    const fetchMock = vi.fn().mockResolvedValue(new Response('png', { headers: { 'Content-Type': 'image/png' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { api, configureDesktopApi } = await import('./client')
+    const { thumbnailConfig } = await import('./thumbnailConfig')
+    configureDesktopApi({ baseUrl: 'http://127.0.0.1:1234', token: 'secret' })
+    const revision = thumbnailConfig.snapshot()
+    expect(configureDesktopApi({ baseUrl: 'http://127.0.0.1:1234', token: 'secret' })).toBe(false)
+    const signal = new AbortController().signal
+    expect(await api.getThumbnail(7, signal)).toBeInstanceOf(Blob)
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:1234/api/cards/7/thumbnail', expect.objectContaining({
+      signal, headers: expect.objectContaining({ 'X-Price-Watch-Token': 'secret' }),
+    }))
+    configureDesktopApi({ baseUrl: 'http://127.0.0.1:1234', token: 'new-secret' })
+    expect(thumbnailConfig.snapshot()).toBe(revision + 1)
+  })
+
 })

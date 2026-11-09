@@ -1,6 +1,7 @@
 from typing import Annotated
 from fastapi import Depends, Request
 from ..application.catalog_service import CatalogService
+from ..ports.thumbnails import ThumbnailReader
 from ..ports.catalog_storage import CardStore, HistoryReader, GroupStore, TransferStore
 from ..ports.runs import RunQueueStore, RunChallengeStore
 
@@ -52,3 +53,10 @@ def get_catalog(request: Request) -> CatalogService:
 
 
 CatalogDep = Annotated[CatalogService, Depends(get_catalog)]
+
+
+def get_thumbnails(request: Request) -> ThumbnailReader:
+    return request.app.state.thumbnails
+
+
+ThumbnailDep = Annotated[ThumbnailReader, Depends(get_thumbnails)]

@@ -15,19 +15,24 @@ from .schemas import CatalogResponse
 from ..infrastructure.postgres import AsyncDatabase, Database, MigrationRunner
 from ..bootstrap import create_postgres_stores
 from ..application.services import ApiServices
+from ..infrastructure.thumbnails import ThumbnailService
 
 
 def create_app(
     database_url: str | None = None,
     services: ApiServices | None = None,
     api_token: str | None = None,
+    thumbnails: ThumbnailService | None = None,
 ) -> FastAPI:
     expected_token = api_token if api_token is not None else os.environ.get("PRICE_WATCH_API_TOKEN")
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         if services is not None:
             app.state.services = services
-            yield
+            try:
+                yield
+            finally:
+                await app.state.thumbnails.close()
             return
         url = database_url or os.environ.get("DATABASE_URL")
         if not url:
@@ -42,6 +47,7 @@ def create_app(
             app.state.services = create_postgres_stores(database).api
             yield
         finally:
+            await app.state.thumbnails.close()
             await database.close()
 
     app = FastAPI(
@@ -49,6 +55,7 @@ def create_app(
         version="0.1.0",
         lifespan=lifespan,
     )
+    app.state.thumbnails = thumbnails if thumbnails is not None else ThumbnailService()
     if services is not None:
         app.state.services = services
 

@@ -10,7 +10,7 @@ vi.mock('react-router-dom', () => ({ RouterProvider: () => <div>Интерфей
 vi.mock('./router', () => ({ router: {} }))
 vi.mock('./providers', () => ({
   AppProviders: ({ children }: { children: ReactNode }) => children,
-  queryClient: { invalidateQueries: vi.fn() },
+  queryClient: { removeQueries: vi.fn(), invalidateQueries: vi.fn() },
 }))
 
 afterEach(() => {
