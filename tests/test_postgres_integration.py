@@ -682,7 +682,61 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         await self.abandon_queued(repository,retry)
         for card in cards: await repository.cards.delete_card(card.id)
 
-    async def test_deal_excludes_current_price_from_daily_average(self):
+    async def test_midpoint_preserves_half_kopeck_precision_and_single_price(self):
+        repository = create_postgres_stores(self.async_database)
+        card = await repository.cards.add_card("integration-test", f"test-{uuid4()}")
+        now = datetime.now(timezone.utc)
+        try:
+            for offset, price, expected in ((1, "100.00", "100.00"), (0, "100.01", "100.005")):
+                async with self.async_database.session() as session, session.begin():
+                    session.add(PriceHistoryRecord(
+                        card_id=card.id, variant_id=card.variant_id, collection_run_id=None,
+                        price=Decimal(price), availability="in_stock",
+                        observed_at=now - timedelta(minutes=offset), snapshot={},
+                    ))
+                statistics = await repository.history.get_statistics(card.id, 7)
+                self.assertEqual(statistics.average_price, Decimal(expected))
+                catalog = await repository.catalog.get_catalog()
+                projected = next(item for item in catalog["cards"] if item["id"] == card.id)
+                self.assertEqual(projected["average_price"], Decimal(expected))
+                self.assertFalse(any(item["card"]["id"] == card.id for item in catalog["deals"]))
+        finally:
+            await repository.cards.delete_card(card.id)
+
+    async def test_midpoint_uses_extremes_including_latest_and_respects_history_period(self):
+        repository = create_postgres_stores(self.async_database)
+        card = await repository.cards.add_card("integration-test", f"test-{uuid4()}")
+        now = datetime.now(timezone.utc)
+        try:
+            empty = await repository.history.get_statistics(card.id, 7)
+            self.assertIsNone(empty.average_price)
+            self.assertEqual(empty.observations_count, 0)
+            async with self.async_database.session() as session, session.begin():
+                for days_ago, price, availability in (
+                    (10, "20", "in_stock"), (2, "100", "in_stock"),
+                    (2, "100", "in_stock"), (1, "160", "in_stock"),
+                    (1, "999", "unknown"), (0, None, "out_of_stock"),
+                ):
+                    session.add(PriceHistoryRecord(
+                        card_id=card.id, variant_id=card.variant_id, collection_run_id=None,
+                        price=Decimal(price) if price is not None else None,
+                        availability=availability, observed_at=now - timedelta(days=days_ago), snapshot={},
+                    ))
+            statistics = await repository.history.get_statistics(card.id, 7)
+            self.assertEqual(statistics.average_price, Decimal("130"))
+            self.assertEqual(statistics.minimum_price, Decimal("100"))
+            self.assertEqual(statistics.maximum_price, Decimal("160"))
+            self.assertEqual(statistics.observations_count, 3)
+            self.assertEqual(statistics.observed_days, 2)
+            catalog = await repository.catalog.get_catalog()
+            projected = next(item for item in catalog["cards"] if item["id"] == card.id)
+            self.assertEqual(projected["average_price"], Decimal("90"))
+            self.assertEqual(projected["minimum_price"], Decimal("20"))
+            self.assertFalse(any(item["card"]["id"] == card.id for item in catalog["deals"]))
+        finally:
+            await repository.cards.delete_card(card.id)
+
+    async def test_deal_uses_full_history_range_midpoint(self):
         repository = create_postgres_stores(self.async_database)
         card = await repository.cards.add_card("integration-test", f"test-{uuid4()}")
         run_id = await self.fixture_run()
@@ -695,12 +749,12 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         price=Decimal(price), availability="in_stock",
                         observed_at=now - timedelta(days=3 - index), snapshot={}))
             deal = next(item for item in (await repository.catalog.get_catalog())["deals"] if item["card"]["id"] == card.id)
-            self.assertEqual(deal["average_price"], Decimal("110"))
-            self.assertEqual(deal["savings"], Decimal("30"))
-            self.assertEqual(deal["baseline_days"], 2)
+            self.assertEqual(deal["average_price"], Decimal("100"))
+            self.assertEqual(deal["savings"], Decimal("20"))
+            self.assertEqual(deal["baseline_days"], 3)
             self.assertEqual(deal["last_collection_run_id"], run_id)
             metrics = {c["id"]: (c["minimum_price"], c["average_price"]) for c in (await repository.catalog.get_catalog())["cards"]}
-            self.assertEqual(metrics[card.id], (Decimal("80"), Decimal("110")))
+            self.assertEqual(metrics[card.id], (Decimal("80"), Decimal("100")))
             app = create_app(services=repository.api)
 
 
@@ -710,11 +764,11 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     cards_response = await client.get("/api/catalog")
                 self.assertEqual(response.status_code, 200)
                 item = next(item for item in response.json()["deals"] if item["card"]["id"] == card.id)
-                self.assertEqual(item["averagePrice"], "110")
+                self.assertEqual(Decimal(item["averagePrice"]), Decimal("100"))
                 self.assertEqual(item["lastCollectionRunId"], run_id)
                 card_response = next(entry for entry in cards_response.json()["cards"] if entry["id"] == card.id)
                 self.assertEqual(card_response["minimumPrice"], "80.00")
-                self.assertEqual(card_response["averagePrice"], "110")
+                self.assertEqual(Decimal(card_response["averagePrice"]), Decimal("100"))
 
             await check_deal_api()
             with self.database.session() as session, session.begin():
@@ -740,9 +794,9 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         observed_at=now - timedelta(days=days_ago), snapshot={},
                     ))
             deal = next(item for item in (await repository.catalog.get_catalog())["deals"] if item["card"]["id"] == card.id)
-            self.assertEqual(deal["average_price"], Decimal("100"))
-            self.assertEqual(deal["savings"], Decimal("20"))
-            self.assertEqual(deal["baseline_days"], 1)
+            self.assertEqual(deal["average_price"], Decimal("90"))
+            self.assertEqual(deal["savings"], Decimal("10"))
+            self.assertEqual(deal["baseline_days"], 2)
         finally:
             await repository.cards.delete_card(card.id)
 
@@ -766,8 +820,8 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     observed_at=now - timedelta(minutes=1), snapshot={},
                 ))
             deal = next(item for item in (await repository.catalog.get_catalog())["deals"] if item["card"]["id"] == card.id)
-            self.assertEqual(deal["average_price"], Decimal("100"))
-            self.assertEqual(deal["savings"], Decimal("20"))
+            self.assertEqual(deal["average_price"], Decimal("90"))
+            self.assertEqual(deal["savings"], Decimal("10"))
             self.assertEqual(deal["baseline_days"], 1)
         finally:
             await repository.cards.delete_card(card.id)

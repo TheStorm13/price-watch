@@ -90,32 +90,21 @@ class HistoryRepository:
         observed_day = func.date_trunc(
             literal_column("'day'"), PriceHistoryRecord.observed_at
         )
-        daily = (
-            select(
-                observed_day.label("observed_day"),
-                func.avg(PriceHistoryRecord.price).label("daily_average"),
-                func.min(PriceHistoryRecord.price).label("daily_minimum"),
-                func.max(PriceHistoryRecord.price).label("daily_maximum"),
-                func.count().label("observations_count"),
-            )
-            .where(
-                PriceHistoryRecord.card_id == card_id,
-                PriceHistoryRecord.variant_id == self._selected_variant(card_id, variant_id),
-                PriceHistoryRecord.observed_at >= self._cutoff(days),
-                PriceHistoryRecord.availability == "in_stock",
-                PriceHistoryRecord.price.is_not(None),
-            )
-            .group_by(observed_day)
-            .subquery()
+        statement = select(
+            (func.min(PriceHistoryRecord.price) + func.max(PriceHistoryRecord.price)) / 2,
+            func.min(PriceHistoryRecord.price),
+            func.max(PriceHistoryRecord.price),
+            func.count(),
+            func.count(func.distinct(observed_day)),
+        ).where(
+            PriceHistoryRecord.card_id == card_id,
+            PriceHistoryRecord.variant_id == self._selected_variant(card_id, variant_id),
+            PriceHistoryRecord.observed_at >= self._cutoff(days),
+            PriceHistoryRecord.availability == "in_stock",
+            PriceHistoryRecord.price.is_not(None),
         )
         async with self._database.session() as session:
-            row = (await session.execute(select(
-                func.avg(daily.c.daily_average),
-                func.min(daily.c.daily_minimum),
-                func.max(daily.c.daily_maximum),
-                func.coalesce(func.sum(daily.c.observations_count), 0),
-                func.count(),
-            ))).one()
+            row = (await session.execute(statement)).one()
         return PriceStatistics(
             card_id=card_id,
             days=days,

@@ -61,14 +61,14 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             group = await self.group(repository, group_id)
             self.assertEqual(group['representative_card_id'], a.id)
             self.assertEqual(group['minimum_price'], Decimal('80'))  # not B's 60
-            self.assertEqual(group['representative_card']['average_price'], Decimal('80'))
-            self.assertEqual(group['baseline_days'], 1)
+            self.assertEqual(group['representative_card']['average_price'], Decimal('85'))
+            self.assertEqual(group['baseline_days'], 2)
             self.assertFalse(group['is_deal'])
             self.assertIsNone(group['savings'])
             self.assertTrue(group['has_member_deals'])
             self.assertEqual({deal["card"]["id"] for deal in (await repository.catalog.get_catalog())["deals"]} & {a.id, b.id}, {b.id})
             metrics = {c["id"]: (c["minimum_price"],c["average_price"]) for c in (await repository.catalog.get_catalog())["cards"]}
-            self.assertEqual(metrics[a.id], (Decimal('80'), Decimal('80')))
+            self.assertEqual(metrics[a.id], (Decimal('80'), Decimal('85')))
 
             await self.point(database, b, '50', now + timedelta(seconds=1))
             group = await self.group(repository, group_id)
@@ -134,7 +134,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 card = next(item for item in (await client.get('/api/catalog')).json()['cards'] if item['id'] == a.id)
                 self.assertEqual(group['representativeCard'], card)
                 self.assertEqual(group['representativeCardId'], a.id)
-                self.assertEqual(group['savings'], '20')
+                self.assertEqual(Decimal(group['savings']), Decimal('10'))
             document = await repository.transfer.export_cards()
             imported_cards = [item for item in document['cards'] if item['external_id'] in {a.ref.external_id.split(':')[0], b.ref.external_id.split(':')[0]}]
             imported_group = next(item for item in document['groups'] if item['name'] == 'Group')

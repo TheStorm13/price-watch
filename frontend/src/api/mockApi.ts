@@ -1,8 +1,7 @@
 import { parseAliExpressUrl } from '../features/cards/aliexpressIdentity'
 import { parseWildberriesUrl } from '../features/cards/wildberriesIdentity'
 import { parseOzonUrl } from '../features/cards/ozonIdentity'
-import { compareMoney, priceText } from '../utils/money'
-import { subtractMoney } from './mockMoney'
+import { compareMoney, priceText, subtractMoney } from '../utils/money'
 import { historyMetrics, priceMetrics } from './mockPriceMetrics'
 import type {
   CardHistoryResponse,

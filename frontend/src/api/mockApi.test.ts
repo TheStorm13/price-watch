@@ -26,13 +26,13 @@ it('projects every group field from one cheapest member and switches as prices c
   await api.importCards({ version: 3, cards: [imported('901', 'ozon', [80, 90]), imported('902', 'wildberries', [60, 240, 120])],
     groups: [{ name: 'Fixture', cards: [{ marketplace: 'ozon', externalId: '901' }, { marketplace: 'wildberries', externalId: '902' }] }] })
   let group = ((await api.getCatalog()).groups)[0]
-  expect(group.representativeCard).toMatchObject({ externalId: '901', currentPrice: "90.00", minimumPrice: "80.00", averagePrice: "80" })
-  expect(group).toMatchObject({ currentPrice: "90.00", minimumPrice: "80.00", savings: null, isDeal: false, hasMemberDeals: true, baselineDays: 1 })
+  expect(group.representativeCard).toMatchObject({ externalId: '901', currentPrice: "90.00", minimumPrice: "80.00", averagePrice: "85.000" })
+  expect(group).toMatchObject({ currentPrice: "90.00", minimumPrice: "80.00", savings: null, isDeal: false, hasMemberDeals: true, baselineDays: 2 })
   expect(group.representativeCard).toEqual(((await api.getCatalog()).cards).find((card) => card.externalId === '901'))
   await api.importCards({ version: 3, cards: [imported('902', 'wildberries', [60, 240, 120, 50])] })
   group = ((await api.getCatalog()).groups)[0]
   expect(group.representativeCard).toMatchObject({ externalId: '902', currentPrice: "50.00", minimumPrice: "50.00", marketplace: 'wildberries' })
-  expect(group).toMatchObject({ isDeal: true, hasMemberDeals: true, savings: "90", baselineDays: 3 })
+  expect(group).toMatchObject({ isDeal: true, hasMemberDeals: true, savings: "95.000", baselineDays: 4 })
   await api.updateCard(group.representativeCardId!, { dealsEnabled: false })
   group = ((await api.getCatalog()).groups)[0]
   expect(group).toMatchObject({ isDeal: false, savings: null, hasMemberDeals: false })
