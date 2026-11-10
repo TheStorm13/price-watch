@@ -375,3 +375,5 @@ npm --prefix frontend run test:e2e -- yandex-market.spec.ts
 fixture, отдельные цены, initial/selective/retry, история и ownership/migration.
 Синтетический browser test включает транспорт Маркета в проверку 100/101, полных
 тел и отмены. [Вход, CAPTCHA и семантика цены](YANDEX_MARKET.md).
+
+Проверки отзывчивости каталога: `npm --prefix frontend run test:e2e -- catalog-responsiveness.spec.ts performance.spec.ts`. Они проверяют выбор, повторную прокрутку и снятие выбора/открытие товара в списке и сетке на 5000 mock-товарах, ширину меню, ограничение DOM, фокус и конец списка. Unit-тест `useVirtualRows.test.tsx` проверяет объединение геометрических чтений в один кадр, игнорирование изменений только высоты и отмену измерения при unmount. Эти проверки не доказывают отсутствие зависания в native WebView; стандартные сервисные логи не содержат трассу работы frontend.

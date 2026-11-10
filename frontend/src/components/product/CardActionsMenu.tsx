@@ -55,7 +55,7 @@ export function CardActionsMenu({ cardTitle, dealsEnabled, onToggle, onDelete, o
       <DropdownMenuTrigger asChild>
         <Button ref={triggerRef} variant={bordered ? 'outline' : 'ghost'} size="icon" aria-label={`Действия с карточкой ${cardTitle}`} onClick={() => setError(null)}><MoreVertical /></Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" aria-label={`Действия с карточкой ${cardTitle}`} onCloseAutoFocus={(event) => { if (confirming) event.preventDefault() }}>
+      <DropdownMenuContent className="w-max max-w-[calc(100vw-16px)] [&_[data-slot=dropdown-menu-item]]:whitespace-nowrap" align="end" aria-label={`Действия с карточкой ${cardTitle}`} onCloseAutoFocus={(event) => { if (confirming) event.preventDefault() }}>
         <DropdownMenuGroup>
           {onRefresh ? <DropdownMenuItem disabled={pending || refreshDisabled} onSelect={() => onRefresh()}><RefreshCw />Обновить цены</DropdownMenuItem> : null}
           <DropdownMenuItem disabled={pending} onSelect={(event) => { event.preventDefault(); void toggleTracking() }}>

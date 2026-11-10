@@ -36,16 +36,41 @@ export function useVirtualRows(keys: string[], estimate: number, saved?: {offset
     setMargin(start.getBoundingClientRect().top + window.scrollY)
     setWidth(element.clientWidth)
   }, [])
-  useLayoutEffect(measureLayout)
+  // Scroll commits and row ResizeObserver notifications can arrive together.
+  // Read layout once per frame, outside the synchronous React/observer cycle.
+  const layoutFrame = useRef<number | null>(null)
+  const scheduleLayout = useCallback(() => {
+    if (layoutFrame.current !== null) return
+    layoutFrame.current = requestAnimationFrame(() => {
+      layoutFrame.current = null
+      measureLayout()
+    })
+  }, [measureLayout])
+  useLayoutEffect(scheduleLayout)
   useLayoutEffect(() => {
     const element = root.current
     if (!element) return
-    const observer = new ResizeObserver(measureLayout)
+    const widths = new WeakMap<Element, number>()
+    const observer = new ResizeObserver(entries => {
+      let changed = false
+      for (const entry of entries) {
+        if (widths.get(entry.target) !== entry.contentRect.width) changed = true
+        widths.set(entry.target, entry.contentRect.width)
+      }
+      // Virtual rows change the table height on every scroll; their heights
+      // are measured by the virtualizer and do not move the list's origin.
+      if (changed) scheduleLayout()
+    })
     observer.observe(element)
     if (element.parentElement) observer.observe(element.parentElement)
-    window.addEventListener('resize', measureLayout)
-    return () => { observer.disconnect(); window.removeEventListener('resize', measureLayout) }
-  }, [measureLayout])
+    window.addEventListener('resize', scheduleLayout)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', scheduleLayout)
+      if (layoutFrame.current !== null) cancelAnimationFrame(layoutFrame.current)
+      layoutFrame.current = null
+    }
+  }, [scheduleLayout])
   const focus = useCallback((event: React.SyntheticEvent)=>{
     const row=(event.target as HTMLElement).closest<HTMLElement>('[data-vrow]')
     if(row) setPinned(keys[Number(row.dataset.vrow)] ?? null)
