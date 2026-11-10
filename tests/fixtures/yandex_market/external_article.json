@@ -1,0 +1,353 @@
+{
+  "collections": {
+    "productCardMeta": {
+      "8493144666749690867": {
+        "rating": 5,
+        "image": "https://avatars.mds.yandex.net/get-mpic/21531363/pic7058c0a36f704752ac890b658e4aab93/orig",
+        "marketSku": "6249927249",
+        "productId": "6249927250",
+        "description": "Современная напольная лампа с дизайном из шаров - это стильное и функциональное решение для освещения вашего дома. Она прекрасно подойдет для гостиной и спальни, создавая уютную и комфортную атмосферу. Дизайн лампы выполнен в виде комбинации шаров, что придает ей современный и оригинальный вид. Белый цвет плафона и арматуры делает ее легкой и воздушной, а также позволяет гармонично вписаться в любой интерьер.",
+        "skuTitle": "Торшер напольный на треноге современный, высота около 150 см, 3 режима света тёплый/нейтральный/холодный, цоколь E27 12W, тканевый абажур для гостиной и спальни",
+        "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha",
+        "businessId": "216735062",
+        "ratingCount": 12
+      }
+    },
+    "price": {
+      "8493144666749690867": {
+        "oldPrices": [
+          {
+            "price": {
+              "value": 3503,
+              "currency": "RUR"
+            },
+            "type": "regular"
+          },
+          {
+            "price": {
+              "value": 14402,
+              "currency": "RUR"
+            },
+            "type": "withoutDiscount"
+          }
+        ],
+        "mainPrice": {
+          "price": {
+            "value": 3398,
+            "currency": "RUR"
+          },
+          "type": "extraDiscount",
+          "subtype": "ya-card"
+        }
+      }
+    },
+    "compose": {
+      "8493144666749690867": {
+        "oskuId": "6019174271",
+        "id": "8493144666749690867",
+        "productId": "6249927250",
+        "businessId": "216735062",
+        "skuId": "6249927249",
+        "oskuSlug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha",
+        "offerId": "5cTGqzSf8Sj-O74S1Zh9Hg"
+      }
+    },
+    "buyOption": {
+      "bi_9072139414485838722": {
+        "productId": "6249927250",
+        "businessName": "YFFSlighting",
+        "offerId": "5cTGqzSf8Sj-O74S1Zh9Hg",
+        "promos": [
+          {
+            "type": "promo-code",
+            "shopPromoId": "216735062_MPC_1793087113",
+            "promoCode": "63ZB2UYB"
+          },
+          {
+            "type": "promo-code",
+            "shopPromoId": "cf_144097",
+            "promoCode": "NOV1000"
+          },
+          {
+            "type": "promo-code",
+            "shopPromoId": "cf_144100",
+            "promoCode": "HOME11"
+          },
+          {
+            "type": "discount-by-payment-type",
+            "shopPromoId": "fZ3XLaWtLFCVyd6AGdo2aA"
+          },
+          {
+            "type": "dco-extra-discount",
+            "shopPromoId": "bbsubsidy_olike_household_goods_v2"
+          },
+          {
+            "type": "dco-extra-discount",
+            "shopPromoId": "exp_ozon_like_drr-part-0"
+          }
+        ],
+        "id": "bi_9072139414485838722",
+        "businessId": "216735062",
+        "skuId": "6249927249",
+        "hasAnyDelivery": true,
+        "price": {
+          "value": 3503,
+          "currency": "RUR"
+        },
+        "minimum": 1,
+        "maximum": 88,
+        "hasAnySize": false
+      }
+    },
+    "shopPromoCodeFull": {
+      "cf_144097": {
+        "discount": {
+          "type": "absolute",
+          "percent": 29,
+          "absolute": {
+            "value": 1000,
+            "currency": "RUR"
+          }
+        },
+        "promoCode": "NOV1000",
+        "endDate": "2026-11-11T20:59:00Z",
+        "conditions": {
+          "orderMinPrice": {
+            "value": 10000,
+            "currency": "RUR"
+          },
+          "bindOnlyOnce": false
+        }
+      },
+      "cf_144100": {
+        "discount": {
+          "type": "percent",
+          "percent": 10,
+          "absolute": {
+            "value": 350,
+            "currency": "RUR"
+          }
+        },
+        "promoCode": "HOME11",
+        "endDate": "2026-11-11T20:59:00Z",
+        "conditions": {
+          "orderMaxPrice": {
+            "value": 5000,
+            "currency": "RUR"
+          },
+          "orderMaxDiscount": {
+            "value": 500,
+            "currency": "RUR"
+          },
+          "bindOnlyOnce": false
+        }
+      },
+      "216735062_MPC_1793087113": {
+        "discount": {
+          "type": "percent",
+          "percent": 5,
+          "absolute": {
+            "value": 175,
+            "currency": "RUR"
+          }
+        },
+        "promoCode": "63ZB2UYB",
+        "endDate": "2027-04-26T20:59:59Z",
+        "conditions": {
+          "bindOnlyOnce": false
+        }
+      }
+    },
+    "currentUser": {
+      "fixture": {
+        "isAuth": true
+      }
+    },
+    "jumpListShort": {
+      "8493144666749690867": {
+        "snippets": [
+          {
+            "snippetId": "241701528573190144",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "241701528573190144",
+                "slug": "napolnyy-svetilnik"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "241701528573190144",
+                  "slug": "napolnyy-svetilnik"
+                }
+              }
+            }
+          },
+          {
+            "snippetId": "241701549297254400",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "241701549297254400",
+                "slug": "napolnyy-svetilnik"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "241701549297254400",
+                  "slug": "napolnyy-svetilnik"
+                }
+              }
+            }
+          },
+          {
+            "snippetId": "5897018280",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "5897018280",
+                "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "5897018280",
+                  "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+                }
+              }
+            }
+          },
+          {
+            "snippetId": "5914540461",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "5914540461",
+                "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "5914540461",
+                  "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+                }
+              }
+            }
+          },
+          {
+            "snippetId": "5896857001",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "5896857001",
+                "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "5896857001",
+                  "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+                }
+              }
+            }
+          },
+          {
+            "snippetId": "6206942106",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "6206942106",
+                "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "6206942106",
+                  "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+                }
+              }
+            }
+          },
+          {
+            "snippetId": "241701544801042432",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "241701544801042432",
+                "slug": "napolnyy-svetilnik"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "241701544801042432",
+                  "slug": "napolnyy-svetilnik"
+                }
+              }
+            }
+          },
+          {
+            "snippetId": "6019174271",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "6019174271",
+                "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "6019174271",
+                  "slug": "napolnyy-svetilnik-dlya-spalni-gostinoy-i-zony-otdykha"
+                }
+              },
+              "jumpList": {
+                "isSelected": true
+              }
+            }
+          },
+          {
+            "snippetId": "241701529072357376",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "241701529072357376",
+                "slug": "napolnyy-svetilnik"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "241701529072357376",
+                  "slug": "napolnyy-svetilnik"
+                }
+              }
+            }
+          },
+          {
+            "snippetId": "241701546705170432",
+            "type": "JUMP_LIST_SHORT",
+            "productPayload": {
+              "offerParams": {
+                "oskuId": "241701546705170432",
+                "slug": "napolnyy-svetilnik"
+              },
+              "targetLinkParams": {
+                "targetPage": "OSKU_CARD",
+                "offerLinkParams": {
+                  "oskuId": "241701546705170432",
+                  "slug": "napolnyy-svetilnik"
+                }
+              }
+            }
+          }
+        ],
+        "showAllTransition": {
+          "type": "jumpListPopup",
+          "params": {
+            "oskuId": "6019174271"
+          }
+        }
+      }
+    }
+  },
+  "declared": 10
+}

@@ -43,7 +43,49 @@ def price_inputs():
     return next(iter(c['price'].values())), next(iter(c['buyOption'].values())), c['shopPromoCodeFull']
 
 
+def external_article_html(data=None):
+    data = data or json.loads((Path(__file__).parent / 'fixtures/yandex_market/external_article.json').read_text())
+    return ('<noframes>' + json.dumps({'collections': data['collections']}) + '</noframes>'
+            '<div data-zone-name="filter" data-zone-data=\''
+            + json.dumps({'numValues': data['declared']}) + '\'></div>')
+
+
 class YandexParserTests(unittest.TestCase):
+    def test_external_article_preserves_selected_product_with_different_internal_sku(self):
+        result = parse_product(external_article_html(), '6019174271', now=NOW)
+        card = result.card
+        self.assertEqual(card.ref.external_id, '6019174271')
+        self.assertTrue(card.url.endswith('/6019174271'))
+        self.assertEqual(card.price, Decimal('3058.20'))
+        self.assertEqual(card.extensions['yandex_market']['market_sku_id'], '6249927249')
+        self.assertEqual(card.extensions['yandex_market']['promo_code'], 'HOME11')
+        self.assertEqual(len(result.edges), 10)
+        self.assertIn('241701528573190144', result.edges)
+        self.assertIsNone(result.discovery_error)
+        validate_card_identity('yandex-market', card.ref.external_id, card.url)
+
+    def test_external_article_rejects_wrong_offer_or_internal_sku(self):
+        for field in ('oskuId', 'skuId', 'offerId'):
+            data = json.loads((Path(__file__).parent / 'fixtures/yandex_market/external_article.json').read_text())
+            next(iter(data['collections']['compose'].values()))[field] = '123'
+            with self.subTest(field=field), self.assertRaises(MarketplaceSchemaChanged):
+                parse_product(external_article_html(data), '6019174271', now=NOW)
+
+    def test_structured_control_requires_complete_count_and_exact_selected_article(self):
+        for failure in ('count', 'selected', 'target', 'continuation'):
+            data = json.loads((Path(__file__).parent / 'fixtures/yandex_market/external_article.json').read_text())
+            jump = next(iter(data['collections']['jumpListShort'].values()))
+            if failure == 'count': data['declared'] += 1
+            if failure == 'selected':
+                for snippet in jump['snippets']: snippet['productPayload'].pop('jumpList', None)
+            if failure == 'target':
+                jump['snippets'][0]['productPayload']['targetLinkParams']['offerLinkParams']['oskuId'] = '123'
+            if failure == 'continuation': jump['showAllTransition']['type'] = 'unknown'
+            with self.subTest(failure=failure):
+                result = parse_product(external_article_html(data), '6019174271', now=NOW)
+                self.assertIsNotNone(result.discovery_error)
+                self.assertEqual(result.card.price, Decimal('3058.20'))
+
     def test_card_plus_one_offer_promo_and_safe_serialization(self):
         result = parse_product(html(), SEED, now=NOW)
         self.assertEqual(result.card.price, Decimal('2663.10'))
@@ -75,6 +117,18 @@ class YandexParserTests(unittest.TestCase):
         self.assertIsNone(card.price)
         self.assertEqual(card.availability.value, 'out_of_stock')
         self.assertEqual(card.ref.external_id, SEED)
+
+    def test_no_sizes_does_not_mean_out_of_stock_but_no_delivery_does(self):
+        data = deepcopy(FAMILY[SEED])
+        buy = next(iter(data['collections']['buyOption'].values()))
+        buy['hasAnySize'] = False
+        card = parse_product(html(data=data), SEED, now=NOW).card
+        self.assertEqual(card.availability.value, 'in_stock')
+        self.assertEqual(card.price, Decimal('2663.10'))
+        buy['hasAnyDelivery'] = False
+        card = parse_product(html(data=data), SEED, now=NOW).card
+        self.assertEqual(card.availability.value, 'out_of_stock')
+        self.assertIsNone(card.price)
 
     def test_malformed_availability_does_not_mark_out_of_stock(self):
         data = deepcopy(FAMILY[SEED])
@@ -129,6 +183,32 @@ class YandexParserTests(unittest.TestCase):
 
 
 class YandexDiscoveryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_unexpected_model_in_size_color_control_remains_discovery_error(self):
+        from dataclasses import replace
+        root = replace(parse_product(html(), SEED, now=NOW), edges=('5355104657',))
+        async def fetch(sku):
+            return root if sku == SEED else replace(root, parent_id='other', edges=())
+        snapshots = {}
+        await discover_family(None, SEED, snapshots, fetch_product=fetch)
+        self.assertEqual(list(snapshots), [SEED])
+        self.assertIn('variant_discovery_error', snapshots[SEED].extensions)
+        self.assertEqual(snapshots[SEED].price, Decimal('2663.10'))
+
+    async def test_other_models_cannot_replace_selected_article_or_fail_its_price(self):
+        root = parse_product(external_article_html(), '6019174271', now=NOW)
+        async def fetch(sku):
+            if sku == '6019174271': return root
+            from dataclasses import replace
+            return replace(root, parent_id='another-model', edges=())
+        snapshots = {}
+        await discover_family(None, '6019174271', snapshots, fetch_product=fetch)
+        self.assertEqual(list(snapshots), ['6019174271'])
+        card = snapshots['6019174271']
+        self.assertEqual(card.price, Decimal('3058.20'))
+        self.assertEqual([v.ref.external_id for v in card.variants], ['6019174271'])
+        self.assertNotIn('variant_discovery_error', card.extensions)
+        self.assertEqual(len(card.extensions['yandex_market']['excluded_variants']), 9)
+
     async def test_complete_real_graph_has_64_unique_skus_and_exact_prices(self):
         transport = AsyncMock()
         transport.fetch.side_effect = lambda sku: html(sku)

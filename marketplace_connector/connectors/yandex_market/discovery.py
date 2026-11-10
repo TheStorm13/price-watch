@@ -14,25 +14,31 @@ async def discover_family(transport, article, snapshots, *, root=None, fetch_pro
     fetch_product = fetch_product or load
     root = root or await fetch_product(article)
     found = {article: root}
-    queue = deque(root.edges)
+    queue = deque((sku, root.links_may_include_other_models) for sku in root.edges)
     visited = {article}
     errors = []
+    excluded = []
     if root.discovery_error:
         errors.append(root.discovery_error)
     while queue:
-        sku = queue.popleft()
+        sku, may_be_other_model = queue.popleft()
         if sku in visited:
             continue
         visited.add(sku)
         try:
             item = await fetch_product(sku)
             if item.parent_id != root.parent_id:
-                errors.append(f'Маркет: другой parent product у SKU {sku}')
+                # The storefront control can also link different models. They
+                # are not variants of this card and cannot replace its article.
+                if may_be_other_model:
+                    excluded.append({'article': sku, 'product_id': item.parent_id, 'reason': 'different_product'})
+                else:
+                    errors.append(f'Маркет: другой parent product у SKU {sku}')
                 continue
             found[sku] = item
             if item.discovery_error:
                 errors.append(f'{sku}: {item.discovery_error}')
-            queue.extend(item.edges)
+            queue.extend((neighbor, item.links_may_include_other_models) for neighbor in item.edges)
         except (AuthenticationRequired, UnsafeBrowserTeardown):
             raise
         except ConnectorError as exc:
@@ -41,6 +47,8 @@ async def discover_family(transport, article, snapshots, *, root=None, fetch_pro
         variants = tuple(ProductVariant(v.card.ref, v.card.title, v.card.url, v.card.availability,
             selected=other == sku, options=v.options, image_url=v.card.image_url) for other, v in found.items())
         extensions = dict(item.card.extensions)
+        if excluded:
+            extensions['yandex_market'] = {**extensions['yandex_market'], 'excluded_variants': excluded}
         if errors:
             extensions['variant_discovery_error'] = '; '.join(dict.fromkeys(errors))
         snapshots[sku] = replace(item.card, variants=variants, extensions=extensions)

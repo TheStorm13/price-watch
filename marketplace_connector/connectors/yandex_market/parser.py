@@ -83,28 +83,32 @@ class ParsedProduct:
     edges: tuple[str, ...]
     options: dict[str, str]
     discovery_error: str | None
+    links_may_include_other_models: bool = False
 
 
 def parse_product(html, external_id, *, now=None):
     ref = YandexMarketRef.parse(external_id)
     parsed = StorefrontHTML()
     parsed.feed(html)
-    parsed.finish()
     collections = parsed.collections
     users = collections.get('currentUser', {}).values()
     if not any(user.get('isAuth') is True for user in users):
         raise AuthenticationRequired('Войдите в Яндекс Маркет через Chrome приложения и повторите сбор')
     try:
-        matches = [(key, meta) for key, meta in collections['productCardMeta'].items()
-                   if str(meta.get('marketSku')) == ref.external_id]
+        matches = []
+        for key, meta in collections['productCardMeta'].items():
+            compose = collections.get('compose', {}).get(key, {})
+            if str(compose.get('oskuId', compose.get('skuId'))) == ref.external_id:
+                matches.append((key, meta))
         if len(matches) != 1:
             raise ValueError('SKU mismatch')
         key, meta = matches[0]
         compose = collections['compose'][key]
-        if str(compose['skuId']) != ref.external_id or str(compose['productId']) != str(meta['productId']):
+        market_sku = str(compose['skuId'])
+        if market_sku != str(meta['marketSku']) or str(compose['productId']) != str(meta['productId']):
             raise ValueError('compose mismatch')
         options = [b for b in collections.get('buyOption', {}).values()
-                   if str(b.get('skuId')) == ref.external_id and b.get('offerId') == compose['offerId']]
+                   if str(b.get('skuId')) == market_sku and b.get('offerId') == compose['offerId']]
         if len(options) != 1:
             raise ValueError('offer missing or ambiguous')
         buy = options[0]
@@ -115,16 +119,19 @@ def parse_product(html, external_id, *, now=None):
             raise ValueError('stock')
         if not all(isinstance(buy[name], bool) for name in ('hasAnySize', 'hasAnyDelivery')):
             raise ValueError('availability flags')
-        available = buy['hasAnySize'] is True and buy['hasAnyDelivery'] is True and maximum > 0
+        # hasAnySize describes the size selector; non-clothing offers can have
+        # no sizes while still having stock and delivery for this exact offer.
+        available = buy['hasAnyDelivery'] is True and maximum > 0
         availability = Availability.IN_STOCK if available else Availability.OUT_OF_STOCK
         observed_at = now or datetime.now(timezone.utc)
         price, detail = select_price(collections['price'][key], buy, collections.get('shopPromoCodeFull', {}), now=observed_at) if available else (None, {})
-        detail.update(sku_id=ref.external_id, product_id=str(meta['productId']),
+        detail.update(sku_id=ref.external_id, market_sku_id=market_sku, product_id=str(meta['productId']),
                       offer_id=compose['offerId'], business_id=str(compose['businessId']))
         title = meta['skuTitle']
         if not isinstance(title, str) or not title.strip():
             raise ValueError('title')
-        url = f"https://market.yandex.ru/card/{meta['slug']}/{ref.external_id}"
+        slug = compose.get('oskuSlug', meta['slug'])
+        url = f"https://market.yandex.ru/card/{slug}/{ref.external_id}"
         if YandexMarketRef.from_url(url) != ref:
             raise ValueError('canonical')
         rating = Rating(meta['rating'], reviews_count=meta.get('ratingCount', 0)) if 'rating' in meta else None
@@ -136,6 +143,39 @@ def parse_product(html, external_id, *, now=None):
         raise MarketplaceSchemaChanged('Маркет: отсутствуют или не соответствуют SKU данные карточки') from exc
     edges = []
     selected = {}
+    related_models = False
+    jump_list = collections.get('jumpListShort', {}).get(key)
+    if jump_list is not None and not parsed.edges:
+        try:
+            # This is the selected card's control, not recommendation snippets.
+            groups = [group for group in parsed.groups if not group['values']]
+            snippets = jump_list['snippets']
+            if len(groups) != 1 or len(snippets) != groups[0]['declared']:
+                raise ValueError('incomplete jump list')
+            selected_ids = []
+            for snippet in snippets:
+                payload = snippet['productPayload']
+                target = payload['targetLinkParams']
+                offer = payload['offerParams']
+                neighbor = YandexMarketRef.parse(offer['oskuId'])
+                if (snippet['type'] != 'JUMP_LIST_SHORT' or target['targetPage'] != 'OSKU_CARD'
+                        or str(target['offerLinkParams']['oskuId']) != neighbor.external_id
+                        or str(snippet['snippetId']) != neighbor.external_id):
+                    raise ValueError('jump target mismatch')
+                if (payload.get('jumpList') or {}).get('isSelected') is True:
+                    selected_ids.append(neighbor.external_id)
+                edges.append(neighbor.external_id)
+            if selected_ids != [ref.external_id] or len(set(edges)) != len(snippets):
+                raise ValueError('jump selection mismatch')
+            transition = jump_list.get('showAllTransition')
+            if transition and (transition['type'] != 'jumpListPopup'
+                               or str(transition['params']['oskuId']) != ref.external_id):
+                raise ValueError('unknown jump continuation')
+            groups[0]['values'] = edges.copy()
+            related_models = True
+        except (KeyError, TypeError, ValueError, AttributeError):
+            edges.clear()
+            parsed.discovery_error = 'Маркет: неполный структурированный список вариантов'
     for edge in parsed.edges:
         if edge['pagehref'] == '#':
             if edge['filterid'] in selected:
@@ -149,4 +189,6 @@ def parse_product(html, external_id, *, now=None):
                 parsed.discovery_error = 'Маркет: неизвестная ссылка продолжения вариантов'
     names = {'14871214': 'Цвет', '74155816': 'Размер'}
     selected = {names.get(k, f'Параметр {k}'): v for k, v in selected.items()}
-    return ParsedProduct(card, str(meta['productId']), tuple(dict.fromkeys(edges)), selected, parsed.discovery_error)
+    parsed.finish()
+    return ParsedProduct(card, str(meta['productId']), tuple(dict.fromkeys(edges)), selected,
+                         parsed.discovery_error, links_may_include_other_models=related_models)
