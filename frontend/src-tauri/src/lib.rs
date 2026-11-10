@@ -18,6 +18,8 @@ use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
 
 mod native_services;
+mod window_visibility;
+use window_visibility::WindowVisibility;
 mod process_log;
 #[cfg(target_os = "linux")]
 mod webview_settings;
@@ -909,12 +911,58 @@ fn is_background_launch(args: impl IntoIterator<Item = String>) -> bool {
         .any(|argument| argument == "--background")
 }
 
-fn show_main_window(app: &tauri::AppHandle) {
+fn reveal_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
     }
+}
+
+fn show_startup_failure(app: &tauri::AppHandle) {
+    app.dialog().message("Не удалось подготовить интерфейс Price watch. Закройте приложение через значок в системном меню и запустите снова.")
+        .title("Ошибка запуска Price watch").kind(tauri_plugin_dialog::MessageDialogKind::Error).show(|_| {});
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    let state = app.state::<Mutex<WindowVisibility>>();
+    let (should_open, timed_out) = state
+        .lock()
+        .map(|mut state| (state.request_open(), state.timed_out))
+        .unwrap_or((false, false));
+    if should_open {
+        reveal_main_window(app);
+    } else if timed_out {
+        show_startup_failure(app);
+    }
+}
+
+#[tauri::command]
+fn frontend_ready(app: tauri::AppHandle, failed: bool) -> Result<(), String> {
+    let runtime = app.state::<Arc<RuntimeState>>();
+    if !failed
+        && (runtime
+            .last_config
+            .lock()
+            .map_err(|_| "Ошибка конфигурации")?
+            .is_none()
+            || runtime
+                .service_error
+                .lock()
+                .map_err(|_| "Ошибка состояния служб")?
+                .is_some())
+    {
+        return Err("Службы ещё не готовы".into());
+    }
+    let state = app.state::<Mutex<WindowVisibility>>();
+    let should_open = state
+        .lock()
+        .map_err(|_| "Ошибка состояния окна")?
+        .rendered();
+    if should_open {
+        reveal_main_window(&app);
+    }
+    Ok(())
 }
 
 fn install_tray(app: &mut tauri::App) -> tauri::Result<()> {
@@ -924,7 +972,7 @@ fn install_tray(app: &mut tauri::App) -> tauri::Result<()> {
     };
 
     let open = MenuItemBuilder::with_id("open", "Открыть Price watch").build(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "Выход").build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "Завершить работу").build(app)?;
     let menu = MenuBuilder::new(app).items(&[&open, &quit]).build()?;
     let mut tray = TrayIconBuilder::new()
         .menu(&menu)
@@ -1030,7 +1078,7 @@ async fn save_export_file(
         let selected = app
             .dialog()
             .file()
-            .set_title("Экспорт карточек и истории")
+            .set_title("Экспорт товаров и истории")
             .set_file_name(file_name)
             .add_filter("JSON", &["json"])
             .blocking_save_file();
@@ -1048,18 +1096,7 @@ async fn save_export_file(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let background_launch = is_background_launch(env::args());
-    let mut context = tauri::generate_context!();
-    if background_launch {
-        if let Some(main) = context
-            .config_mut()
-            .app
-            .windows
-            .iter_mut()
-            .find(|window| window.label == "main")
-        {
-            main.visible = false;
-        }
-    }
+    let context = tauri::generate_context!();
     let runtime = Arc::new(RuntimeState {
         project_root: project_root(),
         profile_dir: user_base_dir("XDG_DATA_HOME", ".local/share")
@@ -1090,8 +1127,10 @@ pub fn run() {
     let setup_join = Arc::clone(&monitor_join);
 
     let app = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            show_main_window(app)
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if !is_background_launch(args) {
+                show_main_window(app);
+            }
         }))
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -1100,8 +1139,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(runtime)
+        .manage(Mutex::new(WindowVisibility::new(background_launch)))
         .invoke_handler(tauri::generate_handler![
             ensure_services,
+            frontend_ready,
             get_background_state,
             set_background_enabled,
             quit_app,
@@ -1129,6 +1170,36 @@ pub fn run() {
                     window.hide()?;
                 }
             }
+            let watchdog_handle = app.handle().clone();
+            let watchdog_shutdown = Arc::clone(&setup_shutdown);
+            thread::spawn(move || {
+                // Bound startup even when WebView never reports a rendered screen.
+                let deadline = Instant::now() + Duration::from_secs(120);
+                while Instant::now() < deadline {
+                    if watchdog_shutdown.load(Ordering::Acquire) {
+                        return;
+                    }
+                    let state = watchdog_handle.state::<Mutex<WindowVisibility>>();
+                    if state.lock().map(|state| state.ready).unwrap_or(false) {
+                        return;
+                    }
+                    thread::sleep(Duration::from_millis(100));
+                }
+                let state = watchdog_handle.state::<Mutex<WindowVisibility>>();
+                let requested = state
+                    .lock()
+                    .map(|mut state| {
+                        if state.ready {
+                            return false;
+                        }
+                        state.timed_out = true;
+                        state.requested
+                    })
+                    .unwrap_or(false);
+                if requested {
+                    show_startup_failure(&watchdog_handle);
+                }
+            });
             let handle = app.handle().clone();
             let runtime = Arc::clone(&setup_runtime);
             let shutdown = Arc::clone(&setup_shutdown);

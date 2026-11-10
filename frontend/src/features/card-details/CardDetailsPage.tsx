@@ -1,3 +1,4 @@
+import { HelpHint } from '@/components/product/HelpHint'
 import { midpointMoney, subtractMoney } from '../../utils/money'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
@@ -74,14 +75,14 @@ export function CardDetailsPage() {
 
   if (cardQuery.isLoading && !card) return <section className="page detail-page"><Skeleton className="min-h-[560px]" aria-label="Загрузка карточки" /></section>
   if (cardQuery.error instanceof ApiError && cardQuery.error.code === 'card_not_found') {
-    return <section className="page"><Empty><EmptyHeader><EmptyTitle>Карточка не найдена</EmptyTitle></EmptyHeader><EmptyContent><Link className="text-link" to={returnTo}>Вернуться к карточкам</Link></EmptyContent></Empty></section>
+    return <section className="page"><Empty><EmptyHeader><EmptyTitle>Товар не найден</EmptyTitle></EmptyHeader><EmptyContent><Link className="text-link" to={returnTo}>К товарам</Link></EmptyContent></Empty></section>
   }
   if (!card) {
     return (
       <section className="page">
-        <Empty><EmptyHeader><EmptyTitle>Не удалось загрузить данные карточки</EmptyTitle><EmptyDescription>Сервис временно не смог получить карточку или историю её цены.</EmptyDescription></EmptyHeader><EmptyContent>
+        <Empty><EmptyHeader><EmptyTitle>Не удалось загрузить товар</EmptyTitle><EmptyDescription>Попробуйте ещё раз.</EmptyDescription></EmptyHeader><EmptyContent>
           <Button variant="outline" onClick={() => void Promise.all([cardQuery.refetch(), historyQuery.refetch(), chartQuery.refetch()])}>Повторить</Button>
-          <Link className="text-link" to={returnTo}>Вернуться к карточкам</Link></EmptyContent>
+          <Link className="text-link" to={returnTo}>К товарам</Link></EmptyContent>
         </Empty>
       </section>
     )
@@ -89,27 +90,20 @@ export function CardDetailsPage() {
 
   return (
     <section className="page detail-page">
-      <Link className="back-link" to={returnTo}><ArrowLeft />К карточкам</Link>
+      <Button asChild variant="outline" size="lg" className="mb-5 min-h-11 px-5"><Link to={returnTo}><ArrowLeft />К товарам</Link></Button>
       <header className="detail-header">
-        <div className="detail-header__product">
-          <PreparedProductImage profile="detail" card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager />
-          <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span><span>{Object.entries(card.options ?? {}).map(([name, value]) => `${name}: ${value}`).join(' · ')}</span>{!card.dealsEnabled ? <><span>·</span><Badge variant="warning" className="tracking-status">Не участвует в выгодных</Badge></> : null}</div></div>
+        <div className="detail-header__left"><div className="detail-header__product">
+
+          <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span><span>{Object.entries(card.options ?? {}).map(([name, value]) => `${name}: ${value}`).join(' · ')}</span>{!card.dealsEnabled ? <><span>·</span><Badge variant="warning" className="tracking-status">Исключён из выгодных</Badge></> : null}</div></div>
         </div>
         <div className="page-actions">
           <Button variant="outline" disabled={!variantsQuery.data} onClick={() => setEditing(true)}><Pencil data-icon="inline-start" aria-hidden="true" />Изменить</Button>
           {card.url ? <Button variant="outline" asChild><a href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink data-icon="inline-start" aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a></Button> : null}
-          <Button variant="outline" onClick={() => collection.start(card.id)} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить эту карточку</Button>
+          <Button variant="outline" onClick={() => collection.start(card.id)} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить цены</Button>
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate(returnTo, { replace: true }) }} />
         </div>
-      </header>
-      {openError ? <Alert variant="destructive"><AlertDescription>{openError}</AlertDescription></Alert> : null}
-      {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
-      {cardQuery.isError ? <SectionError message="Не удалось обновить карточку" retry={() => void cardQuery.refetch()} /> : null}
-      <TagList tags={card.tags} />
-      <CardDrawer open={editing} onClose={() => setEditing(false)} card={card} variants={variants} isPending={updateCard.isPending}
-        onSave={({ title, url, tags, primaryVariantId }) => updateCard.mutateAsync({ cardId: card.id, input: { title, url, tags, primaryVariantId } })} />
 
-      <div className="price-summary">
+      <div className="price-summary"><HelpHint label="Статистика цен">Показатели главного варианта за выбранный период. Середина диапазона — (минимум + максимум) / 2. Разница — максимум − минимум.</HelpHint>
         <div className="price-summary__primary">
           <strong>{formatPrice(card.currentPrice)}</strong>
           <AvailabilityStatus value={card.currentAvailability} />
@@ -120,20 +114,31 @@ export function CardDetailsPage() {
         <div className="price-stat"><span>Максимум</span><strong>{formatPrice(statistics?.maximumPrice)}</strong></div>
         <div className="price-stat"><span>Разница</span><strong>{formatPrice(priceGap)}</strong></div>
       </div>
+        </div>
+        <div className="detail-header__image"><PreparedProductImage profile="detail" card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager /></div>
+      </header>
+      {openError ? <Alert variant="destructive"><AlertDescription>{openError}</AlertDescription></Alert> : null}
+      {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
+      {cardQuery.isError ? <SectionError message="Не удалось обновить товар" retry={() => void cardQuery.refetch()} /> : null}
+      <TagList tags={card.tags} />
+      <CardDrawer open={editing} onClose={() => setEditing(false)} card={card} variants={variants} isPending={updateCard.isPending}
+        onSave={({ title, url, tags, primaryVariantId }) => updateCard.mutateAsync({ cardId: card.id, input: { title, url, tags, primaryVariantId } })} />
+
+
 
       {variantsQuery.isError ? <SectionError message="Не удалось загрузить варианты" retry={() => void variantsQuery.refetch()} /> : variantsQuery.isLoading ? <Skeleton className="h-[160px]" aria-label="Загрузка вариантов" /> : <VariantPanel card={card} variants={variants} />}
 
       <div className="chart-heading">
-        <h2>История цены</h2>
+        <h2>История цен</h2>
         <ToggleGroup type="single" value={String(days)} onValueChange={(value) => { if (value) setParams({ days: value }, searchOptions) }} variant="outline" spacing={0} aria-label="Период истории">
           {periods.map((period) => <ToggleGroupItem key={period} value={String(period)}>{period} дней</ToggleGroupItem>)}
         </ToggleGroup>
       </div>
-      <section aria-label="История цены">{chartQuery.isLoading || variantsQuery.isLoading ? <Skeleton className="price-chart" aria-label="Загрузка графика" /> : chartQuery.isError ? <SectionError message="Не удалось загрузить график" retry={() => void chartQuery.refetch()} /> : <VariantPriceChart key={`${card.id}:${card.primaryVariantId}`} history={chart} variants={variants} primaryVariantId={card.primaryVariantId} />}</section>
+      <section aria-label="История цен">{chartQuery.isLoading || variantsQuery.isLoading ? <Skeleton className="price-chart" aria-label="Загрузка графика" /> : chartQuery.isError ? <SectionError message="Не удалось загрузить график" retry={() => void chartQuery.refetch()} /> : <VariantPriceChart key={`${card.id}:${card.primaryVariantId}`} history={chart} variants={variants} primaryVariantId={card.primaryVariantId} />}</section>
 
       <section className="measurements">
         <div className="variant-heading"><h2>Измерения</h2>
-          {variants.length > 1 ? <FieldGroup className="w-full sm:w-[320px]"><Field><FieldLabel htmlFor="history-variant">Вариант для измерений</FieldLabel>
+          {variants.length > 1 ? <FieldGroup className="w-full sm:w-[320px]"><Field><FieldLabel htmlFor="history-variant">Вариант</FieldLabel>
             <Select value={historyVariantId === undefined ? 'primary' : String(historyVariantId)} onValueChange={(value) => { setHistoryVariantId(value === 'primary' ? undefined : Number(value)); setParams({ days: String(days) }, searchOptions) }}>
               <SelectTrigger id="history-variant"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="primary">Главный вариант</SelectItem>{sortVariants(variants).map((v) => <SelectItem key={v.id} value={String(v.id)}>{variantLabel(v)}</SelectItem>)}</SelectGroup></SelectContent>
             </Select>
@@ -145,7 +150,7 @@ export function CardDetailsPage() {
             <TableHeader><TableRow><TableHead>Дата и время</TableHead><TableHead>Цена</TableHead><TableHead>Наличие</TableHead></TableRow></TableHeader>
             <TableBody>{history.map((point) => <TableRow key={point.id}><TableCell>{formatDateTime(point.observedAt)}</TableCell><TableCell className="price-cell">{formatPrice(point.price)}</TableCell><TableCell><AvailabilityStatus value={point.availability} /></TableCell></TableRow>)}</TableBody>
           </Table>
-          {history.length === 0 ? <Empty><EmptyHeader><EmptyTitle>Измерений за выбранный период нет</EmptyTitle></EmptyHeader></Empty> : null}
+          {history.length === 0 ? <Empty><EmptyHeader><EmptyTitle>Нет измерений за этот период</EmptyTitle></EmptyHeader></Empty> : null}
         </div>}
         {!historyQuery.isError && historyQuery.data && historyQuery.data.totalCount > historyQuery.data.pageSize ? (
           <div className="history-pagination">

@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -23,11 +23,12 @@ vi.mock('../../features/cards/ImportExportControls', () => ({ ImportExportContro
 function renderShell() {
   return render(<MemoryRouter initialEntries={['/cards/1']}><Routes><Route element={<AppShell />}><Route path="cards/:id" element={<h1>Товар</h1>} /></Route></Routes></MemoryRouter>)
 }
+beforeEach(() => { vi.mocked(invoke).mockResolvedValue(undefined) })
 afterEach(() => { cleanup(); vi.clearAllMocks(); state.run = null; state.isStarting = false; state.serviceError = null })
 
 it('uses the actual Chrome command, blocks double launch and reports launch errors in details', async () => {
   let fail!: (reason: Error) => void
-  vi.mocked(invoke).mockImplementationOnce(() => new Promise((_, reject) => { fail = reject }))
+  vi.mocked(invoke).mockImplementation(command => command === 'open_store_browser' ? new Promise((_, reject) => { fail = reject }) : Promise.resolve())
   renderShell()
   const button = screen.getByRole('button', { name: 'Открыть Chrome' })
   await userEvent.setup().click(button)
@@ -53,4 +54,13 @@ it('retains service recovery action in the permanent shell', async () => {
   expect(screen.getByRole('alert')).toHaveTextContent('API недоступен')
   await userEvent.setup().click(screen.getByRole('button', { name: 'Повторить запуск' }))
   expect(state.retryServices).toHaveBeenCalledOnce()
+})
+
+it('signals native readiness only after the product screen has committed', () => {
+  vi.mocked(invoke).mockImplementation(command => {
+    if (command === 'frontend_ready') expect(screen.getByRole('heading', { name: 'Товар' })).toBeInTheDocument()
+    return Promise.resolve()
+  })
+  renderShell()
+  expect(invoke).toHaveBeenCalledWith('frontend_ready', { failed: false })
 })

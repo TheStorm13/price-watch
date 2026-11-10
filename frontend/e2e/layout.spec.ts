@@ -33,7 +33,7 @@ test('панель обновления растёт с сообщением и 
       if (mode === 'errors') {
         await panel.getByText('Показать ошибки', { exact: true }).click()
         await panel.getByText('Технические подробности', { exact: true }).first().click()
-        await expect(panel.getByRole('button', { name: 'Повторить ошибки' })).toBeEnabled()
+        await expect(panel.getByRole('button', { name: 'Повторить неудавшиеся и оставшиеся' })).toBeEnabled()
       }
       const box = (await panel.boundingBox())!
       heights.push(box.height)
@@ -57,8 +57,8 @@ test('панель обновления растёт с сообщением и 
       if (mode === 'errors') {
         const content = panel.locator('[data-slot=card-content]')
         expect(await content.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
-        await panel.getByRole('button', { name: 'Повторить ошибки' }).scrollIntoViewIfNeeded()
-        await expect(panel.getByRole('button', { name: 'Повторить ошибки' })).toBeInViewport()
+        await panel.getByRole('button', { name: 'Повторить неудавшиеся и оставшиеся' }).scrollIntoViewIfNeeded()
+        await expect(panel.getByRole('button', { name: 'Повторить неудавшиеся и оставшиеся' })).toBeInViewport()
       }
     }
     expect(heights[1]).toBeGreaterThan(heights[0])
@@ -73,8 +73,8 @@ test('панель изменения доступна в desktop-окне, ош
     await page.goto('/cards/1')
     await roundedEnds(page.getByRole('radiogroup', { name: 'Период истории' }))
     await page.getByRole('button', { name: 'Изменить', exact:true }).click()
-    const panel=page.getByRole('dialog',{name:'Изменить карточку'})
-    const input=panel.getByLabel('Теги',{exact:true})
+    const panel=page.getByRole('dialog',{name:'Изменить товар'})
+    const input=panel.getByLabel('Теги (до двух, через запятую)',{exact:true})
     await expect(input).toBeVisible()
     await input.fill('раз, два, три')
     await panel.getByRole('button',{name:'Сохранить',exact:true}).click()

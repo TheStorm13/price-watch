@@ -1,3 +1,4 @@
+import { HelpHint } from '@/components/product/HelpHint'
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCaption } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
@@ -30,8 +31,8 @@ function CatalogColumnHeaders({ sort: value, onSort }: Pick<Props, 'sort' | 'onS
    return <TableHead key={key} scope="col" className={key !== 'title' ? 'text-center' : undefined}
      aria-sort={active ? sort.direction === 'asc' ? 'ascending' : 'descending' : undefined}>
      <Button variant="ghost" size="sm" className="h-auto max-w-full gap-1 px-0 py-1 text-xs whitespace-normal" aria-label={label} onClick={() => onSort(`${key}-${direction}`)}>
-       <Icon aria-hidden="true" className="size-3" /><span className={cn('min-w-0', key === 'savings' && 'catalog-savings-heading')}>{key === 'savings' ? <>Выгода /<br />Максимальная выгода</> : key === 'minimum' ? 'Мини\u00adмальная' : key === 'marketplace' ? 'Маркет\u00adплейс' : label}</span>
-     </Button>
+       <span className={cn('min-w-0', key === 'savings' && 'catalog-savings-heading')}>{key === 'savings' ? 'Выгода / макс.' : key === 'minimum' ? 'Мини\u00adмальная' : key === 'marketplace' ? 'Маркет\u00adплейс' : label}</span><Icon aria-hidden="true" className="size-3" />
+     </Button>{key === 'savings' ? <HelpHint label="Выгода">Текущая выгода — средняя цена минус текущая, если товар доступен и разница положительна. Максимальная — средняя минус минимальная.</HelpHint> : null}
    </TableHead>
  })}</>
 }
@@ -114,7 +115,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  return <div ref={root} onFocusCapture={windowed.focus} onPointerDownCapture={windowed.focus} onBlurCapture={windowed.blur} data-catalog-results data-horizontal-overflow={overflow || undefined}>
    {view==='grid'?<ul className="virtual-grid" data-virtual-start aria-label="Отслеживаемые карточки маркетплейсов">
      {body}{tail>0?<li aria-hidden="true" style={{height:tail}} />:null}
-   </ul>:<Table className={'cards-table w-[1060px] max-[1200px]:w-[980px]'} aria-rowcount={rows.length+1}>
+   </ul>:<Table className="cards-table" aria-rowcount={rows.length+1}>
      <TableCaption className="sr-only">Отслеживаемые карточки маркетплейсов</TableCaption>
      <TableHeader><TableRow><TableHead className="cards-table__selection py-0"><span className="sr-only">Выбор</span></TableHead>
        <CatalogColumnHeaders sort={props.sort} onSort={props.onSort} /><TableHead className="text-center"><span className="sr-only">Действия</span></TableHead></TableRow></TableHeader>

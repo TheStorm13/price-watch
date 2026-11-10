@@ -1,4 +1,5 @@
 import { GroupCandidates } from './GroupCandidates'
+import { HelpHint } from '@/components/product/HelpHint'
 import { restoreFocus } from '@/lib/focus'
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useDeleteGroup, useSaveGroup } from '../../api/queries'
@@ -82,11 +83,11 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
       <form className="flex min-h-0 flex-col gap-4" onSubmit={(event) => void submit(event)}>
         <DialogHeader className="shrink-0">
           <DialogTitle>{group ? 'Изменить группу' : 'Создать группу'}</DialogTitle>
-          <DialogDescription>Выберите товары для группы. Сбор цен каждого товара продолжится отдельно.</DialogDescription>
+          <DialogDescription className="sr-only">Выбор товаров группы</DialogDescription><HelpHint label="Группы">Объединяйте товары для сравнения. Цены каждого товара обновляются отдельно.</HelpHint>
         </DialogHeader>
         <FieldGroup className="min-h-0 gap-4 overflow-y-auto">
           <Field><FieldLabel htmlFor="group-name">Название</FieldLabel><Input id="group-name" autoFocus value={name} maxLength={120} onChange={(event) => setName(event.target.value)} placeholder="Например, бутылка" /></Field>
-          <Field><FieldLabel htmlFor="group-tags">Теги группы</FieldLabel><Input id="group-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, посуда" /><FieldDescription>Разделяйте теги запятыми</FieldDescription></Field>
+          <Field><FieldLabel htmlFor="group-tags">Теги группы (через запятую)</FieldLabel><Input id="group-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Например, кухня, посуда" /></Field>
           <div className="flex gap-3">
             <Field><FieldLabel htmlFor="group-search">Поиск карточек</FieldLabel><Input id="group-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название или ID" /></Field>
             <Field>
@@ -102,8 +103,8 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
               </Select>
             </Field>
           </div>
-          <p role="status">Выбрано карточек: {selected.size}</p>
-          {movingCards ? <Alert><AlertDescription>Выбранные карточки из других групп перейдут в эту группу. Их история цен сохранится.</AlertDescription></Alert> : null}
+          <p role="status">Выбрано: {selected.size}</p>
+          {movingCards ? <Alert><AlertDescription>Товары из других групп перейдут сюда. История цен сохранится.</AlertDescription></Alert> : null}
           <GroupCandidates cards={filteredCards} selected={selected} onToggle={toggleSelected} />
         </FieldGroup>
         {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
@@ -115,7 +116,7 @@ export function GroupDialog({ group, cards, initialCardIds = [], onSaved, onClos
       </form>
       <AlertDialog open={confirmDelete} onOpenChange={(next) => { if (!busy) setConfirmDelete(next) }}>
         <AlertDialogContent onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(deleteTriggerRef.current) }}>
-          <AlertDialogHeader><AlertDialogTitle>Удалить группу?</AlertDialogTitle><AlertDialogDescription>Товары останутся в общем списке. Их история цен сохранится.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Удалить группу?</AlertDialogTitle><AlertDialogDescription>Товары и история цен сохранятся.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Отмена</AlertDialogCancel>
             <AlertDialogAction variant="destructive" disabled={busy} onClick={(event) => { event.preventDefault(); void deleteGroup() }}>Подтвердить удаление</AlertDialogAction>

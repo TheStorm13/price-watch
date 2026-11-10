@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { BarChart3, FolderPlus, Globe2, Plus, RefreshCw } from 'lucide-react'
+import { BarChart3, FolderPlus, Globe2, Plus, RefreshCw, Settings2 } from 'lucide-react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { apiModeLabel, isDesktopMode } from '../../api/client'
 import { useCatalog } from '../../api/queries'
@@ -12,6 +12,7 @@ import { BackgroundSettings } from '../../features/background/BackgroundSettings
 import { useDesktopRuntime } from '../../app/desktopRuntime'
 import { AddCardDrawer } from '../../features/cards/AddCardDrawer'
 import { GroupDialog } from '../../features/cards/GroupDialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { ImportExportControls } from '../../features/cards/ImportExportControls'
 import { catalogTags } from '../../features/cards/catalogModel'
 import { CatalogFilters } from '../../features/cards/CatalogFilters'
@@ -25,8 +26,16 @@ export function AppShell() {
   const catalog = useCatalog()
   const { collecting, start, startError } = useCollectionActions()
   const { serviceError, retryServices } = useDesktopRuntime()
+  useEffect(() => {
+    if (isDesktopMode && !serviceError && !restoreTo) {
+      // This shell is mounted after the router has resolved its lazy route.
+      // Native code queues opening requests until this committed screen exists.
+      void invoke('frontend_ready', { failed: false }).catch(() => { void retryServices() })
+    }
+  }, [serviceError, retryServices, restoreTo])
   const [browserError, setBrowserError] = useState<string | null>(null)
   const [openingBrowser, setOpeningBrowser] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [transferStatus, setTransferStatus] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
@@ -64,7 +73,7 @@ export function AppShell() {
           <div className="brand catalog-sidebar__brand"><BarChart3 aria-hidden="true" /><span>Price watch</span></div>
           <div className="catalog-sidebar__scroll">
             <div className="catalog-sidebar__primary">
-              <Button className="justify-start" onClick={actions.openAdd}><Plus data-icon="inline-start" />Добавить карточку</Button>
+              <Button className="justify-start" onClick={actions.openAdd}><Plus data-icon="inline-start" />Добавить товар</Button>
               <Button className="justify-start" variant="outline" disabled={collecting} onClick={() => start()}><RefreshCw data-icon="inline-start" />Обновить все цены</Button>
               {startError ? <Alert variant="destructive"><AlertDescription>{startError}</AlertDescription></Alert> : null}
               <Button className="justify-start" variant="outline" onClick={() => setCreatingGroup(true)}><FolderPlus data-icon="inline-start" />Создать группу</Button>
@@ -73,8 +82,14 @@ export function AppShell() {
           </div>
           <div className="catalog-sidebar__tools">
             {isDesktopMode ? <Button className="justify-start" size="sm" variant="ghost" disabled={collecting || openingBrowser} onClick={() => void openBrowser()}><Globe2 data-icon="inline-start" />Открыть Chrome</Button> : null}
-            <ImportExportControls label="Импорт / экспорт" onStatus={(message, kind) => setTransferStatus({ message, kind })} />
-            {isDesktopMode ? <BackgroundSettings /> : <span className="catalog-sidebar__mode">{apiModeLabel}</span>}
+            <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <DialogTrigger asChild><Button className="justify-start" size="sm" variant="ghost"><Settings2 data-icon="inline-start" />Настройки</Button></DialogTrigger>
+              <DialogContent className="settings-panel">
+                <DialogHeader><DialogTitle>Настройки</DialogTitle><DialogDescription className="sr-only">Настройки приложения и перенос данных</DialogDescription></DialogHeader>
+                <ImportExportControls onStatus={(message, kind) => { setTransferStatus({ message, kind }); if (kind === 'success') setSettingsOpen(false) }} />
+                {isDesktopMode ? <BackgroundSettings /> : <span className="text-xs text-muted-foreground">{apiModeLabel}</span>}
+              </DialogContent>
+            </Dialog>
           </div>
         </aside>
         <div className="catalog-sidebar__workspace">

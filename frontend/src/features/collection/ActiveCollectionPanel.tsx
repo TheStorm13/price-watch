@@ -4,6 +4,7 @@ import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, Check, LoaderCircle, X } from 'lucide-react'
 import { Button } from '../../components/ui/button'
+import { HelpHint } from '@/components/product/HelpHint'
 import { useRun } from '../../api/queries'
 import { useCollection } from './CollectionProvider'
 
@@ -44,8 +45,8 @@ export function ActiveCollectionPanel() {
         <div className="collection-panel__result">
           <p>Успешно: {run.successCount} · Ошибок: {run.failureCount}</p>
           {hasErrors ? <>
-            {details.data?.diagnosticsStatus === 'limited' ? <p>Сохранены только примеры ошибок; технические подробности сокращены.</p> : null}
-            {details.data?.diagnosticsStatus === 'expired' ? <p>Подробности очищены: диагностика хранится только для последнего запуска.</p> : null}
+            {details.data?.diagnosticsStatus === 'limited' ? <p>Показаны примеры ошибок <HelpHint label="Примеры ошибок">Технические подробности сокращены.</HelpHint></p> : null}
+            {details.data?.diagnosticsStatus === 'expired' ? <p>Подробности прошлого запуска удалены <HelpHint label="Срок хранения диагностики">Диагностика хранится только для последнего запуска.</HelpHint></p> : null}
             {details.isLoading ? <p>Загружаем подробности ошибок…</p> : details.isError ? <Button variant="ghost" onClick={() => void details.refetch()}>Не удалось загрузить ошибки. Повторить</Button> : details.data?.errors?.length ? (
               <details className="collection-panel__errors">
                 <summary>Показать ошибки</summary>
@@ -56,16 +57,14 @@ export function ActiveCollectionPanel() {
                 </li>)}</ul>
               </details>
             ) : details.data?.diagnosticsStatus === 'expired' ? null : <p>Подробностей об ошибках нет.</p>}
-            {run.retryScopeIncomplete ? <p>Состав этого запуска известен не полностью. Повтор затронет только известные варианты.</p> : null}
-            {run.retryableCount > 0 ? <Button variant="outline" onClick={retryErrors} disabled={isRetrying}>{isRetrying ? 'Повторяем…' : 'Повторить ошибки и оставшиеся'}</Button> : null}
+            {run.retryScopeIncomplete ? <p>Повторятся только известные варианты.</p> : null}
+            {run.retryableCount > 0 ? <Button variant="outline" onClick={retryErrors} disabled={isRetrying}>{isRetrying ? 'Повторяем…' : 'Повторить неудавшиеся и оставшиеся'}</Button> : null}
             {retryError ? <Alert variant="destructive"><AlertDescription>{retryError}</AlertDescription></Alert> : null}
           </> : null}
         </div>
       ) : (
         <p className="collection-panel__current">
-          {run.totalCount > 1
-            ? 'Обрабатываем до пяти вариантов одновременно'
-            : run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
+          {run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
         </p>
       )}
       </CardContent><CardFooter className="shrink-0 border-t-0 bg-transparent px-0 pt-3 pb-0"><div className="collection-panel__progress-row">

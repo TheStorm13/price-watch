@@ -75,8 +75,8 @@ export function CardsPage() {
       {catalogQuery.isError && catalogQuery.data ? <Alert variant="destructive"><AlertDescription>Не удалось обновить каталог. <Button variant="link" type="button" onClick={() => void catalogQuery.refetch()}>Повторить</Button></AlertDescription></Alert> : null}
 
       <div className="mb-5 flex items-center gap-4">
-        <h1>Карточки товаров</h1>
-        <span className="whitespace-nowrap text-sm text-muted-foreground">Показано {matchingCount} из {totalCount} товаров</span>
+        <h1>Товары</h1>
+        <span className="whitespace-nowrap text-sm text-muted-foreground">{hasFilters ? `${matchingCount} из ${totalCount}` : `${totalCount} товаров`}</span>
       </div>
       <InputGroup className="catalog-search">
           <InputGroupAddon><Search aria-hidden="true" /></InputGroupAddon>
@@ -99,7 +99,7 @@ export function CardsPage() {
         {catalogQuery.isLoading ? <LoadingRows /> : (catalogQuery.isError && !catalogQuery.data) ? (
           <Empty><EmptyHeader><EmptyTitle>Не удалось загрузить каталог</EmptyTitle><EmptyDescription>Проверьте соединение с API и повторите.</EmptyDescription></EmptyHeader><EmptyContent><Button onClick={() => { void catalogQuery.refetch() }}>Повторить</Button></EmptyContent></Empty>
         ) : orderedItems.length === 0 ? (
-          <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'По выбранным условиям ничего не найдено' : 'Карточек пока нет'}</EmptyTitle><EmptyDescription>{hasFilters ? 'Попробуйте изменить или сбросить фильтры.' : 'Добавьте первую карточку маркетплейса, чтобы начать собирать историю цены.'}</EmptyDescription></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : openAdd}>{hasFilters ? 'Сбросить фильтры' : 'Добавить карточку'}</Button></EmptyContent></Empty>
+          <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'Ничего не найдено' : 'Товаров пока нет'}</EmptyTitle></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : openAdd}>{hasFilters ? 'Сбросить фильтры' : 'Добавить товар'}</Button></EmptyContent></Empty>
         ) : <CatalogResults sort={deferredParams.get('sort')} onSort={sortResults} view={view} items={orderedItems} groupedCards={groupedCards} deals={deals}
           selectedIds={selection.selectedIds} onSelect={selection.toggle} collapsedGroups={collapsedGroups}
           onToggleGroup={toggleGroup} onEditGroup={editGroup} returnTo={returnTo} />

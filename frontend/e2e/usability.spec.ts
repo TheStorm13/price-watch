@@ -15,7 +15,7 @@ test('контекст каталога, скрытые артикулы и кл
   await tile.getByRole('link').click()
   await expect(page.getByText('ID 1604900984', { exact: true })).toBeVisible()
   await page.getByRole('radio', { name: '7 дней', exact: true }).click()
-  await page.getByRole('link', { name: 'К карточкам', exact: true }).click()
+  await page.getByRole('link', { name: 'К товарам', exact: true }).click()
   await expect(page).toHaveURL(url)
   await page.getByRole('radio', { name: 'Список', exact: true }).click()
   const row = page.locator('.cards-table__product')
@@ -29,7 +29,7 @@ test('контекст каталога, скрытые артикулы и кл
   await expect(page).toHaveURL(/\/cards\/1$/)
   const direct = await page.context().newPage()
   await direct.goto('/cards/1')
-  await direct.getByRole('link', { name: 'К карточкам', exact: true }).click()
+  await direct.getByRole('link', { name: 'К товарам', exact: true }).click()
   await expect(direct).toHaveURL(url.replace('&view=grid', ''))
   await expect(direct.getByRole('radio', { name: 'Список', exact: true })).toBeChecked()
   await expect(direct.getByLabel('Поиск по названию или артикулу')).toHaveValue('1604900984')
@@ -74,13 +74,13 @@ test('ожидание графика и смена периода оставл�
   await expect(page.getByLabel('Загрузка графика')).toBeVisible()
   await page.getByRole('radio', { name: '7 дней', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Смартфон Samsung Galaxy S24', exact: true })).toBeVisible()
-  await page.getByRole('link', { name: 'К карточкам' }).click()
+  await page.getByRole('link', { name: 'К товарам' }).click()
   await page.evaluate(async () => {
     const { api, ApiError } = await import('/src/api/client.ts')
     api.getCard = async () => { throw new ApiError('Нет карточки', 'card_not_found') }
   })
   await page.locator('.cards-table__product').nth(1).getByRole('link').click()
-  await expect(page.getByText('Карточка не найдена', { exact: true })).toBeVisible()
+  await expect(page.getByText('Товар не найден', { exact: true })).toBeVisible()
 })
 
 test('выбор плиток общий со списком и включает участников групп', async ({ page }) => {
@@ -92,7 +92,7 @@ test('выбор плиток общий со списком и включает
   await expect(tiles.first()).toHaveClass(/is-selected/)
   await tiles.nth(1).getByRole('checkbox').check()
   const bulk = page.getByRole('group', { name: 'Действия с выбранными карточками' })
-  await expect(bulk).toContainText('Выбрано карточек: 2')
+  await expect(bulk).toContainText('Выбрано: 2')
   await page.getByRole('radio', { name: 'Список', exact: true }).click()
   await expect(page.locator('.cards-table__product').nth(1).getByRole('checkbox')).toBeChecked()
   await bulk.getByRole('button', { name: 'Создать группу', exact: true }).click()
@@ -180,9 +180,9 @@ test('названия и зоны плиток выровнены, теги ц�
     }
     for (const tile of await tiles.all()) {
       expect((await tile.boundingBox())!.width).toBeLessThanOrEqual(280)
-      for (const price of await tile.locator('dd').all()) {
+      for (const [index, price] of (await tile.locator('dd').all()).entries()) {
         const font = await price.evaluate((e) => parseFloat(getComputedStyle(e).fontSize))
-        expect(font).toBe((await price.innerText()) === 'Сейчас не выгодно' ? 13 : 14)
+        expect(font).toBe(index === 3 && ['Нет выгоды', '—'].includes(await price.innerText()) ? 13 : 14)
       }
     }
     await expect(page.locator('.cards-grid__id')).toHaveCount(0)
@@ -204,12 +204,12 @@ mockApi.getHistory = async (...args) => {const data=await largeHistory(...args);
     await page.setViewportSize({ width, height: width === 1024 ? 700 : 900 })
     await expect(page.getByRole('heading', { name: /Очень длинное название товара/ })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-    const actions = (await page.locator('.detail-header > .page-actions').boundingBox())!
-    const heading = (await page.locator('.detail-header__product').boundingBox())!
+    const actions = (await page.locator('.detail-header__left > .page-actions').boundingBox())!
+    const heading = (await page.getByRole('heading', { name: /Очень длинное название товара/ }).boundingBox())!
     expect(actions.y >= heading.y + heading.height || actions.x >= heading.x + heading.width).toBe(true)
   }
   await page.setViewportSize({ width: 1024, height: 700 })
-  await page.getByRole('link', { name: 'К карточкам' }).click()
+  await page.getByRole('link', { name: 'К товарам' }).click()
   const create = page.getByRole('button', { name: 'Создать группу', exact: true })
   await create.click()
   const dialog = page.getByRole('dialog', { name: 'Создать группу' })

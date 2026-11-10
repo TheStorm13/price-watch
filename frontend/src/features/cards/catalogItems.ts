@@ -2,7 +2,7 @@ import { compareMoney, type DecimalString } from '../../utils/money'
 import type { Deal, TrackedCardView, ProductGroup } from '../../types/domain'
 import { catalogSavings } from './catalogSavings'
 
-export const columnLabels = { title:'Карточка',savings:'Выгода / Максимальная выгода',price:'Цена',minimum:'Минимальная',average:'Средняя',marketplace:'Маркетплейс',availability:'Наличие' }
+export const columnLabels = { title:'Товар',savings:'Выгода / макс.',price:'Цена',minimum:'Минимальная',average:'Средняя',marketplace:'Маркетплейс',availability:'Наличие' }
 export type ColumnSortKey = keyof typeof columnLabels
 export function parseColumnSort(value: string | null): { key: ColumnSortKey; direction: 'asc' | 'desc' } | null {
   const parts = (value ?? '').split('-')

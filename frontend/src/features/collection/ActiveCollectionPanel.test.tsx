@@ -15,11 +15,11 @@ it('offers retry for pending targets despite only a run-level error', () => {
   vi.mocked(useCollection).mockReturnValue({ run, continueRun: vi.fn(), dismiss: vi.fn(), retryErrors: vi.fn(),
     isContinuing: false, continueError: null, isRetrying: false, retryError: null, isStarting: false, startError: null, start: vi.fn() })
   const view = render(<ActiveCollectionPanel />)
-  expect(screen.getByRole('button', { name: 'Повторить ошибки и оставшиеся' })).toBeEnabled()
-  expect(screen.getByText(/Состав этого запуска известен не полностью/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Повторить неудавшиеся и оставшиеся' })).toBeEnabled()
+  expect(screen.getByText(/Повторятся только известные варианты/)).toBeVisible()
   vi.mocked(useCollection).mockReturnValue({ ...useCollection(), run: { ...run, retryableCount: 0 } })
   view.rerender(<ActiveCollectionPanel />)
-  expect(screen.queryByRole('button', { name: 'Повторить ошибки и оставшиеся' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Повторить неудавшиеся и оставшиеся' })).not.toBeInTheDocument()
 })
 
 it('explains limited and expired diagnostics without changing counts or retry', () => {
@@ -29,16 +29,16 @@ it('explains limited and expired diagnostics without changing counts or retry', 
   vi.mocked(useCollection).mockReturnValue({ ...useCollection(), run })
   diagnostics.status = 'limited'
   const view = render(<ActiveCollectionPanel />)
-  expect(screen.getByText(/Сохранены только примеры ошибок/)).toBeVisible()
+  expect(screen.getByText(/Показаны примеры ошибок/)).toBeVisible()
   expect(screen.getByText(/Ошибок: 5000/)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Повторить ошибки и оставшиеся' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Повторить неудавшиеся и оставшиеся' })).toBeEnabled()
   diagnostics.status = 'expired'
   diagnostics.errors = []
   view.rerender(<ActiveCollectionPanel />)
-  expect(screen.getByText(/Подробности очищены/)).toBeVisible()
+  expect(screen.getByText(/Подробности прошлого запуска удалены/)).toBeVisible()
   expect(screen.queryByText('Подробностей об ошибках нет.')).not.toBeInTheDocument()
   expect(screen.getByText(/Ошибок: 5000/)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Повторить ошибки и оставшиеся' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Повторить неудавшиеся и оставшиеся' })).toBeEnabled()
 })
 
 it('показывает ручную проверку AliExpress с нейтральным заголовком', () => {

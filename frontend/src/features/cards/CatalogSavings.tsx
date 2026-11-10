@@ -10,7 +10,7 @@ interface Props {
 export function CatalogSavings({ savings, average, minimum }: Props) {
   const maximum = average != null && minimum != null ? subtractMoney(average, minimum) : null
   return <span className="catalog-savings">
-    <span className={savings !== null ? 'deal-savings' : undefined}>{savings !== null ? formatPrice(savings) : 'Сейчас не выгодно'}</span>
+    <span className={savings !== null ? 'deal-savings' : undefined}>{savings !== null ? formatPrice(savings) : average == null || minimum == null ? '—' : 'Нет выгоды'}</span>
     <span className="catalog-savings__maximum" title="Максимальная выгода: средняя цена минус минимальная">{formatPrice(maximum)}</span>
   </span>
 }

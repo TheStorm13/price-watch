@@ -20,8 +20,7 @@ describe('background settings', () => {
       .mockResolvedValueOnce({ enabled: false, serviceError: null })
     const user = userEvent.setup()
     render(<BackgroundSettings />)
-    await user.click(screen.getByRole('button', { name: 'Настройки' }))
-    const toggle = await screen.findByRole('checkbox', { name: 'Запускать после входа в систему' })
+    const toggle = await screen.findByRole('checkbox', { name: 'Запускать при входе в систему' })
     await waitFor(() => expect(toggle).toBeEnabled())
     expect(toggle).not.toBeChecked()
 
@@ -40,8 +39,7 @@ describe('background settings', () => {
       .mockRejectedValueOnce('Не удалось зарегистрировать автозапуск')
     const user = userEvent.setup()
     render(<BackgroundSettings />)
-    await user.click(screen.getByRole('button', { name: 'Настройки' }))
-    const toggle = await screen.findByRole('checkbox', { name: 'Запускать после входа в систему' })
+    const toggle = await screen.findByRole('checkbox', { name: 'Запускать при входе в систему' })
     await waitFor(() => expect(toggle).toBeEnabled())
 
     await user.click(toggle)
@@ -57,7 +55,6 @@ describe('background settings', () => {
         <BackgroundSettings />
       </DesktopRuntimeContext.Provider>,
     )
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Настройки' }))
     expect(screen.getByRole('alert')).toHaveTextContent('API недоступен')
 
     rerender(

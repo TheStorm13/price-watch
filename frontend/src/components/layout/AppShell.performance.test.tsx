@@ -24,7 +24,7 @@ it('does not render sidebar filters or open/closed forms for progress-only updat
  render(<QueryClientProvider client={client}><CollectionProvider><MemoryRouter><Routes><Route element={<AppShell/>}><Route path="/" element={<p>Catalog</p>}/></Route></Routes></MemoryRouter></CollectionProvider></QueryClientProvider>)
  await act(async()=>{await vi.advanceTimersByTimeAsync(20)})
  for(const open of [false,true]) {
-  if(open){fireEvent.click(screen.getByRole('button',{name:'Добавить карточку'}));const input=screen.getByLabelText('Draft');fireEvent.change(input,{target:{value:'draft text'}});input.focus()}
+  if(open){fireEvent.click(screen.getByRole('button',{name:'Добавить товар'}));const input=screen.getByLabelText('Draft');fireEvent.change(input,{target:{value:'draft text'}});input.focus()}
   const before=[counters.filters.mock.calls.length,counters.drawer.mock.calls.length]
   for(let i=1;i<=30;i++) await act(async()=>{client.setQueryData(queryKeys.run(99),{...run,successCount:i+(open?30:0)});await vi.advanceTimersByTimeAsync(2)})
   expect([counters.filters.mock.calls.length,counters.drawer.mock.calls.length]).toEqual(before)

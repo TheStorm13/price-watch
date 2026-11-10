@@ -13,8 +13,9 @@ import { catalogSavings } from './catalogSavings'
 import { CatalogSavings } from './CatalogSavings'
 
 function groupSaving(group: ProductGroup) {
+  const card = group.representativeCard
   const value = catalogSavings(group.representativeCard, group.savings)
-  return value !== null ? <span className="deal-savings">{formatPrice(value)}</span> : 'Сейчас не выгодно'
+  return value !== null ? <span className="deal-savings">{formatPrice(value)}</span> : card?.averagePrice == null || card.currentPrice == null ? '—' : 'Нет выгоды'
 }
 
 function groupDetails(group: ProductGroup) {
@@ -22,7 +23,7 @@ function groupDetails(group: ProductGroup) {
   if (card?.dealsEnabled !== false && !(group.hasMemberDeals && !group.isDeal)) return null
   return <div className="product-group__status">
     {card ? dealStatus(card) : null}
-    {group.hasMemberDeals && !group.isDeal ? <Badge variant="secondary">Есть выгодный товар внутри</Badge> : null}
+    {group.hasMemberDeals && !group.isDeal ? <Badge variant="secondary">Есть выгодный товар</Badge> : null}
   </div>
 }
 
@@ -36,20 +37,20 @@ interface Props {
 export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed, blockEnd, onToggle, onEdit, index, measure, matchingCardCount }: Props) {
   const card = group.representativeCard
   const identity = <div className="product-group__identity">
-    <Button variant="ghost" type="button" className="product-group__toggle" aria-expanded={!collapsed} onClick={() => onToggle(group.id)}>
+    <Button variant="ghost" type="button" size="icon" className="product-group__toggle" aria-label={`${collapsed ? 'Раскрыть' : 'Свернуть'} группу ${group.name}`} aria-expanded={!collapsed} onClick={() => onToggle(group.id)}>
       {collapsed ? <ChevronRight data-icon="inline-start" /> : <ChevronDown data-icon="inline-start" />}
+    </Button>
       <span className="product-group__heading">
         <span className="product-group__label"><Folders aria-hidden="true" />Группа · {matchingCardCount} из {group.cardIds.length} товаров</span>
         <strong>{group.name}</strong>
       </span>
-    </Button>
     <div className="product-group__tags"><TagList tags={card?.tags} /></div>
     {groupDetails(group)}
   </div>
   const edit = <Button variant="ghost" size="icon-sm" type="button" aria-label={`Изменить группу ${group.name}`} onClick={() => onEdit(group)}><Pencil /></Button>
 
   if (view === 'grid') return <div className="product-group__header">
-    {identity}{edit}
+    {identity}
     <div className="product-group__metrics">
       <dl>
         <div><dt>Цена</dt><dd>{formatPrice(group.currentPrice)}</dd></div>
@@ -59,6 +60,7 @@ export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed,
       </dl>
       <div className="product-group__availability">{card ? <MarketplaceMark marketplace={card.marketplace} /> : null}<AvailabilityStatus value={card?.currentAvailability ?? null} /></div>
     </div>
+    {edit}
   </div>
 
   return <TableRow data-index={index} data-vrow={index} aria-rowindex={index + 2} ref={measure}

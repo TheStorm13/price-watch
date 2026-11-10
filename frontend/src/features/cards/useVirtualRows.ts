@@ -27,21 +27,25 @@ export function useVirtualRows(keys: string[], estimate: number, saved?: {offset
     initialRect:{width:window.innerWidth,height:window.innerHeight},
     initialOffset:saved?.offset, initialMeasurementsCache:saved?.measurements,
   })
-  useLayoutEffect(()=>{
-    const element=root.current
-    if(!element) return
-    const measure=()=>{
-      const start=element.querySelector('[data-virtual-start]') ?? element
-      setMargin(start.getBoundingClientRect().top+window.scrollY)
-      setWidth(element.clientWidth)
-    }
-    measure()
-    const observer=new ResizeObserver(measure)
+  // The list can move without resizing (selection toolbar, errors above it).
+  // Refresh its document offset after every commit, as well as on resize.
+  const measureLayout = useCallback(() => {
+    const element = root.current
+    if (!element) return
+    const start = element.querySelector('[data-virtual-start]') ?? element
+    setMargin(start.getBoundingClientRect().top + window.scrollY)
+    setWidth(element.clientWidth)
+  }, [])
+  useLayoutEffect(measureLayout)
+  useLayoutEffect(() => {
+    const element = root.current
+    if (!element) return
+    const observer = new ResizeObserver(measureLayout)
     observer.observe(element)
-    if(element.parentElement) observer.observe(element.parentElement)
-    window.addEventListener('resize',measure)
-    return ()=>{observer.disconnect();window.removeEventListener('resize',measure)}
-  },[])
+    if (element.parentElement) observer.observe(element.parentElement)
+    window.addEventListener('resize', measureLayout)
+    return () => { observer.disconnect(); window.removeEventListener('resize', measureLayout) }
+  }, [measureLayout])
   const focus = useCallback((event: React.SyntheticEvent)=>{
     const row=(event.target as HTMLElement).closest<HTMLElement>('[data-vrow]')
     if(row) setPinned(keys[Number(row.dataset.vrow)] ?? null)

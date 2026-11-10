@@ -1,10 +1,10 @@
 import { restoreFocus } from '@/lib/focus'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { HelpHint } from '@/components/product/HelpHint'
 import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useRef, useState } from 'react'
-import { Download, MoreHorizontal, Upload } from 'lucide-react'
+import { Download, Upload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { api, isDesktopMode } from '../../api/client'
@@ -12,16 +12,15 @@ import { Button } from '../../components/ui/button'
 import type { ImportSummary, TransferDocument } from '../../types/domain'
 
 function summaryText(summary: ImportSummary) {
-  return `Добавлено карточек: ${summary.cardsAdded}, объединено: ${summary.cardsMerged}, ` +
-    `добавлено записей истории: ${summary.observationsAdded}, новых групп: ${summary.groupsAdded ?? 0}.`
+  return `Добавлено: ${summary.cardsAdded} · Объединено: ${summary.cardsMerged} · ` +
+    `Записей истории: ${summary.observationsAdded} · Групп: ${summary.groupsAdded ?? 0}`
 }
 
 interface Props {
-  label?: string
   onStatus: (message: string, kind: 'success' | 'error') => void
 }
 
-export function ImportExportControls({ onStatus, label }: Props) {
+export function ImportExportControls({ onStatus }: Props) {
   const queryClient = useQueryClient()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
@@ -110,21 +109,14 @@ export function ImportExportControls({ onStatus, label }: Props) {
 
   return (
     <>
-      <div className={label ? undefined : 'order-1'}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button ref={triggerRef} className={label ? 'w-full justify-start' : undefined} variant={label ? 'ghost' : 'outline'} size={label ? 'sm' : 'icon'} aria-label={label ?? 'Дополнительные действия'} title={label ?? 'Дополнительные действия'}><MoreHorizontal data-icon="inline-start" aria-hidden="true" />{label}</Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onCloseAutoFocus={(event) => { if (open) event.preventDefault() }}>
-            <DropdownMenuGroup>
-              <DropdownMenuItem onSelect={() => void exportCards()} disabled={exportBusy}><Download />{exportBusy ? 'Экспорт…' : 'Экспорт'}</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => { setError(null); setOpen(true) }}><Upload />Импорт</DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex flex-wrap gap-2">
+        <Button ref={triggerRef} variant="outline" onClick={() => { setError(null); setOpen(true) }}><Upload />Импорт</Button>
+        <Button variant="outline" disabled={exportBusy} onClick={() => void exportCards()}><Download />{exportBusy ? 'Экспорт…' : 'Экспорт'}</Button>
       </div>
       <Dialog open={open} onOpenChange={(next) => { if (!next) close() }}>
         <DialogContent className="sm:max-w-[520px]" onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(triggerRef.current) }}
           onEscapeKeyDown={(event) => { if (busy) event.preventDefault() }} onInteractOutside={(event) => { if (busy) event.preventDefault() }}>
-          <DialogHeader><DialogTitle>Импорт карточек и истории</DialogTitle><DialogDescription>Выберите файл, сохранённый через «Экспорт». Существующие карточки и их история будут объединены.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Импорт товаров</DialogTitle><DialogDescription>Товары и история будут объединены.</DialogDescription><HelpHint label="Импорт">Выберите файл, сохранённый через «Экспорт». Настройки существующих товаров сохранятся.</HelpHint></DialogHeader>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="transfer-file">Файл экспорта</FieldLabel>
@@ -141,7 +133,6 @@ export function ImportExportControls({ onStatus, label }: Props) {
                 <strong>{fileName}</strong>
                 <p>{summaryText(preview)}</p>
                 <p>Пропущено повторов: {preview.observationsSkipped}; удалено одинаковых соседних цен: {preview.observationsRemoved}.</p>
-                <p>Настройки уже существующих карточек сохранятся.</p>
               </AlertDescription></Alert>
             ) : null}
             {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}

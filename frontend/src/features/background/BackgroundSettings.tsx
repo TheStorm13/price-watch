@@ -1,11 +1,10 @@
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldLabel } from '@/components/ui/field'
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { HelpHint } from '@/components/product/HelpHint'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Settings2 } from 'lucide-react'
 import { useDesktopRuntime } from '../../app/desktopRuntime'
 
 interface BackgroundState {
@@ -48,20 +47,16 @@ export function BackgroundSettings() {
   }
 
   return (
-    <Popover>
-      <PopoverTrigger asChild><Button className="justify-start" variant="ghost" size="sm" aria-label="Настройки" title="Настройки фонового сбора"><Settings2 data-icon="inline-start" aria-hidden="true" />Настройки</Button></PopoverTrigger>
-      <PopoverContent align="start" side="right" className="flex w-[340px] flex-col gap-3">
-        <strong>Фоновый сбор цен</strong>
-        <p>Автоматический полный сбор — каждые 6 часов, пока приложение работает.</p>
+    <section className="flex flex-col gap-3" aria-label="Фоновое обновление">
+        <div className="flex items-center gap-1"><h2>Фоновое обновление</h2><HelpHint label="Фоновое обновление">Цены обновляются, пока приложение работает. Снова открыть окно можно через ярлык или значок приложения.</HelpHint></div><p>Каждые 6 часов</p>
         <Field orientation="horizontal" data-disabled={!state || busy}>
           <Checkbox id="background-enabled" checked={state?.enabled ?? false} disabled={!state || busy} onCheckedChange={(checked) => void setEnabled(checked === true)} />
-          <FieldLabel htmlFor="background-enabled">Запускать после входа в систему</FieldLabel>
+          <FieldLabel htmlFor="background-enabled">Запускать при входе в систему</FieldLabel>
         </Field>
-        {state?.enabled ? <p>Закрытие окна оставит сбор работающим. Открыть окно снова можно через ярлык или значок приложения.</p> : null}
+        {state?.enabled ? <p>После закрытия окна обновление продолжится</p> : null}
         {serviceError ? <Alert variant="destructive"><AlertDescription>Службы: {serviceError}</AlertDescription></Alert> : null}
         {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-        <Button variant="outline" type="button" onClick={() => void quit()}>Полностью выйти</Button>
-      </PopoverContent>
-    </Popover>
+        <Button variant="outline" type="button" onClick={() => void quit()}>Завершить работу</Button>
+    </section>
   )
 }

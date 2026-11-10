@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -84,18 +83,26 @@ function DesktopBootstrap({ children }: { children: ReactNode }) {
     }
   }, [retryServices])
 
+  useEffect(() => {
+    if (!isDesktopMode || ready || !error) return
+    // Effects run after the DOM commits. Hidden WebViews may suspend animation frames.
+    let active = true
+    void invoke('frontend_ready', { failed: true }).catch((reason: unknown) => {
+      if (active) setError(String(reason))
+    })
+    return () => { active = false }
+  }, [ready, error])
+
   return (
     <DesktopRuntimeContext.Provider value={{ serviceError: error, retryServices }}>
-      {ready ? children : (
-        <main className="desktop-bootstrap">
-          <div className="desktop-bootstrap__mark">PW</div>
-          <h1>{error ? 'Не удалось запустить приложение' : 'Запускаем Price watch'}</h1>
-          <p>{error ?? 'Поднимаем PostgreSQL и API, затем запускаем браузерный агент…'}</p>
-          {error
-            ? <Button onClick={() => { setError(null); setAttempt((value) => value + 1) }}>Повторить</Button>
-            : <Skeleton className="size-8" />}
+      {ready ? children : error ? (
+        <main className="desktop-startup-error">
+          <h1>Не удалось запустить приложение</h1>
+          <p role="alert">{error}</p>
+          <div className="flex gap-2"><Button onClick={() => setAttempt((value) => value + 1)}>Повторить</Button>
+          <Button variant="outline" onClick={() => void invoke('quit_app')}>Завершить работу</Button></div>
         </main>
-      )}
+      ) : null}
     </DesktopRuntimeContext.Provider>
   )
 }

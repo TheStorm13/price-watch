@@ -10,12 +10,12 @@ test('catalog options survive a fresh browser context; reset is permanent and li
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/cards?fixture=catalog')
-  await expect(page.getByRole('heading', { name: 'Карточки товаров', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Товары', exact: true })).toBeVisible()
   await expect(page).toHaveTitle(/Price watch/i)
   await page.getByLabel('Поиск по названию или артикулу').fill('Наушники')
   await page.getByRole('checkbox', { name: 'Только в наличии' }).check()
-  await page.getByRole('checkbox', { name: 'Сначала товары, участвующие в выгодных предложениях' }).uncheck()
-  await choose(page, 'Выгодность', 'Участвуют в выгодных предложениях')
+  await page.getByRole('checkbox', { name: 'Сначала участвующие' }).uncheck()
+  await choose(page, 'Участие в выгодных', 'Участвуют')
   await selectMany(page, 'Маркетплейсы', ['Ozon', 'Wildberries'])
   await selectMany(page, 'Теги', ['Электроника', 'Для себя'])
   await page.getByRole('button', { name: 'Средняя', exact: true }).click()
@@ -33,9 +33,9 @@ test('catalog options survive a fresh browser context; reset is permanent and li
     await reopened.goto('/cards?fixture=catalog')
     await expect(reopened.getByLabel('Поиск по названию или артикулу')).toHaveValue('Наушники')
     await expect(reopened.getByRole('checkbox', { name: 'Только в наличии' })).toBeChecked()
-    await expect(reopened.getByRole('checkbox', { name: 'Сначала товары, участвующие в выгодных предложениях' })).not.toBeChecked()
+    await expect(reopened.getByRole('checkbox', { name: 'Сначала участвующие' })).not.toBeChecked()
     await expect(reopened.getByRole('radio', { name: 'Сетка', exact: true })).toHaveAttribute('data-state', 'on')
-    await expect(reopened.getByRole('combobox', { name: 'Выгодность', exact: true })).toContainText('Участвуют')
+    await expect(reopened.getByRole('combobox', { name: 'Участие в выгодных', exact: true })).toContainText('Участвуют')
     await expect(reopened.getByRole('combobox', { name: 'Сортировка', exact: true })).toContainText('Средняя · по убыванию')
     const restored = new URL(reopened.url()).searchParams
     for (const key of ['q', 'stock', 'participationFirst', 'deals', 'markets', 'tags', 'sort', 'view']) {
@@ -43,7 +43,7 @@ test('catalog options survive a fresh browser context; reset is permanent and li
     }
     await expect(reopened.getByRole('group', { name: 'Действия с выбранными карточками' })).toHaveCount(0)
     await reopened.getByRole('link', { name: 'Наушники Apple AirPods Pro 2', exact: true }).click()
-    await reopened.getByRole('link', { name: 'К карточкам', exact: true }).click()
+    await reopened.getByRole('link', { name: 'К товарам', exact: true }).click()
     await expect(reopened.getByLabel('Поиск по названию или артикулу')).toHaveValue('Наушники')
     await reopened.screenshot({ path: '/tmp/price-watch-catalog-preferences.png' })
     await reopened.getByRole('button', { name: 'Сбросить', exact: true }).click()
@@ -64,13 +64,13 @@ test('catalog options survive a fresh browser context; reset is permanent and li
 test('collapsed groups survive details and reload; selection stays temporary', async ({ page }) => {
   const url = '/cards?perf=100&shape=mixed&sort=title-asc'
   await page.goto(url)
-  const toggle = page.getByRole('button', { name: /^Группа.*Тестовая группа 1$/ })
+  const toggle = page.getByRole('button', { name: /^(Раскрыть|Свернуть) группу Тестовая группа 1$/ })
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await page.getByRole('checkbox', { name: 'Выбрать карточку Тестовый товар 00000', exact: true }).check()
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await page.getByRole('link', { name: /^Тестовый товар/ }).first().click()
-  await page.getByRole('link', { name: 'К карточкам', exact: true }).click()
+  await page.getByRole('link', { name: 'К товарам', exact: true }).click()
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect(page.getByRole('group', { name: 'Действия с выбранными карточками' })).toHaveCount(0)
   await page.reload()

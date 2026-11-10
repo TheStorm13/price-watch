@@ -55,6 +55,6 @@ it('locks the primary and supports individual and bulk tracking', async () => {
   expect(screen.getByRole('checkbox', { name: 'Отслеживать: Размер: 1' })).toBeDisabled()
   await user.click(screen.getByRole('checkbox', { name: 'Отслеживать: Размер: 2' }))
   expect(mutate).toHaveBeenLastCalledWith({ cardId: 1, enabled: false, variantId: 2 })
-  await user.click(screen.getByRole('button', { name: 'Выключить все' }))
+  await user.click(screen.getByRole('button', { name: 'Выключить остальные' }))
   expect(mutate).toHaveBeenLastCalledWith({ cardId: 1, enabled: false, variantId: undefined })
 })

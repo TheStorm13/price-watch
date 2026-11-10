@@ -99,11 +99,11 @@ export function BulkCardActions({ selectedIds, cards, groups, onCreateGroup, onP
 
   return <>
     {selectedIds.length > 0 ? <div className="bulk-card-actions" role="group" aria-label="Действия с выбранными карточками">
-      <strong>Выбрано карточек: {selectedIds.length}</strong>
+      <strong>Выбрано: {selectedIds.length}</strong>
       <Button variant="outline" disabled={busy} onClick={onCreateGroup}>Создать группу</Button>
       <Button variant="outline" disabled={busy || groups.length === 0} onClick={() => setGroupPickerOpen((value) => !value)}>Добавить в группу</Button>
       <Button variant="outline" disabled={busy} onClick={() => void runMany('enable')}>Учитывать в выгодных</Button>
-      <Button variant="outline" disabled={busy} onClick={() => void runMany('disable')}>Не учитывать в выгодных</Button>
+      <Button variant="outline" disabled={busy} onClick={() => void runMany('disable')}>Исключить из выгодных</Button>
       <Button ref={deleteTrigger} variant="destructive" disabled={busy} onClick={() => setConfirmDelete(true)}>Удалить выбранные</Button>
       <Button variant="ghost" disabled={busy} onClick={() => { onClear(); setGroupPickerOpen(false); setMessage(null) }}>Снять выбор</Button>
       {groupPickerOpen ? <div className="bulk-card-actions__group-picker">
@@ -129,7 +129,7 @@ export function BulkCardActions({ selectedIds, cards, groups, onCreateGroup, onP
       <AlertDialogContent onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(deleteTrigger.current) }}>
         <AlertDialogHeader>
           <AlertDialogTitle>Удалить выбранные карточки?</AlertDialogTitle>
-          <AlertDialogDescription>Будет удалено карточек: {selectedIds.length}. Вся их история цен также будет удалена без возможности восстановления.</AlertDialogDescription>
+          <AlertDialogDescription>Будет удалено товаров: {selectedIds.length}. История цен будет удалена безвозвратно.</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>Отмена</AlertDialogCancel>

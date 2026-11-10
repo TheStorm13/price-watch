@@ -49,7 +49,7 @@ export function CardActionsMenu({ cardTitle, dealsEnabled, onToggle, onDelete, o
     }
   }
 
-  const actionLabel = dealsEnabled ? 'Не учитывать в выгодных предложениях' : 'Учитывать в выгодных предложениях'
+  const actionLabel = dealsEnabled ? 'Исключить из выгодных' : 'Учитывать в выгодных'
   return <div className="card-actions-menu" onClick={(event) => event.stopPropagation()}>
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
@@ -57,7 +57,7 @@ export function CardActionsMenu({ cardTitle, dealsEnabled, onToggle, onDelete, o
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" aria-label={`Действия с карточкой ${cardTitle}`} onCloseAutoFocus={(event) => { if (confirming) event.preventDefault() }}>
         <DropdownMenuGroup>
-          {onRefresh ? <DropdownMenuItem disabled={pending || refreshDisabled} onSelect={() => onRefresh()}><RefreshCw />Обновить только эту карточку</DropdownMenuItem> : null}
+          {onRefresh ? <DropdownMenuItem disabled={pending || refreshDisabled} onSelect={() => onRefresh()}><RefreshCw />Обновить цены</DropdownMenuItem> : null}
           <DropdownMenuItem disabled={pending} onSelect={(event) => { event.preventDefault(); void toggleTracking() }}>
             {pending ? <LoaderCircle className="spin" /> : dealsEnabled ? <EyeOff /> : <Eye />}{pending ? 'Сохраняем…' : actionLabel}
           </DropdownMenuItem>
@@ -73,7 +73,7 @@ export function CardActionsMenu({ cardTitle, dealsEnabled, onToggle, onDelete, o
       <AlertDialogContent onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(triggerRef.current) }}>
         <AlertDialogHeader>
           <AlertDialogTitle>Удалить карточку?</AlertDialogTitle>
-          <AlertDialogDescription>«{cardTitle}» и вся история её цен будут удалены без возможности восстановления.</AlertDialogDescription>
+          <AlertDialogDescription>Товар «{cardTitle}» и вся история цен будут удалены безвозвратно.</AlertDialogDescription>
         </AlertDialogHeader>
         {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
         <AlertDialogFooter>

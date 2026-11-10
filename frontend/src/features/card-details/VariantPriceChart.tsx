@@ -41,7 +41,7 @@ export function VariantPriceChart({ history, variants, primaryVariantId }: Props
       <span className="variant-color" style={{ backgroundColor: variantColor(v.externalId) }} />
       <span>{variantLabel(v)}{v.id === primaryVariantId ? ' · главный' : ''}</span>
     </label>)}{hidden.size ? <Button size="sm" variant="ghost" onClick={() => setHidden(new Set())}>Показать все</Button> : null}</div>
-    {visiblePoints.length === 0 ? <Empty className="min-h-[250px]"><EmptyHeader><EmptyTitle>{history.length ? hidden.size === variants.length ? 'Все линии скрыты' : 'Нет измерений выбранных вариантов' : 'Пока нет измерений'}</EmptyTitle><EmptyDescription>{history.length ? 'Включите варианты в легенде.' : 'Обновите товар, чтобы сравнить цены его вариантов.'}</EmptyDescription></EmptyHeader></Empty> :
+    {visiblePoints.length === 0 ? <Empty className="min-h-[250px]"><EmptyHeader><EmptyTitle>{history.length ? hidden.size === variants.length ? 'Все линии скрыты' : 'Нет измерений выбранных вариантов' : 'Пока нет измерений'}</EmptyTitle><EmptyDescription>{history.some(point => point.variantId != null && hidden.has(point.variantId)) ? 'Включите варианты в легенде.' : 'Обновите цены товара.'}</EmptyDescription></EmptyHeader></Empty> :
       <div className="price-chart" aria-label="График цен вариантов товара">
         <ResponsiveContainer width="100%" height="100%"><LineChart margin={{ top: 20, right: 24, bottom: 14, left: 8 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />

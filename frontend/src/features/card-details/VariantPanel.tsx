@@ -11,6 +11,7 @@ import { AvailabilityStatus } from '../../components/product/AvailabilityStatus'
 import { useUpdateCard, useVariantTracking } from '../../api/queries'
 import type { TrackedCardView, TrackedVariant } from '../../types/domain'
 import { formatDateTime, formatPrice } from '../../utils/format'
+import { HelpHint } from '@/components/product/HelpHint'
 import { PreparedProductImage } from '../../components/product/PreparedProductImage'
 import { sortVariants, variantColor, variantLabel } from './variantDisplay'
 
@@ -35,12 +36,12 @@ export function VariantPanel({ card, variants }: { card: TrackedCardView; varian
   }
 
   return <section className="variant-section" aria-label="Варианты товара">
-    <div className="variant-heading"><div><h2>Варианты товара <Badge variant="secondary">{variants.length}</Badge></h2><p className="text-sm text-muted-foreground">Главный отслеживается всегда. Включите другие размеры и цвета для регулярного обновления. История сохраняется.</p></div>
+    <div className="variant-heading"><div className="flex items-center gap-1"><h2>Варианты товара <Badge variant="secondary">{variants.length}</Badge></h2><HelpHint label="Варианты товара">Главный вариант обновляется всегда. Включите другие варианты для обновления их цен. При отключении история сохраняется.</HelpHint></div>
       {variants.length > 4 ? <FieldGroup className="w-full sm:w-[280px]"><Field><FieldLabel className="sr-only" htmlFor="variant-search">Поиск варианта</FieldLabel><Input id="variant-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название, размер или цвет" /></Field></FieldGroup> : null}
     </div>
     <div className="mb-3 flex flex-wrap gap-2">
-      <Button variant="outline" size="sm" disabled={busy || variants.every((v) => v.id === card.primaryVariantId || v.trackingEnabled)} onClick={() => void setTracking(true)}>Включить все</Button>
-      <Button variant="outline" size="sm" disabled={busy || variants.every((v) => v.id === card.primaryVariantId || !v.trackingEnabled)} onClick={() => void setTracking(false)}>Выключить все</Button>
+      <Button variant="outline" size="sm" disabled={busy || variants.every((v) => v.id === card.primaryVariantId || v.trackingEnabled)} onClick={() => void setTracking(true)}>Включить остальные</Button>
+      <Button variant="outline" size="sm" disabled={busy || variants.every((v) => v.id === card.primaryVariantId || !v.trackingEnabled)} onClick={() => void setTracking(false)}>Выключить остальные</Button>
     </div>
     {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
     <div className="variant-table table-surface"><Table>

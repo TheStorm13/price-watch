@@ -33,7 +33,7 @@ for (const dpr of [1, 1.25, 1.5, 2, 3]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440)
       await page.screenshot({ path: `/tmp/price-watch-catalog-thumbnails-dpr${dpr}.png` })
       await page.locator('.cards-table__product .card-identity__link').first().click()
-      const detail = page.locator('.detail-header__product img')
+      const detail = page.locator('.detail-header__image img')
       await expect(detail).toHaveAttribute('src', /^blob:/)
       await expect.poll(() => detail.evaluate((image: HTMLImageElement) => image.naturalHeight)).toBe(Math.round(158 * dpr))
       await page.goBack()

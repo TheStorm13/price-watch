@@ -60,6 +60,9 @@ Chrome collection, CLI, and database-free single-product JSON mode.
   history; import may compact it. Review data effects and migrations before use.
   Require explicit approval for destructive operations. Never test on user data;
   PostgreSQL integration tests need a separate disposable `TEST_DATABASE_URL`.
+- Desktop builds and manual application verification are owned by the user.
+  Do not run `build:desktop`, `desktop:build`, or native UI smoke unless the user
+  explicitly requests them. Continue relevant automated tests and lint/type checks.
 - Run relevant existing tests and applicable lint/type checks. Verify affected
   contracts and modes; report checks that could not run. Frontend E2E covers the
   demo UI only. Commands: `docs/guide/TESTING_AND_TROUBLESHOOTING.md`.

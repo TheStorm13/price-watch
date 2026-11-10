@@ -42,7 +42,7 @@ it('keeps chart and current price visible when history fails', () => {
 it('keeps card actions visible while the independent sections load', () => {
   state.historyLoading = true; state.chartLoading = true; view()
   expect(screen.getByRole('heading', { name: 'Проверяемый товар' })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Обновить эту карточку' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Обновить цены' })).toBeEnabled()
   expect(screen.getByLabelText('Загрузка графика')).toBeVisible()
   expect(screen.getByLabelText('Загрузка измерений')).toBeVisible()
 })

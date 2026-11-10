@@ -20,7 +20,7 @@ import { CatalogSavings } from './CatalogSavings'
 
 export function dealStatus(card: TrackedCardView) {
     return <>
-      {!card.dealsEnabled ? <Badge variant="warning" className="tracking-status" title="Не участвует в выгодных">Не участвует в выгодных</Badge> : null}
+      {!card.dealsEnabled ? <Badge variant="warning" className="tracking-status" title="Исключён из выгодных">Исключён из выгодных</Badge> : null}
     </>
   }
 
@@ -43,7 +43,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
 
   function saving(card: TrackedCardView) {
     const value = catalogSavings(card, savings)
-    return value !== null ? <span className="deal-savings">{formatPrice(value)}</span> : 'Сейчас не выгодно'
+    return value !== null ? <span className="deal-savings">{formatPrice(value)}</span> : card?.averagePrice == null || card.currentPrice == null ? '—' : 'Нет выгоды'
   }
 
   function tile(card: TrackedCardView) {

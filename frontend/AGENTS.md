@@ -23,5 +23,7 @@ Radix primitives (`asChild`), Lucide, and the official `@shadcn` registry.
 - Forms use FieldGroup/Field and linked labels. Dialog/Sheet/AlertDialog need
   titles and descriptions. Preserve keyboard navigation, validation, pending
   states, and focus restoration, including transitions between overlays.
-- Verify with lint, unit, mock E2E, and desktop builds. Mock E2E does not verify
-  live API, worker, database, or Tauri WebView. Use isolated data for desktop QA.
+- Verify with relevant lint, unit, and mock E2E checks. Desktop builds and
+  manual/native UI verification are handled by the user; run them only on an
+  explicit request. Mock E2E does not verify live API, worker, database, or
+  Tauri WebView. Any requested desktop QA must use isolated data.

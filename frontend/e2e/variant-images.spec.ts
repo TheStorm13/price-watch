@@ -19,11 +19,11 @@ test('варианты показывают свои фото, а карточк
     })),
   }] }
   await page.goto('/cards')
-  await page.getByLabel('Импорт / экспорт').click()
-  await page.getByRole('menuitem', { name: 'Импорт', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: 'Импорт карточек и истории' })
+  await page.getByRole('button', { name: 'Настройки', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Настройки', exact: true }).getByRole('button', { name: 'Импорт', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Импорт товаров' })
   await dialog.locator('input[type="file"]').setInputFiles({ name: 'variants.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(transfer)) })
-  await expect(dialog).toContainText('Добавлено карточек: 1')
+  await expect(dialog).toContainText('Добавлено: 1')
   await dialog.getByRole('button', { name: 'Импортировать' }).click()
   await page.getByRole('link', { name: titles[0], exact: true }).click()
   await expect(page).toHaveURL(/\/cards\/\d+$/)
@@ -41,7 +41,7 @@ test('варианты показывают свои фото, а карточк
   }
   await page.getByRole('button', { name: 'Сделать главным: Цвет: белый', exact: true }).click()
   await expect(page.getByRole('heading', { name: titles[1], exact: true })).toBeVisible()
-  await expect(page.locator('.detail-header__product img')).toHaveAttribute('src', /^blob:/)
+  await expect(page.locator('.detail-header__image img')).toHaveAttribute('src', /^blob:/)
   await expect(page.getByRole('link', { name: 'Открыть на Wildberries' })).toHaveAttribute('href', /size=2$/)
   await expect(page.locator('.price-summary__primary strong')).toContainText('200')
   await expect(page.locator('.price-stat').first()).toContainText('200')
@@ -55,7 +55,7 @@ test('варианты показывают свои фото, а карточк
   await page.screenshot({ path: '/tmp/pw-variant-images-1024.png', fullPage: false })
   await page.getByRole('button', { name: 'Сделать главным: Цвет: серый', exact: true }).click()
   await expect(page.getByRole('heading', { name: titles[2], exact: true })).toBeVisible()
-  await expect(page.locator('.detail-header__product img')).toHaveCount(0)
+  await expect(page.locator('.detail-header__image img')).toHaveCount(0)
   expect(await page.locator('body').innerText()).not.toContain('SKU')
   expect(errors).toEqual([])
 })
