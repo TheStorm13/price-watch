@@ -411,5 +411,5 @@ input::placeholder { color: #98a2b3; }
 .cards-grid__prices .catalog-savings__maximum::before { content: "/ "; }
 
 .detail-tags { margin-top: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); min-width: 0; }
-.detail-tags .tag { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
-.detail-tags .tag-list { display: flex; min-width: 0; }
+.detail-tags .tag { height: auto; min-height: 32px; max-width: 100%; padding: 3px 10px; font-size: 16px; line-height: 24px; white-space: normal; overflow-wrap: anywhere; }
+.detail-tags .tag-list { display: flex; min-width: 0; gap: 8px; }
