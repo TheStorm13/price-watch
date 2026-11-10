@@ -208,7 +208,7 @@ test('наличие исключает неизвестные данные; ц�
   await expect(main.getByRole('link', { name: /Dyson/ })).toHaveCount(0)
   await expect(main.getByRole('link', { name: /Xiaomi/ })).toHaveCount(0)
   await page.getByRole('checkbox', { name: 'Только в наличии', exact: true }).uncheck()
-  await page.getByRole('checkbox', { name: 'Сначала участвующие', exact: true }).uncheck()
+  await page.getByRole('checkbox', { name: 'Сначала товары, участвующие в выгодных предложениях', exact: true }).uncheck()
   await choose(page, 'Сортировка', 'Сначала дешёвые')
   await expect(main.locator('tbody tr').first()).toContainText('Xiaomi')
   await expect(main.locator('tbody tr').last()).toContainText('Dyson')
@@ -309,7 +309,7 @@ test('заголовки сортируют в обе стороны и согл
 
 test('участие фильтруется отдельно от выгоды, приоритет включён по умолчанию и сохраняется в URL', async ({ page }) => {
   await page.goto('/cards?fixture=catalog')
-  const first = page.getByRole('checkbox', { name: 'Сначала участвующие', exact: true })
+  const first = page.getByRole('checkbox', { name: 'Сначала товары, участвующие в выгодных предложениях', exact: true })
   const rows = page.locator('.cards-table tbody tr')
   await expect(first).toBeChecked()
   await expect(rows.last()).toContainText('LEGO')
@@ -332,8 +332,8 @@ test('участие фильтруется отдельно от выгоды, 
   await expect(page.getByRole('radio', { name: 'Сетка', exact: true })).toBeChecked()
   await page.getByRole('radio', { name: 'Список', exact: true }).click()
   await page.getByRole('combobox', { name: 'Участие в выгодных', exact: true }).click()
-  await expect(page.getByRole('option').nth(1)).toHaveText('Участвуют')
-  await page.getByRole('option', { name: 'Участвуют', exact: true }).click()
+  await expect(page.getByRole('option').nth(1)).toHaveText('Участвуют в выгодных')
+  await page.getByRole('option', { name: 'Участвуют в выгодных', exact: true }).click()
   await expect(page.getByRole('main')).toContainText('6 из 7')
   await expect(rows.filter({ hasText: 'LEGO' })).toHaveCount(0)
   await expect(rows.filter({ hasText: 'Dyson' })).toHaveCount(1)

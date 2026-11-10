@@ -37,12 +37,12 @@ The sidebar SHALL offer default deals-first or ascending/descending price sortin
 - **THEN** each matching card satisfies all conditions and its internal database ID is not searched
 
 #### Scenario: Participating products filter
-- **WHEN** the second deal-filter option «Участвуют» is selected
+- **WHEN** the second deal-filter option «Участвуют в выгодных» is selected
 - **THEN** only products enabled for deal selection remain, including currently nonprofitable products; group members are checked individually
 
 #### Scenario: Default participation order and reset
 - **WHEN** the catalog opens with default controls
-- **THEN** the checkbox «Сначала участвующие» is checked and products are ordered by participation, then descending savings
+- **THEN** the checkbox «Сначала товары, участвующие в выгодных предложениях» is checked and products are ordered by participation, then descending savings
 
 #### Scenario: Disable participation priority
 - **WHEN** the user clears the checkbox and chooses a column sort
@@ -78,7 +78,7 @@ The approved UI SHALL run without demo environment variables or sidebar query sw
 - **THEN** the sidebar uses real API data and the existing collection and desktop runtime providers
 
 ### Requirement: Settings beside the sidebar
-Settings SHALL open as a separate accessible dialog panel whose left edge aligns with the sidebar right edge (260 px on desktop), with bounded width and height. Import/export and desktop background controls SHALL live inside it. Nested import cancellation SHALL return focus to its trigger in settings; successful transfer SHALL close settings and display its result in the shell. Demo mode SHALL NOT invoke native settings commands.
+Settings SHALL open as a separate accessible dialog panel anchored 12 px to the right of the 260 px sidebar and 16 px above the window bottom, with content-sized height, at most 420 px width and bounded scrolling. It SHALL NOT occupy the full window height or use centering transforms/entrance zoom animations. Import/export and desktop background controls SHALL live inside it. Nested import cancellation SHALL return focus to its trigger in settings; successful transfer SHALL close settings and display its result in the shell. Demo mode SHALL NOT invoke native settings commands.
 
 #### Scenario: Import from details
 - **WHEN** the user opens settings from a product and cancels import

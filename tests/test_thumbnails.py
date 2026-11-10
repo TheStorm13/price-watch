@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, patch
 import httpx
 from PIL import Image, ImageDraw
 
+from price_watch.ports.thumbnails import MAX_THUMBNAIL_SIZE, THUMBNAIL_BOXES
+
 from price_watch.infrastructure.thumbnails import (
     Download, ThumbnailError, ThumbnailService, render_thumbnail, public_address,
     download_image, FRESH_SECONDS, MAX_INPUT,
@@ -46,9 +48,20 @@ class ThumbnailTests(unittest.IsolatedAsyncioTestCase):
         with Image.open(BytesIO(render_thumbnail(photo((30, 40)), (68, 68)))) as result:
             self.assertEqual(result.size, (68, 68))
             self.assertEqual(result.getchannel('A').getbbox(), (19, 14, 49, 54))
-        for size in (0, 2225):
+        for size in (0, MAX_THUMBNAIL_SIZE + 1):
             with self.assertRaises(ThumbnailError):
                 render_thumbnail(self.source, (size, size))
+
+    def test_portrait_profiles_preserve_photo_and_transparent_padding(self):
+        self.assertEqual(THUMBNAIL_BOXES, {'list': (51, 68), 'tile': (276, 368), 'detail': (384, 512)})
+        for size in THUMBNAIL_BOXES.values():
+            with Image.open(BytesIO(render_thumbnail(photo((800, 600)), size))) as image:
+                self.assertEqual(image.size, size)
+                self.assertEqual(image.width * 4, image.height * 3)
+                left, top, right, bottom = image.getchannel('A').getbbox()
+                self.assertEqual((left, right), (0, size[0]))
+                self.assertGreater(top, 0)
+                self.assertAlmostEqual((bottom - top) / (right - left), .75, delta=.02)
 
     async def test_sizes_have_separate_persistent_cache_entries(self):
         small = await self.service.get('https://cdn.test/a', (68, 68))

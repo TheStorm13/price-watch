@@ -86,7 +86,7 @@ export function CatalogFilters({ tags, params, onChange }: {
     <Field orientation="horizontal">
       <Checkbox id={`${id}-participation-first`} checked={params.get('participationFirst') !== '0'}
         onCheckedChange={(checked) => setValues('participationFirst', checked === true ? null : ['0'])} />
-      <FieldLabel htmlFor={`${id}-participation-first`}>Сначала участвующие</FieldLabel>
+      <FieldLabel htmlFor={`${id}-participation-first`}>Сначала товары, участвующие в выгодных предложениях</FieldLabel>
     </Field>
     <Field>
       <FieldLabel className="sr-only" htmlFor={`${id}-sort`}>Сортировка</FieldLabel>
@@ -107,7 +107,7 @@ export function CatalogFilters({ tags, params, onChange }: {
         <SelectTrigger id={`${id}-deals`} size="sm" className="w-full"><SelectValue /></SelectTrigger>
         <SelectContent><SelectGroup>
           <SelectItem value="all">Все товары</SelectItem>
-          <SelectItem value="participating">Участвуют</SelectItem>
+          <SelectItem value="participating">Участвуют в выгодных</SelectItem>
           <SelectItem value="deals">Выгодные</SelectItem>
           <SelectItem value="non_deals">Невыгодные</SelectItem>
         </SelectGroup></SelectContent>

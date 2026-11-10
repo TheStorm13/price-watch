@@ -25,9 +25,9 @@ for (const dpr of [1, 1.25, 1.5, 2, 3]) {
       await expect.poll(() => photos.count()).toBe(5)
       for (const photo of await photos.all()) {
         await expect(photo).toHaveAttribute('src', /^blob:/)
-        await expect.poll(() => photo.evaluate((image: HTMLImageElement) => [image.naturalWidth, image.naturalHeight])).toEqual([Math.round(68 * dpr), Math.round(68 * dpr)])
-        expect(await photo.evaluate((image) => [image.getBoundingClientRect().width, image.getBoundingClientRect().height])).toEqual([68, 68])
-        expect(await photo.evaluate((image) => [image.parentElement!.getBoundingClientRect().width, image.parentElement!.getBoundingClientRect().height])).toEqual([68, 68])
+        await expect.poll(() => photo.evaluate((image: HTMLImageElement) => [image.naturalWidth, image.naturalHeight])).toEqual([Math.round(51 * dpr), Math.round(68 * dpr)])
+        expect(await photo.evaluate((image) => [image.getBoundingClientRect().width, image.getBoundingClientRect().height])).toEqual([51, 68])
+        expect(await photo.evaluate((image) => [image.parentElement!.getBoundingClientRect().width, image.parentElement!.getBoundingClientRect().height])).toEqual([51, 68])
       }
       await expect(page.locator('.cards-table__nested img')).toHaveCount(2)
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440)
@@ -35,10 +35,19 @@ for (const dpr of [1, 1.25, 1.5, 2, 3]) {
       await page.locator('.cards-table__product .card-identity__link').first().click()
       const detail = page.locator('.detail-header__image img')
       await expect(detail).toHaveAttribute('src', /^blob:/)
-      await expect.poll(() => detail.evaluate((image: HTMLImageElement) => image.naturalHeight)).toBe(Math.round(158 * dpr))
+      await expect.poll(() => detail.evaluate((image: HTMLImageElement) => image.naturalHeight)).toBe(Math.round(512 * dpr))
+      const variants = page.locator('.variant-table .product-placeholder').first()
+      const variantBox = (await variants.boundingBox())!
+      expect(variantBox.width / variantBox.height).toBeCloseTo(3 / 4, 2)
+      const detailBox = (await detail.boundingBox())!
+      expect(detailBox.width / detailBox.height).toBeCloseTo(3 / 4, 2)
       await page.goBack()
       await page.getByRole('radio', { name: 'Сетка' }).click()
       await expect(page.locator('.cards-grid__item img').first()).toHaveAttribute('src', /^blob:/)
+      const tile = page.locator('.cards-grid__item img').first()
+      await expect.poll(() => tile.evaluate((image: HTMLImageElement) => [image.naturalWidth,image.naturalHeight])).toEqual([Math.round(276*dpr),Math.round(368*dpr)])
+      const tileBox = (await tile.boundingBox())!
+      expect(tileBox.width / tileBox.height).toBeCloseTo(3 / 4, 2)
       expect(errors).toEqual([])
     })
   })

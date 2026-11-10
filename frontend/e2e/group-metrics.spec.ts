@@ -222,7 +222,7 @@ test('изменение участия и удаление представит
   await expect(group.locator('td').nth(2).locator('.deal-savings')).toHaveText('45 ₽')
   await expect(group.locator('td').nth(6)).toContainText('Wildberries')
   await expect(page.locator('.cards-table__nested').last()).toContainText('Fixture товар 901')
-  await page.getByRole('checkbox', { name: 'Сначала участвующие', exact: true }).uncheck()
+  await page.getByRole('checkbox', { name: 'Сначала товары, участвующие в выгодных предложениях', exact: true }).uncheck()
   await expect(group).toContainText('Исключён из выгодных')
   await expect(group).toContainText('Есть выгодный товар')
   await expect(group.locator('td').nth(2).locator('.deal-savings')).toHaveText('15 ₽')

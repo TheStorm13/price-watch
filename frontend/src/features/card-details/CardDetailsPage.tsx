@@ -92,7 +92,8 @@ export function CardDetailsPage() {
     <section className="page detail-page">
       <Button asChild variant="outline" size="lg" className="mb-5 min-h-11 px-5"><Link to={returnTo}><ArrowLeft />К товарам</Link></Button>
       <header className="detail-header">
-        <div className="detail-header__left"><div className="detail-header__product">
+        <div className="detail-header__image"><PreparedProductImage profile="detail" card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager /></div>
+        <div className="detail-header__info"><div className="detail-header__product">
 
           <div className="detail-header__content"><h1>{card.title ?? 'Без названия'}</h1><div className="detail-header__meta"><MarketplaceMark marketplace={card.marketplace} /><span>·</span><span>ID {card.externalId}</span><span>{Object.entries(card.options ?? {}).map(([name, value]) => `${name}: ${value}`).join(' · ')}</span>{!card.dealsEnabled ? <><span>·</span><Badge variant="warning" className="tracking-status">Исключён из выгодных</Badge></> : null}</div></div>
         </div>
@@ -115,7 +116,6 @@ export function CardDetailsPage() {
         <div className="price-stat"><span>Разница</span><strong>{formatPrice(priceGap)}</strong></div>
       </div>
         </div>
-        <div className="detail-header__image"><PreparedProductImage profile="detail" card={card} alt={card.imageUrl ? `Фото товара: ${card.title ?? card.externalId}` : undefined} eager /></div>
       </header>
       {openError ? <Alert variant="destructive"><AlertDescription>{openError}</AlertDescription></Alert> : null}
       {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}

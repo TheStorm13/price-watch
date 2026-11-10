@@ -204,7 +204,7 @@ mockApi.getHistory = async (...args) => {const data=await largeHistory(...args);
     await page.setViewportSize({ width, height: width === 1024 ? 700 : 900 })
     await expect(page.getByRole('heading', { name: /Очень длинное название товара/ })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-    const actions = (await page.locator('.detail-header__left > .page-actions').boundingBox())!
+    const actions = (await page.locator('.detail-header__info > .page-actions').boundingBox())!
     const heading = (await page.getByRole('heading', { name: /Очень длинное название товара/ }).boundingBox())!
     expect(actions.y >= heading.y + heading.height || actions.x >= heading.x + heading.width).toBe(true)
   }

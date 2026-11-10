@@ -177,8 +177,12 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(response.headers['content-type'], 'image/png')
                 self.assertEqual(response.headers['cache-control'], 'no-store')
                 self.assertEqual(response.content, b'png-content')
-                thumbnails.get.assert_awaited_with(source, (68, 68))
+                thumbnails.get.assert_awaited_with(source, (51, 68))
                 self.assertEqual(self.repository.card.image_url, source)
+            for profile, scale, expected in [('tile', 1, (276, 368)), ('detail', 8, (3072, 4096))]:
+                response = await client.get(f'/api/cards/1/thumbnail?profile={profile}&scale={scale}', headers=headers)
+                self.assertEqual(response.status_code, 200)
+                thumbnails.get.assert_awaited_with(source, expected)
             thumbnails.get.side_effect = ThumbnailError('unavailable')
             response = await client.get('/api/cards/1/thumbnail?profile=list&scale=1', headers=headers)
             self.assertEqual(response.status_code, 502)

@@ -14,8 +14,8 @@ test('catalog options survive a fresh browser context; reset is permanent and li
   await expect(page).toHaveTitle(/Price watch/i)
   await page.getByLabel('Поиск по названию или артикулу').fill('Наушники')
   await page.getByRole('checkbox', { name: 'Только в наличии' }).check()
-  await page.getByRole('checkbox', { name: 'Сначала участвующие' }).uncheck()
-  await choose(page, 'Участие в выгодных', 'Участвуют')
+  await page.getByRole('checkbox', { name: 'Сначала товары, участвующие в выгодных предложениях' }).uncheck()
+  await choose(page, 'Участие в выгодных', 'Участвуют в выгодных')
   await selectMany(page, 'Маркетплейсы', ['Ozon', 'Wildberries'])
   await selectMany(page, 'Теги', ['Электроника', 'Для себя'])
   await page.getByRole('button', { name: 'Средняя', exact: true }).click()
@@ -33,9 +33,9 @@ test('catalog options survive a fresh browser context; reset is permanent and li
     await reopened.goto('/cards?fixture=catalog')
     await expect(reopened.getByLabel('Поиск по названию или артикулу')).toHaveValue('Наушники')
     await expect(reopened.getByRole('checkbox', { name: 'Только в наличии' })).toBeChecked()
-    await expect(reopened.getByRole('checkbox', { name: 'Сначала участвующие' })).not.toBeChecked()
+    await expect(reopened.getByRole('checkbox', { name: 'Сначала товары, участвующие в выгодных предложениях' })).not.toBeChecked()
     await expect(reopened.getByRole('radio', { name: 'Сетка', exact: true })).toHaveAttribute('data-state', 'on')
-    await expect(reopened.getByRole('combobox', { name: 'Участие в выгодных', exact: true })).toContainText('Участвуют')
+    await expect(reopened.getByRole('combobox', { name: 'Участие в выгодных', exact: true })).toContainText('Участвуют в выгодных')
     await expect(reopened.getByRole('combobox', { name: 'Сортировка', exact: true })).toContainText('Средняя · по убыванию')
     const restored = new URL(reopened.url()).searchParams
     for (const key of ['q', 'stock', 'participationFirst', 'deals', 'markets', 'tags', 'sort', 'view']) {

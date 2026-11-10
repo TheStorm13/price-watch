@@ -348,7 +348,7 @@ export const mockApi = {
       image.src = source
     })
     const canvas = document.createElement('canvas')
-    const [width, height] = { list: [68, 68], tile: [278, 190], detail: [158, 158] }[profile]
+    const [width, height] = { list: [51, 68], tile: [276, 368], detail: [384, 512] }[profile]
     canvas.width = Math.round(width * scale)
     canvas.height = Math.round(height * scale)
     const ratio = Math.min(1, canvas.width / image.naturalWidth, canvas.height / image.naturalHeight)

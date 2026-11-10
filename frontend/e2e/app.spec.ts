@@ -416,8 +416,9 @@ test('карточки переключаются между списком и �
   const tile = grid.locator('.cards-grid__item').first()
   const imageBox = await image.boundingBox()
   const tileBox = await tile.boundingBox()
-  expect(imageBox?.width).toBeCloseTo((tileBox?.width ?? 0) - 2, 0)
-  expect(imageBox?.height).toBe(190)
+  expect(imageBox!.width / imageBox!.height).toBeCloseTo(3 / 4, 2)
+  expect(imageBox!.width).toBeLessThan(tileBox!.width)
+  expect(imageBox?.height).toBe(368)
   await grid.locator('.cards-grid__item').first().getByRole('button', { name: /Действия с карточкой/ }).click()
   await expect(page.getByRole('menuitem', { name: 'Исключить из выгодных' })).toBeVisible()
   await page.keyboard.press('Escape')
@@ -515,8 +516,8 @@ test('плитки одинаковы при разных фото, а мета�
       const [tileBox, mediaBox] = await Promise.all([tile.boundingBox(), tile.locator('.cards-grid__media').boundingBox()])
       expect(mediaBox!.y - tileBox!.y).toBeGreaterThanOrEqual(8)
     }
-    expect(imageBoxes[0]?.height).toBe(190)
-    expect(imageBoxes[1]?.height).toBe(190)
+    expect(imageBoxes[0]?.height).toBe(368)
+    expect(imageBoxes[1]?.height).toBe(368)
     const positions = await Promise.all([portraitTile, landscapeTile, grid.locator('.cards-grid__item').first()].map((tile) => tile.evaluate((element) => {
       const top = element.getBoundingClientRect().top
       return ['.cards-grid__media', '.cards-grid__title', '.cards-grid__tags', '.cards-grid__prices', 'time']
@@ -537,7 +538,7 @@ test('плитки одинаковы при разных фото, а мета�
       naturalHeight: element.naturalHeight,
       fit: getComputedStyle(element).objectFit,
     }))
-    expect(dimensions).toEqual({ naturalWidth: 278, naturalHeight: 190, fit: 'contain' })
+    expect(dimensions).toEqual({ naturalWidth: 276, naturalHeight: 368, fit: 'contain' })
   }
   expect(await portraitTile.locator('.cards-grid__title').getAttribute('title')).toContain('Очень длинное название')
   const updatedAt = await portraitTile.locator('time').boundingBox()
