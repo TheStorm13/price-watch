@@ -102,7 +102,7 @@ export function CardsPage() {
           <Empty><EmptyHeader><EmptyTitle>{hasFilters ? 'Ничего не найдено' : 'Товаров пока нет'}</EmptyTitle></EmptyHeader><EmptyContent><Button variant="default" onClick={hasFilters ? resetFilters : openAdd}>{hasFilters ? 'Сбросить фильтры' : 'Добавить товар'}</Button></EmptyContent></Empty>
         ) : <CatalogResults sort={deferredParams.get('sort')} onSort={sortResults} view={view} items={orderedItems} groupedCards={groupedCards} deals={deals}
           selectedIds={selection.selectedIds} onSelect={selection.toggle} collapsedGroups={collapsedGroups}
-          onToggleGroup={toggleGroup} onEditGroup={editGroup} returnTo={returnTo} />
+          onToggleGroup={toggleGroup} onEditGroup={editGroup} returnTo={returnTo} layoutVersion={String(catalogQuery.isError)} />
         }
       </div>
       {editingGroup ? <GroupDialog key={editingGroup === 'new' ? 'new' : editingGroup.id} group={editingGroup === 'new' ? null : editingGroup}

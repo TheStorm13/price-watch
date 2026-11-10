@@ -21,6 +21,7 @@ interface Props {
  view:'list'|'grid';items:DisplayItem[];groupedCards:Map<number,TrackedCardView[]>;deals:Map<number,Deal>
  selectedIds:Set<number>;onSelect:(id:number)=>void;collapsedGroups:number[]
  onToggleGroup:(id:number)=>void;onEditGroup:(group:ProductGroup)=>void;returnTo:string
+ layoutVersion?: string
 }
 function CatalogColumnHeaders({ sort: value, onSort }: Pick<Props, 'sort' | 'onSort'>) {
  const sort = parseColumnSort(value)
@@ -64,7 +65,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  const rows=useMemo(()=>catalogRows(items,groupedCards,collapsedGroups,view==='grid'?columns:1),[items,groupedCards,collapsedGroups,view,columns])
  const keys=useMemo(()=>rows.map(row=>row.key),[rows])
  const saved=useRef(positions.get(location.pathname+location.search))
- const windowed=useVirtualRows(keys,view==='grid'?666:82, saved.current?.width===window.innerWidth?saved.current:undefined,{blockSize:view==='list'?4:1,naturalLimit:view==='list'&&!overflow?100:40})
+ const windowed=useVirtualRows(keys,view==='grid'?666:82, saved.current?.width===window.innerWidth?saved.current:undefined,{blockSize:view==='list'?4:1,naturalLimit:view==='list'&&!overflow?100:40,layoutVersion:`${selectedIds.size > 0}:${props.layoutVersion ?? ''}`})
  const {root,virtualizer,virtual,margin}=windowed
  useLayoutEffect(()=>{if(windowed.width) setColumns(Math.max(1,Math.floor((windowed.width+8)/288)))},[windowed.width])
  // Sticky cells are expensive to paint in WebKit; only pin them when needed.

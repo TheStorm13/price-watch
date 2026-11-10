@@ -3,7 +3,7 @@ import { defaultRangeExtractor, useWindowVirtualizer, type VirtualItem } from '@
 
 // Only one focus owner and its adjacent rows can be pinned, so keyboard
 // navigation/portaled menus do not grow the DOM.
-export function useVirtualRows(keys: string[], estimate: number, saved?: {offset:number;measurements:VirtualItem[]}, { blockSize = 1, naturalLimit = 40 }: { blockSize?: number; naturalLimit?: number } = {}) {
+export function useVirtualRows(keys: string[], estimate: number, saved?: {offset:number;measurements:VirtualItem[]}, { blockSize = 1, naturalLimit = 40, layoutVersion }: { blockSize?: number; naturalLimit?: number; layoutVersion?: string | boolean } = {}) {
   const root = useRef<HTMLDivElement>(null)
   const [margin, setMargin] = useState(0)
   const [width, setWidth] = useState(0)
@@ -27,13 +27,15 @@ export function useVirtualRows(keys: string[], estimate: number, saved?: {offset
     initialRect:{width:window.innerWidth,height:window.innerHeight},
     initialOffset:saved?.offset, initialMeasurementsCache:saved?.measurements,
   })
-  // The list can move without resizing (selection toolbar, errors above it).
-  // Refresh its document offset after every commit, as well as on resize.
+  // Scroll renders do not move the document origin. Reading layout after each
+  // of them forces style/layout work while rows are being mounted and measured.
   const measureLayout = useCallback(() => {
     const element = root.current
     if (!element) return
     const start = element.querySelector('[data-virtual-start]') ?? element
-    setMargin(start.getBoundingClientRect().top + window.scrollY)
+    const nextMargin = start.getBoundingClientRect().top + window.scrollY
+    // Fractional scroll/rect rounding must not invalidate all row measurements.
+    setMargin(previous => Math.abs(previous - nextMargin) < 1 ? previous : nextMargin)
     setWidth(element.clientWidth)
   }, [])
   // Scroll commits and row ResizeObserver notifications can arrive together.
@@ -46,7 +48,7 @@ export function useVirtualRows(keys: string[], estimate: number, saved?: {offset
       measureLayout()
     })
   }, [measureLayout])
-  useLayoutEffect(scheduleLayout)
+  useLayoutEffect(scheduleLayout, [scheduleLayout, keys, estimate, layoutVersion])
   useLayoutEffect(() => {
     const element = root.current
     if (!element) return
@@ -54,7 +56,8 @@ export function useVirtualRows(keys: string[], estimate: number, saved?: {offset
     const observer = new ResizeObserver(entries => {
       let changed = false
       for (const entry of entries) {
-        if (widths.get(entry.target) !== entry.contentRect.width) changed = true
+        const isList = entry.target === element || entry.target === element.parentElement
+        if (!isList || widths.get(entry.target) !== entry.contentRect.width) changed = true
         widths.set(entry.target, entry.contentRect.width)
       }
       // Virtual rows change the table height on every scroll; their heights
@@ -63,6 +66,11 @@ export function useVirtualRows(keys: string[], estimate: number, saved?: {offset
     })
     observer.observe(element)
     if (element.parentElement) observer.observe(element.parentElement)
+    // Controls before the list can move it without changing its width. Observe
+    // them separately from the virtual surface, whose height changes on scroll.
+    for (let sibling = element.parentElement?.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+      observer.observe(sibling)
+    }
     window.addEventListener('resize', scheduleLayout)
     return () => {
       observer.disconnect()
@@ -70,7 +78,7 @@ export function useVirtualRows(keys: string[], estimate: number, saved?: {offset
       if (layoutFrame.current !== null) cancelAnimationFrame(layoutFrame.current)
       layoutFrame.current = null
     }
-  }, [scheduleLayout])
+  }, [scheduleLayout, layoutVersion])
   const focus = useCallback((event: React.SyntheticEvent)=>{
     const row=(event.target as HTMLElement).closest<HTMLElement>('[data-vrow]')
     if(row) setPinned(keys[Number(row.dataset.vrow)] ?? null)

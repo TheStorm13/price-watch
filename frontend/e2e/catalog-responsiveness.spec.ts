@@ -93,7 +93,10 @@ for (const view of ['list', 'grid']) test(`selection remains interactive after s
 test('card action labels fit a single line in catalog and details', async ({ page }) => {
   await page.goto('/cards')
   for (const details of [false, true]) {
-    if (details) await page.locator('.card-identity__link').first().click()
+    if (details) {
+      await page.locator('.card-identity__link').first().click()
+      await expect(page.getByRole('link', { name: 'К товарам', exact: true })).toBeVisible()
+    }
     await page.getByRole('button', { name: /^Действия с карточкой/ }).first().click()
     const menu = page.getByRole('menu')
     await expect(menu).toBeVisible()
@@ -108,4 +111,49 @@ test('card action labels fit a single line in catalog and details', async ({ pag
     await page.keyboard.press('Escape')
     await expect(menu).toBeHidden()
   }
+})
+
+for (const count of [100, 5000]) for (const view of ['list', 'grid']) test(`collection progress keeps selection and scrolling responsive: ${count} ${view}`, async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto(`/cards?perf=${count}&shape=group&view=${view}`)
+  const box = page.getByRole('checkbox', { name: 'Выбрать карточку Тестовый товар 00000', exact: true })
+  await box.check()
+  await page.evaluate(() => {
+    const fixture = (window as any).__pwPerf
+    fixture.progress(0)
+    let completed = 0
+    ;(window as any).__progressTimer = setInterval(() => fixture.progress(++completed % 90), 75)
+  })
+  await expect(page.getByRole('complementary', { name: 'Состояние обновления цен' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Обновить все цены', exact: true })).toBeDisabled()
+  // Let selection/layout observers settle, then count only origin reads. Row
+  // measurement remains enabled and is intentionally excluded from this count.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+  await page.evaluate(() => {
+    const read = Element.prototype.getBoundingClientRect
+    ;(window as any).__originReads = 0
+    Element.prototype.getBoundingClientRect = function () {
+      if (this.hasAttribute('data-virtual-start')) (window as any).__originReads++
+      return read.call(this)
+    }
+  })
+  for (let round = 0; round < 3; round++) {
+    await page.mouse.move(900, 450)
+    await page.mouse.wheel(0, 1600)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expect(box).toBeVisible()
+  }
+  expect(await page.evaluate(() => (window as any).__originReads)).toBe(0)
+  // An existing toolbar can change height without selection or catalog changes.
+  await page.getByRole('button', { name: 'Добавить в группу', exact: true }).click({ timeout: 2000 })
+  await page.getByRole('button', { name: 'Снять выбор', exact: true }).click({ timeout: 2000 })
+  await expect(box).not.toBeChecked()
+  await box.check({ timeout: 2000 })
+  await box.uncheck({ timeout: 2000 })
+  await page.getByRole('link', { name: 'Тестовый товар 00000', exact: true }).click({ timeout: 2000 })
+  await expect(page.getByRole('heading', { name: 'Тестовый товар 00000', exact: true })).toBeVisible()
+  await page.evaluate(() => clearInterval((window as any).__progressTimer))
+  expect(errors).toEqual([])
 })
