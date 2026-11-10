@@ -38,6 +38,20 @@ API слушает свободный локальный порт и требу�
 
 ## Автоматические проверки
 
+### Нативное колесико мыши (Linux)
+
+`frontend/src-tauri/tests/native_wheel.rs` использует временную страницу и
+эфемерный WebKit context без БД и пользовательского профиля. Проверяет ×2 для
+дискретного и smooth Mouse, вложенную область, исключения с модификаторами и
+горизонтальным колесом, отсутствие размножения событий у границ страницы и
+вложенной области. По умолчанию тест пропущен, так как требует GTK-дисплей:
+
+```bash
+GDK_BACKEND=x11 xvfb-run -a cargo test --offline --manifest-path frontend/src-tauri/Cargo.toml --test native_wheel -- --ignored --test-threads=1 --nocapture
+```
+
+Физический тачпад и обычный Wayland-ввод проверяются отдельно в приложении.
+
 ### HTTP request pools
 
 Ozon, AliExpress, WB и Яндекс Маркет используют отдельные `max_in_flight_requests=100`.

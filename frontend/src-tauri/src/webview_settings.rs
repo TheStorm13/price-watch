@@ -1,5 +1,4 @@
-use gtk::{gdk, glib::Propagation, prelude::*};
-use std::cell::Cell;
+use gtk::{gdk, glib::translate::ToGlibPtr, glib::Propagation, prelude::*};
 use std::ffi::{c_char, c_int, c_void, CStr};
 use webkit2gtk::{glib::object::ObjectType, WebViewExt};
 
@@ -52,11 +51,7 @@ pub fn allow_display_refresh_rate(view: &webkit2gtk::WebView) -> Result<(), &'st
 
 /// Double physical mouse wheel steps without taking scrolling away from WebKit.
 pub fn accelerate_mouse_wheel(view: &webkit2gtk::WebView) {
-    let redispatching = Cell::new(false);
     view.connect_scroll_event(move |_, event| {
-        if redispatching.get() {
-            return Propagation::Proceed;
-        }
         let modifiers = gdk::ModifierType::CONTROL_MASK
             | gdk::ModifierType::SHIFT_MASK
             | gdk::ModifierType::MOD1_MASK
@@ -84,14 +79,25 @@ pub fn accelerate_mouse_wheel(view: &webkit2gtk::WebView) {
         if !vertical || !mouse {
             return Propagation::Proceed;
         }
-        // Route owned copies through GTK so WebKit retains hit-testing,
-        // nested scrolling and native animation. Re-entry must not multiply again.
-        redispatching.set(true);
-        for _ in 0..2 {
-            let mut copy = event.clone();
-            gtk::main_do_event(&mut copy);
+        let delta = match event.direction() {
+            gdk::ScrollDirection::Up => -2.0,
+            gdk::ScrollDirection::Down => 2.0,
+            _ => event.delta().1 * 2.0,
+        };
+        // SAFETY: GTK supplies a mutable GdkEventScroll to this synchronous
+        // signal on its UI thread. The Rust wrapper borrows that C allocation;
+        // no field references are held while writing, and the pointer is not
+        // retained. Only scroll payload fields change before WebKit handles it.
+        unsafe {
+            let pointer: *const gdk::ffi::GdkEventScroll = event.to_glib_none().0;
+            let pointer = pointer.cast_mut();
+            (*pointer).direction = gdk::ffi::GDK_SCROLL_SMOOTH;
+            (*pointer).delta_x = 0.0;
+            (*pointer).delta_y = delta;
         }
-        redispatching.set(false);
-        Propagation::Stop
+        // WebKit may send unhandled wheel events back through GTK later.
+        // Let its normal handler consume that forwarding flag; redispatching
+        // copies here bypasses it and can create an ever-growing event queue.
+        Propagation::Proceed
     });
 }
