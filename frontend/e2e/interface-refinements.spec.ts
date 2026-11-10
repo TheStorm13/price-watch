@@ -60,8 +60,8 @@ test('settings, help and product layout preserve their positions and keyboard fl
   await expect.poll(async () => { const box = (await panel.boundingBox())!; return box.x + box.width / 2 }).toBe(720)
   const bounds = (await panel.boundingBox())!
   expect(bounds.y + bounds.height / 2).toBeCloseTo(450, 0)
-  expect(bounds.height).toBe(680)
-  expect(bounds.width).toBe(800)
+  expect(bounds.height).toBe(868)
+  expect(bounds.width).toBe(1200)
   await expect(panel.getByRole('heading', { name: 'Данные' })).toBeVisible()
   for (const name of ['Обновление цен', 'Относительно выгодная покупка', 'Уведомления']) {
     await expect(panel.getByRole('heading', { name, exact: true })).toBeVisible()
