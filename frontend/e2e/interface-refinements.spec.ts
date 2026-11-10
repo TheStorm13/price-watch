@@ -62,7 +62,15 @@ test('settings, help and product layout preserve their positions and keyboard fl
   expect(bounds.y + bounds.height / 2).toBeCloseTo(450, 0)
   expect(bounds.height).toBe(680)
   expect(bounds.width).toBe(800)
-  await expect(panel.getByRole('heading', { name: 'Перенос данных' })).toBeVisible()
+  await expect(panel.getByRole('heading', { name: 'Данные' })).toBeVisible()
+  for (const name of ['Обновление цен', 'Относительно выгодная покупка', 'Уведомления']) {
+    await expect(panel.getByRole('heading', { name, exact: true })).toBeVisible()
+  }
+  await expect(panel.getByText('Изменение периодичности — пока не реализовано.', { exact: true })).toBeVisible()
+  await expect(panel.getByText('Отметка для цены рядом со средней — пока не реализовано.', { exact: true })).toBeVisible()
+  await expect(panel.getByText(/Автоматический экспорт, выбор папки и расписания/)).toBeVisible()
+  await expect(panel.getByText('Работа приложения', { exact: true })).toHaveCount(0)
+  await expect(panel.getByText(/Тихие часы/i)).toHaveCount(0)
   await expect(panel.getByRole('button', { name: 'Экспорт', exact: true })).toBeVisible()
   await panel.getByRole('button', { name: 'Импорт', exact: true }).click()
   const transfer = page.getByRole('dialog', { name: 'Импорт товаров', exact: true })

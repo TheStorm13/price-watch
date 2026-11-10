@@ -109,7 +109,7 @@ export function ImportExportControls({ onStatus }: Props) {
 
   return (
     <>
-      <section className="settings-block" aria-labelledby="settings-transfer"><h2 id="settings-transfer">Перенос данных</h2><p>Товары, группы и история цен в JSON-файле.</p>
+      <section className="settings-block" aria-labelledby="settings-transfer"><h2 id="settings-transfer">Данные</h2><p>Товары, группы и история цен в JSON-файле.</p><p>Автоматический экспорт, выбор папки и расписания — пока не реализовано.</p>
       <div className="flex flex-wrap gap-2">
         <Button ref={triggerRef} variant="outline" onClick={() => { setError(null); setOpen(true) }}><Upload />Импорт</Button>
         <Button variant="outline" disabled={exportBusy} onClick={() => void exportCards()}><Download />{exportBusy ? 'Экспорт…' : 'Экспорт'}</Button>

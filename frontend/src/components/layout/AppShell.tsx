@@ -86,8 +86,22 @@ export function AppShell() {
               <DialogTrigger asChild><Button className="justify-start" size="sm" variant="ghost"><Settings2 data-icon="inline-start" />Настройки</Button></DialogTrigger>
               <DialogContent className="settings-panel">
                 <DialogHeader><DialogTitle>Настройки</DialogTitle><DialogDescription className="sr-only">Настройки приложения и перенос данных</DialogDescription></DialogHeader>
+                <section className="settings-block" aria-labelledby="settings-updates">
+                  <h2 id="settings-updates">Обновление цен</h2>
+                  <p>Изменение периодичности — пока не реализовано.</p>
+                  <p>Обновление цен всех вариантов — пока не реализовано.</p>
+                  {isDesktopMode ? <BackgroundSettings /> : <p>Фоновое обновление и автозапуск доступны в desktop-приложении. {apiModeLabel}</p>}
+                </section>
+                <section className="settings-block" aria-labelledby="settings-relative">
+                  <h2 id="settings-relative">Относительно выгодная покупка</h2>
+                  <p>Отметка для цены рядом со средней — пока не реализовано.</p>
+                </section>
+                <section className="settings-block" aria-labelledby="settings-notifications">
+                  <h2 id="settings-notifications">Уведомления</h2>
+                  <p>Настройка уведомлений о выгодной цене — пока не реализовано.</p>
+                  <p>Уведомления о появлении в наличии — пока не реализовано.</p>
+                </section>
                 <ImportExportControls onStatus={(message, kind) => { setTransferStatus({ message, kind }); if (kind === 'success') setSettingsOpen(false) }} />
-                {isDesktopMode ? <BackgroundSettings /> : <section className="settings-block" aria-labelledby="settings-mode"><h2 id="settings-mode">Режим приложения</h2><p>{apiModeLabel}</p></section>}
               </DialogContent>
             </Dialog>
           </div>

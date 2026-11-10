@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { HelpHint } from '@/components/product/HelpHint'
@@ -38,17 +37,9 @@ export function BackgroundSettings() {
     }
   }
 
-  async function quit() {
-    try {
-      await invoke('quit_app')
-    } catch (reason) {
-      setError(String(reason))
-    }
-  }
-
   return (
-    <><section className="settings-block" aria-label="Фоновое обновление">
-        <div className="flex items-center gap-1"><h2>Фоновое обновление</h2><HelpHint label="Фоновое обновление">Цены обновляются, пока приложение работает. Снова открыть окно можно через ярлык или значок приложения.</HelpHint></div><p>Каждые 6 часов</p>
+    <>
+        <div className="flex items-center gap-1"><span>Фоновое обновление</span><HelpHint label="Фоновое обновление">Цены обновляются, пока приложение работает. Снова открыть окно можно через ярлык или значок приложения.</HelpHint></div><p>Каждые 6 часов</p>
         {serviceError ? <Alert variant="destructive"><AlertDescription>Службы: {serviceError}</AlertDescription></Alert> : null}
         {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
         <Field orientation="horizontal" data-disabled={!state || busy}>
@@ -56,9 +47,6 @@ export function BackgroundSettings() {
           <FieldLabel htmlFor="background-enabled">Запускать при входе в систему</FieldLabel>
         </Field>
         {state?.enabled ? <p>После закрытия окна обновление продолжится</p> : null}
-    </section>
-    <section className="settings-block" aria-labelledby="settings-exit"><h2 id="settings-exit">Работа приложения</h2><p>Закрыть приложение и остановить фоновое обновление.</p>
-        <Button variant="outline" type="button" onClick={() => void quit()}>Завершить работу</Button>
-    </section></>
+    </>
   )
 }
