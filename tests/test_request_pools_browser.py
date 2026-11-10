@@ -10,6 +10,8 @@ from marketplace_connector.browser.session import ChromeSession
 from marketplace_connector.connectors.ozon.json_transport import OzonJsonTransport
 from marketplace_connector.connectors.aliexpress.json_transport import AliExpressJsonTransport
 from tests.test_ozon_json_transport import product_text
+from marketplace_connector.connectors.yandex_market.transport import YandexMarketTransport
+from tests.test_yandex_market import html, SEED
 from tests.test_aliexpress_transport import RAW, REF
 
 
@@ -19,7 +21,7 @@ class RequestPoolsBrowserTests(unittest.IsolatedAsyncioTestCase):
         with TemporaryDirectory(prefix='request-pool-synthetic-') as directory:
             session = ChromeSession(directory, headless=True)
             async with session.collection_session() as context:
-                for cls, ref, raw in ((OzonJsonTransport, '1', product_text()), (AliExpressJsonTransport, REF, RAW)):
+                for cls, ref, raw in ((OzonJsonTransport, '1', product_text()), (AliExpressJsonTransport, REF, RAW), (YandexMarketTransport, SEED, html())):
                     with self.subTest(transport=cls.__name__):
                         transport = cls(context, AsyncMock(), max_attempts=1, request_timeout=10)
                         await transport._start()
@@ -32,7 +34,7 @@ class RequestPoolsBrowserTests(unittest.IsolatedAsyncioTestCase):
                                     synthetic.bodies.set(id, () => {controller.enqueue(new TextEncoder().encode(raw)); controller.close();});
                                     signal.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')), {once:true});
                                 }});
-                                const response = new Response(stream, {headers:{'content-type':'application/json'}});
+                                const response = new Response(stream, {headers:{'content-type':raw.startsWith('<') ? 'text/html' : 'application/json'}});
                                 Object.defineProperty(response, 'url', {value:url});
                                 return response;
                             };

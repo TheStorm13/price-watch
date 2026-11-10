@@ -33,7 +33,8 @@ describe('AddCardDrawer', () => {
     expect(screen.getByRole('radio', { name: /AliExpress/ })).toBeChecked()
     await user.click(screen.getByRole('radio', { name: /Яндекс Маркет/ }))
     expect(screen.getByRole('radio', { name: /Яндекс Маркет/ })).toBeChecked()
-    expect(screen.getByPlaceholderText('https://market.yandex.ru/product/...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('https://market.yandex.ru/card/название/SKU')).toBeInTheDocument()
+    expect(screen.queryByText('Сбор цен пока недоступен')).not.toBeInTheDocument()
   })
 })
 
@@ -42,6 +43,7 @@ it.each([
   ['Ozon', 'ID карточки', '123', 'https://www.ozon.ru/product/123/', 'ozon'],
   ['Wildberries', 'Артикул WB', '123', 'https://www.wildberries.ru/catalog/123/detail.aspx', 'wildberries'],
   ['AliExpress', 'ID товара', '123', 'https://aliexpress.ru/item/123.html', 'aliexpress'],
+  ['Яндекс Маркет', 'ID карточки', '123', 'https://market.yandex.ru/card/tovar/123', 'yandex-market'],
 ])('добавляет %s по артикулу или товарной ссылке без SKU', async (label, field, article, url, marketplace) => {
   const user = userEvent.setup()
   const onSave = vi.fn().mockResolvedValue(undefined)

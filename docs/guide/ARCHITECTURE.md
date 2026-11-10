@@ -20,6 +20,7 @@
 | Ozon | `marketplace_connector/connectors/ozon` | Composer JSON и нормализация |
 | AliExpress | `marketplace_connector/connectors/aliexpress` | SKU identity, productData и нормализация одной цены |
 | Wildberries | `marketplace_connector/connectors/wildberries` | nmId:optionId, runtime витрины и одна цена с приоритетом WB Кошелька |
+| Яндекс Маркет | `marketplace_connector/connectors/yandex_market` | Авторизованный HTML/Apiary, граф SKU, цена с картой и одним промокодом |
 | Одиночный CLI | `marketplace_connector/connectors/ozon/cli.py`, `main.py` | Получить JSON товара без БД |
 
 Рабочий интерфейс запускается только в Tauri. Браузерный `dev:e2e` использует
@@ -30,11 +31,12 @@ flowchart LR
     UI[React в Tauri] --> API[FastAPI]
     API --> DB[(PostgreSQL)]
     Worker[Локальный Python worker] --> DB
-    Worker --> Connector[Коннекторы Ozon, AliExpress и WB]
+    Worker --> Connector[Коннекторы Ozon, AliExpress, WB и Маркета]
     Connector --> Chrome[Системный Google Chrome]
     Chrome --> Ozon[Ozon]
     Chrome --> Ali[AliExpress.ru]
     Chrome --> WB[Wildberries]
+    Chrome --> YM[Яндекс Маркет]
 ```
 
 ## UI-слой
@@ -225,3 +227,9 @@ Adapter response содержит исходный текст и готовую 
 не разбирает ответ повторно. Raw API проверяет документ без изменения вывода.
 WB сохраняет native SDK: поколения профиля удерживаются живыми потребителями,
 а зависания bootstrap и renderer завершают сбор с подтверждённым teardown.
+
+Маркет выполняется после WB в общем Chrome, с отдельным HTTP pool 100.
+FamilySession объединяет параллельные обходы по проверенному parent product и кеширует точные
+снимки SKU только до завершения collection_session. Владение SKU защищают
+YANDEX_MEMBERSHIP_LOCK и `yandex_sku_unique` при add/import/discovery.
+Неполный обход сохраняет точную цену, отмечая target как failed. См. [контракт Маркета](YANDEX_MARKET.md).

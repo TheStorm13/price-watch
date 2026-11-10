@@ -10,15 +10,14 @@ from ...domain.diagnostics import bounded_error, MAX_ERRORS
 
 from ...domain.models import RunLease, LeaseLost, TrackedCard
 from ...domain.collection_policy import CollectionPolicy
-from ...domain.errors import ConnectorNotAvailable, NoCards
+from ...domain.errors import NoCards
 from ...ports.runs import Clock
 from marketplace_connector.domain.models import MarketplaceCard
 from marketplace_connector.serialization.product_json import card_to_dict
 from .database import AsyncDatabase
-from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
 from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, PriceHistoryRecord, CardVariantRecord
 from .repository_common import _RUN_CREATION_LOCK, _tracked_card, _run
-from .variant_membership import OZON_MEMBERSHIP_LOCK, MAX_OZON_VARIANTS, ozon_owner, ownership_conflict
+from .variant_membership import YANDEX_MEMBERSHIP_LOCK, yandex_owner, yandex_ownership_conflict, OZON_MEMBERSHIP_LOCK, MAX_OZON_VARIANTS, ozon_owner, ownership_conflict
 
 _DIAGNOSTIC_LOCK = text('SELECT pg_advisory_xact_lock_shared(578612392)')
 _DIAGNOSTIC_CREATION_LOCK = text('SELECT pg_advisory_xact_lock(578612392)')
@@ -38,6 +37,8 @@ class RunRepository:
         async with self._database.session() as session, session.begin():
             if card.ref.marketplace == 'ozon':
                 await session.execute(OZON_MEMBERSHIP_LOCK)
+            if card.ref.marketplace == 'yandex-market':
+                await session.execute(YANDEX_MEMBERSHIP_LOCK)
             if not await self._begin_result(session, lease, card.variant_id, 'succeeded'):
                 return
             if (snapshot.ref.marketplace, snapshot.ref.external_id) != (card.ref.marketplace, card.ref.external_id):
@@ -67,7 +68,7 @@ class RunRepository:
             if snapshot.url:
                 variant.url = snapshot.url
             discovery_errors = []
-            if card.ref.marketplace in ('ozon', 'aliexpress', 'wildberries'):
+            if card.ref.marketplace in ('ozon', 'aliexpress', 'wildberries', 'yandex-market'):
                 discovery_errors = await self._discover_variants(session, lease, card_record, snapshot)
             if latest is None or (latest.price, latest.availability) != (price, availability):
                 session.add(PriceHistoryRecord(card_id=card.id, variant_id=variant.id,
@@ -90,10 +91,12 @@ class RunRepository:
 
         run = await session.get(CollectionRunRecord, lease.run_id)
         ozon = product.marketplace == 'ozon'
-        if ozon and run.retry_of_run_id is not None:
+        yandex = product.marketplace == 'yandex-market'
+        family = ozon or yandex
+        if family and run.retry_of_run_id is not None:
             return []
         errors = []
-        if ozon and snapshot.extensions.get('variant_discovery_error'):
+        if family and snapshot.extensions.get('variant_discovery_error'):
             errors.append(str(snapshot.extensions['variant_discovery_error']))
         known = {v.external_id: v for v in (await session.scalars(
             select(CardVariantRecord).where(CardVariantRecord.card_id == product.id))).all()}
@@ -101,11 +104,12 @@ class RunRepository:
             CollectionRunTargetRecord.run_id == lease.run_id,
             CollectionRunTargetRecord.card_id == product.id))).all())
         discovered = []
+        new_refs = set()
         for candidate in snapshot.variants:
             if candidate.ref.marketplace != product.marketplace:
                 raise ValueError('Коннектор вернул вариант другого товара')
             ref, url = validate_variant_identity(product.marketplace, product.external_id, candidate.ref.external_id, candidate.url)
-            if not ozon and ':' not in ref:
+            if not family and ':' not in ref:
                 raise ValueError('Обнаруженный вариант не содержит код варианта')
             if ozon:
                 owner = await ozon_owner(session, ref) if ref not in known else product.id
@@ -117,11 +121,17 @@ class RunRepository:
                     if message not in errors:
                         errors.append(message)
                     continue
+            if yandex:
+                owner = await yandex_owner(session, ref) if ref not in known else product.id
+                if owner is not None and owner != product.id:
+                    errors.append(yandex_ownership_conflict(ref, owner, product.id))
+                    continue
             variant = known.get(ref)
             if variant is None:
                 variant = CardVariantRecord(card_id=product.id, marketplace=product.marketplace, external_id=ref, url=url)
                 session.add(variant)
                 known[ref] = variant
+                new_refs.add(ref)
             # A neighbouring aspect only describes part of the SKU. Never
             # overwrite an already collected SKU's exact parameters or image.
             if not ozon or variant.updated_at is None:
@@ -140,7 +150,7 @@ class RunRepository:
                 product.primary_variant_id = discovered[0].id
         # Retrying failed discovery must expand its SKU targets; ordinary SKU retries stay exact.
         new_targets = [v for v in discovered if v.id not in target_ids
-                       and (run.discover_all or (initial and v.id == product.primary_variant_id))]
+                       and (run.discover_all or (yandex and v.external_id in new_refs) or (initial and v.id == product.primary_variant_id))]
         if run.retry_of_run_id is not None and not initial:
             new_targets = []
         if new_targets:
@@ -173,8 +183,6 @@ class RunRepository:
         query = select(MarketplaceCardRecord, CardVariantRecord).join(CardVariantRecord, CardVariantRecord.card_id == MarketplaceCardRecord.id)
         if card_id is not None:
             query = query.where(MarketplaceCardRecord.id == card_id)
-        else:
-            query = query.where(MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
         rows = (await session.execute(query.order_by(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.id, CardVariantRecord.id)
                                       .with_for_update(read=True, of=MarketplaceCardRecord))).all()
         exact_products = {c.id for c, v in rows if c.marketplace in ('aliexpress', 'wildberries') and ':' in v.external_id}
@@ -184,8 +192,6 @@ class RunRepository:
             if card_id is not None:
                 raise LookupError(f'Карточка не найдена: {card_id}')
             raise NoCards('Нет карточек для сбора')
-        if any(c.ref.marketplace in PENDING_CONNECTOR_MARKETPLACES for c in cards):
-            raise ConnectorNotAvailable('Для этого маркетплейса коннектор ещё не подключён')
         return cards
 
     async def enqueue_initial(self, session, card_id):
@@ -229,8 +235,7 @@ class RunRepository:
             CardVariantRecord.card_id == MarketplaceCardRecord.id).join(CollectionRunTargetRecord,
             CollectionRunTargetRecord.variant_id == CardVariantRecord.id).where(
             CollectionRunTargetRecord.run_id == source_id,
-            CollectionRunTargetRecord.status.in_(RETRY_STATUSES),
-            MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
+            CollectionRunTargetRecord.status.in_(RETRY_STATUSES))
 
     async def create_retry_run(self, source_run_id):
         async with self._database.session() as s, s.begin():
@@ -255,8 +260,7 @@ class RunRepository:
             query = select(MarketplaceCardRecord, CardVariantRecord).join(CardVariantRecord,
                 CardVariantRecord.card_id == MarketplaceCardRecord.id).join(CollectionRunTargetRecord,
                 CollectionRunTargetRecord.variant_id == CardVariantRecord.id).where(
-                CollectionRunTargetRecord.run_id == run_id,
-                MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
+                CollectionRunTargetRecord.run_id == run_id)
             if pending_only:
                 query = query.where(CollectionRunTargetRecord.status == 'pending')
             rows = (await s.execute(query.order_by(CollectionRunTargetRecord.position))).all()
@@ -417,7 +421,6 @@ class RunRepository:
             rows = await session.execute(select(CollectionRunTargetRecord.run_id, func.count()).join(
                 MarketplaceCardRecord, MarketplaceCardRecord.id == CollectionRunTargetRecord.card_id).where(
                 CollectionRunTargetRecord.run_id.in_(ids), CollectionRunTargetRecord.status.in_(RETRY_STATUSES),
-                MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES),
                 CollectionRunTargetRecord.run_id.notin_(children)).group_by(CollectionRunTargetRecord.run_id))
             counts = dict(rows.all())
         return [replace(_run(r, errors=r.errors if include_errors else ()), retryable_count=counts.get(r.id, 0)) for r in records]

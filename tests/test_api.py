@@ -302,12 +302,12 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         })
         self.assertEqual(duplicate.status_code, 422)
 
-    async def test_cards_can_be_added_for_marketplaces_without_connectors(self):
+    async def test_yandex_market_cards_validate_exact_sku_url(self):
         for marketplace in ("yandex-market",):
             with self.subTest(marketplace=marketplace):
                 response = await self.client.post("/api/cards", json={
                     "marketplace": marketplace, "externalId": "123456",
-                    "title": "Товар", "url": "https://example.com/product/123456",
+                    "title": "Товар", "url": "https://market.yandex.ru/card/tovar/123456",
                 })
                 self.assertEqual(response.status_code, 201)
                 self.assertEqual(response.json()["marketplace"], marketplace)

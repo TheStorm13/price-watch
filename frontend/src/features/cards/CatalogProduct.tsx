@@ -36,7 +36,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
   const collection = useCollectionCommands()
   function actions(card: TrackedCardView) {
     return <CardActionsMenu cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled}
-      onRefresh={['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace) ? () => collection.start(card.id) : undefined} refreshDisabled={collection.isStarting}
+      onRefresh={() => collection.start(card.id)} refreshDisabled={collection.isStarting}
       onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })}
       onDelete={() => deleteCard.mutateAsync(card.id)} />
   }

@@ -16,3 +16,15 @@ async def ozon_owner(session, external_id):
 
 def ownership_conflict(external_id, owner, card_id):
     return f'Ozon SKU {external_id}: конфликт карточек {card_id} и {owner}; вариант уже принадлежит карточке {owner}'
+
+
+YANDEX_MEMBERSHIP_LOCK = text('SELECT pg_advisory_xact_lock(578612394)')
+
+
+async def yandex_owner(session, external_id):
+    return await session.scalar(select(CardVariantRecord.card_id).where(
+        CardVariantRecord.marketplace == 'yandex-market', CardVariantRecord.external_id == external_id))
+
+
+def yandex_ownership_conflict(external_id, owner, card_id):
+    return f'Маркет SKU {external_id}: конфликт карточек {card_id} и {owner}; вариант уже принадлежит карточке {owner}'

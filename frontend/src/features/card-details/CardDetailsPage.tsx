@@ -98,9 +98,7 @@ export function CardDetailsPage() {
         <div className="page-actions">
           <Button variant="outline" disabled={!variantsQuery.data} onClick={() => setEditing(true)}><Pencil data-icon="inline-start" aria-hidden="true" />Изменить</Button>
           {card.url ? <Button variant="outline" asChild><a href={card.url} target="_blank" rel="noopener noreferrer" onClick={(event) => void openProduct(event)}><ExternalLink data-icon="inline-start" aria-hidden="true" />Открыть на {marketplaceLabel[card.marketplace]}</a></Button> : null}
-          {['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace)
-            ? <Button variant="outline" onClick={() => collection.start(card.id)} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить эту карточку</Button>
-            : <Badge variant="warning" className="tracking-status">Сбор цен пока недоступен: коннектор не подключён</Badge>}
+          <Button variant="outline" onClick={() => collection.start(card.id)} disabled={collection.isStarting}><RefreshCw data-icon="inline-start" />Обновить эту карточку</Button>
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate(returnTo, { replace: true }) }} />
         </div>
       </header>

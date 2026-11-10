@@ -13,10 +13,6 @@ class NoCards(ValueError):
     pass
 
 
-class ConnectorNotAvailable(ValueError):
-    pass
-
-
 class ImportDuringRun(ValueError):
     pass
 

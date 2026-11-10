@@ -1,3 +1,4 @@
+import { parseYandexMarketUrl } from '../features/cards/yandexMarketIdentity'
 import { parseAliExpressUrl } from '../features/cards/aliexpressIdentity'
 import { parseWildberriesUrl } from '../features/cards/wildberriesIdentity'
 import { parseOzonUrl } from '../features/cards/ozonIdentity'
@@ -120,7 +121,11 @@ cards = cards.map((c) => ({ ...c, primaryVariantId: c.id }))
 history = history.map((p) => ({ ...p, variantId: p.cardId }))
 let nextVariantId = 6
 
-function validateVariant(marketplace: Marketplace, externalId: string, url: string | null) {
+function validateVariant(marketplace: string, externalId: string, url: string | null) {
+  if (marketplace === 'yandex-market') {
+    if (!/^[1-9][0-9]{0,19}$/.test(externalId) || (url && parseYandexMarketUrl(url) !== externalId)) throw new Error('Ссылка не соответствует SKU Маркета')
+    return
+  }
   if (marketplace === 'ozon') {
     if (!/^[0-9]+$/.test(externalId) || (url && parseOzonUrl(url) !== externalId)) throw new Error('Ссылка не соответствует артикулу выбранного варианта Ozon')
     return
@@ -242,15 +247,15 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
   const available = new Set(document.cards.map((c) => `${c.marketplace}:${c.externalId}`))
   if (available.size !== document.cards.length) throw new Error('Повторные карточки')
   const assigned = new Set<string>()
-  const ozonOwners = new Map<string, string>()
-  for (const imported of document.cards.filter((c) => c.marketplace === 'ozon')) {
-    validateVariant('ozon', imported.externalId, null)
-    if (!imported.variants.some((v) => v.externalId === imported.externalId)) throw new Error('Исходный SKU Ozon отсутствует в товаре')
+  const skuOwners = new Map<string, string>()
+  for (const imported of document.cards.filter((c) => ['ozon', 'yandex-market'].includes(c.marketplace))) {
+    validateVariant(imported.marketplace, imported.externalId, null)
+    if (!imported.variants.some((v) => v.externalId === imported.externalId)) throw new Error('Исходный SKU отсутствует в товаре')
     for (const v of imported.variants) {
-      validateVariant('ozon', v.externalId, v.url)
-      const localOwner = variants.find((member) => member.externalId === v.externalId && cards.some((c) => c.id === member.cardId && c.marketplace === 'ozon'))
-      if (ozonOwners.has(v.externalId) || (localOwner && cards.find((c) => c.id === localOwner.cardId)?.externalId !== imported.externalId)) throw new Error(`Ozon SKU ${v.externalId} уже принадлежит другой карточке`)
-      ozonOwners.set(v.externalId, imported.externalId)
+      validateVariant(imported.marketplace, v.externalId, v.url)
+      const localOwner = variants.find((member) => member.externalId === v.externalId && cards.some((c) => c.id === member.cardId && c.marketplace === imported.marketplace))
+      if (skuOwners.has(`${imported.marketplace}:${v.externalId}`) || (localOwner && cards.find((c) => c.id === localOwner.cardId)?.externalId !== imported.externalId)) throw new Error(`SKU ${v.externalId} уже принадлежит другой карточке`)
+      skuOwners.set(`${imported.marketplace}:${v.externalId}`, imported.externalId)
     }
   }
   for (const g of document.groups ?? []) for (const ref of g.cards) {
@@ -427,7 +432,7 @@ export const mockApi = {
 
   async createCard(input: CreateCardInput) {
     validateVariant(input.marketplace,input.externalId,input.url ?? null)
-    if (input.marketplace === 'ozon' && variants.some((v) => v.externalId === input.externalId && cards.some((c) => c.id === v.cardId && c.marketplace === 'ozon'))) {
+    if (['ozon', 'yandex-market'].includes(input.marketplace) && variants.some((v) => v.externalId === input.externalId && cards.some((c) => c.id === v.cardId && c.marketplace === input.marketplace))) {
       throw Object.assign(new Error('Такой вариант уже добавлен'), { field: 'externalId' })
     }
     const article = ['aliexpress','wildberries'].includes(input.marketplace) ? input.externalId.split(':')[0] : input.externalId
@@ -445,7 +450,7 @@ export const mockApi = {
       currentPrice:null,currentAvailability:null,lastObservedAt:null,updatedAt:null }
     variants.push(variant)
     card.primaryVariantId ??= variant.id
-    if (card.marketplace !== 'yandex-market') await mockApi.startRun(card.id, true)
+    await mockApi.startRun(card.id, true)
     return delay(cardView(card))
   },
 
@@ -518,9 +523,8 @@ export const mockApi = {
   },
 
   async startRun(cardId?: number, discoverAll = false) {
-    const selected = cardId ? cards.filter((card) => card.id === cardId) : cards.filter((card) => ['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace))
+    const selected = cardId ? cards.filter((card) => card.id === cardId) : cards
     if (!selected.length) throw new Error(cardId ? 'Карточка не найдена' : 'Нет карточек для сбора')
-    if (selected.some((card) => !['ozon', 'aliexpress', 'wildberries'].includes(card.marketplace))) throw new Error('Для этого маркетплейса коннектор ещё не подключён')
     const selectedVariants = variants.filter((v) => selected.some((c) => c.id === v.cardId && (discoverAll || c.primaryVariantId === v.id || v.trackingEnabled)))
     const run: CollectionRun = {
       id: nextRunId++,

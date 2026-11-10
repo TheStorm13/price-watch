@@ -79,6 +79,7 @@ class CardVariantRecord(Base):
     __table_args__ = (
         ForeignKeyConstraint(['card_id', 'marketplace'], ['marketplace_cards.id', 'marketplace_cards.marketplace'],
                              name='variant_marketplace_owner_fk', ondelete='CASCADE'),
+        Index('yandex_sku_unique', 'external_id', unique=True, postgresql_where=text("marketplace = 'yandex-market'")),
         Index('ozon_sku_unique', 'external_id', unique=True, postgresql_where=text("marketplace = 'ozon'")),
         UniqueConstraint("card_id", "external_id", name="card_variants_identity_unique"),
         UniqueConstraint("card_id", "id", name="card_variants_owner_unique"),

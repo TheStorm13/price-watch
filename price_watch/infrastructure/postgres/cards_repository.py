@@ -11,14 +11,13 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from ...domain.models import TrackedCardOverview, TrackedCard
-from ...domain.marketplaces import PENDING_CONNECTOR_MARKETPLACES
 from .models import CollectionRunRecord, CollectionRunTargetRecord, MarketplaceCardRecord, ProductGroupRecord, CardVariantRecord
 from ...domain.errors import CardAlreadyExists, CardInActiveRun
 from .repository_common import _tracked_card, _RUN_CREATION_LOCK
 from .queries import overview_statement
 from .database import AsyncDatabase
 from .runs_repository import RunRepository, _DIAGNOSTIC_CREATION_LOCK
-from .variant_membership import OZON_MEMBERSHIP_LOCK, ozon_owner
+from .variant_membership import YANDEX_MEMBERSHIP_LOCK, yandex_owner, OZON_MEMBERSHIP_LOCK, ozon_owner
 
 
 class CardRepository:
@@ -48,6 +47,11 @@ class CardRepository:
                     owner = await ozon_owner(session, external_id)
                     if owner is not None:
                         raise CardAlreadyExists(f'Ozon SKU {external_id} уже добавлен в карточку {owner}')
+                if marketplace == 'yandex-market':
+                    await session.execute(YANDEX_MEMBERSHIP_LOCK)
+                    owner = await yandex_owner(session, external_id)
+                    if owner is not None:
+                        raise CardAlreadyExists(f'Маркет SKU {external_id} уже добавлен в карточку {owner}')
                 await session.execute(_DIAGNOSTIC_CREATION_LOCK)
                 record = await session.scalar(select(MarketplaceCardRecord).where(
                     MarketplaceCardRecord.marketplace == marketplace, MarketplaceCardRecord.external_id == article).with_for_update())
@@ -67,7 +71,7 @@ class CardRepository:
                     record.primary_variant_id = variant.id
                 await session.flush()
                 await session.refresh(record)
-                if marketplace in ('ozon', 'wildberries', 'aliexpress'):
+                if marketplace in ('ozon', 'wildberries', 'aliexpress', 'yandex-market'):
                     await self._runs.enqueue_initial(session, record.id)
         except IntegrityError as exc:
             raise CardAlreadyExists("Такая карточка или вариант уже добавлены") from exc
@@ -102,7 +106,7 @@ class CardRepository:
                     if exact is not None:
                         raise ValueError('Выберите точный вариант товара; прежняя общая история доступна отдельно')
                 record.primary_variant_id = primary_variant_id
-            if update_url and record.marketplace in ("ozon", "aliexpress", "wildberries") and url:
+            if update_url and record.marketplace in ("ozon", "aliexpress", "wildberries", "yandex-market") and url:
                 validate_card_identity(record.marketplace, variant.external_id, url)
             if update_title:
                 variant.product_title = title
@@ -170,8 +174,7 @@ class CardRepository:
 
     async def list_collection_cards(self, card_id: Optional[int] = None) -> List[TrackedCard]:
         statement = select(MarketplaceCardRecord, CardVariantRecord).join(CardVariantRecord,
-            CardVariantRecord.card_id == MarketplaceCardRecord.id).where(
-            MarketplaceCardRecord.marketplace.notin_(PENDING_CONNECTOR_MARKETPLACES))
+            CardVariantRecord.card_id == MarketplaceCardRecord.id)
         if card_id is not None:
             statement = statement.where(MarketplaceCardRecord.id == card_id)
         async with self._database.session() as session:

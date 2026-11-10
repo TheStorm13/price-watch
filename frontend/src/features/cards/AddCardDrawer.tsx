@@ -15,6 +15,7 @@ import { marketplaceLabel } from '../../utils/format'
 import { parseTags } from './tags'
 import { parseAliExpressUrl } from './aliexpressIdentity'
 import { isWildberriesId, parseWildberriesUrl } from './wildberriesIdentity'
+import { parseYandexMarketUrl } from './yandexMarketIdentity'
 import { parseOzonUrl } from './ozonIdentity'
 
 export interface CardDrawerProps {
@@ -96,6 +97,10 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
           const sku = variants.find((v) => v.id === primaryVariantId)?.externalId ?? externalId.trim()
           if (parseOzonUrl(url.trim()) !== sku) next.url = 'Ссылка не соответствует артикулу выбранного варианта Ozon'
         }
+        if (marketplace === 'yandex-market') {
+          const sku = variants.find((v) => v.id === primaryVariantId)?.externalId ?? externalId.trim()
+          if (parseYandexMarketUrl(url.trim()) !== sku) next.url = 'Ссылка не соответствует SKU выбранного варианта Маркета'
+        }
         if (marketplace === 'wildberries') {
           const ref = parseWildberriesUrl(url.trim())
           if (ref.nmId !== externalId.trim() || (selectedSku && ref.optionId && selectedSku !== ref.optionId)) next.url = card ? 'Ссылка не соответствует артикулу и размеру WB' : 'Ссылка не соответствует артикулу WB'
@@ -147,7 +152,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
             <SheetDescription>{card ? 'Измените поля карточки. Маркетплейс и артикул изменить нельзя.' : 'Добавьте товар для отслеживания цены.'}</SheetDescription>
           </SheetHeader>
           <FieldGroup className="min-h-0 flex-1 overflow-y-auto px-4 py-2" inert={isPending}>
-            {!card && marketplace !== 'yandex-market' ? <FieldDescription>После добавления получим все варианты и начальные цены. Затем отслеживается главный; другие размеры и цвета по умолчанию выключены. Включить их можно на странице товара.</FieldDescription> : null}
+            {!card ? <FieldDescription>После добавления получим все варианты и начальные цены. Затем отслеживается главный; другие размеры и цвета по умолчанию выключены. Включить их можно на странице товара.</FieldDescription> : null}
             <FieldSet>
               <FieldLegend>Маркетплейс</FieldLegend>
               <RadioGroup disabled={Boolean(card) || isPending} value={marketplace} onValueChange={(value) => { setMarketplace(value as Marketplace); setErrors({}) }}>
@@ -155,7 +160,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
                   <Field key={value} orientation="horizontal">
                     <RadioGroupItem id={`marketplace-${value}`} value={value} />
                     <FieldLabel htmlFor={`marketplace-${value}`}>
-                      <span><MarketplaceMark marketplace={value} />{!['ozon', 'aliexpress', 'wildberries'].includes(value) ? <FieldDescription>Сбор цен пока недоступен</FieldDescription> : null}</span>
+                      <span><MarketplaceMark marketplace={value} /></span>
                     </FieldLabel>
                   </Field>
                 ))}
@@ -165,7 +170,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
               <FieldLabel htmlFor="external-id">{marketplace === 'aliexpress' ? 'ID товара' : marketplace === 'wildberries' ? 'Артикул WB' : 'ID карточки'}</FieldLabel>
               <Input id="external-id" readOnly={Boolean(card)} data-initial-focus={card ? undefined : true} value={externalId} onChange={(event) => setExternalId(event.target.value)} inputMode="numeric"
                 placeholder={marketplace === 'ozon' ? '1604900984' : 'Введите ID товара'} aria-invalid={Boolean(errors.externalId)} aria-describedby="external-id-hint" />
-              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">{marketplace === 'ozon' ? 'Введите артикул любого варианта. При сборе добавятся связанные цвета, размеры и другие варианты. Исходный артикул карточки сохранится.' : ['wildberries', 'aliexpress'].includes(marketplace) ? 'Введите артикул товара. Все варианты будут найдены и добавлены при сборе.' : 'Введите числовой ID карточки товара'}</FieldDescription>}
+              {errors.externalId ? <FieldError id="external-id-hint">{errors.externalId}</FieldError> : <FieldDescription id="external-id-hint">{['ozon', 'yandex-market'].includes(marketplace) ? 'Введите артикул любого варианта. При сборе добавятся связанные цвета, размеры и другие варианты. Исходный артикул карточки сохранится.' : ['wildberries', 'aliexpress'].includes(marketplace) ? 'Введите артикул товара. Все варианты будут найдены и добавлены при сборе.' : 'Введите числовой ID карточки товара'}</FieldDescription>}
             </Field>
             {card && variants.length > 1 ? <Field>
               <FieldLabel htmlFor="primary-variant">Главный вариант</FieldLabel>
@@ -185,13 +190,20 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
             <Field>
               <FieldLabel htmlFor="card-title">Название</FieldLabel>
               <Input id="card-title" data-initial-focus={card ? true : undefined} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Например, смартфон Samsung" />
-              <FieldDescription>{['ozon', 'aliexpress', 'wildberries'].includes(marketplace) ? 'Можно оставить пустым — название обновится при сборе' : 'Укажите название: автоматический сбор пока недоступен'}</FieldDescription>
+              <FieldDescription>Можно оставить пустым — название обновится при сборе</FieldDescription>
             </Field>
             <Field data-invalid={Boolean(errors.url)}>
               <FieldLabel htmlFor="card-url">URL</FieldLabel>
               <Input id="card-url" value={url} onChange={(event) => {
                 const value = event.target.value
                 setUrl(value)
+                if (marketplace === 'yandex-market') {
+                  try {
+                    const sku = parseYandexMarketUrl(value.trim())
+                    if (!card) setExternalId(sku)
+                    setErrors({})
+                  } catch { /* Validate incomplete links on submit. */ }
+                }
                 if (marketplace === 'ozon') {
                   try {
                     const sku = parseOzonUrl(value.trim())
@@ -214,7 +226,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
                   } catch { /* Validate incomplete links on submit. */ }
                 }
               }}
-                placeholder={marketplace === 'ozon' ? 'https://www.ozon.ru/product/...' : marketplace === 'wildberries' ? 'https://www.wildberries.ru/catalog/...' : marketplace === 'aliexpress' ? 'https://aliexpress.ru/item/...' : 'https://market.yandex.ru/product/...'}
+                placeholder={marketplace === 'ozon' ? 'https://www.ozon.ru/product/...' : marketplace === 'wildberries' ? 'https://www.wildberries.ru/catalog/...' : marketplace === 'aliexpress' ? 'https://aliexpress.ru/item/...' : 'https://market.yandex.ru/card/название/SKU'}
                 aria-invalid={Boolean(errors.url)} aria-describedby="url-hint" />
               {errors.url ? <FieldError id="url-hint">{errors.url}</FieldError> : <FieldDescription id="url-hint">Ссылка на карточку товара (необязательно)</FieldDescription>}
             </Field>

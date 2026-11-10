@@ -8,7 +8,7 @@ from ...domain.errors import ImportDuringRun, VariantOwnershipConflict
 from .database import AsyncDatabase
 from .models import CollectionRunRecord, MarketplaceCardRecord, CardVariantRecord, PriceHistoryRecord, ProductGroupRecord
 from .repository_common import _RUN_CREATION_LOCK
-from .variant_membership import OZON_MEMBERSHIP_LOCK, ozon_owner, ownership_conflict
+from .variant_membership import YANDEX_MEMBERSHIP_LOCK, yandex_owner, yandex_ownership_conflict, OZON_MEMBERSHIP_LOCK, ozon_owner, ownership_conflict
 
 
 class TransferRepository:
@@ -41,6 +41,7 @@ class TransferRepository:
                        observations_removed=0, observations_skipped=0, groups_added=0)
         # Validate also at the storage boundary, including direct CLI callers.
         ozon_members = {}
+        yandex_members = {}
         for item in cards:
             item['marketplace'] = item['marketplace'].strip().lower()
             refs = set()
@@ -52,17 +53,23 @@ class TransferRepository:
                     if ref in ozon_members:
                         raise ValueError(f'Ozon SKU {ref} указан в нескольких карточках')
                     ozon_members[ref] = item['external_id']
+                if item['marketplace'] == 'yandex-market':
+                    if ref in yandex_members:
+                        raise ValueError(f'Маркет SKU {ref} указан в нескольких карточках')
+                    yandex_members[ref] = item['external_id']
                 v['external_id'], v['url'] = ref, url
                 refs.add(ref)
             if item['primary_external_id'] not in refs:
                 raise ValueError('Главный вариант отсутствует')
-            if item['marketplace'] == 'ozon' and item['external_id'] not in refs:
-                raise ValueError('Исходный SKU Ozon отсутствует в товаре')
+            if item['marketplace'] in ('ozon', 'yandex-market') and item['external_id'] not in refs:
+                raise ValueError('Исходный SKU отсутствует в товаре')
         keys = [(c['marketplace'].lower(), c['external_id']) for c in cards]
         async with self._database.session() as s, s.begin():
             await s.execute(_RUN_CREATION_LOCK)
             if ozon_members:
                 await s.execute(OZON_MEMBERSHIP_LOCK)
+            if yandex_members:
+                await s.execute(YANDEX_MEMBERSHIP_LOCK)
             if await s.scalar(select(CollectionRunRecord.id).where(CollectionRunRecord.status.in_(('queued','running','waiting_for_user'))).limit(1)):
                 raise ImportDuringRun('Дождитесь завершения текущего сбора перед импортом')
             existing = (await s.scalars(select(MarketplaceCardRecord).where(tuple_(MarketplaceCardRecord.marketplace, MarketplaceCardRecord.external_id).in_(keys)).with_for_update())).all() if keys else []
@@ -72,6 +79,11 @@ class TransferRepository:
                 product = by_key.get(('ozon', article))
                 if owner is not None and (product is None or product.id != owner):
                     raise VariantOwnershipConflict(ownership_conflict(ref, owner, product.id if product else f'импорт {article}'))
+            for ref, article in yandex_members.items():
+                owner = await yandex_owner(s, ref)
+                product = by_key.get(('yandex-market', article))
+                if owner is not None and (product is None or product.id != owner):
+                    raise VariantOwnershipConflict(yandex_ownership_conflict(ref, owner, product.id if product else f'импорт {article}'))
             variants = (await s.scalars(select(CardVariantRecord).where(CardVariantRecord.card_id.in_([c.id for c in existing])))).all() if existing else []
             by_ref = {(v.card_id,v.external_id):v for v in variants}
             histories = {}

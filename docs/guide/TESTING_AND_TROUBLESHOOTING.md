@@ -40,7 +40,7 @@ API слушает свободный локальный порт и требу�
 
 ### HTTP request pools
 
-Ozon, AliExpress и WB используют отдельные `max_in_flight_requests=100`.
+Ozon, AliExpress, WB и Яндекс Маркет используют отдельные `max_in_flight_requests=100`.
 Площадки выполняются последовательно в общем Chrome, без card semaphore и
 планового ограничения стартов/с. Слот держится до полного тела/abort, очередь
 не входит в HTTP timeout. Политика — [ADR0015](../adr/0015-shared-request-dispatcher.md).
@@ -352,3 +352,16 @@ naturalHeight PNG против round(68 × devicePixelRatio). Для диагн�
 изолированные данные и временный кэш, не изменяйте реальные карточки. Важны
 DPR=1 и дробные значения, а не только 2×. Не включайте pixelated/crisp-edges для
 фотографий: это не замена качественному уменьшению.
+
+## Яндекс Маркет
+
+```bash
+.venv/bin/python -m unittest tests.test_yandex_market tests.test_yandex_market_transport tests.test_request_pools_browser -q
+TEST_DATABASE_URL='postgresql://user:password@localhost:5432/price_watch_test' .venv/bin/python -m unittest tests.test_yandex_market_integration -q
+npm --prefix frontend run test:e2e -- yandex-market.spec.ts
+```
+
+Используйте отдельную disposable БД. Проверяются 64 SKU реальной обезличенной
+fixture, отдельные цены, initial/selective/retry, история и ownership/migration.
+Синтетический browser test включает транспорт Маркета в проверку 100/101, полных
+тел и отмены. [Вход, CAPTCHA и семантика цены](YANDEX_MARKET.md).

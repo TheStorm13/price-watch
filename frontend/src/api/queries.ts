@@ -67,7 +67,7 @@ export function useCreateCard() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: async (input: CreateCardInput) => {
-      if (isDesktopMode && input.marketplace !== 'yandex-market') await invoke('prepare_collection')
+      if (isDesktopMode) await invoke('prepare_collection')
       return api.createCard(input)
     },
     onSuccess: () => {
