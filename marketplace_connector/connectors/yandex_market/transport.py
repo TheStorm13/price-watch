@@ -35,8 +35,8 @@ FETCH_SCRIPT = """async ({url, id, timeoutMs}) => {
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
         const response = await fetch(url, {
-            method: 'GET', credentials: 'include', signal: controller.signal,
-            headers: {'accept': 'application/json, text/plain, */*'}
+            method: 'GET', credentials: 'include', cache: 'no-store', signal: controller.signal,
+            headers: {'accept': 'text/html, application/xhtml+xml'}
         });
         return {status: response.status, contentType: response.headers.get('content-type') || '',
             retryAfter: response.headers.get('retry-after'), url: response.url,
@@ -167,6 +167,13 @@ class YandexMarketTransport:
             return MarketplaceUnavailable(f"Яндекс Маркет временно недоступен (HTTP {status})")
         if status != 200:
             raise MarketplaceUnavailable(f"Яндекс Маркет вернул неожиданный HTTP-статус {status}")
+        text = result.get('text')
+        if isinstance(text, str):
+            document = text.strip().lower()
+            if not document or (document.startswith(('<!doctype html>', '<html')) and '</html>' not in document):
+                # The storefront can end an HTTP 200 stream before Apiary data,
+                # even after a large static prefix. Retry only this request.
+                return MarketplaceUnavailable('Маркет вернул незавершённый HTML-ответ')
         return None
 
     @staticmethod

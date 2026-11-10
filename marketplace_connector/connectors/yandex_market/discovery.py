@@ -14,48 +14,47 @@ async def discover_family(transport, article, snapshots, *, root=None, fetch_pro
     fetch_product = fetch_product or load
     root = root or await fetch_product(article)
     found = {article: root}
-    queue = deque((sku, root.links_may_include_other_models) for sku in root.edges)
+    queue = deque((sku, root.has_structured_variants) for sku in root.edges)
     visited = {article}
     errors = []
-    excluded = []
     if root.discovery_error:
         errors.append(root.discovery_error)
     while queue:
-        sku, may_be_other_model = queue.popleft()
-        if sku in visited:
-            continue
-        visited.add(sku)
-        try:
-            item = await fetch_product(sku)
-            if item.parent_id != root.parent_id:
-                # The storefront control can also link different models. They
-                # are not variants of this card and cannot replace its article.
-                if may_be_other_model:
-                    excluded.append({'article': sku, 'product_id': item.parent_id, 'reason': 'different_product'})
-                else:
-                    errors.append(f'Маркет: другой parent product у SKU {sku}')
+        wave = []
+        while queue:
+            sku, storefront_variant = queue.popleft()
+            if sku not in visited:
+                visited.add(sku)
+                wave.append((sku, storefront_variant))
+        # The transport's shared pool controls admission, timeout and abort.
+        # Read independent variant pages together instead of serializing RTTs.
+        results = await asyncio.gather(*(fetch_product(sku) for sku, _ in wave), return_exceptions=True)
+        for (sku, storefront_variant), item in zip(wave, results):
+            if isinstance(item, (AuthenticationRequired, UnsafeBrowserTeardown)):
+                raise item
+            if isinstance(item, ConnectorError):
+                errors.append(f'{sku}: {item}')
+                continue
+            if isinstance(item, BaseException):
+                raise item
+            if item.parent_id != root.parent_id and not storefront_variant:
+                errors.append(f'Маркет: другой parent product у SKU {sku}')
                 continue
             found[sku] = item
             if item.discovery_error:
                 errors.append(f'{sku}: {item.discovery_error}')
-            queue.extend((neighbor, item.links_may_include_other_models) for neighbor in item.edges)
-        except (AuthenticationRequired, UnsafeBrowserTeardown):
-            raise
-        except ConnectorError as exc:
-            errors.append(f'{sku}: {exc}')
+            queue.extend((neighbor, item.has_structured_variants) for neighbor in item.edges)
     for sku, item in found.items():
         variants = tuple(ProductVariant(v.card.ref, v.card.title, v.card.url, v.card.availability,
             selected=other == sku, options=v.options, image_url=v.card.image_url) for other, v in found.items())
         extensions = dict(item.card.extensions)
-        if excluded:
-            extensions['yandex_market'] = {**extensions['yandex_market'], 'excluded_variants': excluded}
         if errors:
             extensions['variant_discovery_error'] = '; '.join(dict.fromkeys(errors))
         snapshots[sku] = replace(item.card, variants=variants, extensions=extensions)
 
 
 class FamilySession:
-    """Coalesce by observed parent while keeping exact SKU reads independent."""
+    """Coalesce declared variant groups while keeping exact article reads independent."""
     def __init__(self, transport):
         self.transport = transport
         self.nodes = {}
@@ -84,7 +83,8 @@ class FamilySession:
     async def get(self, sku):
         if sku not in self.snapshots:
             root = await self.load(sku)
-            task = self._task(self.families, root.parent_id, lambda: discover_family(
+            family_key = ('storefront', tuple(sorted(root.edges))) if root.has_structured_variants else ('product', root.parent_id)
+            task = self._task(self.families, family_key, lambda: discover_family(
                 self.transport, sku, self.snapshots, root=root, fetch_product=self.load))
             await asyncio.shield(task)
             if sku not in self.snapshots:

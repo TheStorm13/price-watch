@@ -32,8 +32,9 @@ def product_text():
 
 
 class FakePage:
-    def __init__(self, fetch):
+    def __init__(self, fetch, *, fetch_script=FETCH_SCRIPT):
         self.fetch = fetch
+        self.fetch_script = fetch_script
         self.calls = []
         self.aborted = []
         self.pending = {}
@@ -47,7 +48,7 @@ class FakePage:
                 task.cancel()
                 await asyncio.gather(task, return_exceptions=True)
             return
-        assert script == FETCH_SCRIPT
+        assert script == self.fetch_script
         self.calls.append(arg)
         task = asyncio.create_task(self.fetch(arg))
         self.pending[arg['id']] = task

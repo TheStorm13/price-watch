@@ -26,7 +26,7 @@ CACHE_BYTES = 256 * 1024 * 1024
 FRESH_SECONDS = 24 * 60 * 60
 ERROR_SECONDS = 30
 _FAKE_IP_NETWORK = ipaddress.ip_network("198.18.0.0/15")
-_FAKE_IP_CDN_DOMAINS = ("ozone.ru", "wbbasket.ru", "aliexpress-media.com")
+_FAKE_IP_CDN_DOMAINS = ("ozone.ru", "wbbasket.ru", "aliexpress-media.com", "avatars.mds.yandex.net")
 _OWN_FILE = re.compile(r"[0-9a-f]{64}\.(png|json|source)$")
 
 

@@ -161,11 +161,14 @@ class ThumbnailTests(unittest.IsolatedAsyncioTestCase):
             for address in ('198.18.0.0', '198.18.0.7', '198.19.255.255'):
                 resolver.return_value = [(0, 0, 0, '', (address, 443))]
                 for host in ('ozone.ru', 'ir.ozone.ru', 'ir-27.ozone.ru',
-                             'basket-04.wbbasket.ru', 'ae-pic-a1.aliexpress-media.com'):
+                             'basket-04.wbbasket.ru', 'ae-pic-a1.aliexpress-media.com',
+                             'avatars.mds.yandex.net'):
                     with self.subTest(host=host, address=address):
                         self.assertEqual(await public_address(httpx.URL(f'https://{host}/a')), address)
                 for host in ('cdn.test', 'fakeozone.ru', 'ozone.ru.attacker.test',
-                             'wbbasket.ru.attacker.test', 'fakealiexpress-media.com', address):
+                             'wbbasket.ru.attacker.test', 'fakealiexpress-media.com',
+                             'fakeavatars.mds.yandex.net', 'avatars.mds.yandex.net.attacker.test',
+                             'market.yandex.ru', address):
                     with self.subTest(host=host, address=address), self.assertRaises(ThumbnailError):
                         await public_address(httpx.URL(f'https://{host}/a'))
             for address in ('127.0.0.1', '10.0.0.1', '169.254.169.254', '192.168.1.1',

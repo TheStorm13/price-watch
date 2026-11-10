@@ -40,32 +40,29 @@ class YandexIntegrationTests(unittest.IsolatedAsyncioTestCase):
     executor = support.ProductVariantTests.executor
 
     async def test_added_external_article_keeps_identity_and_collects_price(self):
-        from copy import deepcopy
-        from tests.test_yandex_market import FAMILY, external_article_html
+        from tests.test_yandex_market import external_family_html
         article = '6019174271'
         response = await self.client.post('/api/cards', json={'marketplace':'yandex-market','externalId':article})
         self.assertEqual(response.status_code, 201, response.text)
         card = response.json()
         fixture = FixtureClient()
         async def fetch(sku):
-            if sku == article: return external_article_html()
-            other = deepcopy(FAMILY[SEED])
-            next(iter(other['collections']['compose'].values()))['oskuId'] = sku
-            other['edges'] = []
-            return html(data=other)
+            return external_family_html(sku)
         fixture.fetch = fetch
         executor = self.executor(YandexMarketConnector(fixture))
         result = await executor.execute(await self.stores.runs.claim_next_run())
-        self.assertEqual((result.total_count,result.success_count,result.failure_count),(1,1,0))
+        self.assertEqual((result.total_count,result.success_count,result.failure_count),(10,10,0))
         updated = (await self.client.get(f'/api/cards/{card["id"]}')).json()
         self.assertEqual(updated['externalId'], article)
         self.assertEqual(updated['primaryVariantId'], card['primaryVariantId'])
         variants = (await self.client.get(f'/api/cards/{card["id"]}/variants')).json()
-        self.assertEqual([v['externalId'] for v in variants], [article])
-        self.assertEqual(variants[0]['currentPrice'], '3058.20')
+        self.assertEqual(len(variants), 10)
+        primary = next(v for v in variants if v['externalId'] == article)
+        self.assertEqual(primary['currentPrice'], '3058.20')
+        self.assertTrue(primary['imageUrl'].startswith('https://avatars.mds.yandex.net/'))
         await executor.collect(card['id'])
         with self.sync.engine.connect() as c:
-            self.assertEqual(c.scalar(text('SELECT count(*) FROM price_history')),1)
+            self.assertEqual(c.scalar(text('SELECT count(*) FROM price_history')),10)
 
     async def test_initial_64_prices_selective_collection_dedup_and_ownership(self):
         response = await self.client.post('/api/cards', json={'marketplace':'yandex-market', 'externalId':SEED})

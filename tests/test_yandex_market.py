@@ -50,6 +50,24 @@ def external_article_html(data=None):
             + json.dumps({'numValues': data['declared']}) + '\'></div>')
 
 
+def external_family_html(article):
+    """Synthetic exact offers over the captured ten-article storefront group."""
+    data = json.loads((Path(__file__).parent / 'fixtures/yandex_market/external_article.json').read_text())
+    c = data['collections']
+    meta = next(iter(c['productCardMeta'].values()))
+    compose = next(iter(c['compose'].values()))
+    buy = next(iter(c['buyOption'].values()))
+    if article != '6019174271':
+        meta['marketSku'] = compose['skuId'] = buy['skuId'] = article
+        meta['productId'] = compose['productId'] = buy['productId'] = 'other-model-' + article[-1]
+    compose['oskuId'] = article
+    jump = next(iter(c['jumpListShort'].values()))
+    jump['showAllTransition']['params']['oskuId'] = article
+    for snippet in jump['snippets']:
+        snippet['productPayload']['jumpList'] = {'isSelected': snippet['snippetId'] == article}
+    return external_article_html(data)
+
+
 class YandexParserTests(unittest.TestCase):
     def test_external_article_preserves_selected_product_with_different_internal_sku(self):
         result = parse_product(external_article_html(), '6019174271', now=NOW)
@@ -104,6 +122,10 @@ class YandexParserTests(unittest.TestCase):
             if field == 'offer': next(iter(c['buyOption'].values()))['offerId'] = 'another'
             with self.subTest(field=field), self.assertRaises(AuthenticationRequired if field == 'auth' else MarketplaceSchemaChanged):
                 parse_product(html(data=data), SEED, now=NOW)
+
+    def test_missing_auth_data_is_schema_error_not_claim_of_logged_out_user(self):
+        with self.assertRaises(MarketplaceSchemaChanged):
+            parse_product('<!DOCTYPE html>', SEED, now=NOW)
 
     def test_incomplete_control_keeps_price(self):
         result = parse_product(html(extra=1), SEED, now=NOW)
@@ -194,20 +216,17 @@ class YandexDiscoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('variant_discovery_error', snapshots[SEED].extensions)
         self.assertEqual(snapshots[SEED].price, Decimal('2663.10'))
 
-    async def test_other_models_cannot_replace_selected_article_or_fail_its_price(self):
-        root = parse_product(external_article_html(), '6019174271', now=NOW)
-        async def fetch(sku):
-            if sku == '6019174271': return root
-            from dataclasses import replace
-            return replace(root, parent_id='another-model', edges=())
+    async def test_all_declared_articles_are_collected_across_internal_product_ids(self):
         snapshots = {}
-        await discover_family(None, '6019174271', snapshots, fetch_product=fetch)
-        self.assertEqual(list(snapshots), ['6019174271'])
+        transport = AsyncMock(fetch=AsyncMock(side_effect=external_family_html))
+        await discover_family(transport, '6019174271', snapshots)
+        self.assertEqual(len(snapshots), 10)
+        self.assertEqual(transport.fetch.await_count, 10)
         card = snapshots['6019174271']
         self.assertEqual(card.price, Decimal('3058.20'))
-        self.assertEqual([v.ref.external_id for v in card.variants], ['6019174271'])
+        self.assertEqual([v.ref.external_id for v in card.variants if v.selected], ['6019174271'])
         self.assertNotIn('variant_discovery_error', card.extensions)
-        self.assertEqual(len(card.extensions['yandex_market']['excluded_variants']), 9)
+        self.assertEqual(set(v.ref.external_id for v in card.variants), set(snapshots))
 
     async def test_complete_real_graph_has_64_unique_skus_and_exact_prices(self):
         transport = AsyncMock()

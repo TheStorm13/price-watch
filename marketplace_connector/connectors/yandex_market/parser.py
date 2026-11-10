@@ -83,7 +83,7 @@ class ParsedProduct:
     edges: tuple[str, ...]
     options: dict[str, str]
     discovery_error: str | None
-    links_may_include_other_models: bool = False
+    has_structured_variants: bool = False
 
 
 def parse_product(html, external_id, *, now=None):
@@ -91,7 +91,9 @@ def parse_product(html, external_id, *, now=None):
     parsed = StorefrontHTML()
     parsed.feed(html)
     collections = parsed.collections
-    users = collections.get('currentUser', {}).values()
+    users = list(collections.get('currentUser', {}).values())
+    if not users:
+        raise MarketplaceSchemaChanged('Маркет: ответ не содержит данных об авторизации')
     if not any(user.get('isAuth') is True for user in users):
         raise AuthenticationRequired('Войдите в Яндекс Маркет через Chrome приложения и повторите сбор')
     try:
@@ -143,7 +145,7 @@ def parse_product(html, external_id, *, now=None):
         raise MarketplaceSchemaChanged('Маркет: отсутствуют или не соответствуют SKU данные карточки') from exc
     edges = []
     selected = {}
-    related_models = False
+    structured_variants = False
     jump_list = collections.get('jumpListShort', {}).get(key)
     if jump_list is not None and not parsed.edges:
         try:
@@ -172,7 +174,7 @@ def parse_product(html, external_id, *, now=None):
                                or str(transition['params']['oskuId']) != ref.external_id):
                 raise ValueError('unknown jump continuation')
             groups[0]['values'] = edges.copy()
-            related_models = True
+            structured_variants = True
         except (KeyError, TypeError, ValueError, AttributeError):
             edges.clear()
             parsed.discovery_error = 'Маркет: неполный структурированный список вариантов'
@@ -191,4 +193,4 @@ def parse_product(html, external_id, *, now=None):
     selected = {names.get(k, f'Параметр {k}'): v for k, v in selected.items()}
     parsed.finish()
     return ParsedProduct(card, str(meta['productId']), tuple(dict.fromkeys(edges)), selected,
-                         parsed.discovery_error, links_may_include_other_models=related_models)
+                         parsed.discovery_error, has_structured_variants=structured_variants)

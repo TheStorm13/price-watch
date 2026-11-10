@@ -12,6 +12,10 @@ the parser and graph contract, not the availability of a future live promotion.
 `external_article.json` is a public-field capture of article 6019174271 from the
 same authenticated profile on 2026-11-10. Its internal market SKU is 6249927249;
 it has stock and delivery but no size selector. The selected card's structured
-control declares ten linked entries, including other product models. Only target
+control declares ten linked variants with different internal product IDs. Only target
 article IDs and selection are kept from that control; analytics and account data
 are omitted. Expected price is 3398 less one HOME11 discount of 10%: 3058.20.
+
+`external_family_html` in parser tests expands this capture into ten synthetic
+exact offers with different product IDs for discovery/concurrency/persistence
+regressions. This synthetic expansion is separate from the live ten-variant smoke.
