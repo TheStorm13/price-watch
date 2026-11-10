@@ -57,9 +57,9 @@ test('settings, help and product layout preserve their positions and keyboard fl
   await settings.click()
   const panel = page.getByRole('dialog', { name: 'Настройки', exact: true })
   await expect(panel).toBeVisible()
-  await expect.poll(async () => (await panel.boundingBox())!.x).toBe(272)
+  await expect.poll(async () => { const box = (await panel.boundingBox())!; return box.x + box.width / 2 }).toBe(720)
   const bounds = (await panel.boundingBox())!
-  expect(bounds.y + bounds.height).toBeCloseTo(884, 0)
+  expect(bounds.y + bounds.height / 2).toBeCloseTo(450, 0)
   expect(bounds.height).toBeLessThan(700)
   await expect(panel.getByRole('button', { name: 'Экспорт', exact: true })).toBeVisible()
   await panel.getByRole('button', { name: 'Импорт', exact: true }).click()
@@ -107,5 +107,14 @@ for (const width of [1024, 1440]) test(`group surfaces and portrait detail align
   expect(image.x+image.width).toBeLessThan(prices.x)
   expect(image.width/image.height).toBeCloseTo(.75,2)
   expect(image.y+image.height).toBeCloseTo(prices.y+prices.height,0)
+  expect(image.height).toBeLessThanOrEqual(240)
+  expect(prices.height).toBeLessThan(180)
+  const cells = await page.locator('.price-summary__primary, .price-stat').evaluateAll(elements => elements.map(el => { const r = el.getBoundingClientRect(); return { x: r.x, right: r.right, top: r.top, bottom: r.bottom } }))
+  expect(cells).toHaveLength(5)
+  for (let index = 1; index < cells.length; index++) {
+    expect(cells[index].x).toBeGreaterThanOrEqual(cells[index - 1].right)
+    expect(cells[index].top).toBeLessThan(cells[0].bottom)
+    expect(cells[index].bottom).toBeGreaterThan(cells[0].top)
+  }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
 })

@@ -78,7 +78,7 @@ The approved UI SHALL run without demo environment variables or sidebar query sw
 - **THEN** the sidebar uses real API data and the existing collection and desktop runtime providers
 
 ### Requirement: Settings beside the sidebar
-Settings SHALL open as a separate accessible dialog panel anchored 12 px to the right of the 260 px sidebar and 16 px above the window bottom, with content-sized height, at most 420 px width and bounded scrolling. It SHALL NOT occupy the full window height or use centering transforms/entrance zoom animations. Import/export and desktop background controls SHALL live inside it. Nested import cancellation SHALL return focus to its trigger in settings; successful transfer SHALL close settings and display its result in the shell. Demo mode SHALL NOT invoke native settings commands.
+Settings SHALL open as a separate accessible dialog panel centered horizontally and vertically in the application window, with content-sized height, at most 420 px width and bounded scrolling. It SHALL NOT occupy the full window height or use entrance zoom animations. Import/export and desktop background controls SHALL live inside it. Nested import cancellation SHALL return focus to its trigger in settings; successful transfer SHALL close settings and display its result in the shell. Demo mode SHALL NOT invoke native settings commands.
 
 #### Scenario: Import from details
 - **WHEN** the user opens settings from a product and cancels import
