@@ -182,7 +182,7 @@ test('названия и зоны плиток выровнены, теги ц�
       expect((await tile.boundingBox())!.width).toBeLessThanOrEqual(280)
       for (const [index, price] of (await tile.locator('dd').all()).entries()) {
         const font = await price.evaluate((e) => parseFloat(getComputedStyle(e).fontSize))
-        expect(font).toBe(index === 3 && ['Нет выгоды', '—'].includes(await price.innerText()) ? 13 : 14)
+        expect(font).toBe(index === 0 && !await price.locator('.deal-savings').count() ? 13 : 14)
       }
     }
     await expect(page.locator('.cards-grid__id')).toHaveCount(0)

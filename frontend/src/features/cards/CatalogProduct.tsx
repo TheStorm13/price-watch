@@ -41,11 +41,6 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
       onDelete={() => deleteCard.mutateAsync(card.id)} />
   }
 
-  function saving(card: TrackedCardView) {
-    const value = catalogSavings(card, savings)
-    return value !== null ? <span className="deal-savings">{formatPrice(value)}</span> : card?.averagePrice == null || card.currentPrice == null ? '—' : 'Нет выгоды'
-  }
-
   function tile(card: TrackedCardView) {
     return <Card key={card.id} asChild className="grid gap-0 py-0"><li className={cn("cards-grid__item", selected && "is-selected")}>
       <div className="cards-grid__selection"><Checkbox aria-label={`Выбрать карточку ${card.title ?? 'Без названия'}`} checked={selected} onCheckedChange={() => onToggle(card.id)} /></div>
@@ -57,7 +52,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
       </Link></CardHeader>
       <CardContent className="contents"><div className="cards-grid__tags" title={card.tags?.join(', ')}><TagList tags={card.tags} /></div>
       <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
-      <dl className="cards-grid__prices"><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div><div><dt>Выгода</dt><dd>{saving(card)}</dd></div></dl>
+      <dl className="cards-grid__prices"><div><dt>Выгода / макс.</dt><dd><CatalogSavings savings={catalogSavings(card, savings)} average={card.averagePrice} minimum={card.minimumPrice} /></dd></div><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div></dl>
       </CardContent><CardFooter className="contents"><div className="cards-grid__details"><time dateTime={card.lastCollectedAt ?? undefined} title={formatDateTime(card.lastCollectedAt ?? null)}>{formatRelativeTime(card.lastCollectedAt ?? null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
       <div className="cards-grid__tracking">{dealStatus(card)}</div>
     </CardFooter></li></Card>

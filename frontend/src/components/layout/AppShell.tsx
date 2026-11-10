@@ -87,7 +87,7 @@ export function AppShell() {
               <DialogContent className="settings-panel">
                 <DialogHeader><DialogTitle>Настройки</DialogTitle><DialogDescription className="sr-only">Настройки приложения и перенос данных</DialogDescription></DialogHeader>
                 <ImportExportControls onStatus={(message, kind) => { setTransferStatus({ message, kind }); if (kind === 'success') setSettingsOpen(false) }} />
-                {isDesktopMode ? <BackgroundSettings /> : <span className="text-xs text-muted-foreground">{apiModeLabel}</span>}
+                {isDesktopMode ? <BackgroundSettings /> : <section className="settings-block" aria-labelledby="settings-mode"><h2 id="settings-mode">Режим приложения</h2><p>{apiModeLabel}</p></section>}
               </DialogContent>
             </Dialog>
           </div>

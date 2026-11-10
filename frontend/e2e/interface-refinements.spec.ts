@@ -60,7 +60,9 @@ test('settings, help and product layout preserve their positions and keyboard fl
   await expect.poll(async () => { const box = (await panel.boundingBox())!; return box.x + box.width / 2 }).toBe(720)
   const bounds = (await panel.boundingBox())!
   expect(bounds.y + bounds.height / 2).toBeCloseTo(450, 0)
-  expect(bounds.height).toBeLessThan(700)
+  expect(bounds.height).toBe(680)
+  expect(bounds.width).toBe(800)
+  await expect(panel.getByRole('heading', { name: 'Перенос данных' })).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Экспорт', exact: true })).toBeVisible()
   await panel.getByRole('button', { name: 'Импорт', exact: true }).click()
   const transfer = page.getByRole('dialog', { name: 'Импорт товаров', exact: true })
@@ -83,7 +85,7 @@ test('settings, help and product layout preserve their positions and keyboard fl
   const prices = await page.locator('.price-summary').boundingBox()
   expect(image!.x + image!.width).toBeLessThan(prices!.x)
   expect(image!.width / image!.height).toBeCloseTo(3 / 4, 2)
-  expect(image!.y + image!.height).toBeCloseTo(prices!.y + prices!.height, 0)
+  expect(image!.y).toBeCloseTo((await page.locator('.detail-header h1').boundingBox())!.y, 0)
   await expect(page.getByRole('heading', { name: 'Измерения', exact: true })).toBeVisible()
   expect((await page.getByRole('link', { name: 'К товарам', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
 })
@@ -106,8 +108,9 @@ for (const width of [1024, 1440]) test(`group surfaces and portrait detail align
   const prices = (await page.locator('.price-summary').boundingBox())!
   expect(image.x+image.width).toBeLessThan(prices.x)
   expect(image.width/image.height).toBeCloseTo(.75,2)
-  expect(image.y+image.height).toBeCloseTo(prices.y+prices.height,0)
-  expect(image.height).toBeLessThanOrEqual(240)
+  expect(image.y).toBeCloseTo((await page.locator('.detail-header h1').boundingBox())!.y,0)
+  expect(image.width).toBeGreaterThanOrEqual(216)
+  expect(image.height).toBeLessThanOrEqual(360)
   expect(prices.height).toBeLessThan(180)
   const cells = await page.locator('.price-summary__primary, .price-stat').evaluateAll(elements => elements.map(el => { const r = el.getBoundingClientRect(); return { x: r.x, right: r.right, top: r.top, bottom: r.bottom } }))
   expect(cells).toHaveLength(5)
@@ -117,4 +120,46 @@ for (const width of [1024, 1440]) test(`group surfaces and portrait detail align
     expect(cells[index].bottom).toBeGreaterThan(cells[0].top)
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+})
+
+
+test('tiles have edge-to-edge portrait media and savings first; list headings fit', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/cards')
+  for (const name of ['Минимальная', 'Маркетплейс']) {
+    const heading = page.getByRole('button', { name, exact: true })
+    expect(await heading.locator('span').evaluate(el => el.getClientRects().length)).toBe(1)
+    expect(await heading.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  }
+  await page.getByRole('button', { name: 'Маркетплейс', exact: true }).click()
+  const sort = page.getByRole('combobox', { name: 'Сортировка', exact: true })
+  await expect(sort).toContainText('по возрастанию')
+  expect(await sort.evaluate(el => { const value = el.querySelector('[data-slot=select-value]')!; const range = document.createRange(); range.selectNodeContents(value); return range.getBoundingClientRect().width <= value.getBoundingClientRect().width })).toBe(true)
+  await page.getByRole('radio', { name: 'Сетка', exact: true }).click()
+  const tile = page.locator('.cards-grid__item').first()
+  const box = (await tile.boundingBox())!
+  const media = (await tile.locator('.cards-grid__media').boundingBox())!
+  expect(media.x - box.x).toBeCloseTo(1, 0)
+  expect(media.y - box.y).toBeCloseTo(1, 0)
+  expect(box.width - media.width).toBeCloseTo(2, 0)
+  expect(media.width / media.height).toBeCloseTo(.75, 2)
+  const first = tile.locator('.cards-grid__prices > div').first()
+  await expect(first.locator('dt')).toHaveText('Выгода / макс.')
+  const current = (await first.locator('.catalog-savings > span').first().boundingBox())!
+  const maximum = (await first.locator('.catalog-savings__maximum').boundingBox())!
+  expect(maximum.x).toBeGreaterThanOrEqual(current.x + current.width)
+  expect(maximum.y).toBeLessThan(current.y + current.height)
+})
+
+for (const viewport of [{ width: 1024, height: 700 }, { width: 1920, height: 1080 }]) test(`settings stay centered after scrolling at ${viewport.width}`, async ({ page }) => {
+  await page.setViewportSize(viewport)
+  await page.goto('/cards?perf=100')
+  await page.evaluate(() => window.scrollTo(0, 500))
+  await page.getByRole('button', { name: 'Настройки', exact: true }).click()
+  const panel = page.getByRole('dialog', { name: 'Настройки', exact: true })
+  await expect(panel).toBeVisible()
+  const box = (await panel.boundingBox())!
+  expect(box.x + box.width / 2).toBeCloseTo(viewport.width / 2, 0)
+  expect(box.y + box.height / 2).toBeCloseTo(viewport.height / 2, 0)
+  expect(box.height).toBeLessThanOrEqual(viewport.height - 32)
 })

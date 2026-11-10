@@ -109,10 +109,11 @@ export function ImportExportControls({ onStatus }: Props) {
 
   return (
     <>
+      <section className="settings-block" aria-labelledby="settings-transfer"><h2 id="settings-transfer">Перенос данных</h2><p>Товары, группы и история цен в JSON-файле.</p>
       <div className="flex flex-wrap gap-2">
         <Button ref={triggerRef} variant="outline" onClick={() => { setError(null); setOpen(true) }}><Upload />Импорт</Button>
         <Button variant="outline" disabled={exportBusy} onClick={() => void exportCards()}><Download />{exportBusy ? 'Экспорт…' : 'Экспорт'}</Button>
-      </div>
+      </div></section>
       <Dialog open={open} onOpenChange={(next) => { if (!next) close() }}>
         <DialogContent className="sm:max-w-[520px]" onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(triggerRef.current) }}
           onEscapeKeyDown={(event) => { if (busy) event.preventDefault() }} onInteractOutside={(event) => { if (busy) event.preventDefault() }}>

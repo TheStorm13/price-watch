@@ -47,16 +47,18 @@ export function BackgroundSettings() {
   }
 
   return (
-    <section className="flex flex-col gap-3" aria-label="Фоновое обновление">
+    <><section className="settings-block" aria-label="Фоновое обновление">
         <div className="flex items-center gap-1"><h2>Фоновое обновление</h2><HelpHint label="Фоновое обновление">Цены обновляются, пока приложение работает. Снова открыть окно можно через ярлык или значок приложения.</HelpHint></div><p>Каждые 6 часов</p>
+        {serviceError ? <Alert variant="destructive"><AlertDescription>Службы: {serviceError}</AlertDescription></Alert> : null}
+        {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
         <Field orientation="horizontal" data-disabled={!state || busy}>
           <Checkbox id="background-enabled" checked={state?.enabled ?? false} disabled={!state || busy} onCheckedChange={(checked) => void setEnabled(checked === true)} />
           <FieldLabel htmlFor="background-enabled">Запускать при входе в систему</FieldLabel>
         </Field>
         {state?.enabled ? <p>После закрытия окна обновление продолжится</p> : null}
-        {serviceError ? <Alert variant="destructive"><AlertDescription>Службы: {serviceError}</AlertDescription></Alert> : null}
-        {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-        <Button variant="outline" type="button" onClick={() => void quit()}>Завершить работу</Button>
     </section>
+    <section className="settings-block" aria-labelledby="settings-exit"><h2 id="settings-exit">Работа приложения</h2><p>Закрыть приложение и остановить фоновое обновление.</p>
+        <Button variant="outline" type="button" onClick={() => void quit()}>Завершить работу</Button>
+    </section></>
   )
 }

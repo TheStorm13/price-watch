@@ -30,8 +30,8 @@ function CatalogColumnHeaders({ sort: value, onSort }: Pick<Props, 'sort' | 'onS
    const Icon = active ? sort.direction === 'asc' ? ArrowUp : ArrowDown : ArrowUpDown
    return <TableHead key={key} scope="col" className={key !== 'title' ? 'text-center' : undefined}
      aria-sort={active ? sort.direction === 'asc' ? 'ascending' : 'descending' : undefined}>
-     <Button variant="ghost" size="sm" className="h-auto max-w-full gap-1 px-0 py-1 text-xs whitespace-normal" aria-label={label} onClick={() => onSort(`${key}-${direction}`)}>
-       <span className={cn('min-w-0', key === 'savings' && 'catalog-savings-heading')}>{key === 'savings' ? 'Выгода / макс.' : key === 'minimum' ? 'Мини\u00adмальная' : key === 'marketplace' ? 'Маркет\u00adплейс' : label}</span><Icon aria-hidden="true" className="size-3" />
+     <Button variant="ghost" size="sm" className="h-auto max-w-full gap-1 px-0 py-1 text-xs whitespace-nowrap" aria-label={label} onClick={() => onSort(`${key}-${direction}`)}>
+       <span className={cn('min-w-0', key === 'savings' && 'catalog-savings-heading')}>{key === 'savings' ? 'Выгода / макс.' : label}</span><Icon aria-hidden="true" className="size-3" />
      </Button>{key === 'savings' ? <HelpHint label="Выгода">Текущая выгода — средняя цена минус текущая, если товар доступен и разница положительна. Максимальная — средняя минус минимальная.</HelpHint> : null}
    </TableHead>
  })}</>
@@ -64,7 +64,7 @@ export const CatalogResults = memo(function CatalogResults(props:Props) {
  const rows=useMemo(()=>catalogRows(items,groupedCards,collapsedGroups,view==='grid'?columns:1),[items,groupedCards,collapsedGroups,view,columns])
  const keys=useMemo(()=>rows.map(row=>row.key),[rows])
  const saved=useRef(positions.get(location.pathname+location.search))
- const windowed=useVirtualRows(keys,view==='grid'?662:82, saved.current?.width===window.innerWidth?saved.current:undefined,{blockSize:view==='list'?4:1,naturalLimit:view==='list'&&!overflow?100:40})
+ const windowed=useVirtualRows(keys,view==='grid'?666:82, saved.current?.width===window.innerWidth?saved.current:undefined,{blockSize:view==='list'?4:1,naturalLimit:view==='list'&&!overflow?100:40})
  const {root,virtualizer,virtual,margin}=windowed
  useLayoutEffect(()=>{if(windowed.width) setColumns(Math.max(1,Math.floor((windowed.width+8)/288)))},[windowed.width])
  // Sticky cells are expensive to paint in WebKit; only pin them when needed.

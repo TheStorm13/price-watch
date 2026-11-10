@@ -7,7 +7,7 @@ Defines the permanent application sidebar, unified catalog controls, product cou
 ## Requirements
 
 ### Requirement: Permanent application sidebar
-The application SHALL use the approved 260 px left sidebar on the normal catalog and detail routes, with a noninteractive Price watch brand. It SHALL expose global add, refresh, group creation, real desktop Chrome and a settings action. The sidebar middle SHALL scroll independently and its single collection progress panel SHALL appear at the bottom right of the window. Existing service retry, validation, pending states and errors SHALL remain available.
+The application SHALL use the approved 300 px left sidebar on the normal catalog and detail routes, with a noninteractive Price watch brand. It SHALL expose global add, refresh, group creation, real desktop Chrome and a settings action. The sidebar middle SHALL scroll independently and its single collection progress panel SHALL appear at the bottom right of the window. Existing service retry, validation, pending states and errors SHALL remain available.
 
 #### Scenario: Collection panel geometry
 - **WHEN** a collection run is visible
@@ -78,7 +78,7 @@ The approved UI SHALL run without demo environment variables or sidebar query sw
 - **THEN** the sidebar uses real API data and the existing collection and desktop runtime providers
 
 ### Requirement: Settings beside the sidebar
-Settings SHALL open as a separate accessible dialog panel centered horizontally and vertically in the application window, with content-sized height, at most 420 px width and bounded scrolling. It SHALL NOT occupy the full window height or use entrance zoom animations. Import/export and desktop background controls SHALL live inside it. Nested import cancellation SHALL return focus to its trigger in settings; successful transfer SHALL close settings and display its result in the shell. Demo mode SHALL NOT invoke native settings commands.
+Settings SHALL open as a separate accessible dialog panel centered horizontally and vertically in the application window, at most 800 px wide and 680 px high, with at least 16 px viewport margins and bounded scrolling. It SHALL NOT occupy the full window height or use entrance zoom animations. Import/export and desktop background controls SHALL live inside titled sections. Descriptions SHALL precede each section’s controls; only captions SHALL follow them. Application exit SHALL occupy its own section. Nested import cancellation SHALL return focus to its trigger in settings; successful transfer SHALL close settings and display its result in the shell. Demo mode SHALL NOT invoke native settings commands.
 
 #### Scenario: Import from details
 - **WHEN** the user opens settings from a product and cancels import
