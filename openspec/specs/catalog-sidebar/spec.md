@@ -94,3 +94,10 @@ Sidebar filter triggers SHALL retain their width with a compact height around 32
 #### Scenario: End of tags
 - **WHEN** the user continues scrolling at the bottom of the tag popup
 - **THEN** catalog scroll position remains unchanged
+
+### Requirement: Единая типографика управления
+Текст кнопок, фильтров, их подписей и пунктов popup левой панели SHALL использовать системный шрифт размером 14 px, обычное начертание и интервал 20 px, как выбранное значение «Сначала выгодные». Кнопки Chrome и Настройки SHALL иметь видимую outline-рамку, штатную высоту 42 px и занимать ширину нижнего блока с промежутком 8 px.
+
+#### Scenario: Фильтры и нижние действия
+- **WHEN** пользователь просматривает левую панель и раскрывает теги или сортировку
+- **THEN** текст управления имеет согласованный шрифт, нижние действия выглядят как полноценные кнопки, фокус и disabled-состояния сохраняются

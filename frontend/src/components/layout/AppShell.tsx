@@ -81,9 +81,9 @@ export function AppShell() {
             <div className="catalog-sidebar__filters"><CatalogFilters tags={tags} params={params} onChange={changeFilters} /></div>
           </div>
           <div className="catalog-sidebar__tools">
-            {isDesktopMode ? <Button className="justify-start" size="sm" variant="ghost" disabled={collecting || openingBrowser} onClick={() => void openBrowser()}><Globe2 data-icon="inline-start" />Открыть Chrome</Button> : null}
+            {isDesktopMode ? <Button className="justify-start" variant="outline" disabled={collecting || openingBrowser} onClick={() => void openBrowser()}><Globe2 data-icon="inline-start" />Открыть Chrome</Button> : null}
             <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <DialogTrigger asChild><Button className="justify-start" size="sm" variant="ghost"><Settings2 data-icon="inline-start" />Настройки</Button></DialogTrigger>
+              <DialogTrigger asChild><Button className="justify-start" variant="outline"><Settings2 data-icon="inline-start" />Настройки</Button></DialogTrigger>
               <DialogContent className="settings-panel" viewportCentered>
                 <DialogHeader><DialogTitle>Настройки</DialogTitle><DialogDescription className="sr-only">Настройки приложения и перенос данных</DialogDescription></DialogHeader>
                 <section className="settings-block" aria-labelledby="settings-updates">

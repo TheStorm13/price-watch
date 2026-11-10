@@ -33,7 +33,7 @@ function MultipleChoice({ name, allLabel, options, value, onChange, required = f
       <PopoverTrigger asChild><Button variant="outline" size="sm" className="w-full justify-between" aria-labelledby={`${id}-label`}>
         <span className="min-w-0 truncate">{summary}</span><ChevronDown data-icon="inline-end" aria-hidden="true" />
       </Button></PopoverTrigger>
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] max-h-[min(400px,70dvh)] overflow-y-auto overscroll-contain">
+      <PopoverContent align="start" className="catalog-filter-popup w-[var(--radix-popover-trigger-width)] max-h-[min(400px,70dvh)] overflow-y-auto overscroll-contain">
         <FieldSet aria-label={name}>
           <Button type="button" size="sm" variant="outline" className="self-start" disabled={!options.length || required && options.length === 1}
             onClick={() => onChange(allSelected ? required ? [selected[0]] : [] : null)}>
@@ -92,7 +92,7 @@ export function CatalogFilters({ tags, params, onChange }: {
       <FieldLabel className="sr-only" htmlFor={`${id}-sort`}>Сортировка</FieldLabel>
       <Select value={customSort ?? (sort === 'price-asc' || sort === 'price-desc' ? sort! : 'default')} onValueChange={(value) => setValues('sort', value === 'default' ? null : [value])}>
         <SelectTrigger id={`${id}-sort`} size="sm" className="w-full"><SelectValue /></SelectTrigger>
-        <SelectContent><SelectGroup>
+        <SelectContent className="catalog-filter-popup"><SelectGroup>
           {customSort && columnSort ? <SelectItem value={customSort}>{columnLabels[columnSort.key]} · {columnSort.direction === 'asc' ? 'по возрастанию' : 'по убыванию'}</SelectItem> : null}
           <SelectItem value="default">Сначала выгодные</SelectItem>
           <SelectItem value="price-asc">Сначала дешёвые</SelectItem>
@@ -105,7 +105,7 @@ export function CatalogFilters({ tags, params, onChange }: {
       <div className="flex items-center gap-1"><FieldLabel htmlFor={`${id}-deals`}>Участие в выгодных</FieldLabel><HelpHint label="Участие в выгодных">Участие разрешает показывать товар среди выгодных, но не делает цену выгодной. Этот выбор не влияет на обновление цен.</HelpHint></div>
       <Select value={deal === 'deals' || deal === 'non_deals' || deal === 'participating' ? deal : 'all'} onValueChange={(value) => setValues('deals', value === 'all' ? null : [value])}>
         <SelectTrigger id={`${id}-deals`} size="sm" className="w-full"><SelectValue /></SelectTrigger>
-        <SelectContent><SelectGroup>
+        <SelectContent className="catalog-filter-popup"><SelectGroup>
           <SelectItem value="all">Все товары</SelectItem>
           <SelectItem value="participating">Участвуют в выгодных</SelectItem>
           <SelectItem value="deals">Выгодные</SelectItem>
