@@ -77,8 +77,12 @@ The approved UI SHALL run without demo environment variables or sidebar query sw
 - **WHEN** the desktop application opens the catalog
 - **THEN** the sidebar uses real API data and the existing collection and desktop runtime providers
 
-### Requirement: Settings beside the sidebar
+### Requirement: Centered settings dialog
 Settings SHALL open as a separate accessible dialog panel centered horizontally and vertically in the application window, at most 800 px wide and 680 px high, with at least 16 px viewport margins and bounded scrolling. It SHALL NOT occupy the full window height or use entrance zoom animations. Import/export and desktop background controls SHALL live inside titled sections. Descriptions SHALL precede each section’s controls; only captions SHALL follow them. Settings SHALL contain the sections «Обновление цен», «Относительно выгодная покупка», «Уведомления» and «Данные». Planned controls SHALL be represented by explicit unimplemented status text, without fake working controls. Application operation and quiet hours SHALL NOT be sections or settings. Configurable deal criteria beyond the relative purchase label SHALL NOT be offered. Nested import cancellation SHALL return focus to its trigger in settings; successful transfer SHALL close settings and display its result in the shell. Demo mode SHALL NOT invoke native settings commands.
+
+#### Scenario: Settings after viewport changes
+- **WHEN** the user opens settings after catalog scrolling, resizes the window or scrolls settings
+- **THEN** the panel remains centered and entirely inside the viewport with at least 16 px margins; overflowing content scrolls within the panel and closing restores trigger focus
 
 #### Scenario: Import from details
 - **WHEN** the user opens settings from a product and cancels import

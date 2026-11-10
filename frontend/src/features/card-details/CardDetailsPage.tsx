@@ -115,12 +115,12 @@ export function CardDetailsPage() {
         <div className="price-stat"><span>Максимум</span><strong>{formatPrice(statistics?.maximumPrice)}</strong></div>
         <div className="price-stat"><span>Разница</span><strong>{formatPrice(priceGap)}</strong></div>
       </div>
+        {card.tags?.length ? <section className="detail-tags" aria-label="Теги товара"><TagList tags={card.tags} /></section> : null}
         </div>
       </header>
       {openError ? <Alert variant="destructive"><AlertDescription>{openError}</AlertDescription></Alert> : null}
       {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
       {cardQuery.isError ? <SectionError message="Не удалось обновить товар" retry={() => void cardQuery.refetch()} /> : null}
-      <TagList tags={card.tags} />
       <CardDrawer open={editing} onClose={() => setEditing(false)} card={card} variants={variants} isPending={updateCard.isPending}
         onSave={({ title, url, tags, primaryVariantId }) => updateCard.mutateAsync({ cardId: card.id, input: { title, url, tags, primaryVariantId } })} />
 

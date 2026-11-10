@@ -84,7 +84,7 @@ export function AppShell() {
             {isDesktopMode ? <Button className="justify-start" size="sm" variant="ghost" disabled={collecting || openingBrowser} onClick={() => void openBrowser()}><Globe2 data-icon="inline-start" />Открыть Chrome</Button> : null}
             <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
               <DialogTrigger asChild><Button className="justify-start" size="sm" variant="ghost"><Settings2 data-icon="inline-start" />Настройки</Button></DialogTrigger>
-              <DialogContent className="settings-panel">
+              <DialogContent className="settings-panel" viewportCentered>
                 <DialogHeader><DialogTitle>Настройки</DialogTitle><DialogDescription className="sr-only">Настройки приложения и перенос данных</DialogDescription></DialogHeader>
                 <section className="settings-block" aria-labelledby="settings-updates">
                   <h2 id="settings-updates">Обновление цен</h2>

@@ -94,6 +94,17 @@ test('settings, help and product layout preserve their positions and keyboard fl
   expect(image!.x + image!.width).toBeLessThan(prices!.x)
   expect(image!.width / image!.height).toBeCloseTo(3 / 4, 2)
   expect(image!.y).toBeCloseTo((await page.locator('.detail-header h1').boundingBox())!.y, 0)
+  const tags = page.getByRole('region', { name: 'Теги товара' })
+  await expect(tags).toHaveCount(0)
+  await page.getByRole('button', { name: 'Изменить', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Теги (до двух, через запятую)', exact: true }).fill('Смартфоны, подарок')
+  await page.getByRole('button', { name: 'Сохранить', exact: true }).click()
+  await expect(tags).toContainText('Смартфоны')
+  await expect(tags).toContainText('подарок')
+  const tagBox = (await tags.boundingBox())!
+  expect(tagBox.y).toBeGreaterThanOrEqual(prices!.y + prices!.height + 10)
+  expect(tagBox.x).toBeCloseTo(prices!.x, 0)
+  expect(tagBox.width).toBeCloseTo(prices!.width, 0)
   await expect(page.getByRole('heading', { name: 'Измерения', exact: true })).toBeVisible()
   expect((await page.getByRole('link', { name: 'К товарам', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
 })
@@ -170,4 +181,35 @@ for (const viewport of [{ width: 1024, height: 700 }, { width: 1920, height: 108
   expect(box.x + box.width / 2).toBeCloseTo(viewport.width / 2, 0)
   expect(box.y + box.height / 2).toBeCloseTo(viewport.height / 2, 0)
   expect(box.height).toBeLessThanOrEqual(viewport.height - 32)
+})
+
+
+test('settings remain inside resized viewport while scrolling and reopening', async ({ page }) => {
+  await page.goto('/cards?perf=100')
+  await page.evaluate(() => window.scrollTo(0, 500))
+  const trigger = page.getByRole('button', { name: 'Настройки', exact: true })
+  await trigger.click()
+  const panel = page.getByRole('dialog', { name: 'Настройки', exact: true })
+  for (const viewport of [{ width: 1024, height: 500 }, { width: 1440, height: 900 }, { width: 800, height: 400 }]) {
+    await page.setViewportSize(viewport)
+    await panel.getByRole('button', { name: 'Экспорт', exact: true }).focus()
+    await panel.hover()
+    await page.mouse.wheel(0, 1500)
+    await expect.poll(async () => {
+      const box = (await panel.boundingBox())!
+      return Math.abs(box.y + box.height / 2 - viewport.height / 2)
+    }).toBeLessThan(1)
+    const box = (await panel.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(16)
+    expect(box.y).toBeGreaterThanOrEqual(16)
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width - 16)
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height - 16)
+    await panel.evaluate(el => { el.scrollTop = 0 })
+    await panel.getByRole('button', { name: 'Закрыть', exact: true }).click()
+    await expect(trigger).toBeFocused()
+    await trigger.click()
+  }
+  await page.mouse.click(4, 4)
+  await expect(panel).toBeHidden()
+  await expect(trigger).toBeFocused()
 })
