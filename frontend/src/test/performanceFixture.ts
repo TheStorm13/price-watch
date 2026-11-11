@@ -23,7 +23,7 @@ export function installPerformanceFixture() {
   }
   api.getChart = async () => ({points:[]})
   api.getHistory = async (id,days,page=1,pageSize=50) => ({card:await api.getCard(id),history:[],days,page,pageSize,totalCount:0,
-    statistics:{cardId:id,days,averagePrice:'100.00',minimumPrice:'90.00',maximumPrice:'110.00',observationsCount:0,observedDays:0}})
+    statistics:{cardId:id,windowStart:'2024-10-01T00:00:00Z',windowEnd:now,averagePrice:'100.00',minimumPrice:'90.00',maximumPrice:'110.00',observationsCount:0,observedDays:0}})
   let lastGroupInput: unknown = null
   api.updateGroup = async (id,input) => {
     lastGroupInput=input

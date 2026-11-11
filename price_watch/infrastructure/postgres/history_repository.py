@@ -5,11 +5,12 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import List
 
-from sqlalchemy import func, literal_column, select
+from sqlalchemy import func, select, text
 
 from ...domain.models import PriceHistoryPoint, PriceStatistics
 from .models import PriceHistoryRecord, MarketplaceCardRecord
 from .database import AsyncDatabase
+from .queries import price_metrics_ctes, price_window
 
 
 class HistoryRepository:
@@ -84,33 +85,25 @@ class HistoryRepository:
                 )
             )) or 0)
 
-    async def get_statistics(self, card_id: int, days: int, variant_id: int | None = None) -> PriceStatistics:
-        if days <= 0:
-            raise ValueError("days должен быть положительным")
-        observed_day = func.date_trunc(
-            literal_column("'day'"), PriceHistoryRecord.observed_at
-        )
-        statement = select(
-            (func.min(PriceHistoryRecord.price) + func.max(PriceHistoryRecord.price)) / 2,
-            func.min(PriceHistoryRecord.price),
-            func.max(PriceHistoryRecord.price),
-            func.count(),
-            func.count(func.distinct(observed_day)),
-        ).where(
-            PriceHistoryRecord.card_id == card_id,
-            PriceHistoryRecord.variant_id == self._selected_variant(card_id, variant_id),
-            PriceHistoryRecord.observed_at >= self._cutoff(days),
-            PriceHistoryRecord.availability == "in_stock",
-            PriceHistoryRecord.price.is_not(None),
-        )
+    async def get_statistics(self, card_id: int, variant_id: int | None = None) -> PriceStatistics:
+        start, end = price_window()
+        statement = text(price_metrics_ctes(
+            'SELECT id AS variant_id FROM card_variants WHERE card_id = :card_id '
+            'AND id = coalesce(:variant_id, (SELECT primary_variant_id FROM marketplace_cards WHERE id = :card_id))'
+        ) + """
+            SELECT m.average_price, m.minimum_price, m.maximum_price,
+                   coalesce(m.observations_count, 0) AS observations_count,
+                   coalesce(m.baseline_days, 0) AS baseline_days
+            FROM (SELECT 1) seed LEFT JOIN metrics m ON true
+        """)
         async with self._database.session() as session:
-            row = (await session.execute(statement)).one()
+            row = (await session.execute(statement, {
+                'card_id': card_id, 'variant_id': variant_id,
+                'window_start': start, 'window_end': end,
+            })).one()
         return PriceStatistics(
-            card_id=card_id,
-            days=days,
-            average_price=row[0],
-            minimum_price=row[1],
-            maximum_price=row[2],
-            observations_count=int(row[3]),
-            observed_days=int(row[4]),
+            card_id=card_id, window_start=start, window_end=end,
+            average_price=row.average_price, minimum_price=row.minimum_price,
+            maximum_price=row.maximum_price, observations_count=row.observations_count,
+            observed_days=row.baseline_days,
         )

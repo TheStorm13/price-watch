@@ -50,6 +50,12 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await session.execute(delete(CollectionRunRecord).where(CollectionRunRecord.id.in_(self.fixture_runs)))
         await self.async_database.close()
 
+    def freeze_metrics(self, now):
+        from price_watch.domain.price_window import price_window
+        window = price_window(now)
+        self.enterContext(patch('price_watch.infrastructure.postgres.queries.price_window', return_value=window))
+        self.enterContext(patch('price_watch.infrastructure.postgres.history_repository.price_window', return_value=window))
+
     async def fixture_run(self):
         async with self.async_database.session() as session, session.begin():
             record = CollectionRunRecord(status="completed", total_count=0, is_full_collection=False)
@@ -360,7 +366,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                              "https://img.test/updated.jpg")
 
             history = await repository.history.get_history(card.id, 1)
-            statistics = await repository.history.get_statistics(card.id, 1)
+            statistics = await repository.history.get_statistics(card.id)
             self.assertEqual(len(history), 1)
             self.assertEqual(str(history[0].price), "123.45")
             self.assertEqual(statistics.average_price, Decimal("123.45"))
@@ -662,19 +668,20 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         await self.abandon_queued(repository,retry)
         for card in cards: await repository.cards.delete_card(card.id)
 
-    async def test_midpoint_preserves_half_kopeck_precision_and_single_price(self):
+    async def test_time_mean_ignores_zero_duration_latest_price(self):
         repository = create_postgres_stores(self.async_database)
         card = await repository.cards.add_card("integration-test", f"test-{uuid4()}")
         now = datetime.now(timezone.utc)
+        self.freeze_metrics(now)
         try:
-            for offset, price, expected in ((1, "100.00", "100.00"), (0, "100.01", "100.005")):
+            for offset, price, expected in ((1, "100.00", "100.00"), (0, "100.01", "100.00")):
                 async with self.async_database.session() as session, session.begin():
                     session.add(PriceHistoryRecord(
                         card_id=card.id, variant_id=card.variant_id, collection_run_id=None,
                         price=Decimal(price), availability="in_stock",
                         observed_at=now - timedelta(minutes=offset), snapshot={},
                     ))
-                statistics = await repository.history.get_statistics(card.id, 7)
+                statistics = await repository.history.get_statistics(card.id)
                 self.assertEqual(statistics.average_price, Decimal(expected))
                 catalog = await repository.catalog.get_catalog()
                 projected = next(item for item in catalog["cards"] if item["id"] == card.id)
@@ -683,12 +690,13 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await repository.cards.delete_card(card.id)
 
-    async def test_midpoint_uses_extremes_including_latest_and_respects_history_period(self):
+    async def test_time_mean_retains_unavailable_states_and_uses_two_years(self):
         repository = create_postgres_stores(self.async_database)
         card = await repository.cards.add_card("integration-test", f"test-{uuid4()}")
         now = datetime.now(timezone.utc)
+        self.freeze_metrics(now)
         try:
-            empty = await repository.history.get_statistics(card.id, 7)
+            empty = await repository.history.get_statistics(card.id)
             self.assertIsNone(empty.average_price)
             self.assertEqual(empty.observations_count, 0)
             async with self.async_database.session() as session, session.begin():
@@ -702,25 +710,26 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         price=Decimal(price) if price is not None else None,
                         availability=availability, observed_at=now - timedelta(days=days_ago), snapshot={},
                     ))
-            statistics = await repository.history.get_statistics(card.id, 7)
-            self.assertEqual(statistics.average_price, Decimal("130"))
-            self.assertEqual(statistics.minimum_price, Decimal("100"))
+            statistics = await repository.history.get_statistics(card.id)
+            self.assertEqual(statistics.average_price, Decimal("28.888888888889"))
+            self.assertEqual(statistics.minimum_price, Decimal("20"))
             self.assertEqual(statistics.maximum_price, Decimal("160"))
-            self.assertEqual(statistics.observations_count, 3)
-            self.assertEqual(statistics.observed_days, 2)
+            self.assertEqual(statistics.observations_count, 4)
+            self.assertEqual(statistics.observed_days, 3)
             catalog = await repository.catalog.get_catalog()
             projected = next(item for item in catalog["cards"] if item["id"] == card.id)
-            self.assertEqual(projected["average_price"], Decimal("90"))
+            self.assertEqual(projected["average_price"], Decimal("28.888888888889"))
             self.assertEqual(projected["minimum_price"], Decimal("20"))
             self.assertFalse(any(item["card"]["id"] == card.id for item in catalog["deals"]))
         finally:
             await repository.cards.delete_card(card.id)
 
-    async def test_deal_uses_full_history_range_midpoint(self):
+    async def test_deal_uses_two_year_time_mean(self):
         repository = create_postgres_stores(self.async_database)
         card = await repository.cards.add_card("integration-test", f"test-{uuid4()}")
         run_id = await self.fixture_run()
         now = datetime.now(timezone.utc)
+        self.freeze_metrics(now)
         try:
             with self.database.session() as session, session.begin():
                 session.get(MarketplaceCardRecord, card.id).created_at = now - timedelta(days=10)
@@ -764,6 +773,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         repository = create_postgres_stores(self.async_database)
         card = await repository.cards.add_card("integration-test", f"test-{uuid4()}")
         now = datetime.now(timezone.utc)
+        self.freeze_metrics(now)
         try:
             with self.database.session() as session, session.begin():
                 session.get(MarketplaceCardRecord, card.id).created_at = now - timedelta(days=10)
@@ -784,6 +794,7 @@ class PostgresRepositoryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         repository = create_postgres_stores(self.async_database)
         card = await repository.cards.add_card("integration-test", f"test-{uuid4()}")
         now = datetime.now(timezone.utc)
+        self.freeze_metrics(now)
         try:
             async with self.async_database.session() as session, session.begin():
                 session.add(PriceHistoryRecord(

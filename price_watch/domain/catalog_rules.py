@@ -4,9 +4,9 @@ from typing import Iterable
 
 
 def deal_savings(*, enabled: bool, price: Decimal | None, availability: str | None,
-                 average: Decimal | None, baseline_days: int) -> Decimal | None:
+                 average: Decimal | None) -> Decimal | None:
     if (enabled and availability == 'in_stock' and price is not None
-            and baseline_days >= 1 and average is not None and price < average):
+            and average is not None and price < average):
         return average - price
     return None
 

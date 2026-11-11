@@ -32,7 +32,7 @@ class CatalogService:
             grouped.setdefault(local.group_id, []).append(card)
             savings = deal_savings(enabled=local.deals_enabled, price=overview.current_price,
                                    availability=overview.current_availability,
-                                   average=metric.average_price, baseline_days=metric.baseline_days)
+                                   average=metric.average_price)
             if savings is not None:
                 assert metric.average_price is not None
                 deals.append({'card': card, 'average_price': metric.average_price, 'savings': savings,

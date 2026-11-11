@@ -46,7 +46,7 @@ export function CardDetailsPage() {
   const cardQuery = useCard(cardId)
   const primaryVariantId = cardQuery.data?.primaryVariantId ?? undefined
   const historyQuery = useCardHistory(cardId, days, page, historyVariantId ?? primaryVariantId, !cardQuery.isPending)
-  const mainHistoryQuery = useCardHistory(cardId, days, 1, primaryVariantId, !cardQuery.isPending)
+  const mainHistoryQuery = useCardHistory(cardId, 30, 1, primaryVariantId, !cardQuery.isPending)
   const variantsQuery = useCardVariants(cardId)
   const variants = variantsQuery.data ?? []
   const chartQuery = useCardChart(cardId, days)
@@ -104,7 +104,7 @@ export function CardDetailsPage() {
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate(returnTo, { replace: true }) }} />
         </div>
 
-      <div className="price-summary"><HelpHint label="Статистика цен">Показатели главного варианта за выбранный период. Середина диапазона — (минимум + максимум) / 2. Разница — максимум − минимум.</HelpHint>
+      <div className="price-summary"><HelpHint label="Статистика цен">Показатели главного варианта за последние два года. Середина диапазона — (минимум + максимум) / 2. Разница — максимум − минимум.</HelpHint>
         <div className="price-summary__primary">
           <strong>{formatPrice(card.currentPrice)}</strong>
           <AvailabilityStatus value={card.currentAvailability} />

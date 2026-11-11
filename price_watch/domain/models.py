@@ -40,7 +40,8 @@ class PriceHistoryPoint:
 @dataclass(frozen=True)
 class PriceStatistics:
     card_id: int
-    days: int
+    window_start: datetime
+    window_end: datetime
     average_price: Optional[Decimal]
     minimum_price: Optional[Decimal]
     maximum_price: Optional[Decimal]

@@ -215,7 +215,7 @@ async def _execute(args: argparse.Namespace, database: AsyncDatabase) -> int:
 
     if args.command == "history":
         history = [asdict(item) for item in await stores.history.get_history(args.card_id, args.days)]
-        statistics = asdict(await stores.history.get_statistics(args.card_id, args.days))
+        statistics = asdict(await stores.history.get_statistics(args.card_id))
         _print_json({"statistics": statistics, "history": history})
         return 0
 

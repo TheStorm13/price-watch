@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mockApi } from './mockApi'
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('mock deal list', () => {
   it('does not wait seven days after the card was created', async () => {
     const card = await mockApi.getCard(1)
-    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse(card.createdAt) + 6 * 86_400_000)
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse(card.lastObservedAt!))
     try {
       expect(((await mockApi.getCatalog()).deals).map((deal) => deal.card.id)).toContain(card.id)
     } finally {
@@ -16,6 +18,7 @@ describe('mock deal list', () => {
 it('projects every group field from one cheapest member and switches as prices change', async () => {
   vi.resetModules()
   const { mockApi: api } = await import('./mockApi')
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-03T12:00:00Z'))
   const createdAt = '2026-10-01T12:00:00Z'
   const imported = (externalId: string, marketplace: 'ozon' | 'wildberries', prices: number[]) => ({
     externalId, marketplace, title: `Fixture ${externalId}`, url: null, tags: [externalId],
@@ -26,13 +29,14 @@ it('projects every group field from one cheapest member and switches as prices c
   await api.importCards({ version: 3, cards: [imported('901', 'ozon', [80, 90]), imported('902', 'wildberries', [60, 240, 120])],
     groups: [{ name: 'Fixture', cards: [{ marketplace: 'ozon', externalId: '901' }, { marketplace: 'wildberries', externalId: '902' }] }] })
   let group = ((await api.getCatalog()).groups)[0]
-  expect(group.representativeCard).toMatchObject({ externalId: '901', currentPrice: "90.00", minimumPrice: "80.00", averagePrice: "85.000" })
+  expect(group.representativeCard).toMatchObject({ externalId: '901', currentPrice: "90.00", minimumPrice: "80.00", averagePrice: "85.000000000000" })
   expect(group).toMatchObject({ currentPrice: "90.00", minimumPrice: "80.00", savings: null, isDeal: false, hasMemberDeals: true, baselineDays: 2 })
   expect(group.representativeCard).toEqual(((await api.getCatalog()).cards).find((card) => card.externalId === '901'))
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-04T12:00:00Z'))
   await api.importCards({ version: 3, cards: [imported('902', 'wildberries', [60, 240, 120, 50])] })
   group = ((await api.getCatalog()).groups)[0]
   expect(group.representativeCard).toMatchObject({ externalId: '902', currentPrice: "50.00", minimumPrice: "50.00", marketplace: 'wildberries' })
-  expect(group).toMatchObject({ isDeal: true, hasMemberDeals: true, savings: "95.000", baselineDays: 4 })
+  expect(group).toMatchObject({ isDeal: true, hasMemberDeals: true, savings: "90.000000000000", baselineDays: 4 })
   await api.updateCard(group.representativeCardId!, { dealsEnabled: false })
   group = ((await api.getCatalog()).groups)[0]
   expect(group).toMatchObject({ isDeal: false, savings: null, hasMemberDeals: false })

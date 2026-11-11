@@ -60,7 +60,8 @@ export interface PriceHistoryPoint {
 
 export interface PriceStatistics {
   cardId: number
-  days: number
+  windowStart: string
+  windowEnd: string
   averagePrice: DecimalString | null
   minimumPrice: DecimalString | null
   maximumPrice: DecimalString | null

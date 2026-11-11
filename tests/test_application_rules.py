@@ -10,11 +10,11 @@ from price_watch.domain.collection_policy import CollectionPolicy
 class CatalogRulesTests(unittest.TestCase):
     def test_deal_conditions_and_unrounded_decimal(self):
         values = dict(enabled=True, price=Decimal('1.00'), availability='in_stock',
-                      average=Decimal('1.001'), baseline_days=1)
+                      average=Decimal('1.001'))
         self.assertEqual(deal_savings(**values), Decimal('.001'))
         for patch in [dict(enabled=False), dict(price=None), dict(availability='unknown'),
                       dict(availability='out_of_stock'), dict(average=None),
-                      dict(baseline_days=0), dict(average=Decimal('1')), dict(price=Decimal('2'))]:
+                      dict(average=Decimal('1')), dict(price=Decimal('2'))]:
             with self.subTest(patch=patch):
                 self.assertIsNone(deal_savings(**(values | patch)))
         self.assertEqual(deal_savings(**(values | dict(price=Decimal(0)))), Decimal('1.001'))

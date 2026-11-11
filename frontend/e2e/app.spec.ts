@@ -705,6 +705,17 @@ test('детали карточки показывают середину диа
   await expect(page.getByText('Разница', { exact: true })).toBeVisible()
   await expect(page.getByText('8 500 ₽', { exact: true })).toBeVisible()
   await expect(page.getByLabel('График цен вариантов товара')).toBeVisible()
+  const summary = page.locator('.price-summary')
+  const initialSummary = await summary.textContent() ?? ''
+  const rows = page.getByRole('table', { name: 'История измерений цены' }).locator('tbody tr')
+  await expect(rows).toHaveCount(10)
+  await page.getByText('7 дней', { exact: true }).click()
+  await expect(page).toHaveURL(/days=7/)
+  await expect(rows).toHaveCount(3)
+  await expect(summary).toHaveText(initialSummary)
+  await page.getByText('90 дней', { exact: true }).click()
+  await expect(rows).toHaveCount(10)
+  await expect(summary).toHaveText(initialSummary)
 })
 
 test('ошибки сбора доступны без страницы запусков', async ({ page }) => {

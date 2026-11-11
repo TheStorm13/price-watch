@@ -183,7 +183,7 @@ async def get_history(
     points = await history.get_history(card_id, days, page, page_size, **options)
     return HistoryResponse(
         card=CardResponse.from_overview(overview),
-        statistics=StatisticsResponse.from_domain(await history.get_statistics(card_id, days, **options)),
+        statistics=StatisticsResponse.from_domain(await history.get_statistics(card_id, **options)),
         history=[HistoryPointResponse.from_domain(item) for item in points],
         page=page,
         page_size=page_size,

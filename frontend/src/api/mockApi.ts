@@ -3,7 +3,7 @@ import { parseAliExpressUrl } from '../features/cards/aliexpressIdentity'
 import { parseWildberriesUrl } from '../features/cards/wildberriesIdentity'
 import { parseOzonUrl } from '../features/cards/ozonIdentity'
 import { compareMoney, priceText, subtractMoney } from '../utils/money'
-import { historyMetrics, priceMetrics } from './mockPriceMetrics'
+import { priceMetrics } from './mockPriceMetrics'
 import type {
   CardHistoryResponse,
   CollectionRun,
@@ -187,12 +187,12 @@ let nextCardId = 6
 let groups: { id: number; name: string; tags: string[] }[] = []
 let nextGroupId = 1
 
-function cardMetrics(card: TrackedCardView) {
-  return priceMetrics(history.filter((point) => point.variantId === card.primaryVariantId))
+function cardMetrics(card: TrackedCardView, asOf = Date.now()) {
+  return priceMetrics(history.filter((point) => point.variantId === card.primaryVariantId), asOf)
 }
 
-function cardView(card: TrackedCardView): TrackedCardView {
-  const metrics = cardMetrics(card)
+function cardView(card: TrackedCardView, asOf = Date.now()): TrackedCardView {
+  const metrics = cardMetrics(card, asOf)
   const primary = variants.find((v) => v.id === card.primaryVariantId)
   return { ...card, title: primary?.productTitle ?? null, options: primary?.options ?? {}, url: primary?.url ?? null, imageUrl: primary?.imageUrl ?? null, lastCollectedAt: primary?.updatedAt ?? null, currentPrice: metrics.latest?.price ?? null,
     currentAvailability: metrics.latest?.availability ?? null,
@@ -200,26 +200,26 @@ function cardView(card: TrackedCardView): TrackedCardView {
     minimumPrice: metrics.minimumPrice, averagePrice: metrics.averagePrice }
 }
 
-function cardDeal(card: TrackedCardView): Deal | null {
-  const view = cardView(card)
-  const metrics = cardMetrics(card)
+function cardDeal(card: TrackedCardView, asOf = Date.now()): Deal | null {
+  const view = cardView(card, asOf)
+  const metrics = cardMetrics(card, asOf)
   if (!view.dealsEnabled || view.currentAvailability !== 'in_stock' || view.currentPrice === null
     || metrics.averagePrice === null || compareMoney(view.currentPrice, metrics.averagePrice) >= 0) return null
   return { card: view, averagePrice: metrics.averagePrice, savings: subtractMoney(metrics.averagePrice, view.currentPrice),
     baselineDays: metrics.baselineDays, lastCollectionRunId: metrics.latest?.collectionRunId ?? null }
 }
 
-function groupView(group: { id: number; name: string; tags: string[] }): ProductGroup {
-  const members = cards.filter((card) => card.groupId === group.id).map(cardView)
+function groupView(group: { id: number; name: string; tags: string[] }, asOf = Date.now()): ProductGroup {
+  const members = cards.filter((card) => card.groupId === group.id).map(card => cardView(card, asOf))
   const representative = members.toSorted((a, b) => Number(a.currentPrice === null) - Number(b.currentPrice === null)
     || compareMoney(a.currentPrice ?? '0', b.currentPrice ?? '0') || a.id - b.id)[0] ?? null
-  const deal = representative ? cardDeal(representative) : null
+  const deal = representative ? cardDeal(representative, asOf) : null
   return { ...group, cardIds: members.map((card) => card.id).sort((a, b) => a - b),
     representativeCardId: representative?.id ?? null, representativeCard: representative,
     currentPrice: representative?.currentPrice ?? null, minimumPrice: representative?.minimumPrice ?? null,
     savings: deal?.savings ?? null, isDeal: !!deal,
-    baselineDays: representative ? cardMetrics(representative).baselineDays : 0,
-    hasMemberDeals: members.some((card) => !!cardDeal(card)) }
+    baselineDays: representative ? cardMetrics(representative, asOf).baselineDays : 0,
+    hasMemberDeals: members.some((card) => !!cardDeal(card, asOf)) }
 }
 
 function assignGroup(groupId: number, cardIds: number[]) {
@@ -359,8 +359,9 @@ export const mockApi = {
     return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG unavailable')), 'image/png'))
   },
   async getCatalog() {
-    return delay({ cards: cards.map(cardView), groups: groups.map(groupView),
-      deals: cards.flatMap((card) => { const deal = cardDeal(card); return deal ? [deal] : [] })
+    const asOf = Date.now()
+    return delay({ cards: cards.map(card => cardView(card, asOf)), groups: groups.map(group => groupView(group, asOf)),
+      deals: cards.flatMap((card) => { const deal = cardDeal(card, asOf); return deal ? [deal] : [] })
         .toSorted((a, b) => compareMoney(b.savings, a.savings) || a.card.id - b.card.id) })
   },
   async createGroup(input: GroupInput) {
@@ -390,7 +391,7 @@ export const mockApi = {
     return delay({
       version: 3,
       groups: groups.map((g) => ({ name: g.name, tags: g.tags, cards: cards.filter((c) => c.groupId === g.id).map((c) => ({ marketplace:c.marketplace,externalId:c.externalId })) })),
-      cards: cards.map(cardView).map((c) => ({ marketplace:c.marketplace, externalId:c.externalId, title:c.title,url:c.url,imageUrl:c.imageUrl,tags:c.tags,
+      cards: cards.map(card => cardView(card)).map((c) => ({ marketplace:c.marketplace, externalId:c.externalId, title:c.title,url:c.url,imageUrl:c.imageUrl,tags:c.tags,
         dealsEnabled:c.dealsEnabled,createdAt:c.createdAt,primaryExternalId:variants.find((v) => v.id === c.primaryVariantId)!.externalId,
         variants:variants.filter((v) => v.cardId === c.id).map((v) => ({ externalId:v.externalId,trackingEnabled:v.trackingEnabled,title:v.title,url:v.url,imageUrl:v.imageUrl ?? null,productTitle:v.productTitle ?? null,options:v.options,updatedAt:v.updatedAt,
           history:history.filter((h) => h.variantId === v.id).toSorted((a,b) => Date.parse(a.observedAt)-Date.parse(b.observedAt)).map((h) => ({ price:h.price,availability:h.availability,observedAt:h.observedAt })) })) })),
@@ -482,12 +483,13 @@ export const mockApi = {
     const savedPoints = history.filter((point) => point.cardId === cardId && point.variantId === (variantId ?? card.primaryVariantId) && Date.parse(point.observedAt) >= cutoff)
       .sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt) || a.id - b.id)
     const points = savedPoints
-    const metrics = historyMetrics(points)
+    const metrics = priceMetrics(history.filter((point) => point.cardId === cardId && point.variantId === (variantId ?? card.primaryVariantId)))
     return delay({
       card: cardView(card),
       statistics: {
         cardId,
-        days,
+        windowStart: metrics.windowStart,
+        windowEnd: metrics.windowEnd,
         averagePrice: metrics.averagePrice,
         minimumPrice: metrics.minimumPrice,
         maximumPrice: metrics.maximumPrice,

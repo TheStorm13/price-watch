@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
+from unittest.mock import patch
+from price_watch.domain.price_window import price_window
 
 from httpx import ASGITransport, AsyncClient
 
@@ -56,21 +58,24 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
         async with self.fixture() as (database, repository, cards, group_id):
             a, b = cards
             now = datetime.now(timezone.utc)
+            # Keep exact metric durations independent of query execution time.
+            for module in ['queries', 'history_repository']:
+                self.enterContext(patch(f'price_watch.infrastructure.postgres.{module}.price_window', return_value=price_window(now)))
             for card, price, days in [(a, '80', 2), (a, '90', 0), (b, '60', 3), (b, '240', 2), (b, '120', 0)]:
                 await self.point(database, card, price, now - timedelta(days=days))
             group = await self.group(repository, group_id)
             self.assertEqual(group['representative_card_id'], a.id)
             self.assertEqual(group['minimum_price'], Decimal('80'))  # not B's 60
-            self.assertEqual(group['representative_card']['average_price'], Decimal('85'))
+            self.assertEqual(group['representative_card']['average_price'], Decimal('80'))
             self.assertEqual(group['baseline_days'], 2)
             self.assertFalse(group['is_deal'])
             self.assertIsNone(group['savings'])
             self.assertTrue(group['has_member_deals'])
             self.assertEqual({deal["card"]["id"] for deal in (await repository.catalog.get_catalog())["deals"]} & {a.id, b.id}, {b.id})
             metrics = {c["id"]: (c["minimum_price"],c["average_price"]) for c in (await repository.catalog.get_catalog())["cards"]}
-            self.assertEqual(metrics[a.id], (Decimal('80'), Decimal('85')))
+            self.assertEqual(metrics[a.id], (Decimal('80'), Decimal('80')))
 
-            await self.point(database, b, '50', now + timedelta(seconds=1))
+            await self.point(database, b, '50', now)
             group = await self.group(repository, group_id)
             self.assertEqual(group['representative_card_id'], b.id)
             self.assertEqual(group['current_price'], Decimal('50'))
@@ -124,6 +129,9 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
         async with self.fixture() as (database, repository, cards, group_id):
             a, b = cards
             now = datetime.now(timezone.utc)
+            # Keep exact metric durations independent of query execution time.
+            for module in ['queries', 'history_repository']:
+                self.enterContext(patch(f'price_watch.infrastructure.postgres.{module}.price_window', return_value=price_window(now)))
             await self.point(database, a, '100', now - timedelta(days=1))
             await self.point(database, a, '80', now)
             app = create_app(services=repository.api)
@@ -134,7 +142,7 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 card = next(item for item in (await client.get('/api/catalog')).json()['cards'] if item['id'] == a.id)
                 self.assertEqual(group['representativeCard'], card)
                 self.assertEqual(group['representativeCardId'], a.id)
-                self.assertEqual(Decimal(group['savings']), Decimal('10'))
+                self.assertEqual(Decimal(group['savings']), Decimal('20'))
             document = await repository.transfer.export_cards()
             imported_cards = [item for item in document['cards'] if item['external_id'] in {a.ref.external_id.split(':')[0], b.ref.external_id.split(':')[0]}]
             imported_group = next(item for item in document['groups'] if item['name'] == 'Group')

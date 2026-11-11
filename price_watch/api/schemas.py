@@ -346,7 +346,8 @@ class HistoryPointResponse(ApiModel):
 
 class StatisticsResponse(ApiModel):
     card_id: int
-    days: int
+    window_start: datetime
+    window_end: datetime
     average_price: Decimal | None
     minimum_price: Decimal | None
     maximum_price: Decimal | None
