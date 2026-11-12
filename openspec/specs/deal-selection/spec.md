@@ -89,10 +89,11 @@ SHALL belong to its variant, survive transfer export/import, and never be copied
 automatically when the primary variant changes. Missing imported target SHALL
 preserve the existing target; explicit null SHALL clear it.
 
-Personal matching SHALL frame the existing savings indicator with a star in list
+Personal matching SHALL frame the existing savings indicator with a star and a soft
+shimmering starfield fill (static under reduced motion) in list
 and tile, including excluded-from-deals cards; it SHALL NOT alter actual savings,
 deal membership, filtering or sorting. An accessible click/keyboard explanation
-SHALL show all reasons, observed prices and date, and uncertainty about future
+SHALL show all reasons, each price on its own line, and uncertainty about future
 sales. Historical period selectors SHALL NOT alter the assessment.
 
 #### Scenario: Small observed price range

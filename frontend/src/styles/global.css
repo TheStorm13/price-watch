@@ -171,7 +171,7 @@ input::placeholder { color: #98a2b3; }
 .cards-grid__details .marketplace-mark__logo { width: 22px; height: 22px; font-size: 8px; }
 .cards-grid__details .status { gap: 4px; font-size: 12px; }
 .cards-grid__details time { color: var(--text-muted); white-space: nowrap; font-size: 12px; }
-.cards-grid__prices { min-width: 0; display: grid; grid-template-rows: repeat(4, 22px); gap: 4px; margin: 6px 12px; font-size: 14px; line-height: 22px; }
+.cards-grid__prices { min-width: 0; display: grid; grid-template-rows: 28px repeat(3, 20px); gap: 4px; margin: 6px 12px; font-size: 14px; line-height: 22px; }
 .cards-grid__prices > div { min-width: 0; display: flex; justify-content: space-between; gap: 6px; }
 .cards-grid__prices dt { color: var(--text-muted); font-size: 12px; }
 .cards-grid__prices > div:first-child dd { font-size: 18px; color: var(--foreground); }
@@ -424,10 +424,19 @@ input::placeholder { color: #98a2b3; }
 }
 
 /* Personal criteria frame reserves the same space with and without a match. */
-.purchase-indicator { position: relative; display: inline-flex; align-items: center; border: 1px solid transparent; border-radius: 8px; padding: 3px 17px 3px 7px; background: transparent; color: inherit; text-align: inherit; font: inherit; }
-.purchase-indicator--match { border-color: var(--purchase-accent); box-shadow: inset 0 0 0 1px var(--purchase-glow); cursor: pointer; }
+.purchase-indicator { position: relative; display: inline-flex; align-items: center; border: 1px solid transparent; border-radius: 8px; padding: 5px 22px 5px 11px; isolation: isolate; background: transparent; color: inherit; text-align: inherit; font: inherit; }
+.purchase-indicator--match { border-color: var(--purchase-accent); box-shadow: inset 0 0 0 1px var(--purchase-glow); cursor: pointer;
+  background: radial-gradient(ellipse at 20% 80%, oklch(0.76 0.13 285 / 0.24), transparent 65%), linear-gradient(115deg, oklch(0.85 0.07 255 / 0.35), oklch(0.82 0.12 300 / 0.32)); }
+.purchase-indicator--match::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at 12% 24%, white 0 0.8px, transparent 1.5px), radial-gradient(circle at 37% 78%, white 0 0.7px, transparent 1.4px), radial-gradient(circle at 65% 18%, white 0 1px, transparent 1.8px), radial-gradient(circle at 83% 68%, white 0 0.8px, transparent 1.6px), radial-gradient(ellipse at 75% 50%, oklch(0.73 0.15 280 / 0.35), transparent 70%);
+  animation: purchase-starlight 6s ease-in-out infinite alternate;
+}
+@keyframes purchase-starlight { from { opacity: 0.35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .purchase-indicator--match::before { animation: none; opacity: 0.7; } }
+.purchase-reason { display: grid; gap: 2px; }
+.purchase-reason p { margin-bottom: 2px; }
 .purchase-indicator--match:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.purchase-indicator__star { position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; color: var(--purchase-accent); fill: var(--purchase-glow); }
+.purchase-indicator__star { position: absolute; right: 4px; top: 4px; width: 12px; height: 12px; color: var(--purchase-accent); fill: var(--purchase-glow); }
 .target-price-panel { max-width: 520px; padding: 16px 0; }
 
-.cards-grid__prices .purchase-indicator { height: 22px; max-width: 100%; padding-block: 0; line-height: 20px; vertical-align: top; }
+.cards-grid__prices .purchase-indicator { height: 28px; max-width: 100%; padding-block: 3px; line-height: 20px; vertical-align: top; }

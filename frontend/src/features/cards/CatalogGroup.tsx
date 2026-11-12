@@ -50,7 +50,7 @@ export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed,
         <div><dt>Цена</dt><dd>{formatPrice(group.currentPrice)}</dd></div>
         <div><dt>Минимальная</dt><dd>{formatPrice(group.minimumPrice)}</dd></div>
         <div><dt>Средняя</dt><dd>{formatPrice(card?.averagePrice)}</dd></div>
-        <div><dt>Выгода</dt><dd><CatalogSavings assessment={card?.purchaseAssessment} observedAt={card?.lastObservedAt} savings={catalogSavings(card, group.savings)} average={card?.averagePrice} minimum={group.minimumPrice} /></dd></div>
+        <div><dt>Выгода</dt><dd><CatalogSavings assessment={card?.purchaseAssessment} savings={catalogSavings(card, group.savings)} average={card?.averagePrice} minimum={group.minimumPrice} /></dd></div>
       </dl>
       <div className="product-group__availability">{card ? <MarketplaceMark marketplace={card.marketplace} /> : null}<AvailabilityStatus value={card?.currentAvailability ?? null} /></div>
     </div>
@@ -61,7 +61,7 @@ export const CatalogGroup = memo(function CatalogGroup({ group, view, collapsed,
     data-block-start data-block-end={blockEnd || undefined} className="cards-table__group">
     <TableCell className="cards-table__selection py-0" />
     <TableCell className="py-0">{identity}</TableCell>
-    <TableCell className="py-0"><CatalogSavings assessment={card?.purchaseAssessment} observedAt={card?.lastObservedAt} savings={catalogSavings(card, group.savings)} average={card?.averagePrice} minimum={group.minimumPrice} /></TableCell>
+    <TableCell className="py-0"><CatalogSavings assessment={card?.purchaseAssessment} savings={catalogSavings(card, group.savings)} average={card?.averagePrice} minimum={group.minimumPrice} /></TableCell>
     <TableCell className="price-cell py-0">{formatPrice(group.currentPrice)}</TableCell>
     <TableCell className="price-cell py-0">{formatPrice(group.minimumPrice)}</TableCell>
     <TableCell className="price-cell py-0">{formatPrice(card?.averagePrice)}</TableCell>

@@ -10,14 +10,14 @@ const assessment: PurchaseAssessment = { evaluatedAt: '2026-11-12T00:00:00Z', hi
   smallRangeTolerance: '200', historicalSavingsShare: '70', threshold: '860' }
 it('opens all reasons with the keyboard and Escape closes without inventing savings', async () => {
   const user = userEvent.setup()
-  render(<CatalogSavings savings={null} average="1000" minimum="800" assessment={assessment} observedAt="2026-11-11T00:00:00Z" />)
+  render(<CatalogSavings savings={null} average="1000" minimum="800" assessment={assessment} />)
   expect(screen.getByText('Нет выгоды')).toBeVisible()
   await user.tab(); await user.keyboard('{Enter}')
   expect(screen.getByText('Подходит по вашим условиям')).toBeVisible()
-  expect(screen.getByText(/не больше вашего порога/)).toHaveTextContent('200')
-  expect(screen.getByText(/вашей целевой цены/)).toHaveTextContent('900')
+  expect(screen.getByText(/Ваш порог разницы:/)).toHaveTextContent('200')
+  expect(screen.getByText(/Целевая цена:/)).toHaveTextContent('900')
   expect(screen.getByText(/Ваш порог цены/)).toHaveTextContent('860')
-  expect(screen.getByText(/Последнее наблюдение/)).toBeVisible()
+  expect(screen.queryByText(/Последнее наблюдение/)).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
   expect(screen.queryByText('Подходит по вашим условиям')).not.toBeInTheDocument()
 })
