@@ -1,4 +1,6 @@
 :root {
+  --purchase-accent: oklch(0.56 0.21 280);
+  --purchase-glow: oklch(0.75 0.10 280 / 0.22);
   color-scheme: light;
   --background: #ffffff;
   --foreground: #17191c;

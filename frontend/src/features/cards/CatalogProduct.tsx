@@ -52,7 +52,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
       </Link></CardHeader>
       <CardContent className="contents"><div className="cards-grid__tags" title={card.tags?.join(', ')}><TagList tags={card.tags} /></div>
       <div className="cards-grid__details"><MarketplaceMark marketplace={card.marketplace} /></div>
-      <dl className="cards-grid__prices"><div><dt>Выгода / макс.</dt><dd><CatalogSavings savings={catalogSavings(card, savings)} average={card.averagePrice} minimum={card.minimumPrice} /></dd></div><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div></dl>
+      <dl className="cards-grid__prices"><div><dt>Выгода / макс.</dt><dd><CatalogSavings assessment={card.purchaseAssessment} observedAt={card.lastObservedAt} savings={catalogSavings(card, savings)} average={card.averagePrice} minimum={card.minimumPrice} /></dd></div><div><dt>Цена</dt><dd>{formatPrice(card.currentPrice)}</dd></div><div><dt>Минимальная</dt><dd>{formatPrice(card.minimumPrice)}</dd></div><div><dt>Средняя</dt><dd>{formatPrice(card.averagePrice)}</dd></div></dl>
       </CardContent><CardFooter className="contents"><div className="cards-grid__details"><time dateTime={card.lastCollectedAt ?? undefined} title={formatDateTime(card.lastCollectedAt ?? null)}>{formatRelativeTime(card.lastCollectedAt ?? null)}</time><AvailabilityStatus value={card.currentAvailability} /></div>
       <div className="cards-grid__tracking">{dealStatus(card)}</div>
     </CardFooter></li></Card>
@@ -63,7 +63,7 @@ export const CatalogProduct = memo(function CatalogProduct({ card, view, nested 
       <TableCell className="cards-table__selection py-1"><Checkbox aria-label={`Выбрать карточку ${card.title ?? card.externalId}`}
         checked={selected} onClick={(event) => event.stopPropagation()} onCheckedChange={() => onToggle(card.id)} /></TableCell>
       <TableCell className="py-1"><div className="card-identity"><PreparedProductImage card={card} /><span><Link to={`/cards/${card.id}`} state={cardLocationState} className="card-identity__link"><strong title={card.title ?? 'Без названия'}>{card.title ?? 'Без названия'}</strong></Link>{Object.keys(card.options ?? {}).length ? <span className="text-sm text-muted-foreground">{Object.values(card.options ?? {}).join(' · ')}</span> : null}<TagList tags={card.tags} />{dealStatus(card)}</span></div></TableCell>
-      <TableCell className="py-1"><CatalogSavings savings={catalogSavings(card, savings)} average={card.averagePrice} minimum={card.minimumPrice} /></TableCell>
+      <TableCell className="py-1"><CatalogSavings assessment={card.purchaseAssessment} observedAt={card.lastObservedAt} savings={catalogSavings(card, savings)} average={card.averagePrice} minimum={card.minimumPrice} /></TableCell>
       <TableCell className="price-cell py-1">{formatPrice(card.currentPrice)}</TableCell>
       <TableCell className="price-cell py-1">{formatPrice(card.minimumPrice)}</TableCell>
       <TableCell className="price-cell py-1">{formatPrice(card.averagePrice)}</TableCell>

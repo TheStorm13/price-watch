@@ -1,6 +1,7 @@
 from typing import Annotated
 from fastapi import Depends, Request
 from ..application.catalog_service import CatalogService
+from ..ports.purchase import PurchaseSettingsStore
 from ..ports.thumbnails import ThumbnailReader
 from ..ports.catalog_storage import CardStore, HistoryReader, GroupStore, TransferStore
 from ..ports.runs import RunQueueStore, RunChallengeStore
@@ -60,3 +61,10 @@ def get_thumbnails(request: Request) -> ThumbnailReader:
 
 
 ThumbnailDep = Annotated[ThumbnailReader, Depends(get_thumbnails)]
+
+
+def get_purchase(request: Request) -> PurchaseSettingsStore:
+    return request.app.state.services.purchase
+
+
+PurchaseDep = Annotated[PurchaseSettingsStore, Depends(get_purchase)]

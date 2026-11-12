@@ -83,6 +83,7 @@ class CardVariantRecord(Base):
         Index('ozon_sku_unique', 'external_id', unique=True, postgresql_where=text("marketplace = 'ozon'")),
         UniqueConstraint("card_id", "external_id", name="card_variants_identity_unique"),
         UniqueConstraint("card_id", "id", name="card_variants_owner_unique"),
+        CheckConstraint("target_price > 0", name="variant_target_positive"),
         CheckConstraint("btrim(external_id) <> ''", name="card_variants_identity_not_blank"),
     )
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -93,6 +94,7 @@ class CardVariantRecord(Base):
     url: Mapped[str | None] = mapped_column(Text)
     product_title: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
+    target_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     tracking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     options: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -206,3 +208,15 @@ class PriceHistoryRecord(Base):
     snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
     card: Mapped[MarketplaceCardRecord] = relationship(back_populates="history")
+
+
+class PurchaseSettingsRecord(Base):
+    __tablename__ = 'purchase_settings'
+    __table_args__ = (CheckConstraint('id = 1', name='purchase_settings_singleton'),
+        CheckConstraint('small_range_tolerance >= 0', name='purchase_tolerance_nonnegative'),
+        CheckConstraint('historical_savings_share > 0 AND historical_savings_share <= 100', name='purchase_share_range'))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    instance_id: Mapped[str] = mapped_column(Text, nullable=False)
+    small_range_tolerance: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    historical_savings_share: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    target_notifications_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))

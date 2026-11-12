@@ -228,6 +228,7 @@ class VariantTrackingMigrationTests(unittest.TestCase):
                 rows = c.execute(text(f'SELECT * FROM {t} ORDER BY 1,2')).mappings().all()
                 if t == 'card_variants':
                     self.assertEqual({r['marketplace'] for r in rows}, {'wildberries', 'aliexpress'})
-                added = {'tracking_enabled', 'marketplace'} if t == 'card_variants' else set()
+                    self.assertTrue(all(r['target_price'] is None for r in rows))
+                added = {'tracking_enabled', 'marketplace', 'target_price'} if t == 'card_variants' else set()
                 rows = [{k:v for k,v in r.items() if k not in added} for r in rows]
                 self.assertEqual(rows, before[t])

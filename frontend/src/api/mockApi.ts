@@ -3,6 +3,8 @@ import { parseAliExpressUrl } from '../features/cards/aliexpressIdentity'
 import { parseWildberriesUrl } from '../features/cards/wildberriesIdentity'
 import { parseOzonUrl } from '../features/cards/ozonIdentity'
 import { compareMoney, priceText, subtractMoney } from '../utils/money'
+import { mockAssessment, validatePurchaseMoney } from './mockPurchase'
+import type { PurchaseSettings, PurchaseSettingsInput } from '../types/domain'
 import { priceMetrics } from './mockPriceMetrics'
 import type {
   CardHistoryResponse,
@@ -20,6 +22,7 @@ import type {
   GroupInput,
 } from '../types/domain'
 
+let purchaseSettings: PurchaseSettings = { instanceId: 'demo', smallRangeTolerance: null, historicalSavingsShare: null, targetNotificationsEnabled: false }
 const now = Date.now()
 
 let cards: TrackedCardView[] = [
@@ -197,7 +200,11 @@ function cardView(card: TrackedCardView, asOf = Date.now()): TrackedCardView {
   return { ...card, title: primary?.productTitle ?? null, options: primary?.options ?? {}, url: primary?.url ?? null, imageUrl: primary?.imageUrl ?? null, lastCollectedAt: primary?.updatedAt ?? null, currentPrice: metrics.latest?.price ?? null,
     currentAvailability: metrics.latest?.availability ?? null,
     lastObservedAt: metrics.latest?.observedAt ?? null,
-    minimumPrice: metrics.minimumPrice, averagePrice: metrics.averagePrice }
+    minimumPrice: metrics.minimumPrice, averagePrice: metrics.averagePrice, targetPrice: primary?.targetPrice ?? null,
+    lastCollectionRunId: metrics.latest?.collectionRunId ?? null,
+    purchaseAssessment: mockAssessment({ price: metrics.latest?.price ?? null, availability: metrics.latest?.availability ?? null,
+      minimum: metrics.minimumPrice, maximum: metrics.maximumPrice, average: metrics.averagePrice, target: primary?.targetPrice ?? null,
+      historyStartedAt: metrics.historyStartedAt, asOf }, purchaseSettings) }
 }
 
 function cardDeal(card: TrackedCardView, asOf = Date.now()): Deal | null {
@@ -267,6 +274,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
     if (typeof imported.dealsEnabled !== 'boolean' || !imported.variants.length) throw new Error('Некорректная карточка')
     const refs = new Set<string>()
     for (const v of imported.variants) {
+      if ('targetPrice' in v) validatePurchaseMoney(v.targetPrice ?? null)
       validateVariant(imported.marketplace as Marketplace, v.externalId, v.url)
       const article = ['aliexpress','wildberries'].includes(imported.marketplace) ? v.externalId.split(':')[0] : v.externalId
       if ((imported.marketplace !== 'ozon' && article !== imported.externalId) || refs.has(v.externalId)) throw new Error('Повторный или чужой вариант')
@@ -309,6 +317,7 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
           updatedAt: incoming.updatedAt ?? null, currentPrice: null, currentAvailability: null, lastObservedAt: null }
         variants.push(variant)
       }
+      if ('targetPrice' in incoming) variant.targetPrice = incoming.targetPrice
       variant.imageUrl ??= incoming.imageUrl ?? (incoming.externalId === imported.primaryExternalId ? imported.imageUrl ?? null : null)
       variant.productTitle ??= incoming.productTitle ?? (incoming.externalId === imported.primaryExternalId ? imported.title : null)
       if (incoming.externalId === imported.primaryExternalId) card.primaryVariantId = variant.id
@@ -335,6 +344,16 @@ function mergeImportedCards(document: TransferDocument, apply: boolean): ImportS
 
 // Mock transport prepares fixture images only; it does not verify the live renderer.
 export const mockApi = {
+  async getPurchaseSettings() { return delay({ ...purchaseSettings }) },
+  async updatePurchaseSettings(input: PurchaseSettingsInput) {
+    if (input.smallRangeTolerance !== undefined) validatePurchaseMoney(input.smallRangeTolerance, true)
+    if (input.historicalSavingsShare != null) {
+      validatePurchaseMoney(input.historicalSavingsShare)
+      if (compareMoney(input.historicalSavingsShare, '100') > 0) throw new Error('Процент должен быть не больше 100')
+    }
+    purchaseSettings = { ...purchaseSettings, ...input }
+    return delay({ ...purchaseSettings })
+  },
   async getThumbnail(cardId: number, profile: 'list' | 'tile' | 'detail', scale: number, variantId?: number): Promise<Blob> {
     const card = cards.find((item) => item.id === cardId)
     const source = variantId === undefined ? (card && cardView(card).imageUrl)
@@ -360,7 +379,7 @@ export const mockApi = {
   },
   async getCatalog() {
     const asOf = Date.now()
-    return delay({ cards: cards.map(card => cardView(card, asOf)), groups: groups.map(group => groupView(group, asOf)),
+    return delay({ instanceId: purchaseSettings.instanceId, cards: cards.map(card => cardView(card, asOf)), groups: groups.map(group => groupView(group, asOf)),
       deals: cards.flatMap((card) => { const deal = cardDeal(card, asOf); return deal ? [deal] : [] })
         .toSorted((a, b) => compareMoney(b.savings, a.savings) || a.card.id - b.card.id) })
   },
@@ -393,7 +412,7 @@ export const mockApi = {
       groups: groups.map((g) => ({ name: g.name, tags: g.tags, cards: cards.filter((c) => c.groupId === g.id).map((c) => ({ marketplace:c.marketplace,externalId:c.externalId })) })),
       cards: cards.map(card => cardView(card)).map((c) => ({ marketplace:c.marketplace, externalId:c.externalId, title:c.title,url:c.url,imageUrl:c.imageUrl,tags:c.tags,
         dealsEnabled:c.dealsEnabled,createdAt:c.createdAt,primaryExternalId:variants.find((v) => v.id === c.primaryVariantId)!.externalId,
-        variants:variants.filter((v) => v.cardId === c.id).map((v) => ({ externalId:v.externalId,trackingEnabled:v.trackingEnabled,title:v.title,url:v.url,imageUrl:v.imageUrl ?? null,productTitle:v.productTitle ?? null,options:v.options,updatedAt:v.updatedAt,
+        variants:variants.filter((v) => v.cardId === c.id).map((v) => ({ externalId:v.externalId,targetPrice:v.targetPrice ?? null,trackingEnabled:v.trackingEnabled,title:v.title,url:v.url,imageUrl:v.imageUrl ?? null,productTitle:v.productTitle ?? null,options:v.options,updatedAt:v.updatedAt,
           history:history.filter((h) => h.variantId === v.id).toSorted((a,b) => Date.parse(a.observedAt)-Date.parse(b.observedAt)).map((h) => ({ price:h.price,availability:h.availability,observedAt:h.observedAt })) })) })),
     })
   },
@@ -462,6 +481,7 @@ export const mockApi = {
     if (!selected || selected.cardId !== cardId) throw new Error('Вариант не принадлежит этому товару')
     const url = 'url' in input ? input.url ?? null : selected.url
     validateVariant(card.marketplace,selected.externalId,url)
+    if ('targetPrice' in input) { validatePurchaseMoney(input.targetPrice ?? null); selected.targetPrice = input.targetPrice }
     Object.assign(card,input,{url,updatedAt:new Date().toISOString()})
     if ('url' in input) selected.url=url
     if ('title' in input) selected.productTitle=input.title ?? null

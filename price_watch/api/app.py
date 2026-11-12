@@ -10,8 +10,8 @@ from fastapi.responses import JSONResponse
 
 from .errors import ApiProblem, api_problem_handler, validation_error_handler
 from .routes import cards_router, runs_router, groups_router
-from .dependencies import CatalogDep
-from .schemas import CatalogResponse
+from .dependencies import CatalogDep, PurchaseDep
+from .schemas import CatalogResponse, PurchaseSettingsUpdate, PurchaseSettingsResponse
 from ..infrastructure.postgres import AsyncDatabase, Database, MigrationRunner
 from ..bootstrap import create_postgres_stores
 from ..application.services import ApiServices
@@ -91,6 +91,14 @@ def create_app(
     @app.get("/api/catalog", response_model=CatalogResponse)
     async def catalog(catalog: CatalogDep):
         return await catalog.get_catalog()
+
+    @app.get('/api/purchase-settings', response_model=PurchaseSettingsResponse)
+    async def purchase_settings(store: PurchaseDep):
+        return await store.get_settings()
+
+    @app.patch('/api/purchase-settings', response_model=PurchaseSettingsResponse)
+    async def update_purchase_settings(payload: PurchaseSettingsUpdate, store: PurchaseDep):
+        return await store.update_settings(payload.model_dump(exclude_unset=True))
 
     @app.get("/api/health")
     async def health():

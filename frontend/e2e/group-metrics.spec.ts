@@ -7,11 +7,12 @@ async function choose(page: Page, name: string, value: string) {
   await expect(page.getByRole('combobox', { name, exact: true })).toHaveText(value)
   await expect(page.getByRole('combobox', { name, exact: true })).toHaveAttribute('aria-expanded', 'false')
 }
+/** Equal one-day intervals keep time-weighted fixture metrics stable as dates advance. */
 function fixtureCard(externalId: string, marketplace: string, prices: number[], tag: string) {
   return { externalId, marketplace, title: `Fixture товар ${externalId}`, url: null, imageUrl: null,
     tags: [tag], createdAt: '2026-10-01T12:00:00Z', dealsEnabled: true,
     primaryExternalId: marketplace==='wildberries'?`${externalId}:1`:externalId,
-    variants:[{externalId:marketplace==='wildberries'?`${externalId}:1`:externalId,url:null,history: prices.map((price, index) => ({ price: String(price), availability: 'in_stock', observedAt: `2026-10-0${index + 1}T12:00:00Z` })) }] }
+    variants:[{externalId:marketplace==='wildberries'?`${externalId}:1`:externalId,url:null,history: prices.map((price, index) => ({ price: String(price), availability: 'in_stock', observedAt: new Date(Date.now() - (prices.length - index) * 86400000).toISOString() })) }] }
 }
 async function importFixture(page: Page, document: object) {
   await page.getByRole('button', { name: 'Настройки', exact: true }).click()
@@ -37,8 +38,8 @@ test('выгода и максимум видны после отключени�
   await expect(page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 903' }).locator('.catalog-savings__maximum')).toHaveText('5 ₽')
   await expect(page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 904' }).locator('.catalog-savings__maximum')).toHaveText('0 ₽')
   const row = page.locator('.cards-table__product').filter({ hasText: 'Fixture товар 901' })
-  await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
-  await expect(row.locator('.catalog-savings__maximum')).toHaveText('20 ₽')
+  await expect(row.locator('.deal-savings')).toHaveText('7 ₽')
+  await expect(row.locator('.catalog-savings__maximum')).toHaveText('17 ₽')
   const sizes = await row.locator('.catalog-savings > span').evaluateAll(elements => elements.map(element => ({
     font: parseFloat(getComputedStyle(element).fontSize), top: element.getBoundingClientRect().top,
   })))
@@ -49,12 +50,12 @@ test('выгода и максимум видны после отключени�
   await row.getByRole('button', { name: /Действия с карточкой/ }).click()
   await page.getByRole('menuitem', { name: 'Исключить из выгодных' }).click()
   await expect(row).toContainText('Исключён из выгодных')
-  await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
-  await expect(row.locator('.catalog-savings__maximum')).toHaveText('20 ₽')
+  await expect(row.locator('.deal-savings')).toHaveText('7 ₽')
+  await expect(row.locator('.catalog-savings__maximum')).toHaveText('17 ₽')
   await choose(page, 'Участие в выгодных', 'Выгодные')
   await expect(row).toHaveCount(0)
   await choose(page, 'Участие в выгодных', 'Все товары')
-  await expect(row.locator('.deal-savings')).toHaveText('10 ₽')
+  await expect(row.locator('.deal-savings')).toHaveText('7 ₽')
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   expect(errors).toEqual([])
 })

@@ -1,5 +1,6 @@
 """Storage contracts used by card, history, group and transfer consumers."""
 from typing import Protocol
+from decimal import Decimal
 from ..domain.models import TrackedCard, TrackedCardOverview, PriceHistoryPoint, PriceStatistics
 
 
@@ -11,7 +12,8 @@ class CardStore(Protocol):
     async def update_card(self, card_id: int, *, title: str | None = None, url: str | None = None,
                           deals_enabled: bool | None = None, update_title: bool = False,
                           update_url: bool = False, group_id: int | None = None,
-                          update_group: bool = False, tags: list[str] | None = None, primary_variant_id: int | None = None) -> TrackedCard | None: ...
+                          update_group: bool = False, tags: list[str] | None = None, primary_variant_id: int | None = None,
+                          target_price: Decimal | None = None, update_target: bool = False) -> TrackedCard | None: ...
     async def set_variant_tracking(self, card_id: int, enabled: bool, variant_id: int | None = None) -> bool: ...
     async def get_variant_image(self, card_id: int, variant_id: int) -> tuple[str | None] | None: ...
     async def get_variants(self, card_id: int) -> list[dict]: ...

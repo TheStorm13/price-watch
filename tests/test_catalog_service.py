@@ -76,3 +76,14 @@ class CatalogServiceTests(unittest.IsolatedAsyncioTestCase):
         result = await CatalogService(Reader(replace(inputs, cards=(disabled, entry(2, '30'))))).get_catalog()
         self.assertFalse(result['groups'][0]['is_deal'])
         self.assertTrue(result['groups'][0]['has_member_deals'])
+
+    async def test_personal_match_of_other_member_is_not_assigned_to_representative(self):
+        a = entry(1, '80', average='70', minimum='60')
+        b = entry(2, '90')
+        b = replace(b, overview=replace(b.overview, card=replace(b.overview.card, target_price=Decimal('100'))))
+        result = await CatalogService(Reader(CatalogInputs((a, b), (GroupMetadata(1, 'Group', ()),)))).get_catalog()
+        group = result['groups'][0]
+        self.assertFalse(group['representative_card']['purchase_assessment']['is_match'])
+        self.assertEqual(result['cards'][1]['purchase_assessment']['matches'], ['target_price'])
+        self.assertTrue(group['has_member_deals'])
+        self.assertFalse(group['is_deal'])

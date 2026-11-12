@@ -4,6 +4,7 @@ import os
 import unittest
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from unittest.mock import Mock
 from decimal import Decimal
 from uuid import uuid4
 from unittest.mock import patch
@@ -33,6 +34,10 @@ class GroupMetricsIntegrationTests(unittest.IsolatedAsyncioTestCase):
     @asynccontextmanager
     async def fixture(self):
         manual_queue(self)
+        # Assessments expose their evaluation clock; freeze it when comparing snapshots.
+        clock = Mock(wraps=datetime)
+        clock.now.return_value = datetime.now(timezone.utc)
+        self.enterContext(patch('price_watch.infrastructure.postgres.catalog_repository.datetime', clock))
         database = await AsyncDatabase(TEST_DATABASE_URL).open()
         repository = create_postgres_stores(database)
         cards = [await repository.cards.add_card(marketplace, f'{uuid4().int % 1000000000 + 1}:2' if marketplace == 'wildberries' else str(uuid4().int), title=f'Card {index}', tags=[f'tag{index}'])

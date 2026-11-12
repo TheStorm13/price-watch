@@ -18,6 +18,7 @@ def _tracked_card(record: MarketplaceCardRecord, variant=None, last_collected_at
         id=record.id,
         variant_id=variant.id if variant else None,
         primary_variant_id=record.primary_variant_id,
+        target_price=variant.target_price if variant else None,
         last_collected_at=last_collected_at,
         ref=ProductRef(record.marketplace, variant.external_id if for_collection and variant else record.external_id),
         options=dict(variant.options) if variant else {},

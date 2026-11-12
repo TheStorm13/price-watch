@@ -50,6 +50,7 @@ def price_metrics_ctes(target_variants: str) -> str:
         ), metrics AS (
             SELECT variant_id, min(price) AS minimum_price, max(price) AS maximum_price,
                    round(sum(price * duration) / nullif(sum(duration), 0)::numeric(60, 40), 12) AS average_price,
+                   min(greatest(observed_at, :window_start)) FILTER (WHERE duration > 0) AS history_started_at,
                    count(*) FILTER (WHERE observed_at >= :window_start) AS observations_count,
                    count(DISTINCT (observed_at AT TIME ZONE 'UTC')::date)
                        FILTER (WHERE observed_at >= :window_start) AS baseline_days
@@ -58,13 +59,13 @@ def price_metrics_ctes(target_variants: str) -> str:
     """
 
 
-async def card_price_metric_rows(session):
-    start, end = price_window()
+async def card_price_metric_rows(session, as_of=None):
+    start, end = price_window(as_of)
     statement = text(price_metrics_ctes(
         'SELECT DISTINCT primary_variant_id AS variant_id FROM marketplace_cards '
         'WHERE primary_variant_id IS NOT NULL'
     ) + """
-        SELECT c.id, m.minimum_price, m.average_price, coalesce(m.baseline_days, 0) AS baseline_days
+        SELECT c.id, m.minimum_price, m.maximum_price, m.average_price, m.history_started_at, coalesce(m.baseline_days, 0) AS baseline_days
         FROM marketplace_cards c
         LEFT JOIN metrics m ON m.variant_id = c.primary_variant_id
     """)

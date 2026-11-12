@@ -70,3 +70,50 @@ the range midpoint SHALL NOT be presented as the time-weighted average.
 #### Scenario: Switching the history period
 - **WHEN** the user changes 30 days to 7 or 90 days
 - **THEN** chart and measurement rows use the selected period and the upper statistics retain their two-year scope
+
+
+### Requirement: Personal purchase assessment remains separate from deals
+The catalog SHALL evaluate the primary variant against independently optional
+small-range, target-price and historical-savings-share conditions. All shall
+require a known in-stock current price. Small-range SHALL match maximum minus
+minimum ≤ the configured ruble tolerance. Share SHALL match current price ≤
+average − Q/100 × (average − minimum), only when average > minimum. Both SHALL
+require strictly more than 30×24 hours since the first positive-duration valid
+priced interval within the two-year window, including its clipped anchor.
+Target-price SHALL match current price ≤ its variant's target without an age limit.
+All fulfilled reasons SHALL be returned in range/target/share order, with exact
+decimal inputs and a single evaluation time and settings snapshot.
+
+Settings SHALL persist in the database and initially be disabled. A nullable target
+SHALL belong to its variant, survive transfer export/import, and never be copied
+automatically when the primary variant changes. Missing imported target SHALL
+preserve the existing target; explicit null SHALL clear it.
+
+Personal matching SHALL frame the existing savings indicator with a star in list
+and tile, including excluded-from-deals cards; it SHALL NOT alter actual savings,
+deal membership, filtering or sorting. An accessible click/keyboard explanation
+SHALL show all reasons, observed prices and date, and uncertainty about future
+sales. Historical period selectors SHALL NOT alter the assessment.
+
+#### Scenario: Small observed price range
+- **WHEN** more than 30 days of history has min 315, max 340, tolerance 50 and current price 340
+- **THEN** the range condition matches, even if current price is above average
+
+#### Scenario: Share means progress from mean to minimum
+- **WHEN** average is 1000, minimum is 800 and the share threshold is 70 with a monthly baseline
+- **THEN** price 860 or below matches; 860.01 does not
+
+#### Scenario: Target is available for new tracking
+- **WHEN** an in-stock variant costs 850 with a target of 900 and less than a month of history
+- **THEN** its target matches, independent of the unavailable historical conditions
+
+### Requirement: Target notifications observe new crossings
+Optional desktop notifications SHALL observe catalog snapshots above routes while
+the application is running, including the tray. Startup, enabling and target
+changes SHALL establish a baseline without historical bursts. A new observation
+crossing from above target or unavailable to an in-stock price ≤ target SHALL
+notify once; remaining below SHALL NOT repeat. Above target or unavailable SHALL
+rearm. State SHALL be checkpointed per database instance, card, variant, target,
+observation and collection run. Transport failures SHALL be visible without
+cancelling collection or retrying indefinitely. Closed-app delivery, every
+intermediate transition and crash-proof exactly-once delivery are not guaranteed.

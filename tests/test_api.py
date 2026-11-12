@@ -6,6 +6,7 @@ from httpx import ASGITransport, AsyncClient
 
 from price_watch.api import create_app
 from price_watch.api.schemas import CardResponse
+from price_watch.domain.purchase import PurchaseSettings
 from price_watch.domain.models import TrackedCardOverview, CollectionRun, TrackedCard
 from price_watch.domain.errors import CardAlreadyExists, NoCards
 from price_watch.application.services import ApiServices
@@ -36,6 +37,14 @@ class FakeRepository:
         self.duplicate = False
         self.no_cards = False
         self.groups = {}
+        self.purchase = PurchaseSettings(instance_id="test-db")
+
+    async def get_settings(self):
+        return self.purchase
+
+    async def update_settings(self, changes):
+        self.purchase = replace(self.purchase, **changes)
+        return self.purchase
 
     async def create_group(self, name, card_ids, tags=None):
         self.groups[1] = {"name": name, "card_ids": card_ids, "tags": tags or []}
@@ -144,7 +153,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         self.repository = FakeRepository()
-        app = create_app(services=ApiServices(self.repository, self.repository, self.repository, self.repository, self.repository, self.repository, CatalogService(self.repository)))
+        app = create_app(services=ApiServices(self.repository, self.repository, self.repository, self.repository, self.repository, self.repository, CatalogService(self.repository), self.repository))
         self.client = AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://testserver",
@@ -159,7 +168,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         thumbnails = AsyncMock()
         thumbnails.get.return_value = b'png-content'
         services = ApiServices(self.repository, self.repository, self.repository, self.repository,
-                               self.repository, self.repository, CatalogService(self.repository))
+                               self.repository, self.repository, CatalogService(self.repository), self.repository)
         app = create_app(services=services, api_token='secret', thumbnails=thumbnails)
         async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
             self.assertEqual((await client.get('/api/cards/1/thumbnail?profile=list&scale=1')).status_code, 401)
@@ -230,7 +239,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.get("/api/catalog")).json()["groups"], [])
 
     async def test_desktop_api_requires_its_session_token(self):
-        app = create_app(services=ApiServices(self.repository, self.repository, self.repository, self.repository, self.repository, self.repository, CatalogService(self.repository)), api_token="session-secret")
+        app = create_app(services=ApiServices(self.repository, self.repository, self.repository, self.repository, self.repository, self.repository, CatalogService(self.repository), self.repository), api_token="session-secret")
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
             self.assertEqual((await client.get("/api/health")).status_code, 401)
             self.assertEqual(

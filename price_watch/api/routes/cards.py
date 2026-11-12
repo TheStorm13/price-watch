@@ -47,6 +47,10 @@ async def export_cards(transfer: TransferDep):
 async def _import_cards(payload: ImportDocument, transfer: TransferDep, preview: bool):
     try:
         data = payload.model_dump()
+        for source, card in zip(payload.cards, data['cards']):
+            for variant, item in zip(source.variants, card['variants']):
+                if 'target_price' not in variant.model_fields_set:
+                    item.pop('target_price', None)
         if payload.groups:
             return await transfer.import_cards(data["cards"], groups=data["groups"], preview=preview)
         return await transfer.import_cards(data["cards"], preview=preview)
@@ -137,6 +141,8 @@ async def update_card(card_id: int, payload: CardUpdate, cards: CardDep):
             update_group="group_id" in fields,
             tags=payload.tags,
             primary_variant_id=payload.primary_variant_id,
+            target_price=payload.target_price,
+            update_target="target_price" in fields,
         )
     except InvalidProductId as exc:
         raise ApiProblem(422, "invalid_card_url", str(exc), "url") from exc

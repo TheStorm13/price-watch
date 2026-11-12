@@ -27,6 +27,8 @@ import { CardDrawer } from '../cards/AddCardDrawer'
 import { sortVariants, variantLabel } from './variantDisplay'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select'
 
+import { TargetPriceForm } from '../purchase/TargetPriceForm'
+
 const periods = [7, 30, 90] as const
 
 export function CardDetailsPage() {
@@ -104,6 +106,7 @@ export function CardDetailsPage() {
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate(returnTo, { replace: true }) }} />
         </div>
 
+      <TargetPriceForm key={`${card.id}:${card.primaryVariantId}`} card={card} />
       <div className="price-summary"><HelpHint label="Статистика цен">Показатели главного варианта за последние два года. Середина диапазона — (минимум + максимум) / 2. Разница — максимум − минимум.</HelpHint>
         <div className="price-summary__primary">
           <strong>{formatPrice(card.currentPrice)}</strong>

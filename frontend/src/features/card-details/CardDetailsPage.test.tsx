@@ -11,6 +11,7 @@ const calls = vi.hoisted(() => ({ history: vi.fn(), chart: vi.fn() }))
 const card = { id: 1, title: 'Проверяемый товар', marketplace: 'ozon', externalId: '123', tags: [], dealsEnabled: true,
   imageUrl: null, url: null, currentPrice: '100.00', currentAvailability: 'in_stock', lastObservedAt: '2026-10-29', updatedAt: '2026-10-29' }
 vi.mock('../../api/queries', () => ({
+  useCatalog: () => ({ data: { cards: [] } }),
   useCard: () => ({ data: { ...card, primaryVariantId: state.primaryVariantId, currentPrice: state.primaryVariantId === 2 ? '200.00' : card.currentPrice }, isLoading: false, isError: false }),
   useCardHistory: (_cardId: number, days: number, _page: number, variantId?: number) => {
     calls.history(days)

@@ -63,11 +63,12 @@ test('settings, help and product layout preserve their positions and keyboard fl
   expect(bounds.height).toBe(868)
   expect(bounds.width).toBe(1200)
   await expect(panel.getByRole('heading', { name: 'Данные' })).toBeVisible()
-  for (const name of ['Обновление цен', 'Относительно выгодная покупка', 'Уведомления']) {
+  for (const name of ['Обновление цен', 'Условия покупки']) {
     await expect(panel.getByRole('heading', { name, exact: true })).toBeVisible()
   }
   await expect(panel.getByText('Изменение периодичности — пока не реализовано.', { exact: true })).toBeVisible()
-  await expect(panel.getByText('Отметка для цены рядом со средней — пока не реализовано.', { exact: true })).toBeVisible()
+  await expect(panel.getByLabel('Небольшие колебания цены', { exact: true })).toBeVisible()
+  await expect(panel.getByLabel('Уведомлять о достижении целевой цены')).toBeVisible()
   await expect(panel.getByText(/Автоматический экспорт, выбор папки и расписания/)).toBeVisible()
   await expect(panel.getByText('Работа приложения', { exact: true })).toHaveCount(0)
   await expect(panel.getByText(/Тихие часы/i)).toHaveCount(0)

@@ -70,6 +70,10 @@ async function request<T>(path: string, init?: RequestInit, binary = false): Pro
 }
 
 export const api = {
+  getPurchaseSettings: (): Promise<import('../types/domain').PurchaseSettings> =>
+    isE2ETestMode ? mockApi.getPurchaseSettings() : request('/api/purchase-settings'),
+  updatePurchaseSettings: (input: import('../types/domain').PurchaseSettingsInput): Promise<import('../types/domain').PurchaseSettings> =>
+    isE2ETestMode ? mockApi.updatePurchaseSettings(input) : request('/api/purchase-settings', { method: 'PATCH', body: JSON.stringify(input) }),
   getThumbnail: (cardId: number, options: { profile: ThumbnailProfile; scale: number; variantId?: number }, signal?: AbortSignal): Promise<Blob> => {
     const params = new URLSearchParams({ profile: options.profile, scale: String(options.scale) })
     if (options.variantId !== undefined) params.set('variantId', String(options.variantId))

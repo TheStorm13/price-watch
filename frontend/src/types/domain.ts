@@ -9,7 +9,33 @@ export type RunStatus =
   | 'completed_with_errors'
   | 'failed'
 
+export interface PurchaseSettings {
+  instanceId: string
+  smallRangeTolerance: DecimalString | null
+  historicalSavingsShare: DecimalString | null
+  targetNotificationsEnabled: boolean
+}
+export type PurchaseSettingsInput = Partial<Omit<PurchaseSettings, 'instanceId'>>
+export interface PurchaseAssessment {
+  evaluatedAt: string
+  historyStartedAt: string | null
+  historyEligible: boolean
+  isMatch: boolean
+  matches: ('small_range' | 'target_price' | 'historical_savings_share')[]
+  currentPrice: DecimalString | null
+  minimumPrice: DecimalString | null
+  maximumPrice: DecimalString | null
+  averagePrice: DecimalString | null
+  targetPrice: DecimalString | null
+  smallRangeTolerance: DecimalString | null
+  historicalSavingsShare: DecimalString | null
+  threshold: DecimalString | null
+}
+
 export interface TrackedCardView {
+  targetPrice?: DecimalString | null
+  purchaseAssessment?: PurchaseAssessment | null
+  lastCollectionRunId?: number | null
   id: number
   marketplace: Marketplace
   externalId: string
@@ -32,6 +58,7 @@ export interface TrackedCardView {
 }
 
 export interface TrackedVariant {
+  targetPrice?: DecimalString | null
   trackingEnabled: boolean
   isTracked: boolean
   imageUrl?: string | null
@@ -134,6 +161,7 @@ export interface CreateCardInput {
 }
 
 export interface UpdateCardInput {
+  targetPrice?: DecimalString | null
   title?: string | null
   url?: string | null
   dealsEnabled?: boolean
@@ -183,6 +211,7 @@ export interface TransferCard {
 }
 
 export interface TransferVariant {
+  targetPrice?: DecimalString | null
   trackingEnabled?: boolean
   imageUrl?: string | null
   productTitle?: string | null
@@ -219,6 +248,7 @@ export interface ApiErrorPayload {
 }
 
 export interface CatalogSnapshot {
+  instanceId?: string
   cards: TrackedCardView[]
   groups: ProductGroup[]
   deals: Deal[]

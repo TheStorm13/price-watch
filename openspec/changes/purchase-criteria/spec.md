@@ -86,10 +86,10 @@
 
 ## Agreed solution
 
-**Статус согласования:** это проект спецификации по запросу пользователя,
-не разрешение реализации. Три условия и звёздное выделение обсуждены в чате;
-технические решения ниже предложены для первого review gate. Явного одобрения
-полной спецификации ещё нет.
+**Статус согласования:** пользователь явно одобрил полную спецификацию
+2026-11-12 сообщением «Приступай к реализации». Реализация и проверки завершены;
+приёмки результата пока нет. Раздел Current system фиксирует исходное состояние
+на HEAD 7e50321, до этих изменений.
 
 ### Настройки и пользовательские тексты
 
@@ -155,7 +155,7 @@ historical_savings_share; `isMatch = matches.length > 0`. При неизвес�
 
 ### Данные, API и потребители
 
-Предлагаемый контракт (имена финализировать в реализации без изменения смысла):
+Реализованный контракт:
 
 - Persisted singleton `purchase_settings` в PostgreSQL:
   `small_range_tolerance: Decimal|null`, `historical_savings_share: Decimal|null`,
@@ -220,7 +220,7 @@ focus, открывающий Popover/Dialog по клику, Enter/Space, за�
 
 ### Уведомления о целевой цене
 
-Предлагается первый объём: системные desktop-уведомления, пока приложение
+Согласованный объём: системные desktop-уведомления, пока приложение
 работает, в том числе свёрнуто в трей. Browser/demo использует тестовый transport
 без запроса браузерных разрешений и не доказывает доставку ОС. Не обещать работу
 после полного выхода приложения или воспроизведение всех промежуточных цен.
@@ -264,7 +264,7 @@ checkpoint привязан к экземпляру backend/БД, card+variant, 
 Не вводить прогноз, процентиль и статистическую «уверенность» из возраста:
 даже длинная история может не содержать будущую распродажу.
 
-Предлагаемое расширение существующих CRUD/DI/каталога не меняет архитектурные
+Расширение существующих CRUD/DI/каталога не меняет архитектурные
 границы; отдельный ADR не требуется. Если реализация потребует backend event
 delivery/outbox или переноса настройки/оценки в native runtime, вернуться
 к согласованию архитектуры, а не расширять задачу самостоятельно.
@@ -278,29 +278,29 @@ BACKLOG остаётся независимым: после приёмки об�
 
 ## Implementation and verification plan
 
-- [ ] 1. Согласовать эту спецификацию: семантику трёх критериев, сохранение
+- [x] 1. Согласовать эту спецификацию: семантику трёх критериев, сохранение
   текущей подборки deals, привязку цели к главному варианту, месячный порог,
   первоначально выключенные настройки и ограниченный объём desktop-уведомлений.
-- [ ] 2. Добавить доменный evaluator и расширение агрегатов max/historyStartedAt;
+- [x] 2. Добавить доменный evaluator и расширение агрегатов max/historyStartedAt;
   проверить примеры, Decimal-границы, ровно/больше 30 дней, constant/empty/null,
   unavailable, якорь, future points и изоляцию вариантов. Сопоставить backend/mock.
-- [ ] 3. Добавить миграцию, stores/ports/DI и API настроек/цели/assessment;
+- [x] 3. Добавить миграцию, stores/ports/DI и API настроек/цели/assessment;
   перенести данные через все mapping/response/transfer потребители. Проверить
   PATCH missing/null, атомарность, validation, сохранение/перезапуск, старый import,
   round-trip и отсутствие потери/дублирования истории на disposable TEST_DATABASE_URL.
-- [ ] 4. Реализовать настройки с пояснениями и блок цели в деталях; обновить
+- [x] 4. Реализовать настройки с пояснениями и блок цели в деталях; обновить
   client/types/queries/mock. Проверить сохранение, отключение, ошибки, смену
   главного варианта, короткую историю и независимость от 7/30/90.
-- [ ] 5. Добавить общий звёздный индикатор с объяснением всех причин в списке,
+- [x] 5. Добавить общий звёздный индикатор с объяснением всех причин в списке,
   плитке и у соответствующих участников групп. Проверить OR/несколько matches,
   отсутствие товара, исключённую из deals карточку, клавиатуру и стабильность
   размеров виртуальных строк; demo E2E и визуальный просмотр результата.
-- [ ] 6. Реализовать target-only desktop notification transport и observer,
+- [x] 6. Реализовать target-only desktop notification transport и observer,
   проверив текущие официальные docs перед подключением. Fake-тесты переходов,
   restart/polling/run-id dedup, изменений цели, отказа разрешения, ошибки доставки,
   работы вне каталога и разграничения checkpoint разных backend. Native build и
   ручная доставка ОС — только пользовательская проверка, если отдельно не поручены.
-- [ ] 7. Запустить релевантные tests/test_application_rules.py,
+- [x] 7. Запустить релевантные tests/test_application_rules.py,
   tests/test_catalog_service.py, tests/test_api.py, tests/test_decimal_contract.py,
   tests/test_price_metrics_integration.py, tests/test_postgres_integration.py,
   tests/test_group_metrics_integration.py и затронутые transfer/CLI checks.
@@ -315,11 +315,64 @@ BACKLOG остаётся независимым: после приёмки об�
 
 ## Execution state
 
-2026-11-12: проведено ограниченное исследование текущего source и связанных
-потребителей через CodeGraph; Repowise risk соответствует исходному HEAD.
-Создан change со schema vibe-flow. Подготовлена только эта спецификация,
-код/тесты/постоянные контракты не изменены, миграции не запускались.
-Продуктовые проверки ещё не выполнялись: перечисленные проверки — план.
+2026-11-12: пользователь явно одобрил спецификацию: «Приступай к реализации».
+Реализованы evaluator, двухлетние max/historyStartedAt, миграция 0023, настройки
+в PostgreSQL и GET/PATCH, цели вариантов с атомарным PATCH, round-trip transfer,
+assessment каталога и instanceId БД. Numeric JSON/CLI/worker пути сохранены.
+Интерфейс: настройки с пояснениями, цель главного варианта, рамка со звездой и
+Popover всех причин в списке/плитке/группах. Действующая подборка deals не менялась.
+Уведомления: общий observer над routes, polling только при включённой доставке,
+refetchIntervalInBackground, baseline без старых сообщений, run/observation/goal
+переходы и checkpoint на instanceId. Добавлен Tauri notification 2.8.1 с npm/Cargo
+locks, Rust init и capability. Прочитаны Context7 official docs и исходник плагина:
+sendNotification возвращает void и теряет async rejection, поэтому transport
+ожидает зарегистрированный plugin:notification|notify и показывает ошибку.
 
-Следующее действие: review пользователем и явное одобрение спецификации либо
-корректировки. До одобрения не начинать implementation. Приёмки реализации нет.
+Проверки на отдельном временном PostgreSQL /tmp/price-watch-purchase-test-pg,
+порт 55439, БД price_watch_purchase_test; пользовательская БД не использовалась:
+
+- 109 Python tests passed: application_rules, catalog_service, api,
+  decimal_contract, price_metrics_integration, postgres_integration,
+  group_metrics_integration, purchase_criteria, purchase_integration,
+  price_watch_cli, product_variants, variant_tracking. Включены сохранение истории
+  при upgrade существующих данных, null/missing/invalid PATCH и import,
+  цели разных вариантов, возраст истории, доступность, точные Decimal-границы,
+  direct/queued collection и DB-free numeric/raw с обоими CLI imports.
+- ORM columns/check constraints трёх затронутых таблиц совпали с migrated БД.
+- Frontend TypeScript lint passed; Vitest 146/146 passed (36 файлов).
+  После уточнения теста изоляции backend дополнительно 7/7 focused passed.
+- Полный demo E2E: 102/108 passed; 6 failures обнаружили устаревшие проверки
+  арифметического среднего/октябрьские fixture-даты и прежние заглушки настроек.
+  Они исправлены на действующее среднее по времени, равные интервалы относительно
+  даты запуска и новые поля. Повторный затронутый прогон 20/20 passed, включая
+  все шесть failures, весь group-metrics/interface-refinements и новый purchase.
+- Визуальная проверка Playwright: /cards → цель → рамка/причины → плитка →
+  настройки, 1536×1000 и 1024×768. Browser plugin not available.
+  Identity/content/overlay/console/interaction/overflow checks passed. Проверены
+  снимки /tmp/purchase-list.png, /tmp/purchase-tiles.png,
+  /tmp/purchase-settings.png, /tmp/purchase-settings-1024.png.
+  Исправлены сжатие формы из-за container width и обрезание рамки плитки.
+- cargo fetch --locked и cargo metadata --locked --no-deps passed; существующие
+  версии Cargo сохранены, добавлены только notification и его зависимости.
+- openspec validate purchase-criteria и git diff --check passed.
+- Repowise get_change_risk на staged diff: review_required, 54/69 файлов
+  анализированы. Отмечены ветвления трёх условий, nullable validation и два ранее
+  сложных import-метода. Источники проверены вручную: новые ветви сохраняют
+  пропуск/null, валидируют до записи и оставляют merge_history без изменений;
+  граничные/интеграционные проверки прошли. Нового подтверждённого дефекта нет.
+  Rust init/capability и lockfiles проверены вручную (они не покрыты health parser).
+  Совет run_all из-за Cargo lock — inferred, выбран релевантный охват; прочие
+  версии зависимостей не обновлялись, native checks ограничены правилами проекта.
+
+Постоянные DATA_AND_API, guide README, CURRENT_NUANCES, NATIVE_DESKTOP,
+DEPENDENCIES и deal-selection/group-card-metrics обновлены. BACKLOG не менялся:
+завершённые записи обновляются только после приёмки. Нет push/merge/deploy.
+
+Не проверены native-сборка, разрешения и реальная доставка ОС, в том числе из
+трея: по правилам проекта их выполняет пользователь. Demo/fake доказывают только
+UI и переходы, не доставку ОС. Доставка после полного выхода, все промежуточные
+пересечения между опросами и exactly-once после аварии не обещаются.
+
+Следующее действие: проверка staged diff/Repowise risk, commit реализации,
+обновление CodeGraph/Repowise и configured pages, затем представление пользователю
+на второй review gate. Приёмки реализации нет, архивировать change нельзя.

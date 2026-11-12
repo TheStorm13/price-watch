@@ -123,3 +123,15 @@ export function useVariantTracking() {
     },
   })
 }
+
+export function usePurchaseSettings() {
+  return useQuery({ queryKey: ['purchase-settings'], queryFn: api.getPurchaseSettings })
+}
+
+export function useUpdatePurchaseSettings() {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: api.updatePurchaseSettings, onSuccess: (settings) => {
+    client.setQueryData(['purchase-settings'], settings)
+    void client.invalidateQueries({ queryKey: queryKeys.catalog })
+  } })
+}

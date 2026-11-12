@@ -1,4 +1,5 @@
 """Build catalog projections from one materialized snapshot and shared rules."""
+from ..domain.purchase import assess_purchase
 from ..domain.catalog_rules import deal_savings, representative_id
 from ..ports.catalog import CatalogReader
 from .catalog_models import CatalogCard, CatalogDeal, CatalogGroup, CatalogSnapshot
@@ -20,6 +21,12 @@ class CatalogService:
             metrics[local.id] = metric
             card: CatalogCard = {
                 'primary_variant_id': local.primary_variant_id, 'last_collected_at': local.last_collected_at,
+                'target_price': local.target_price, 'last_collection_run_id': entry.last_collection_run_id,
+                'purchase_assessment': assess_purchase(evaluated_at=inputs.evaluated_at,
+                    history_started_at=metric.history_started_at, price=overview.current_price,
+                    availability=overview.current_availability, minimum=metric.minimum_price,
+                    maximum=metric.maximum_price, average=metric.average_price,
+                    target=local.target_price, settings=inputs.settings),
                 'id': local.id, 'marketplace': local.ref.marketplace, 'external_id': local.ref.external_id,
                 'title': local.title, 'url': local.url, 'image_url': local.image_url,
                 'deals_enabled': local.deals_enabled, 'group_id': local.group_id, 'tags': local.tags,
@@ -58,4 +65,4 @@ class CatalogService:
                 'is_deal': deal is not None,
                 'has_member_deals': any(card['id'] in by_id for card in members),
             })
-        return {'cards': cards, 'groups': projected_groups, 'deals': deals}
+        return {'instance_id': inputs.settings.instance_id, 'cards': cards, 'groups': projected_groups, 'deals': deals}

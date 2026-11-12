@@ -1,10 +1,11 @@
 """Materialized catalog data and projections, without ORM or HTTP models."""
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import TypedDict
 
 from ..domain.models import TrackedCardOverview
+from ..domain.purchase import PurchaseSettings
 
 
 @dataclass(frozen=True)
@@ -12,6 +13,8 @@ class CardMetrics:
     minimum_price: Decimal | None
     average_price: Decimal | None
     baseline_days: int
+    maximum_price: Decimal | None = None
+    history_started_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -32,9 +35,14 @@ class GroupMetadata:
 class CatalogInputs:
     cards: tuple[CatalogCardInput, ...]
     groups: tuple[GroupMetadata, ...]
+    settings: PurchaseSettings = field(default_factory=PurchaseSettings)
+    evaluated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class CatalogCard(TypedDict):
+    target_price: Decimal | None
+    purchase_assessment: dict
+    last_collection_run_id: int | None
     primary_variant_id: int | None
     last_collected_at: datetime | None
     id: int
@@ -79,6 +87,7 @@ class CatalogGroup(TypedDict):
 
 
 class CatalogSnapshot(TypedDict):
+    instance_id: str
     cards: list[CatalogCard]
     groups: list[CatalogGroup]
     deals: list[CatalogDeal]

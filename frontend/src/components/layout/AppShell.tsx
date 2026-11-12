@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ImportExportControls } from '../../features/cards/ImportExportControls'
 import { catalogTags } from '../../features/cards/catalogModel'
 import { CatalogFilters } from '../../features/cards/CatalogFilters'
+import { PurchaseSettingsPanel } from '../../features/purchase/PurchaseSettingsPanel'
+import { TargetNotificationObserver } from '../../features/purchase/TargetNotificationObserver'
 import { CatalogActionsContext } from './catalogActions'
 import { useCatalogPreferences } from '../../features/cards/useCatalogPreferences'
 
@@ -93,13 +95,8 @@ export function AppShell() {
                   {isDesktopMode ? <BackgroundSettings /> : <p>Фоновое обновление и автозапуск доступны в desktop-приложении. {apiModeLabel}</p>}
                 </section>
                 <section className="settings-block" aria-labelledby="settings-relative">
-                  <h2 id="settings-relative">Относительно выгодная покупка</h2>
-                  <p>Отметка для цены рядом со средней — пока не реализовано.</p>
-                </section>
-                <section className="settings-block" aria-labelledby="settings-notifications">
-                  <h2 id="settings-notifications">Уведомления</h2>
-                  <p>Настройка уведомлений о выгодной цене — пока не реализовано.</p>
-                  <p>Уведомления о появлении в наличии — пока не реализовано.</p>
+                  <h2 id="settings-relative">Условия покупки</h2>
+                  <PurchaseSettingsPanel />
                 </section>
                 <ImportExportControls onStatus={(message, kind) => { setTransferStatus({ message, kind }); if (kind === 'success') setSettingsOpen(false) }} />
               </DialogContent>
@@ -111,6 +108,7 @@ export function AppShell() {
             {serviceError ? <Alert variant="destructive" className="m-4"><AlertDescription><span>Фоновые службы: {serviceError}</span><Button variant="ghost" type="button" onClick={() => void retryServices()}>Повторить запуск</Button></AlertDescription></Alert> : null}
             {browserError ? <Alert variant="destructive"><AlertDescription>Не удалось открыть Chrome: {browserError}</AlertDescription></Alert> : null}
             {transferStatus ? <Alert variant={transferStatus.kind === 'error' ? 'destructive' : 'default'} role={transferStatus.kind === 'error' ? 'alert' : 'status'}><AlertDescription>{transferStatus.message}</AlertDescription></Alert> : null}
+            <TargetNotificationObserver />
             <Outlet />
           </main>
         </div>

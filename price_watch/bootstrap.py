@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import os
 
+from .infrastructure.postgres.purchase_repository import PurchaseRepository
 from .application.catalog_service import CatalogService
 from .application.services import ApiServices
 from .domain.collection_policy import CollectionPolicy
@@ -28,11 +29,12 @@ class PostgresStores:
     groups: GroupRepository
     transfer: TransferRepository
     catalog: CatalogService
+    purchase: PurchaseRepository
 
     @property
     def api(self) -> ApiServices:
         return ApiServices(self.cards, self.history, self.groups, self.transfer,
-                           self.runs, self.runs, self.catalog)
+                           self.runs, self.runs, self.catalog, self.purchase)
 
 
 def create_postgres_stores(database: AsyncDatabase, *, policy: CollectionPolicy | None = None,
@@ -42,4 +44,4 @@ def create_postgres_stores(database: AsyncDatabase, *, policy: CollectionPolicy 
     runs = RunRepository(database, policy, clock)
     return PostgresStores(CardRepository(database, runs), runs,
                           HistoryRepository(database), GroupRepository(database), TransferRepository(database),
-                          CatalogService(PostgresCatalogReader(database)))
+                          CatalogService(PostgresCatalogReader(database)), PurchaseRepository(database))

@@ -6,6 +6,8 @@ from marketplace_connector.application.card_identity import validate_card_identi
 
 from datetime import datetime, timezone
 from typing import List, Optional
+from decimal import Decimal
+from ...domain.purchase import validate_money
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -90,6 +92,8 @@ class CardRepository:
         update_group: bool = False,
         tags: list[str] | None = None,
         primary_variant_id: int | None = None,
+        target_price: Decimal | None = None,
+        update_target: bool = False,
     ) -> Optional[TrackedCard]:
         async with self._database.session() as session, session.begin():
             record = (await session.get(MarketplaceCardRecord, card_id, with_for_update=True))
@@ -106,6 +110,10 @@ class CardRepository:
                     if exact is not None:
                         raise ValueError('Выберите точный вариант товара; прежняя общая история доступна отдельно')
                 record.primary_variant_id = primary_variant_id
+            if update_target:
+                if variant is None:
+                    raise ValueError('Главный вариант не найден')
+                variant.target_price = validate_money(target_price)
             if update_url and record.marketplace in ("ozon", "aliexpress", "wildberries", "yandex-market") and url:
                 validate_card_identity(record.marketplace, variant.external_id, url)
             if update_title:

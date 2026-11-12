@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select, text, tuple_
 from sqlalchemy.orm import defer
 from marketplace_connector.application.card_identity import validate_variant_identity
+from ...domain.purchase import validate_money
 from ...domain.history_merge import HistoryEvent, merge_history
 from ...domain.errors import ImportDuringRun, VariantOwnershipConflict
 from .database import AsyncDatabase
@@ -23,7 +24,7 @@ class TransferRepository:
             histories = (await s.scalars(select(PriceHistoryRecord).options(defer(PriceHistoryRecord.snapshot)).order_by(PriceHistoryRecord.observed_at, PriceHistoryRecord.id))).all()
             groups = (await s.scalars(select(ProductGroupRecord).order_by(ProductGroupRecord.id))).all()
             by_variant = {v.id: dict(external_id=v.external_id, title=v.title, url=v.url, image_url=v.image_url, product_title=v.product_title, options=v.options,
-                                     tracking_enabled=v.tracking_enabled, updated_at=v.updated_at, history=[]) for v in variants}
+                                     target_price=v.target_price, tracking_enabled=v.tracking_enabled, updated_at=v.updated_at, history=[]) for v in variants}
             for h in histories:
                 by_variant[h.variant_id]['history'].append(dict(price=h.price, availability=h.availability, observed_at=h.observed_at))
             members = {}
@@ -46,6 +47,8 @@ class TransferRepository:
             item['marketplace'] = item['marketplace'].strip().lower()
             refs = set()
             for v in item['variants']:
+                if 'target_price' in v:
+                    v['target_price'] = validate_money(v['target_price'])
                 ref, url = validate_variant_identity(item['marketplace'], item['external_id'], v['external_id'], v.get('url'))
                 if ref in refs:
                     raise ValueError('Повторный или чужой вариант')
@@ -125,6 +128,8 @@ class TransferRepository:
                             title=imported.get('title',''),product_title=imported.get('product_title'),image_url=imported.get('image_url'),options=imported.get('options',{}),updated_at=imported.get('updated_at'))
                         s.add(variant)
                         await s.flush()
+                    if 'target_price' in imported:
+                        variant.target_price = imported['target_price']
                     variant.image_url = variant.image_url or imported.get('image_url')
                     variant.product_title = variant.product_title or imported.get('product_title')
                     if imported['external_id']==item['primary_external_id']:

@@ -20,6 +20,7 @@ export function priceMetrics(points: PriceHistoryPoint[], asOf = Date.now()) {
   const anchorIndex = sorted.findLastIndex(({ at }) => at < start)
   const window = sorted.slice(Math.max(0, anchorIndex))
   let minimumPrice: string | null = null, maximumPrice: string | null = null
+  let historyStartedAt: string | null = null
   let total = 0n, durationSum = 0n, scale = 0, observationsCount = 0
   const days = new Set<string>()
   for (let index = 0; index < window.length; index++) {
@@ -30,6 +31,7 @@ export function priceMetrics(points: PriceHistoryPoint[], asOf = Date.now()) {
     if (maximumPrice === null || compareMoney(point.price, maximumPrice) > 0) maximumPrice = point.price
     if (at >= start) { observationsCount++; days.add(new Date(point.observedAt).toISOString().slice(0, 10)) }
     const duration = next - (at < start ? start : at)
+    if (duration > 0n && historyStartedAt === null) historyStartedAt = at < start ? startDate.toISOString() : point.observedAt
     const [coefficient, priceScale] = decimalParts(point.price)
     if (priceScale > scale) { total *= 10n ** BigInt(priceScale - scale); scale = priceScale }
     total += coefficient * 10n ** BigInt(scale - priceScale) * duration
@@ -44,6 +46,6 @@ export function priceMetrics(points: PriceHistoryPoint[], asOf = Date.now()) {
     const rounded = magnitude / denominator + (magnitude % denominator * 2n >= denominator ? 1n : 0n)
     averagePrice = decimalText(numerator < 0n ? -rounded : rounded, 12)
   }
-  return { minimumPrice, maximumPrice, averagePrice, baselineDays: days.size, observationsCount,
+  return { historyStartedAt, minimumPrice, maximumPrice, averagePrice, baselineDays: days.size, observationsCount,
     windowStart: startDate.toISOString(), windowEnd: new Date(asOf).toISOString(), latest: sorted.at(-1)?.point }
 }

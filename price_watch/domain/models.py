@@ -24,6 +24,7 @@ class TrackedCard:
     primary_variant_id: int | None = None
     last_collected_at: datetime | None = None
     options: dict[str, str] = field(default_factory=dict)
+    target_price: Decimal | None = None
 
 
 @dataclass(frozen=True)

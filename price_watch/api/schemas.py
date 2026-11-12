@@ -1,6 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Annotated
+from pydantic import BeforeValidator
+from ..domain.purchase import validate_money
 
 from marketplace_connector.application.card_identity import validate_card_identity, validate_variant_identity
 
@@ -63,11 +65,43 @@ class CardCreate(ApiModel):
         return self
 
 
+PurchaseMoney = Annotated[Decimal, BeforeValidator(validate_money)]
+ToleranceMoney = Annotated[Decimal, BeforeValidator(lambda v: validate_money(v, allow_zero=True))]
+
+
+class PurchaseSettingsUpdate(ApiModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+    small_range_tolerance: ToleranceMoney | None = None
+    historical_savings_share: PurchaseMoney | None = Field(default=None, gt=0, le=100, max_digits=5, decimal_places=2)
+    target_notifications_enabled: bool = False
+
+
+class PurchaseSettingsResponse(PurchaseSettingsUpdate):
+    instance_id: str
+
+
+class PurchaseAssessmentResponse(ApiModel):
+    evaluated_at: datetime
+    history_started_at: datetime | None
+    history_eligible: bool
+    is_match: bool
+    matches: list[Literal['small_range', 'target_price', 'historical_savings_share']]
+    current_price: Decimal | None
+    minimum_price: Decimal | None
+    maximum_price: Decimal | None
+    average_price: Decimal | None
+    target_price: Decimal | None
+    small_range_tolerance: Decimal | None
+    historical_savings_share: Decimal | None
+    threshold: Decimal | None
+
+
 class CardUpdate(ApiModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
     title: str | None = None
     url: HttpUrl | None = None
     deals_enabled: bool | None = None
+    target_price: PurchaseMoney | None = None
     primary_variant_id: int | None = Field(default=None, ge=1)
     group_id: int | None = Field(default=None, ge=1)
     tags: list[str] | None = Field(default=None, max_length=2)
@@ -125,6 +159,7 @@ class VariantTrackingUpdate(ApiModel):
 
 
 class TransferVariant(ApiModel):
+    target_price: PurchaseMoney | None = None
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
     external_id: str
     tracking_enabled: bool = False
@@ -250,6 +285,9 @@ class ImportSummary(ApiModel):
 
 
 class CardResponse(ApiModel):
+    target_price: Decimal | None = None
+    purchase_assessment: PurchaseAssessmentResponse | None = None
+    last_collection_run_id: int | None = None
     id: int
     marketplace: str
     external_id: str
@@ -278,6 +316,7 @@ class CardResponse(ApiModel):
         return cls(
             id=card.id,
             primary_variant_id=card.primary_variant_id,
+            target_price=card.target_price,
             last_collected_at=card.last_collected_at,
             marketplace=card.ref.marketplace,
             external_id=card.ref.external_id,
@@ -382,6 +421,7 @@ class DealResponse(ApiModel):
 
 
 class CatalogResponse(ApiModel):
+    instance_id: str = ""
     cards: list[CardResponse]
     groups: list[GroupResponse]
     deals: list[DealResponse]
