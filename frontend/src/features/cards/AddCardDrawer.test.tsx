@@ -3,12 +3,14 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { AddCardDrawer, CardDrawer } from './AddCardDrawer'
+import { CatalogFilters } from './CatalogFilters'
 
 afterEach(cleanup)
 
 it('rejects nonnumeric articles', async () => {
   const user = userEvent.setup()
   render(<QueryClientProvider client={new QueryClient()}><AddCardDrawer open onClose={vi.fn()} /></QueryClientProvider>)
+  expect(screen.getAllByRole('radio').map(element => element.getAttribute('value'))).toEqual(['ozon', 'wildberries', 'yandex-market', 'aliexpress'])
   await user.type(screen.getByLabelText('Артикул'), 'ozon-123')
   await user.click(screen.getByRole('button', { name: 'Добавить' }))
   expect(screen.getByText('Введите числовой ID карточки Ozon')).toBeInTheDocument()
@@ -42,4 +44,10 @@ it('explains optional title on demand and restores keyboard focus', async () => 
   await user.keyboard('{Escape}')
   expect(help).toHaveFocus()
   expect(screen.getByLabelText('Название (необязательно)')).toHaveValue('')
+})
+
+it('lists marketplaces in the same user-facing order in catalog filters', async () => {
+  render(<CatalogFilters tags={[]} params={new URLSearchParams()} onChange={vi.fn()} />)
+  await userEvent.setup().click(screen.getByRole('button', { name: /^Маркетплейсы$/ }))
+  expect(Array.from(screen.getByRole('group', { name: 'Маркетплейсы' }).querySelectorAll('label'), element => element.textContent)).toEqual(['Ozon', 'Wildberries', 'Яндекс Маркет', 'AliExpress'])
 })

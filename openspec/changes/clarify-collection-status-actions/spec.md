@@ -58,6 +58,27 @@ CodeGraph исследовал AppShell, ActiveCollectionPanel, CollectionServic
 Обновить соответствующие положения openspec/specs/catalog-sidebar/spec.md и
 collection-run-execution/spec.md, а также CURRENT_NUANCES, если описан этот UI.
 
+## Review correction: user-facing marketplace order
+
+Пользователь при оценке результата попросил проверить все списки и установить
+порядок Ozon → Wildberries → Яндекс Маркет → AliExpress. Это правка UI перед
+приёмкой. Проверка frontend и остальных исходников нашла два перечисления:
+RadioGroup добавления/редактирования карточки и marketplaceOptions фильтра.
+Использовать общий marketplaceOrder рядом с marketplaceLabel; подписи сохранить.
+Порядок фонового выполнения CollectionService не менять: запрос касается списков
+для пользователя. Сортировка товаров по колонке, URL-ключи, множества проверки
+поддержки и тестовые наборы не являются перечнями выбора площадки.
+
+- [x] Проверить исправленный порядок в обоих контролах, выполнить frontend tests
+  и TypeScript, обновить постоянную спецификацию.
+
+Правка проверена: 22/22 tests (AddCardDrawer, catalogModel, AppShell), включая
+порядок radio и фильтра; npm run lint (tsc -b) и git diff --check успешны.
+Постоянный catalog-sidebar дополнен сценарием порядка площадок. Backend не
+менялся; его предыдущие результаты остаются применимы. Новая браузерная и native
+проверка не выполнялись: изменён только источник порядка существующих контролов.
+Далее — commit правки, обновление CodeGraph и Repowise index/pages, приёмка.
+
 ## Implementation and verification plan
 
 - [x] 1. Получить согласование этой короткой спецификации.

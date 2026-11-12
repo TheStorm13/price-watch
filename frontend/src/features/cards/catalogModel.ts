@@ -1,11 +1,9 @@
+import { marketplaceLabel, marketplaceOrder } from '../../utils/format'
 import { compareMoney } from '../../utils/money'
 import { cardItem, compareItems, compareParticipation, parseColumnSort, type ColumnSortKey, type DisplayItem } from './catalogItems'
 import type { CatalogSnapshot, Deal, TrackedCardView } from '../../types/domain'
 
-export const marketplaceOptions = [
-  { value: 'ozon', label: 'Ozon' }, { value: 'wildberries', label: 'Wildberries' },
-  { value: 'aliexpress', label: 'AliExpress' }, { value: 'yandex-market', label: 'Яндекс Маркет' },
-]
+export const marketplaceOptions = marketplaceOrder.map(value => ({ value, label: marketplaceLabel[value] }))
 
 /** Missing parameter means all; an empty tag selection means untagged products. */
 export function readSelection(params: URLSearchParams, key: string): string[] | null {

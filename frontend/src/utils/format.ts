@@ -28,11 +28,13 @@ export const availabilityLabel: Record<Availability, string> = {
   unknown: 'Неизвестно',
 }
 
+export const marketplaceOrder = ['ozon', 'wildberries', 'yandex-market', 'aliexpress'] as const satisfies readonly Marketplace[]
+
 export const marketplaceLabel: Record<Marketplace, string> = {
   ozon: 'Ozon',
   wildberries: 'Wildberries',
-  aliexpress: 'AliExpress',
   'yandex-market': 'Яндекс Маркет',
+  aliexpress: 'AliExpress',
 }
 
 export const runStatusLabel: Record<RunStatus, string> = {

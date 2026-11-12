@@ -11,7 +11,7 @@ import { Button } from '../../components/ui/button'
 import { MarketplaceMark } from '../../components/product/MarketplaceMark'
 import { useCreateCard } from '../../api/queries'
 import type { Marketplace, TrackedCardView, TrackedVariant } from '../../types/domain'
-import { marketplaceLabel } from '../../utils/format'
+import { marketplaceLabel, marketplaceOrder } from '../../utils/format'
 import { parseTags } from './tags'
 import { parseAliExpressUrl } from './aliexpressIdentity'
 import { isWildberriesId, parseWildberriesUrl } from './wildberriesIdentity'
@@ -157,7 +157,7 @@ function CardForm({ card, variants = [], onClose, onSave, isPending }: FormProps
             <FieldSet>
               <FieldLegend>Маркетплейс</FieldLegend>
               <RadioGroup disabled={Boolean(card) || isPending} value={marketplace} onValueChange={(value) => { setMarketplace(value as Marketplace); setErrors({}) }}>
-                {(['ozon', 'wildberries', 'aliexpress', 'yandex-market'] as const).map((value) => (
+                {marketplaceOrder.map((value) => (
                   <Field key={value} orientation="horizontal">
                     <RadioGroupItem id={`marketplace-${value}`} value={value} />
                     <FieldLabel htmlFor={`marketplace-${value}`}>

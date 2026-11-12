@@ -36,6 +36,10 @@ The sidebar SHALL offer default deals-first or ascending/descending price sortin
 - **WHEN** the user views the catalog
 - **THEN** sidebar filters appear in order: stock, Sorting heading, participation-first checkbox, sorting selector, deal status, marketplaces, tags; reset appears to the right of the view switcher when conditions are active and preserves the selected view
 
+#### Scenario: Marketplace order
+- **WHEN** the user opens the marketplace filter or the add/edit product drawer
+- **THEN** marketplaces appear in the order Ozon, Wildberries, Яндекс Маркет, AliExpress, from a shared UI order; this display order does not determine collection execution order
+
 #### Scenario: Combined filters
 - **WHEN** marketplaces, tags and stock conditions are enabled
 - **THEN** each matching card satisfies all conditions and its internal database ID is not searched
