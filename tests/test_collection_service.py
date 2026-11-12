@@ -208,17 +208,17 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
                         url='', availability=Availability.OUT_OF_STOCK)
                 finally:
                     self.active -= 1
-        connectors = [Waiting(m) for m in ('ozon', 'wildberries', 'aliexpress')]
-        cards = [replace(card(i), ref=ProductRef(connectors[i % 3].marketplace, str(i))) for i in range(1002)]
+        connectors = [Waiting(m) for m in ('ozon', 'wildberries', 'aliexpress', 'yandex-market')]
+        cards = [replace(card(i), ref=ProductRef(connectors[i % 4].marketplace, str(i))) for i in range(1004)]
         repo = FakeRepository(cards)
         async def factory(run): return ConnectorRegistry(connectors)
         result = await RunExecutor(repo, factory).collect()
-        self.assertEqual(stages, ['ozon', 'aliexpress', 'wildberries'])
-        self.assertEqual(repo.current, [0, 2, 1])
-        self.assertEqual(result.success_count, 1002)
-        self.assertEqual(len({c.id for c, _ in repo.saved}), 1002)
+        self.assertEqual(stages, ['ozon', 'wildberries', 'yandex-market', 'aliexpress'])
+        self.assertEqual(repo.current, [0, 1, 3, 2])
+        self.assertEqual(result.success_count, 1004)
+        self.assertEqual(len({c.id for c, _ in repo.saved}), 1004)
         self.assertTrue(all(c.peak > 100 for c in connectors))
-        self.assertEqual([(c.opens, c.closes) for c in connectors], [(1, 1)] * 3)
+        self.assertEqual([(c.opens, c.closes) for c in connectors], [(1, 1)] * 4)
 
     async def test_excluded_card_still_collects_and_single_collect_is_scoped(self):
         repo = FakeRepository([card(1),card(2,False)])

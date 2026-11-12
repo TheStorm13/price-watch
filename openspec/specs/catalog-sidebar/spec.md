@@ -38,7 +38,7 @@ The sidebar SHALL offer default deals-first or ascending/descending price sortin
 
 #### Scenario: Marketplace order
 - **WHEN** the user opens the marketplace filter or the add/edit product drawer
-- **THEN** marketplaces appear in the order Ozon, Wildberries, Яндекс Маркет, AliExpress, from a shared UI order; this display order does not determine collection execution order
+- **THEN** marketplaces appear in the order Ozon, Wildberries, Яндекс Маркет, AliExpress, from a shared UI order; collection execution follows the same marketplace order
 
 #### Scenario: Combined filters
 - **WHEN** marketplaces, tags and stock conditions are enabled

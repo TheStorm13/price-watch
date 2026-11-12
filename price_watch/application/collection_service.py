@@ -11,7 +11,7 @@ from ..domain.models import LeaseLost
 from ..ports.runs import RunExecutionStore
 
 logger = logging.getLogger(__name__)
-MARKETPLACE_ORDER = ('ozon', 'aliexpress', 'wildberries', 'yandex-market')
+MARKETPLACE_ORDER = ('ozon', 'wildberries', 'yandex-market', 'aliexpress')
 
 
 class CollectionService:
