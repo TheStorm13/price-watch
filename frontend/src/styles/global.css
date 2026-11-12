@@ -437,6 +437,7 @@ input::placeholder { color: #98a2b3; }
 .purchase-reason p { margin-bottom: 2px; }
 .purchase-indicator--match:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .purchase-indicator__star { position: absolute; right: 4px; top: 4px; width: 12px; height: 12px; color: var(--purchase-accent); fill: var(--purchase-glow); }
-.target-price-panel { max-width: 520px; padding: 16px 0; }
+.target-price-panel { width: 100%; margin: 20px 0 24px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface); }
+.target-price-panel form { max-width: 520px; }
 
 .cards-grid__prices .purchase-indicator { height: 28px; max-width: 100%; padding-block: 3px; line-height: 20px; vertical-align: top; }

@@ -106,7 +106,6 @@ export function CardDetailsPage() {
           <CardActionsMenu bordered cardTitle={card.title ?? card.externalId} dealsEnabled={card.dealsEnabled} onToggle={() => updateCard.mutateAsync({ cardId: card.id, input: { dealsEnabled: !card.dealsEnabled } })} onDelete={async () => { await deleteCard.mutateAsync(card.id); navigate(returnTo, { replace: true }) }} />
         </div>
 
-      <TargetPriceForm key={`${card.id}:${card.primaryVariantId}`} card={card} />
       <div className="price-summary"><HelpHint label="Статистика цен">Показатели главного варианта за последние два года. Середина диапазона — (минимум + максимум) / 2. Разница — максимум − минимум.</HelpHint>
         <div className="price-summary__primary">
           <strong>{formatPrice(card.currentPrice)}</strong>
@@ -121,6 +120,7 @@ export function CardDetailsPage() {
         {card.tags?.length ? <section className="detail-tags" aria-label="Теги товара"><TagList tags={card.tags} /></section> : null}
         </div>
       </header>
+      <TargetPriceForm key={`${card.id}:${card.primaryVariantId}`} card={card} />
       {openError ? <Alert variant="destructive"><AlertDescription>{openError}</AlertDescription></Alert> : null}
       {collection.startError ? <Alert variant="destructive"><AlertDescription>{collection.startError}</AlertDescription></Alert> : null}
       {cardQuery.isError ? <SectionError message="Не удалось обновить товар" retry={() => void cardQuery.refetch()} /> : null}
