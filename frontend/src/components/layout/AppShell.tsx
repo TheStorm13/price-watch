@@ -75,8 +75,8 @@ export function AppShell() {
           <div className="brand catalog-sidebar__brand"><BarChart3 aria-hidden="true" /><span>Price watch</span></div>
           <div className="catalog-sidebar__scroll">
             <div className="catalog-sidebar__primary">
-              <Button className="justify-start" onClick={actions.openAdd}><Plus data-icon="inline-start" />Добавить товар</Button>
-              <Button className="justify-start" variant="outline" disabled={collecting} onClick={() => start()}><RefreshCw data-icon="inline-start" />Обновить все цены</Button>
+              <Button className="justify-start" disabled={collecting} onClick={() => start()}><RefreshCw data-icon="inline-start" />Обновить все цены</Button>
+              <Button className="justify-start" variant="outline" onClick={actions.openAdd}><Plus data-icon="inline-start" />Добавить товар</Button>
               {startError ? <Alert variant="destructive"><AlertDescription>{startError}</AlertDescription></Alert> : null}
               <Button className="justify-start" variant="outline" onClick={() => setCreatingGroup(true)}><FolderPlus data-icon="inline-start" />Создать группу</Button>
             </div>

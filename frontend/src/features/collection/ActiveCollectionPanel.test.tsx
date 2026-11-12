@@ -71,3 +71,22 @@ it('reports actual progress, pending continuation, error and indeterminate prepa
   view.rerender(<ActiveCollectionPanel />)
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
 })
+
+
+it('shows actual marketplace stages before any result and a neutral label before the stage is known', () => {
+  const run: CollectionRun = { id: 5, status: 'running', totalCount: 5, successCount: 0, failureCount: 0,
+    current: null, challenge: null, startedAt: '2026-11-12', finishedAt: null,
+    retryableCount: 0, diagnosticsStatus: 'complete', retryScopeIncomplete: false }
+  vi.mocked(useCollection).mockReturnValue({ ...useCollection(), run })
+  const view = render(<ActiveCollectionPanel />)
+  expect(screen.getByText('Обработка товаров')).toBeVisible()
+  for (const [marketplace, label] of [['ozon', 'Ozon'], ['aliexpress', 'AliExpress'],
+    ['wildberries', 'Wildberries'], ['yandex-market', 'Яндекс Маркет']] as const) {
+    vi.mocked(useCollection).mockReturnValue({ ...useCollection(), run: { ...run,
+      current: { cardId: 1, marketplace, externalId: '123' } } })
+    view.rerender(<ActiveCollectionPanel />)
+    expect(screen.getByText(`Обработка товаров ${label}`)).toBeVisible()
+    expect(screen.getByText('0 из 5')).toBeVisible()
+    expect(screen.queryByText(/Подготавливаем запуск|ID 123/)).not.toBeInTheDocument()
+  }
+})

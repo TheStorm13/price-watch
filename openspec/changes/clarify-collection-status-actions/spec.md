@@ -35,8 +35,7 @@ CodeGraph исследовал AppShell, ActiveCollectionPanel, CollectionServic
 
 ## Agreed solution
 
-Предложение подготовлено по запросу пользователя 2026-11-12; согласование этой
-спецификации до реализации ещё ожидается.
+Спецификация явно согласована пользователем 2026-11-12 сообщением «делай».
 
 1. Переставить две кнопки AppShell и обменять default/outline, не меняя подписи.
 2. В CollectionService отметить первую карточку группы через существующий
@@ -61,10 +60,10 @@ collection-run-execution/spec.md, а также CURRENT_NUANCES, если опи
 
 ## Implementation and verification plan
 
-- [ ] 1. Получить согласование этой короткой спецификации.
-- [ ] 2. Исправить отметку этапа, текст плашки и порядок/варианты кнопок; проверить
+- [x] 1. Получить согласование этой короткой спецификации.
+- [x] 2. Исправить отметку этапа, текст плашки и порядок/варианты кнопок; проверить
   потребителей current и сохранить состояния ожидания Chrome/завершения/ошибок.
-- [ ] 3. Запустить затронутые frontend tests, TypeScript, backend collection/CLI
+- [x] 3. Запустить затронутые frontend tests, TypeScript, backend collection/CLI
   tests; добавить только полезную regression-проверку этапа до первого результата.
   Проверить demo UI в браузере. PostgreSQL — только отдельная временная БД,
   если интеграционная проверка необходима; native-сборка остаётся вне объёма.
@@ -75,5 +74,19 @@ collection-run-execution/spec.md, а также CURRENT_NUANCES, если опи
 
 ## Execution state
 
-Исследование завершено, прикладной код не менялся. Следующий шаг — согласование
-короткой спецификации. Проверки нового поведения пока не запускались.
+Реализация завершена: площадка отмечается до подготовки её сеанса; UI использует
+существующий marketplaceLabel. Потребитель run.current в UI только плашка;
+API shape и persistence не менялись. Mock уже передаёт площадку выбранной карточки
+для своего сценария, менять его не требуется. CURRENT_NUANCES не описывает эти детали.
+Проверено: 11/11 frontend component tests; TypeScript; backend collection/CLI
+26 tests, OK (1 skipped). Regression смешанного запуска подтверждает отметку
+каждой из трёх площадок до открытия сеанса и первого результата при 1002 целях.
+Demo visual QA выполнена через Playwright (Browser plugin not available):
+1536×1024 и 1024×768, /cards → «Обновить все цены» → «Обработка товаров Ozon»;
+обновление блокируется. Кнопка refresh сверху, rgb(37,99,235); add ниже, белая.
+Ошибок console/pageerror и overlay нет. Скриншоты: /tmp/collection-actions-1536.png
+и /tmp/collection-actions-1024.png. Это mock demo, не проверка живого сбора.
+Native build/manual native smoke не запускались по ограничениям проекта.
+OpenSpec validate и git diff --check прошли. Постоянные catalog-sidebar и
+collection-run-execution обновлены; миграций и изменений данных нет.
+Осталось: commit и обновление знаний до приёмки.

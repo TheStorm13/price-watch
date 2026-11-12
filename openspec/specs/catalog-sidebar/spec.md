@@ -13,6 +13,10 @@ The application SHALL use the approved 300 px left sidebar on the normal catalog
 - **WHEN** a collection run is visible
 - **THEN** its panel is 490 px wide with 28 px right/bottom insets and a maximum height of calc(100dvh - 56px)
 
+#### Scenario: Primary catalog actions
+- **WHEN** the user views the sidebar
+- **THEN** «Обновить все цены» appears first as the blue primary button and «Добавить товар» follows as an outline button; labels and actions are preserved and refresh remains disabled during collection
+
 #### Scenario: Add from details
 - **WHEN** the user opens add from product details
 - **THEN** the drawer opens on the left and closing it restores the details screen and trigger focus

@@ -66,3 +66,13 @@ it('signals native readiness only after the product screen has committed', () =>
   renderShell()
   expect(invoke).toHaveBeenCalledWith('frontend_ready', { failed: false })
 })
+
+
+it('prioritizes refresh before add while preserving their labels', () => {
+  renderShell()
+  const refresh = screen.getByRole('button', { name: 'Обновить все цены' })
+  const add = screen.getByRole('button', { name: 'Добавить товар' })
+  expect(refresh.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(refresh).toHaveAttribute('data-variant', 'default')
+  expect(add).toHaveAttribute('data-variant', 'outline')
+})

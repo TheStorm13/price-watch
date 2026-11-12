@@ -40,8 +40,6 @@ class CollectionService:
                 return card, snapshot, None, None
 
             async def batch(cards):
-                if len(cards) == 1:
-                    await self._repository.set_run_current(lease, cards[0])
                 tasks = [asyncio.create_task(fetch(card)) for card in cards]
                 try:
                     for completed in asyncio.as_completed(tasks):
@@ -71,6 +69,7 @@ class CollectionService:
                     group = [card for card in cards if card.ref.marketplace == marketplace]
                     if marketplace in failed_stages:
                         continue
+                    await self._repository.set_run_current(lease, group[0])
                     async with AsyncExitStack() as stage:
                         try:
                             await stage.enter_async_context(self._connectors.get(marketplace).collection_session())

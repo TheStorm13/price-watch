@@ -191,6 +191,8 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
                 assert not active
                 active.add(self.marketplace)
                 stages.append(self.marketplace)
+                assert repo.current[-1] == next(c.id for c in cards if c.ref.marketplace == self.marketplace)
+                assert all(c.ref.marketplace != self.marketplace for c, _ in repo.saved)
                 try:
                     yield
                 finally:
@@ -212,6 +214,7 @@ class CollectionServiceTests(unittest.IsolatedAsyncioTestCase):
         async def factory(run): return ConnectorRegistry(connectors)
         result = await RunExecutor(repo, factory).collect()
         self.assertEqual(stages, ['ozon', 'aliexpress', 'wildberries'])
+        self.assertEqual(repo.current, [0, 2, 1])
         self.assertEqual(result.success_count, 1002)
         self.assertEqual(len({c.id for c, _ in repo.saved}), 1002)
         self.assertTrue(all(c.peak > 100 for c in connectors))

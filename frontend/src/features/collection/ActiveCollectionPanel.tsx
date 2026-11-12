@@ -1,3 +1,4 @@
+import { marketplaceLabel } from '../../utils/format'
 import { cn } from '@/lib/utils'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -64,7 +65,7 @@ export function ActiveCollectionPanel() {
         </div>
       ) : (
         <p className="collection-panel__current">
-          {run.current ? `${run.current.marketplace.toUpperCase()} · ID ${run.current.externalId}` : 'Подготавливаем запуск'}
+          {run.current ? `Обработка товаров ${marketplaceLabel[run.current.marketplace]}` : 'Обработка товаров'}
         </p>
       )}
       </CardContent><CardFooter className="shrink-0 border-t-0 bg-transparent px-0 pt-3 pb-0"><div className="collection-panel__progress-row">
