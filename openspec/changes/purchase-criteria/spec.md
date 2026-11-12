@@ -306,7 +306,7 @@ BACKLOG остаётся независимым: после приёмки об�
   tests/test_group_metrics_integration.py и затронутые transfer/CLI checks.
   Frontend: затронутые Vitest, npm --prefix frontend run lint, demo E2E.
   Не запускать native build/smoke или тесты на пользовательской БД.
-- [ ] 8. Обновить перечисленную постоянную документацию, проверить diff и риск
+- [x] 8. Обновить перечисленную постоянную документацию, проверить diff и риск
   изменения, сохранить spec с фактическими результатами проверок; закоммитить
   реализацию и обновить индексы до представления на приёмку.
 - [ ] 9. После явной приёмки обновить только завершённые backlog-записи,
@@ -373,6 +373,19 @@ DEPENDENCIES и deal-selection/group-card-metrics обновлены. BACKLOG н
 UI и переходы, не доставку ОС. Доставка после полного выхода, все промежуточные
 пересечения между опросами и exactly-once после аварии не обещаются.
 
-Следующее действие: проверка staged diff/Repowise risk, commit реализации,
-обновление CodeGraph/Repowise и configured pages, затем представление пользователю
-на второй review gate. Приёмки реализации нет, архивировать change нельзя.
+Реализация закоммичена в fe0ba02b37a1121f8f3c7b02041ca565ffc8ccb0.
+После коммита CodeGraph sync/status complete, pendingChanges=0,
+worktreeMismatch=null (406 файлов, 5359 узлов). Repowise index-only и обычный
+configured update успешны; last_sync_commit и last_docs_commit совпали с fe0ba02.
+Обычный update пересобрал 109 детерминированных страниц и устранил отложенную
+структурную очередь первого прохода. Модельная генерация отключена
+(docs_enabled=false, provider/model=null); она не включалась. Repowise status:
+incomplete=null, unanalysed_file_count=0. Оставшиеся 42 dead-code/5 doc-drift
+repo-wide findings не являются новым подтверждённым дефектом этого change.
+Сгенерированные versioned файлы не изменились. Временные PostgreSQL и demo server
+остановлены после проверок. Итоговому коммиту этой записи применяется та же
+обязательная синхронизация индексов/страниц перед ответом пользователю.
+
+Следующее действие: явная приёмка пользователем (второй review gate), либо
+проверенные исправления по его замечаниям. Приёмки реализации нет,
+архивировать change и завершать BACKLOG пока нельзя.
